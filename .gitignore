@@ -1,0 +1,40 @@
+# Python
+.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+
+# Runtime databases
+*.db
+*.sqlite
+dashboard/data/dashboard.sqlite
+
+# Runtime queues and outputs
+queue/incoming/*
+queue/processing/*
+queue/processed/*
+queue/failed/*
+queue/deadletter/*
+outputs/handoff_json/*
+outputs/debug/*
+outputs/ollama_raw/*
+logs/*
+backup/*
+
+# Keep folder placeholders
+!queue/**/.gitkeep
+!outputs/**/.gitkeep
+!logs/**/.gitkeep
+!backup/**/.gitkeep
+
+# Secrets / local config
+config/*secret*
+config/*credential*
+config/*token*
+*.key
+*.pem
+.env
+
+# Temporary files
+*.log
+*.tmp
