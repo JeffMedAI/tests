@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}JeffLocal Staff Dashboard{% endblock %}</title>
+  {% block head %}{% endblock %}
+  <link rel="stylesheet" href="{{ url_for('static', path='/dashboard.css') }}">
+</head>
+<body>
+  <aside class="sidebar" aria-label="JeffLocal navigation">
+    <a class="brand sidebar-brand" href="/">
+      <span class="brand-mark">JL</span>
+      <span>JeffLocal</span>
+    </a>
+    <nav class="side-nav">
+      <a class="nav-link {% if active_nav|default('dashboard') == 'dashboard' %}active{% endif %}" href="/"><span class="nav-icon" aria-hidden="true">D</span><span>Dashboard</span></a>
+      <a class="nav-link {% if active_nav|default('') == 'requests' %}active{% endif %}" href="/requests"><span class="nav-icon" aria-hidden="true">R</span><span>Requests</span></a>
+      <a class="nav-link {% if active_nav|default('') == 'patients' %}active{% endif %}" href="/patients"><span class="nav-icon" aria-hidden="true">P</span><span>Patients</span></a>
+      <a class="nav-link {% if active_nav|default('') == 'staff' %}active{% endif %}" href="/staff"><span class="nav-icon" aria-hidden="true">S</span><span>Staff</span></a>
+      <a class="nav-link {% if active_nav|default('') == 'reports' %}active{% endif %}" href="/reports"><span class="nav-icon" aria-hidden="true">M</span><span>Reports</span></a>
+      <a class="nav-link {% if active_nav|default('') == 'settings' %}active{% endif %}" href="/settings"><span class="nav-icon" aria-hidden="true">C</span><span>Settings</span></a>
+    </nav>
+    <div class="side-support">
+      <strong>Help &amp; Support</strong>
+      <a href="/alerts">View All Alerts</a>
+      <form method="post" action="/import">
+        <button type="submit">Import Handoffs</button>
+      </form>
+    </div>
+    <div class="side-user">
+      {% if staff_users is defined %}
+      <form method="post" action="/staff/select" class="staff-picker">
+        <input type="hidden" name="next_url" value="{{ request.url.path }}{% if request.url.query %}?{{ request.url.query }}{% endif %}">
+        <span>DEMO ONLY</span>
+        <span>Logged in</span>
+        <label>
+          <select name="staff_id" onchange="this.form.submit()">
+            <option value="">demo_user</option>
+            {% for staff_user in staff_users %}
+              <option value="{{ staff_user.id }}" {% if current_staff and staff_user.id == current_staff.id %}selected{% endif %}>{{ staff_user.display_name }} ({{ staff_user.role }})</option>
+            {% endfor %}
+          </select>
+        </label>
+      </form>
+      {% elif current_staff %}
+        <span class="staff-chip">{{ current_staff.display_name }} ({{ current_staff.role }})</span>
+      {% endif %}
+    </div>
+  </aside>
+  <main class="app-main">
+    {% block content %}{% endblock %}
+  </main>
+  <script>
+    function fallbackCopyText(text) {
+      const area = document.createElement("textarea");
+      area.value = text;
+      area.setAttribute("readonly", "");
+      area.style.position = "fixed";
+      area.style.left = "-9999px";
+      document.body.appendChild(area);
+      area.select();
+      document.execCommand("copy");
+      document.body.removeChild(area);
+    }
+
+    function setCopyState(button, message) {
+      const original = button.dataset.originalLabel || button.textContent;
+      button.dataset.originalLabel = original;
+      button.textContent = message;
+      window.setTimeout(() => {
+        button.textContent = original;
+      }, 1600);
+    }
+
+    async function copyDashboardText(button) {
+      const targetSelector = button.dataset.copyTarget;
+      const target = targetSelector ? document.querySelector(targetSelector) : null;
+      const text = target ? target.value : (button.dataset.copyText || "");
+      if (!text.trim()) {
+        setCopyState(button, "Not available");
+        return;
+      }
+      try {
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(text);
+        } else {
+          fallbackCopyText(text);
+        }
+        setCopyState(button, "Copied");
+      } catch {
+        fallbackCopyText(text);
+        setCopyState(button, "Copied");
+      }
+      if (button.dataset.copyAction && button.dataset.callId) {
+        fetch(`/api/cases/${encodeURIComponent(button.dataset.callId)}/copy-audit`, {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({action: button.dataset.copyAction})
+        }).catch(() => {});
+      }
+    }
+
+    document.addEventListener("click", (event) => {
+      const copyButton = event.target.closest("[data-copy-button]");
+      if (copyButton) {
+        event.preventDefault();
+        event.stopPropagation();
+        copyDashboardText(copyButton);
+        return;
+      }
+      if (event.target.closest("[data-no-toggle]")) {
+        event.stopPropagation();
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,660 @@
+﻿{% extends "base.html" %}
+{% block title %}{% if show_requests %}Requests{% else %}Dashboard{% endif %} - JeffLocal{% endblock %}
+{% block head %}
+{% endblock %}
+{% block content %}
+{% set service_data = services_status|default(none) %}
+{% if service_data and service_data.services %}
+  {% set service_items = service_data.services %}
+{% else %}
+  {% set service_items = {} %}
+{% endif %}
+<section class="page-head app-header">
+  <div>
+    <span class="page-kicker">JeffLocal reception operations</span>
+    <h1>{% if show_requests %}Requests{% else %}Dashboard{% endif %}</h1>
+    <p class="muted">{% if show_requests %}Detailed request worklist, filters, status, and case actions.{% else %}High-priority local intake, safety, identity, and workload overview.{% endif %}</p>
+  </div>
+  <div class="header-actions">
+    <span class="status-pill"><i class="health-dot {{ system_health.dashboard.state }}"></i>System {{ system_health.dashboard.label }}</span>
+    <span class="header-meta">Updated {{ page_updated_at|display_ts }}</span>
+    <button type="button" data-refresh-services-button>Refresh</button>
+  </div>
+</section>
+
+{% if show_demo_banner %}
+<section class="demo-banner" role="status">
+  <strong>DEMO / TEST DATA MODE</strong>
+  <span>No real patient data. Google push disabled for test runs.</span>
+</section>
+{% endif %}
+
+{% if show_dashboard_overview %}
+<section class="dashboard-overview">
+<section class="urgent-panel" aria-label="Urgent Attention">
+  <div>
+    <h2>Urgent Attention</h2>
+    {% if urgent_attention.latest %}
+      <p>{{ urgent_attention.latest.alert_type }}: {{ urgent_attention.latest.message }}</p>
+    {% else %}
+      <p>No unacknowledged critical alerts.</p>
+    {% endif %}
+  </div>
+  <div class="urgent-counts">
+    <a href="{{ filter_links[1].url }}"><span>Red Flags</span><strong>{{ urgent_attention.red_flags }}</strong></a>
+    <a href="{{ filter_links[2].url }}"><span>Staff Review</span><strong>{{ urgent_attention.staff_review }}</strong></a>
+    <a href="{{ filter_links[3].url }}"><span>Identity Checks</span><strong>{{ urgent_attention.identity_checks }}</strong></a>
+  </div>
+  <div class="urgent-actions">
+    <a class="button-link danger-link" href="{{ filter_links[1].url }}">View Critical</a>
+    <a class="button-link secondary-page" href="/alerts">View All Alerts</a>
+    {% if urgent_attention.latest %}
+      <button type="button" id="urgent-ack-button" data-alert-id="{{ urgent_attention.latest.alert_id }}">Acknowledge</button>
+    {% endif %}
+  </div>
+</section>
+
+<section class="kpi-grid" aria-label="Dashboard KPIs">
+  {% for card in kpi_cards %}
+    <a class="kpi-card" href="{{ card.url }}">
+      <span>{{ card.label }}</span>
+      <strong>{{ card.value or "n/a" }}</strong>
+    </a>
+  {% endfor %}
+  <div class="kpi-card system-health-card" aria-label="System Health">
+    <span>System Health</span>
+    <div class="health-list">
+      <div data-service-key="dashboard"><i class="health-dot {{ system_health.dashboard.state }}"></i>Dashboard <strong>{{ system_health.dashboard.label }}</strong></div>
+      <div data-service-key="n8n"><i class="health-dot {{ system_health.n8n.state }}"></i>n8n <strong>{{ system_health.n8n.label }}</strong></div>
+      <div data-service-key="voice_agent"><i class="health-dot {{ system_health.voice_agent.state }}"></i>Voice Agent <strong>{{ system_health.voice_agent.label }}</strong></div>
+      <div><i class="health-dot {{ system_health.google_push.state }}"></i>Google Push <strong>{{ system_health.google_push.label }}</strong></div>
+    </div>
+  </div>
+</section>
+
+<section class="insight-grid three-up" aria-label="Dashboard insights">
+  <div class="panel compact-panel request-mix-card" aria-label="Request Mix">
+    <div class="section-head">
+      <h2>Request Mix</h2>
+      <span class="muted">{{ active_date_range_label }}</span>
+    </div>
+    {% for item in visible_request_mix %}
+      <a class="bar-row compact" href="{{ item.url }}">
+        <span class="bar-label">{{ item.label }}</span>
+        <span class="bar-count">{{ item.count }}</span>
+        <span class="bar-track"><span class="bar-fill" style="width: {{ item.width }}%"></span></span>
+      </a>
+    {% else %}
+      <p class="muted">No requests in this range.</p>
+    {% endfor %}
+  </div>
+
+  <div class="panel compact-panel staff-workload" aria-label="Staff Workload">
+    <div class="section-head">
+      <h2>Staff Workload</h2>
+      <span class="muted">Team Activity</span>
+    </div>
+    <div class="team-stats compact-stats">
+      <span>Resolved <strong>{{ staff_activity.team.resolved_today }}</strong></span>
+      <span>In progress <strong>{{ staff_activity.team.in_progress }}</strong></span>
+      <span>Alerts ack <strong>{{ staff_activity.team.alerts_acknowledged }}</strong></span>
+    </div>
+    {% if staff_activity.rows %}
+    <table class="staff-workload-table">
+      <thead><tr><th>Staff</th><th>Open</th><th>Resolved</th><th>Alerts</th></tr></thead>
+      <tbody>
+      {% for row in staff_activity.rows %}
+        <tr>
+          <td>{{ row.staff_name }}</td>
+          <td>{{ row.assigned_open }}</td>
+          <td>{{ row.resolved_today }}</td>
+          <td>{{ row.alerts_acknowledged }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+      <p class="muted">No staff workload data yet.</p>
+    {% endif %}
+  </div>
+
+  <div class="panel compact-panel live-workload-card" aria-label="Live Workload">
+    <div class="section-head">
+      <h2>Live Workload</h2>
+      <span class="workload-state">{{ workload_card.status }}</span>
+    </div>
+    <dl class="workload-list">
+      <dt>Status</dt><dd>{{ workload_card.status }}</dd>
+      <dt>Incoming Queue</dt><dd>{{ workload_card.incoming }}</dd>
+      <dt>Awaiting Processing</dt><dd>{{ workload_card.awaiting_processing }}</dd>
+      <dt>Active Processing</dt><dd>{{ workload_card.active_processing }}</dd>
+      <dt>Processed Today</dt><dd>{{ workload_card.processed_today }}</dd>
+      <dt>Failed</dt><dd>{{ workload_card.failed }}</dd>
+      <dt>Failed Safety Queue</dt><dd>{{ workload_card.failed_safety_queue }}</dd>
+      <dt>Last checked</dt><dd>{{ workload_card.last_checked }}</dd>
+    </dl>
+  </div>
+</section>
+</section>
+{% endif %}
+
+{% if show_requests %}
+<section class="sticky-toolbar">
+  {% if action_notice %}
+    <p class="notice-banner" role="status">{{ action_notice }}</p>
+  {% endif %}
+  <form method="get" action="/requests" class="search-sort-form filter-bar">
+    <label>Search
+      <input name="q" value="{{ search_query }}" placeholder="Patient, DOB, postcode, callback, EMIS, NHS, call ID, summary">
+    </label>
+    <label>Status
+      <select name="filter">
+        {% for item in filter_links %}
+          <option value="{{ item.value }}" {% if item.value == active_filter %}selected{% endif %}>{{ item.label|title }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Request type
+      <select name="request_type">
+        <option value="" {% if not active_request_type %}selected{% endif %}>All types</option>
+        {% for item in request_type_links %}
+          <option value="{{ item.value }}" {% if item.value == active_request_type %}selected{% endif %}>{{ item.label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Sort by
+      <select name="sort">
+        {% for option in sort_options %}
+          <option value="{{ option.value }}" {% if option.value == active_sort %}selected{% endif %}>{{ option.label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Date range
+      <select name="range">
+        {% for option in date_range_options %}
+          <option value="{{ option.value }}" {% if option.value == active_date_range %}selected{% endif %}>{{ option.label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Page size
+      <select name="page_size">
+        {% for size in [20, 50, 100] %}
+          <option value="{{ size }}" {% if size == pagination.page_size %}selected{% endif %}>{{ size }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <button type="submit">Apply</button>
+    <a class="button-link secondary-page reset-filter-link" href="{{ reset_filters_url }}">Reset</a>
+  </form>
+
+  <div class="filter-support-row quick-filter-panel">
+    <div class="active-filter-chips" aria-label="Active filters">
+      <span class="filter-chip">{{ active_filter_label|title }}</span>
+      <span class="filter-chip">{{ active_date_range_label }}</span>
+      {% if active_request_type_label %}<span class="filter-chip">{{ active_request_type_label }}</span>{% endif %}
+      {% if search_query %}<span class="filter-chip">Search: {{ search_query }}</span>{% endif %}
+      <a href="{{ reset_filters_url }}" aria-label="Clear filters">Clear filters</a>
+    </div>
+    <div class="more-filters">
+      <strong>Quick filters</strong>
+      <nav class="filters" aria-label="Main filters">
+        {% for item in filter_links %}
+          <a href="{{ item.url }}" class="{% if item.value == active_filter %}active{% endif %}">{{ item.label }}</a>
+        {% endfor %}
+      </nav>
+      <nav class="filters chips" aria-label="Request type filters">
+        <a href="{{ all_request_types_url }}" class="{% if not active_request_type %}active{% endif %}">All Types</a>
+        {% for item in request_type_links %}
+          <a href="{{ item.url }}" class="{% if item.value == active_request_type %}active{% endif %}">{{ item.label }}</a>
+        {% endfor %}
+      </nav>
+    </div>
+  </div>
+</section>
+{% endif %}
+
+{% if show_requests %}
+<section class="request-detail-panel panel" aria-label="Request detail panel">
+  <div>
+    <span class="page-kicker">Detail panel</span>
+    <h2>{{ active_filter_label|title }} Requests</h2>
+    <p class="muted">Showing {{ pagination.start }}-{{ pagination.end }} of {{ pagination.total }}. Critical and review queues stay filtered on this page.</p>
+  </div>
+  <div class="request-panel-actions">
+    <a class="button-link danger-link" href="/requests?filter=urgent_red_flags&sort=newest&range=all">Critical</a>
+    <a class="button-link secondary-page" href="/requests?filter=needs_review&sort=newest&range=all">Review</a>
+    <a class="button-link secondary-page" href="/requests?filter=identity_issues&sort=newest&range=all">Identity</a>
+  </div>
+</section>
+
+<section class="case-list" aria-label="Call list">
+  <div class="batch-toolbar panel">
+    <div>
+      <strong><span id="batch-selected-count" data-selected-count>0</span> selected</strong>
+      <p class="muted" id="batch-status-message">Bulk actions apply to selected cases on this page only.</p>
+    </div>
+    <div class="selection-controls">
+      <button type="button" id="select-visible-button" data-select-all-visible {% if current_staff and current_staff.role == "readonly" %}disabled title="Read-only staff cannot update cases."{% endif %}>Select all visible</button>
+      <button type="button" id="clear-selection-button" data-clear-selection disabled>Clear selection</button>
+    </div>
+    <div class="bulk-actions">
+      <button type="button" id="bulk-assign-button" data-bulk-action-button data-bulk-action="assign_to_me" disabled>Assign to me</button>
+      <button type="button" id="bulk-review-button" data-bulk-action-button data-bulk-action="start_review" disabled>Start review</button>
+      <button type="button" id="batch-resolve-button" data-batch-resolve-button data-bulk-action-button data-bulk-action="resolve_eligible_only" disabled title="Resolve eligible routine matched safe cases; unsafe cases are skipped.">Resolve eligible only</button>
+    </div>
+  </div>
+  <div class="request-table" role="table" aria-label="Patient requests">
+    <div class="request-table-head" role="row">
+      <span>Call</span>
+      <span>Patient Details</span>
+      <span>Request Type</span>
+      <span>Summary</span>
+      <span>Status</span>
+      <span>Action</span>
+    </div>
+  {% for case in cases %}
+    <article class="request-row {% if case.is_emergency %}emergency{% elif case.identity_review_required %}identity-row{% elif case.staff_review_required %}review-row{% endif %} {% if case.is_resolved %}resolved-row{% endif %}" id="case-{{ case.call_id }}" data-case-row role="row">
+      <div class="request-row-select">
+        <label class="batch-select" data-no-toggle>
+          <input type="checkbox"
+                 class="case-select"
+                 value="{{ case.call_id }}"
+                 data-case-checkbox
+                 data-call-id="{{ case.call_id }}"
+                 data-request-type="{{ case.request_type }}"
+                 data-priority="{{ case.priority }}"
+                 data-red-flag="{{ 'true' if case.red_flags_present else 'false' }}"
+                 data-safe-to-queue="{{ 'true' if case.safe_to_queue else 'false' }}"
+                 data-staff-review="{{ 'true' if case.staff_review_required else 'false' }}"
+                 data-verification="{{ case.verification_status }}"
+                 data-status="{{ case.status }}"
+                 data-patient="{{ case.patient_name }}"
+                 data-callback="{{ case.callback_number }}"
+                 aria-label="Select {{ case.call_id }} for bulk actions"
+                 {% if current_staff and current_staff.role == "readonly" %}disabled title="Read-only staff cannot update cases."{% endif %}>
+        </label>
+      </div>
+      <div class="request-cell call-cell" role="cell">
+        <strong>{{ case.timestamp_display }}</strong>
+        <span>{{ case.duration_label or "Duration n/a" }}</span>
+        <span class="call-id">{{ case.call_id }}</span>
+        <span>Caller ID {{ case.callback_number or "n/a" }}</span>
+      </div>
+      <div class="request-cell patient-details-cell" role="cell">
+        <strong>{{ case.patient_name or "Name not captured" }}{% if case.gender %} - {{ case.gender }}{% endif %}</strong>
+        <span>DOB {{ case.dob or "n/a" }}{% if case.age_label %} - Age {{ case.age_label }}{% endif %}</span>
+        <span>NHS {{ case.nhs_number or "n/a" }}</span>
+        <span>EMIS {{ case.emis_number or case.matched_patient_ref or "n/a" }}</span>
+        <span>Mobile {{ case.callback_number or "n/a" }}</span>
+      </div>
+      <div class="request-cell request-type-col" role="cell">
+        <span class="badge request-type-pill">{{ case.request_type_label }}</span>
+      </div>
+      <div class="request-cell request-meta" role="cell">
+        <div class="summary-chip-row" aria-label="Secondary indicators">
+          {% for chip in case.summary_chips %}
+            <span class="badge {{ chip.class }}">{{ chip.label }}</span>
+          {% endfor %}
+        </div>
+        <p>{{ case.call_summary_short }}</p>
+        <span class="assigned-label">Assigned: {{ case.assigned_to or "Unassigned" }}</span>
+        {% if case.processing_output_missing %}
+          <span class="warning-inline">Processing output missing - staff review required.</span>
+        {% endif %}
+      </div>
+      <div class="request-cell status-cell" role="cell">
+        <div class="case-pill-row" aria-label="Primary status">
+          <span class="badge {{ case.primary_status_class }}">{{ case.primary_status_label }}</span>
+        </div>
+      </div>
+      <div class="request-cell card-actions" role="cell">
+          {% if case.is_resolved %}
+          <form method="post" action="/case/{{ case.call_id }}/quick_action" data-no-toggle>
+            <input type="hidden" name="action" value="reopen">
+            <input type="hidden" name="return_url" value="{{ current_list_url }}">
+            <button type="submit" {% if current_staff and current_staff.role == "readonly" %}disabled title="Read-only staff cannot update cases."{% endif %}>Reopen</button>
+          </form>
+          {% elif case.requires_individual_review %}
+          <form method="post" action="/case/{{ case.call_id }}/quick_action" data-no-toggle>
+            <input type="hidden" name="action" value="start_review">
+            <input type="hidden" name="return_url" value="{{ current_list_url }}">
+            <button type="submit" {% if current_staff and current_staff.role == "readonly" %}disabled title="Read-only staff cannot update cases."{% endif %}>Start Review</button>
+          </form>
+          {% else %}
+          <form method="post" action="/case/{{ case.call_id }}/quick_action" data-no-toggle>
+            <input type="hidden" name="action" value="resolve">
+            <input type="hidden" name="return_url" value="{{ current_list_url }}">
+            <input type="hidden" name="outcome_notes" value="{{ case.outcome_notes or '' }}">
+            <input type="hidden" name="resolved_by" value="{{ case.resolved_by or '' }}">
+            <button type="submit" {% if current_staff and current_staff.role == "readonly" %}disabled title="Read-only staff cannot update cases."{% endif %}>Resolve</button>
+          </form>
+          {% endif %}
+          <a class="button-link secondary-page" href="/case/{{ case.call_id }}?return_url={{ current_list_url|urlencode }}">View</a>
+      </div>
+    </article>
+  {% else %}
+    <div class="empty">No cases found for this filter.</div>
+  {% endfor %}
+  </div>
+  <nav class="pagination-bar panel" aria-label="Pagination">
+    <span>Showing {{ pagination.start }}-{{ pagination.end }} of {{ pagination.total }}</span>
+    <span>Page {{ pagination.page }} of {{ pagination.total_pages }}</span>
+    <div>
+      <a class="button-link secondary-page {% if not pagination.has_previous %}disabled-link{% endif %}" href="{{ pagination.previous_url }}">Previous</a>
+      <a class="button-link secondary-page {% if not pagination.has_next %}disabled-link{% endif %}" href="{{ pagination.next_url }}">Next</a>
+    </div>
+  </nav>
+</section>
+{% endif %}
+
+<div class="modal-backdrop" id="alert-modal" hidden>
+  <section class="alert-modal" role="dialog" aria-modal="true" aria-labelledby="alert-modal-title">
+    <div class="section-head">
+      <div>
+        <h2 id="alert-modal-title">Operational Alert</h2>
+        <p class="muted">Local acknowledgement only.</p>
+      </div>
+      <span class="badge danger" id="alert-modal-severity"></span>
+    </div>
+    <dl class="mini-grid">
+      <dt>Alert Type</dt><dd id="alert-modal-type"></dd>
+      <dt>Message</dt><dd id="alert-modal-message"></dd>
+      <dt>First Call ID</dt><dd id="alert-modal-call"></dd>
+      <dt>First Patient</dt><dd id="alert-modal-patient"></dd>
+      <dt>First Priority</dt><dd id="alert-modal-priority"></dd>
+      <dt>Source Workflow</dt><dd id="alert-modal-source"></dd>
+      <dt>Timestamp</dt><dd id="alert-modal-timestamp"></dd>
+    </dl>
+    <p class="warning" id="alert-modal-error" hidden></p>
+    <button type="button" id="alert-modal-ok">OK</button>
+  </section>
+</div>
+
+<div class="modal-backdrop" id="batch-modal" hidden>
+  <section class="alert-modal" role="dialog" aria-modal="true" aria-labelledby="batch-modal-title">
+    <h2 id="batch-modal-title">Resolve selected cases?</h2>
+    <p id="batch-modal-message"></p>
+    <label>Outcome note
+      <textarea id="batch-outcome-note" rows="3">Batch resolved after staff review in JeffLocal dashboard.</textarea>
+    </label>
+    <p class="warning" id="batch-modal-error" hidden></p>
+    <div class="modal-actions">
+      <button type="button" id="batch-confirm-button">OK</button>
+      <button type="button" class="secondary-button" id="batch-cancel-button">Cancel</button>
+    </div>
+  </section>
+</div>
+
+<script>
+  function serviceLabel(status) {
+    return (status || "unknown").replaceAll("_", " ").replace(/\b\w/g, c => c.toUpperCase());
+  }
+
+  function updateServicePanel(data) {
+    const services = data.services || {};
+    Object.entries(services).forEach(([key, service]) => {
+      const card = document.querySelector(`[data-service-key="${key}"]`);
+      if (!card) return;
+      const dot = card.querySelector(".health-dot");
+      const label = card.querySelector("strong");
+      if (dot) {
+        const status = service.status || "unknown";
+        const state = ["online", "test_ready"].includes(status) ? "good" : status === "offline" ? "bad" : status === "not_configured" ? "idle" : "warn";
+        dot.className = `health-dot ${state}`;
+      }
+      if (label) label.textContent = serviceLabel(service.status);
+    });
+  }
+
+  document.querySelectorAll("[data-refresh-services-button]").forEach(refreshButton => refreshButton.addEventListener("click", async () => {
+    const button = refreshButton;
+    button.disabled = true;
+    button.textContent = "Checking...";
+    try {
+      const response = await fetch("/api/services/refresh", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({start_missing: false})
+      });
+      updateServicePanel(await response.json());
+    } catch {
+      button.title = "Service status refresh failed. Use the local service status script for details.";
+    } finally {
+      button.disabled = false;
+      button.textContent = "Refresh";
+    }
+  }));
+
+  document.getElementById("urgent-ack-button")?.addEventListener("click", async (event) => {
+    const button = event.currentTarget;
+    const alertId = button.dataset.alertId;
+    if (!alertId) return;
+    button.disabled = true;
+    try {
+      const response = await fetch(`/api/alerts/${encodeURIComponent(alertId)}/acknowledge`, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({})
+      });
+      if (!response.ok) throw new Error("Acknowledgement failed.");
+      button.textContent = "Acknowledged";
+    } catch {
+      button.textContent = "Try Again";
+      button.disabled = false;
+    }
+  });
+
+  {% if show_requests %}
+  const selectionContext = JSON.stringify({
+    filter: "{{ active_filter }}",
+    q: "{{ search_query }}",
+    requestType: "{{ active_request_type }}",
+    range: "{{ active_date_range }}",
+    sort: "{{ active_sort }}",
+    page: "{{ pagination.page }}",
+    pageSize: "{{ pagination.page_size }}"
+  });
+  const selectionContextKey = "jefflocal.selection.context";
+  const selectionKey = `jefflocal.selection.${selectionContext}`;
+  const previousSelectionContext = sessionStorage.getItem(selectionContextKey);
+  const statusMessage = document.getElementById("batch-status-message");
+  const readonlyStaff = "{{ current_staff.role if current_staff else 'staff' }}" === "readonly";
+  const selectedCallIds = new Set();
+  let selectionClearedNotice = false;
+  if (previousSelectionContext && previousSelectionContext !== selectionContext) {
+    Object.keys(sessionStorage).filter(key => key.startsWith("jefflocal.selection.")).forEach(key => sessionStorage.removeItem(key));
+    selectionClearedNotice = true;
+    if (statusMessage) statusMessage.textContent = "Selection cleared because filters changed.";
+  }
+  sessionStorage.setItem(selectionContextKey, selectionContext);
+
+  function visibleCaseBoxes() {
+    return Array.from(document.querySelectorAll("[data-case-checkbox]"));
+  }
+
+  function selectableVisibleBoxes() {
+    return visibleCaseBoxes().filter(box => !box.disabled);
+  }
+
+  function visibleSelectedCallIds() {
+    const visibleIds = new Set(selectableVisibleBoxes().map(box => box.dataset.callId));
+    return Array.from(selectedCallIds).filter(callId => visibleIds.has(callId));
+  }
+
+  function selectedCases() {
+    const selectedVisible = new Set(visibleSelectedCallIds());
+    return selectableVisibleBoxes().filter(box => selectedVisible.has(box.dataset.callId));
+  }
+
+  function loadStoredSelection() {
+    try {
+      const stored = JSON.parse(sessionStorage.getItem(selectionKey) || "[]");
+      selectedCallIds.clear();
+      const visibleIds = new Set(selectableVisibleBoxes().map(box => box.dataset.callId));
+      stored.forEach(callId => {
+        if (visibleIds.has(callId)) selectedCallIds.add(callId);
+      });
+    } catch {
+      selectedCallIds.clear();
+    }
+  }
+
+  function saveSelection() {
+    sessionStorage.setItem(selectionKey, JSON.stringify(visibleSelectedCallIds()));
+  }
+
+  function renderSelectionState() {
+    const selected = new Set(visibleSelectedCallIds());
+    visibleCaseBoxes().forEach(box => {
+      box.checked = selected.has(box.dataset.callId) && !box.disabled;
+    });
+    updateBatchToolbar();
+  }
+
+  function updateBatchToolbar() {
+    const selectedIds = visibleSelectedCallIds();
+    document.querySelector("[data-selected-count]").textContent = selectedIds.length;
+    const disabled = selectedIds.length === 0 || readonlyStaff;
+    document.querySelectorAll("[data-bulk-action-button]").forEach(button => {
+      button.disabled = disabled;
+      button.dataset.valid = disabled ? "false" : "true";
+    });
+    if (statusMessage) {
+      statusMessage.textContent = readonlyStaff
+        ? "Read-only staff cannot update cases."
+        : selectedIds.length
+          ? `${selectedIds.length} selected. Resolve eligible only will skip unsafe cases.`
+          : selectionClearedNotice
+            ? "Selection cleared because filters changed."
+            : "Bulk actions apply to selected cases on this page only.";
+    }
+    const selectVisible = document.getElementById("select-visible-button");
+    const clearSelection = document.getElementById("clear-selection-button");
+    if (selectVisible) selectVisible.disabled = readonlyStaff || selectableVisibleBoxes().length === 0;
+    if (clearSelection) clearSelection.disabled = selectedIds.length === 0;
+  }
+
+  loadStoredSelection();
+  renderSelectionState();
+  document.querySelectorAll(".case-select").forEach(box => box.addEventListener("change", () => {
+    const callId = box.dataset.callId;
+    if (box.checked && !box.disabled) {
+      selectedCallIds.add(callId);
+    } else {
+      selectedCallIds.delete(callId);
+    }
+    saveSelection();
+    selectionClearedNotice = false;
+    renderSelectionState();
+  }));
+  document.getElementById("select-visible-button")?.addEventListener("click", () => {
+    selectableVisibleBoxes().forEach(box => {
+      selectedCallIds.add(box.dataset.callId);
+    });
+    saveSelection();
+    selectionClearedNotice = false;
+    renderSelectionState();
+  });
+  document.getElementById("clear-selection-button")?.addEventListener("click", () => {
+    selectableVisibleBoxes().forEach(box => {
+      selectedCallIds.delete(box.dataset.callId);
+    });
+    sessionStorage.removeItem(selectionKey);
+    selectionClearedNotice = false;
+    renderSelectionState();
+  });
+
+  document.querySelectorAll("[data-bulk-action-button]").forEach(button => button.addEventListener("click", () => {
+    if (button.disabled) return;
+    const action = button.dataset.bulkAction;
+    const label = action === "assign_to_me" ? "Assign selected cases to me?" : action === "start_review" ? "Start review for selected cases?" : "Resolve eligible selected cases and skip unsafe cases?";
+    document.getElementById("batch-modal").dataset.bulkAction = action;
+    document.getElementById("batch-modal-message").textContent = label;
+    document.getElementById("batch-modal-error").hidden = true;
+    document.getElementById("batch-modal").hidden = false;
+  }));
+
+  document.getElementById("batch-cancel-button")?.addEventListener("click", () => {
+    document.getElementById("batch-modal").hidden = true;
+  });
+
+  document.getElementById("batch-confirm-button")?.addEventListener("click", async () => {
+    const button = document.getElementById("batch-confirm-button");
+    const error = document.getElementById("batch-modal-error");
+    const action = document.getElementById("batch-modal").dataset.bulkAction || "resolve_eligible_only";
+    button.disabled = true;
+    try {
+      const response = await fetch("/api/cases/bulk-action", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+          call_ids: visibleSelectedCallIds(),
+          action,
+          note: document.getElementById("batch-outcome-note").value,
+          allow_demo_user: true
+        })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail?.message || data.detail || "Bulk action failed");
+      document.getElementById("batch-status-message").textContent = data.message || "Bulk action complete.";
+      sessionStorage.removeItem(selectionKey);
+      window.setTimeout(() => window.location.reload(), 600);
+    } catch (err) {
+      error.textContent = err.message || "Bulk action failed.";
+      error.hidden = false;
+    } finally {
+      button.disabled = false;
+    }
+  });
+  {% endif %}
+
+  async function loadModalAlert() {
+    try {
+      const response = await fetch("/api/alerts/unacknowledged?modal_only=true&limit=1");
+      if (!response.ok) return;
+      const data = await response.json();
+      const alert = (data.alerts || [])[0];
+      if (!alert) return;
+      const modal = document.getElementById("alert-modal");
+      modal.dataset.alertId = alert.alert_id;
+      document.getElementById("alert-modal-severity").textContent = alert.severity || "";
+      document.getElementById("alert-modal-type").textContent = alert.alert_type || "";
+      document.getElementById("alert-modal-message").textContent = alert.message || "";
+      document.getElementById("alert-modal-call").textContent = alert.first_call_id || "";
+      document.getElementById("alert-modal-patient").textContent = alert.first_patient || "";
+      document.getElementById("alert-modal-priority").textContent = alert.first_priority || "";
+      document.getElementById("alert-modal-source").textContent = alert.source_workflow || "";
+      document.getElementById("alert-modal-timestamp").textContent = alert.timestamp_display || alert.timestamp || "";
+      modal.hidden = false;
+    } catch {
+      return;
+    }
+  }
+
+  document.getElementById("alert-modal-ok")?.addEventListener("click", async () => {
+    const modal = document.getElementById("alert-modal");
+    const alertId = modal.dataset.alertId;
+    const error = document.getElementById("alert-modal-error");
+    if (!alertId) {
+      modal.hidden = true;
+      return;
+    }
+    try {
+      const response = await fetch(`/api/alerts/${encodeURIComponent(alertId)}/acknowledge`, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({})
+      });
+      if (!response.ok) throw new Error("Acknowledgement failed.");
+      modal.hidden = true;
+    } catch {
+      error.textContent = "Could not acknowledge locally. You can continue using the dashboard.";
+      error.hidden = false;
+    }
+  });
+
+  loadModalAlert();
+
+</script>
+{% endblock %}
+

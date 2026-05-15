@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Settings - JeffLocal{% endblock %}
+{% block content %}
+<section class="page-head app-header">
+  <div>
+    <span class="page-kicker">Local configuration</span>
+    <h1>Settings</h1>
+    <p class="muted">Read-only local configuration overview for model, routing, Google push, pathways, and monitoring thresholds.</p>
+  </div>
+  <div class="header-actions">
+    <span class="status-pill">Read-only</span>
+  </div>
+</section>
+
+<section class="settings-grid">
+  {% for item in settings_items %}
+  <article class="panel settings-card">
+    <div class="section-head">
+      <h2>{{ item.label }}</h2>
+      <span class="badge {% if item.state == 'configured' %}safe{% else %}danger{% endif %}">{{ item.state }}</span>
+    </div>
+    <p class="muted">{{ item.path }}</p>
+  </article>
+  {% endfor %}
+</section>
+{% endblock %}

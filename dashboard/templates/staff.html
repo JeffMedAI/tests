@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+{% block title %}Staff - JeffLocal Staff Dashboard{% endblock %}
+{% block content %}
+<section class="page-head app-header">
+  <div>
+    <span class="page-kicker">Team operations</span>
+    <h1>Staff Management</h1>
+    <p class="muted">Demo staff selector is for local demonstration. Production login will use email/password and invitation flow.</p>
+  </div>
+  <div class="header-actions">
+    <a class="button-link secondary-page" href="/reports">Team Metrics</a>
+  </div>
+</section>
+
+<section class="insight-grid">
+  <div class="panel">
+    <div class="section-head"><h2>Staff Workload</h2><span class="muted">Current assignments</span></div>
+    <p class="muted">Use the Requests page to assign active cases to staff and track in-progress workload.</p>
+  </div>
+  <div class="panel">
+    <div class="section-head"><h2>Assignments</h2><span class="muted">Operational view</span></div>
+    <p class="muted">Assigned, in-progress, resolved, and reopened counts are available from the reports dashboard.</p>
+  </div>
+  <div class="panel">
+    <div class="section-head"><h2>Alerts Acknowledged</h2><span class="muted">Audit backed</span></div>
+    <p class="muted">Alert acknowledgements are recorded locally in the dashboard audit trail.</p>
+  </div>
+</section>
+
+{% if can_manage_staff %}
+<section class="panel">
+  <h2>Add Staff Member</h2>
+  <form method="post" action="/staff/create" class="search-sort-form">
+    <label>Display Name
+      <input name="display_name" required>
+    </label>
+    <label>Email Optional
+      <input name="email" type="email">
+    </label>
+    <label>Role
+      <select name="role">
+        {% for role in roles %}
+          <option value="{{ role }}">{{ role|title }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <button type="submit">Create</button>
+  </form>
+</section>
+
+<section class="panel">
+  <h2>Create Future Invitation Placeholder</h2>
+  <p class="muted">Email sending not enabled yet.</p>
+  <form method="post" action="/staff/invitations/create" class="search-sort-form">
+    <label>Email
+      <input name="email" type="email" required>
+    </label>
+    <label>Role
+      <select name="role">
+        {% for role in roles %}
+          <option value="{{ role }}">{{ role|title }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <button type="submit">Create Pending Invitation</button>
+  </form>
+</section>
+{% endif %}
+
+{% macro staff_table(title, rows) %}
+<section class="panel alert-table-wrap">
+  <h2>{{ title }}</h2>
+  <table class="alert-table">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Role</th>
+        <th>Active</th>
+        <th>Updated</th>
+        {% if can_manage_staff %}
+        <th>Save</th>
+        <th>Action</th>
+        {% endif %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for staff in rows %}
+      <tr>
+        {% if can_manage_staff %}
+        <form method="post" action="/staff/{{ staff.id }}/edit">
+          <td><input name="display_name" value="{{ staff.display_name }}" required></td>
+          <td><input name="email" type="email" value="{{ staff.email or '' }}"></td>
+          <td>
+            <select name="role">
+              {% for role in roles %}
+                <option value="{{ role }}" {% if staff.role == role %}selected{% endif %}>{{ role|title }}</option>
+              {% endfor %}
+            </select>
+          </td>
+          <td><label class="check-row"><input type="checkbox" name="active" value="yes" {% if staff.active %}checked{% endif %}> Active</label></td>
+          <td>{{ staff.updated_at|display_ts }}</td>
+          <td><button type="submit">Save</button></td>
+        </form>
+        <td>
+          {% if staff.active %}
+          <form method="post" action="/staff/{{ staff.id }}/deactivate">
+            <button type="submit">Deactivate</button>
+          </form>
+          {% else %}
+          <form method="post" action="/staff/{{ staff.id }}/reactivate">
+            <button type="submit">Reactivate</button>
+          </form>
+          {% endif %}
+        </td>
+        {% else %}
+          <td>{{ staff.display_name }}</td>
+          <td>{{ staff.email or "" }}</td>
+          <td>{{ staff.role|title }}</td>
+          <td>{{ "Yes" if staff.active else "No" }}</td>
+          <td>{{ staff.updated_at|display_ts }}</td>
+        {% endif %}
+      </tr>
+      {% else %}
+      <tr><td colspan="{% if can_manage_staff %}7{% else %}5{% endif %}" class="muted">No staff in this section.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endmacro %}
+
+{{ staff_table("Active Staff", active_staff_users) }}
+{{ staff_table("Inactive Staff", inactive_staff_users) }}
+
+{% if can_manage_staff %}
+<section class="panel alert-table-wrap">
+  <h2>Pending Invitations</h2>
+  <table class="alert-table">
+    <thead><tr><th>Email</th><th>Role</th><th>Status</th><th>Invited By</th><th>Created</th><th>Action</th></tr></thead>
+    <tbody>
+      {% for invitation in invitations %}
+      <tr>
+        <td>{{ invitation.email }}</td>
+        <td>{{ invitation.role }}</td>
+        <td>{{ invitation.status }}</td>
+        <td>{{ invitation.invited_by or "" }}</td>
+        <td>{{ invitation.created_at|display_ts }}</td>
+        <td>
+          {% if invitation.status == "pending" %}
+          <form method="post" action="/staff/invitations/{{ invitation.id }}/cancel">
+            <button type="submit">Cancel Invitation</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" class="muted">No invitations.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+{% endblock %}
