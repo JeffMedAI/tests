@@ -41,3 +41,6 @@ backup/
 Thumbs.db
 .vscode/
 .idea/
+
+# Local manual UI backups
+*.pre_figma_ui_backup
