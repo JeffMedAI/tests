@@ -1,40 +1,43 @@
-# Python
-.venv/
+﻿# Python / dashboard
 __pycache__/
-.pytest_cache/
 *.pyc
+.venv/
+venv/
+.env
+.pytest_cache/
 
-# Runtime databases
-*.db
+# Local databases / live runtime state
+dashboard/data/
 *.sqlite
-dashboard/data/dashboard.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.db
 
-# Runtime queues and outputs
-queue/incoming/*
-queue/processing/*
-queue/processed/*
-queue/failed/*
-queue/deadletter/*
-outputs/handoff_json/*
-outputs/debug/*
-outputs/ollama_raw/*
-logs/*
-backup/*
+# Logs and audits may contain sensitive operational data
+logs/
+*.log
+*.jsonl
 
-# Keep folder placeholders
-!queue/**/.gitkeep
-!outputs/**/.gitkeep
-!logs/**/.gitkeep
-!backup/**/.gitkeep
+# Queues and outputs may contain patient/call data
+queue/
+outputs/
+data/
+data/patient_lookup/
+data/test_inputs/
 
-# Secrets / local config
+# Local secrets / config
+config/local_secrets.json
 config/*secret*
-config/*credential*
 config/*token*
+config/*key*
 *.key
 *.pem
-.env
 
-# Temporary files
-*.log
-*.tmp
+# Backups / restore packs may contain sensitive data
+backup/
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
