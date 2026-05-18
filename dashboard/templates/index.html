@@ -466,7 +466,16 @@
 
       <section class="va-ai-summary">
         <h3>Staff Action</h3>
-        <p>{{ active_case.action_needed or "Review and process according to local workflow." }}</p>
+        {% set preview_action = active_case.action_needed or active_case.staff_task_display or active_case.staff_task_title or "" %}
+        {% if preview_action and preview_action|length > 6 and " " in preview_action %}
+          <p>{{ preview_action }}</p>
+        {% elif active_case.requires_individual_review %}
+          <p>Staff review required before this request can be completed.</p>
+        {% elif active_case.is_resolved %}
+          <p>Request has been resolved in JeffLocal.</p>
+        {% else %}
+          <p>Review and process according to local workflow.</p>
+        {% endif %}
       </section>
     {% else %}
       <div class="va-empty-detail">
