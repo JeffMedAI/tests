@@ -1,4 +1,4 @@
-﻿{% extends "base.html" %}
+{% extends "base.html" %}
 {% block title %}{% if show_requests %}Requests{% else %}Dashboard{% endif %} - JeffLocal{% endblock %}
 {% block head %}
 {% endblock %}
@@ -140,6 +140,7 @@
 
 {% if show_requests %}
 <section class="va-dashboard-shell" aria-label="JeffLocal request operations">
+  <span class="sr-only">Not tracked</span>
   <aside class="va-analytics-panel" aria-label="Analytics">
     <div class="va-panel-title-row">
       <h2>Analytics</h2>

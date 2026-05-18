@@ -295,6 +295,25 @@ def worklist_order_clause(sort: str, filter_name: str, explicit_sort: bool) -> s
     return sort_clause(sort)
 
 
+def compact_digits(value: str) -> str:
+    return re.sub(r"\D+", "", value or "")
+
+
+def sqlite_compact_identifier_expr(column: str) -> str:
+    return f"REPLACE(REPLACE(REPLACE(REPLACE(COALESCE({column}, ''), ' ', ''), '-', ''), '.', ''), '+', '')"
+
+
+def add_digit_identifier_search(conditions: list[str], values: list[Any], query: str, columns: tuple[str, ...]) -> None:
+    digits = compact_digits(query)
+    if not digits:
+        return
+
+    digit_like = f"%{digits}%"
+    for column in columns:
+        conditions.append(f"{sqlite_compact_identifier_expr(column)} LIKE ?")
+        values.append(digit_like)
+
+
 def make_query(filter_name: str, sort: str, q: str, request_type: str) -> tuple[str, tuple[Any, ...]]:
     where, params = filter_clause(filter_name)
     parts = [where]
@@ -304,18 +323,32 @@ def make_query(filter_name: str, sort: str, q: str, request_type: str) -> tuple[
         values.append(request_type)
     if q:
         like = f"%{q}%"
-        parts.append(
-            """
-            (
-                call_id LIKE ? OR patient_name LIKE ? OR dob LIKE ? OR postcode LIKE ?
-                OR callback_number LIKE ? OR emis_number LIKE ? OR nhs_number LIKE ?
-                OR call_summary LIKE ? OR ai_summary LIKE ? OR task_title LIKE ? OR task_body LIKE ?
-                OR staff_task_title LIKE ? OR staff_task_body LIKE ? OR patient_record_note LIKE ?
-                OR verification_status LIKE ?
-            )
-            """
+        conditions = [
+            "call_id LIKE ?",
+            "patient_name LIKE ?",
+            "dob LIKE ?",
+            "postcode LIKE ?",
+            "callback_number LIKE ?",
+            "emis_number LIKE ?",
+            "nhs_number LIKE ?",
+            "matched_patient_ref LIKE ?",
+            "call_summary LIKE ?",
+            "ai_summary LIKE ?",
+            "task_title LIKE ?",
+            "task_body LIKE ?",
+            "staff_task_title LIKE ?",
+            "staff_task_body LIKE ?",
+            "patient_record_note LIKE ?",
+            "verification_status LIKE ?",
+        ]
+        values.extend([like] * len(conditions))
+        add_digit_identifier_search(
+            conditions,
+            values,
+            q,
+            ("callback_number", "nhs_number", "emis_number", "matched_patient_ref"),
         )
-        values.extend([like] * 15)
+        parts.append("(" + " OR ".join(conditions) + ")")
     return " AND ".join(f"({part})" for part in parts), tuple(values)
 
 
@@ -2779,12 +2812,26 @@ def patients_page(request: Request, q: str = "") -> Any:
         where = "1=1"
         if search:
             like = f"%{search}%"
-            where = """
-                patient_name LIKE ? OR dob LIKE ? OR postcode LIKE ?
-                OR emis_number LIKE ? OR nhs_number LIKE ? OR matched_patient_ref LIKE ?
-                OR top_candidate_name LIKE ? OR verification_status LIKE ?
-            """
-            params = (like, like, like, like, like, like, like, like)
+            conditions = [
+                "patient_name LIKE ?",
+                "dob LIKE ?",
+                "postcode LIKE ?",
+                "callback_number LIKE ?",
+                "emis_number LIKE ?",
+                "nhs_number LIKE ?",
+                "matched_patient_ref LIKE ?",
+                "top_candidate_name LIKE ?",
+                "verification_status LIKE ?",
+            ]
+            values: list[Any] = [like] * len(conditions)
+            add_digit_identifier_search(
+                conditions,
+                values,
+                search,
+                ("callback_number", "nhs_number", "emis_number", "matched_patient_ref"),
+            )
+            where = " OR ".join(conditions)
+            params = tuple(values)
         rows = conn.execute(
             f"""
             SELECT call_id, patient_name, dob, postcode, verification_status,
