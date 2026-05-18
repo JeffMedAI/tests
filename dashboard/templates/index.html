@@ -139,7 +139,63 @@
 {% endif %}
 
 {% if show_requests %}
-<section class="sticky-toolbar">
+<section class="va-dashboard-shell" aria-label="JeffLocal request operations">
+  <aside class="va-analytics-panel" aria-label="Analytics">
+    <div class="va-panel-title-row">
+      <h2>Analytics</h2>
+      <span class="va-collapse-dot">‹</span>
+    </div>
+
+    <div class="va-time-card">
+      <span class="va-mini-label">Time Period</span>
+      <div class="va-segmented">
+        {% for option in date_range_options %}
+          <a href="/requests?range={{ option.value }}" class="{% if option.value == active_date_range %}active{% endif %}">{{ option.label }}</a>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="va-sidebar-section">
+      <span class="va-mini-label">Queue Status</span>
+      <a class="va-stat-card" href="{{ filter_links[0].url }}">
+        <span>Open Requests</span>
+        <strong>{{ pagination.total }}</strong>
+        <small>Current filtered worklist</small>
+      </a>
+      <a class="va-stat-card danger-soft" href="/requests?filter=urgent_red_flags&sort=newest&range=all">
+        <span>Red Flags</span>
+        <strong>{{ urgent_attention.red_flags }}</strong>
+        <small>Urgent attention</small>
+      </a>
+      <a class="va-stat-card amber-soft" href="/requests?filter=needs_review&sort=newest&range=all">
+        <span>Staff Review</span>
+        <strong>{{ urgent_attention.staff_review }}</strong>
+        <small>Review required</small>
+      </a>
+      <a class="va-stat-card" href="/requests?filter=identity_issues&sort=newest&range=all">
+        <span>Identity Checks</span>
+        <strong>{{ urgent_attention.identity_checks }}</strong>
+        <small>Verification queue</small>
+      </a>
+    </div>
+
+    <div class="va-sidebar-section">
+      <span class="va-mini-label">Performance</span>
+      <div class="va-stat-card green-soft">
+        <span>Resolved Today</span>
+        <strong>{{ staff_activity.team.resolved_today }}</strong>
+        <small>Team total</small>
+      </div>
+      <div class="va-stat-card">
+        <span>In Progress</span>
+        <strong>{{ staff_activity.team.in_progress }}</strong>
+        <small>Active staff workflow</small>
+      </div>
+    </div>
+  </aside>
+
+  <main class="va-queue-panel" aria-label="Request queue">
+<section class="sticky-toolbar va-sticky-toolbar">
   {% if action_notice %}
     <p class="notice-banner" role="status">{{ action_notice }}</p>
   {% endif %}
@@ -211,10 +267,8 @@
     </div>
   </div>
 </section>
-{% endif %}
 
-{% if show_requests %}
-<section class="request-detail-panel panel" aria-label="Request detail panel">
+<section class="request-detail-panel panel va-request-context-panel" aria-label="Request detail panel">
   <div>
     <span class="page-kicker">Detail panel</span>
     <h2>{{ active_filter_label|title }} Requests</h2>
@@ -344,6 +398,83 @@
       <a class="button-link secondary-page {% if not pagination.has_next %}disabled-link{% endif %}" href="{{ pagination.next_url }}">Next</a>
     </div>
   </nav>
+</section>
+  </main>
+
+  <aside class="va-detail-panel" aria-label="Selected request preview">
+    {% set active_case = cases[0] if cases else none %}
+    {% if active_case %}
+      <div class="va-detail-topline">
+        <div class="summary-chip-row">
+          {% if active_case.red_flags_present or active_case.priority == "999 Emergency" %}
+            <span class="badge danger">RED FLAG</span>
+          {% endif %}
+          <span class="badge {{ active_case.primary_status_class }}">{{ active_case.primary_status_label }}</span>
+          <span class="badge request-type-pill">{{ active_case.request_type_label }}</span>
+        </div>
+        <a class="va-close-link" href="{{ reset_filters_url }}" aria-label="Clear selected preview">×</a>
+      </div>
+
+      <h2>{{ active_case.patient_name or "Name not captured" }}</h2>
+
+      <dl class="va-detail-facts">
+        <dt>DOB</dt><dd>{{ active_case.dob or "n/a" }}</dd>
+        <dt>NHS Number</dt><dd>{{ active_case.nhs_number or "n/a" }}</dd>
+        <dt>Phone</dt><dd>{{ active_case.callback_number or "n/a" }}</dd>
+        <dt>Request Type</dt><dd><span class="badge request-type-pill">{{ active_case.request_type_label }}</span></dd>
+        <dt>Status</dt><dd>{{ active_case.status }}</dd>
+        <dt>Verification</dt><dd>{{ active_case.verification_status }}</dd>
+      </dl>
+
+      <div class="va-action-stack">
+        <a class="button-link secondary-page" href="/case/{{ active_case.call_id }}?return_url={{ current_list_url|urlencode }}">More Info</a>
+        {% if active_case.requires_individual_review %}
+          <form method="post" action="/case/{{ active_case.call_id }}/quick_action">
+            <input type="hidden" name="action" value="start_review">
+            <input type="hidden" name="return_url" value="{{ current_list_url }}">
+            <button type="submit" {% if current_staff and current_staff.role == "readonly" %}disabled title="Read-only staff cannot update cases."{% endif %}>Start Review</button>
+          </form>
+        {% elif not active_case.is_resolved %}
+          <form method="post" action="/case/{{ active_case.call_id }}/quick_action">
+            <input type="hidden" name="action" value="resolve">
+            <input type="hidden" name="return_url" value="{{ current_list_url }}">
+            <input type="hidden" name="outcome_notes" value="{{ active_case.outcome_notes or '' }}">
+            <input type="hidden" name="resolved_by" value="{{ active_case.resolved_by or '' }}">
+            <button type="submit" {% if current_staff and current_staff.role == "readonly" %}disabled title="Read-only staff cannot update cases."{% endif %}>Mark as Resolved</button>
+          </form>
+        {% endif %}
+      </div>
+
+      <div class="va-tab-strip" role="tablist" aria-label="Case preview sections">
+        <span class="active">Summary</span>
+        <span>Triage</span>
+        <span>Transcript</span>
+        <span>History</span>
+      </div>
+
+      <section class="va-ai-summary">
+        <h3>AI Summary</h3>
+        <p>{{ active_case.call_summary_short }}</p>
+      </section>
+
+      {% if active_case.red_flags_present or active_case.priority == "999 Emergency" %}
+        <section class="va-red-warning">
+          <h3>Red Flag Warning</h3>
+          <p>This request has been flagged for urgent clinical attention. Immediate staff review recommended.</p>
+        </section>
+      {% endif %}
+
+      <section class="va-ai-summary">
+        <h3>Staff Action</h3>
+        <p>{{ active_case.action_needed or "Review and process according to local workflow." }}</p>
+      </section>
+    {% else %}
+      <div class="va-empty-detail">
+        <strong>Select a request to view details</strong>
+        <p class="muted">The first visible request will appear here once the worklist contains cases.</p>
+      </div>
+    {% endif %}
+  </aside>
 </section>
 {% endif %}
 
