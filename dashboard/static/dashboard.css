@@ -2288,3 +2288,225 @@ pre {
     text-align: left;
   }
 }
+
+/* === Figma Make VA Dashboard adaptation - Phase 2 card polish === */
+
+.va-dashboard-shell {
+  grid-template-columns: 260px minmax(560px, 1fr) 360px;
+}
+
+.va-analytics-panel {
+  gap: 16px;
+}
+
+.va-segmented {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.va-segmented a {
+  background: transparent;
+  min-height: 34px;
+}
+
+.va-segmented a.active {
+  color: #111827;
+}
+
+.va-queue-panel {
+  padding: 18px 20px;
+}
+
+.va-sticky-toolbar .filter-bar {
+  align-items: end;
+  gap: 10px;
+  grid-template-columns: minmax(240px, 1.3fr) repeat(4, minmax(100px, 0.7fr)) auto auto;
+}
+
+.va-sticky-toolbar .search-sort-form input {
+  min-width: 0;
+}
+
+.va-sticky-toolbar .filter-support-row {
+  align-items: center;
+}
+
+.va-dashboard-shell .request-table {
+  gap: 14px;
+}
+
+.va-dashboard-shell .request-row {
+  grid-template-areas:
+    "select patient type time"
+    "select summary summary actions"
+    "select call status actions";
+  grid-template-columns: 28px minmax(220px, 0.85fr) minmax(220px, 1fr) 132px;
+  padding: 18px;
+  transition: border-color 120ms ease, box-shadow 120ms ease, transform 120ms ease;
+}
+
+.va-dashboard-shell .request-row:hover {
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+  transform: translateY(-1px);
+}
+
+.va-dashboard-shell .status-cell {
+  align-content: start;
+  grid-area: time;
+  justify-items: end;
+}
+
+.va-dashboard-shell .status-cell .badge {
+  text-transform: uppercase;
+}
+
+.va-dashboard-shell .patient-details-cell {
+  gap: 4px;
+}
+
+.va-dashboard-shell .patient-details-cell span:nth-child(n+4) {
+  display: none;
+}
+
+.va-dashboard-shell .call-cell {
+  align-content: end;
+  display: grid;
+  gap: 2px;
+}
+
+.va-dashboard-shell .call-cell span {
+  color: #64748b;
+}
+
+.va-dashboard-shell .call-cell span:nth-child(2) {
+  display: none;
+}
+
+.va-dashboard-shell .request-type-col {
+  align-content: start;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.va-dashboard-shell .request-meta {
+  align-content: start;
+}
+
+.va-dashboard-shell .summary-chip-row {
+  margin-bottom: 8px;
+}
+
+.va-dashboard-shell .request-meta p {
+  font-size: 14px;
+  line-height: 1.45;
+  max-width: 92ch;
+}
+
+.va-dashboard-shell .assigned-label {
+  background: #f8fafc;
+  border-radius: 999px;
+  color: #334155;
+  display: inline-flex;
+  font-weight: 750;
+  padding: 5px 10px;
+  width: max-content;
+}
+
+.va-dashboard-shell .card-actions {
+  align-content: end;
+  align-items: end;
+  display: grid;
+  gap: 8px;
+  justify-items: end;
+}
+
+.va-dashboard-shell .card-actions form,
+.va-dashboard-shell .card-actions a {
+  margin: 0;
+}
+
+.va-dashboard-shell .card-actions button,
+.va-dashboard-shell .card-actions .button-link {
+  min-width: 112px;
+}
+
+.va-dashboard-shell .request-row.emergency {
+  background: #eef5ff;
+  border-color: #3b63ff;
+  border-width: 2px;
+}
+
+.va-dashboard-shell .request-row.emergency .patient-details-cell strong {
+  color: #0f172a;
+}
+
+.va-dashboard-shell .request-row.emergency::before {
+  content: "";
+  background: #ef4444;
+  border-radius: 18px 0 0 18px;
+  display: block;
+  grid-column: 1;
+  grid-row: 1 / 4;
+  margin: -18px 0 -18px -18px;
+  width: 5px;
+}
+
+.va-dashboard-shell .request-row.review-row,
+.va-dashboard-shell .request-row.identity-row {
+  border-width: 2px;
+}
+
+.va-dashboard-shell .badge.request-type-pill {
+  background: #efe1ff;
+  color: #6d28d9;
+}
+
+.va-dashboard-shell .summary-chip-row .badge.danger,
+.va-dashboard-shell .summary-chip-row .badge.not-safe {
+  background: #ef4444;
+  color: #fff;
+}
+
+.va-dashboard-shell .summary-chip-row .badge.review {
+  background: #fff7cc;
+  color: #9a6700;
+}
+
+.va-detail-panel {
+  gap: 16px;
+}
+
+.va-detail-panel .badge {
+  font-weight: 850;
+}
+
+.va-detail-facts {
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 14px;
+}
+
+.va-ai-summary,
+.va-red-warning {
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.04);
+}
+
+@media (max-width: 1380px) {
+  .va-dashboard-shell {
+    grid-template-columns: 230px minmax(500px, 1fr) 330px;
+  }
+
+  .va-dashboard-shell .request-row {
+    grid-template-areas:
+      "select patient status"
+      "select type actions"
+      "select summary actions"
+      "select call actions";
+    grid-template-columns: 28px minmax(0, 1fr) 128px;
+  }
+}
+
+@media (max-width: 1180px) {
+  .va-dashboard-shell {
+    grid-template-columns: 1fr;
+  }
+}
