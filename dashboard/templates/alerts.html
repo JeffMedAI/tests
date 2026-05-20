@@ -1,6 +1,7 @@
-{% extends "base.html" %}
-{% block title %}JeffLocal Alerts{% endblock %}
+﻿{% extends "base.html" %}
+{% block title %}Alerts - JeffLocal{% endblock %}
 {% block content %}
+<div class="page-scroll">
 <section class="page-head">
   <div>
     <a href="/" class="back-link">Back to Dashboard</a>
@@ -69,4 +70,6 @@
 {% else %}
 <p class="empty">No local alerts found for this filter.</p>
 {% endif %}
+</div>
 {% endblock %}
+

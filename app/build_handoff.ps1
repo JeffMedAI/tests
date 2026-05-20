@@ -246,7 +246,6 @@ function New-JeffHandoffObject {
     foreach ($candidate in @(
         (Get-SafePropertyValue -Object $NormalizedInput -Name "medications_requested" -Default @()),
         (Get-SafePropertyValue -Object $Call -Name "medications_requested" -Default @()),
-        (Get-SafePropertyValue -Object $Call -Name "medications_raw" -Default ""),
         (Get-SafePropertyValue -Object $callNormalizedInput -Name "medications_requested" -Default @())
     )) {
         if ($candidate -is [array]) {

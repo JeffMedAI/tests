@@ -1,248 +1,459 @@
 {% extends "base.html" %}
 {% block title %}{{ case.call_id }} - JeffLocal Staff Dashboard{% endblock %}
 {% block content %}
-<section class="page-head detail-head {% if case.red_flags_present %}red-flag-panel{% endif %}">
-  <div>
-    <a href="{{ return_url }}" class="back-link">Back to Patient Requests</a>
-    <h1>{{ case.staff_task_title or case.call_id }}</h1>
-    <p class="muted">
-      {{ case.patient_name or "Name not captured" }}{% if case.gender %} - {{ case.gender }}{% endif %}
-      {% if case.dob %} - DOB {{ case.dob }}{% endif %}{% if case.age_label %} - Age {{ case.age_label }}{% endif %}
-    </p>
-    <p class="muted">
-      NHS {{ case.nhs_number or "n/a" }} - EMIS {{ case.emis_number or case.matched_patient_ref or "n/a" }} -
-      Mobile {{ case.callback_number or "n/a" }} - {{ case.timestamp_display }} - {{ case.duration_label or "Duration n/a" }}
-    </p>
+<div class="page-scroll">
+
+{# ── CASE DETAIL HEADER ─────────────────────────────────────────── #}
+<div class="cd-header {% if case.red_flags_present %}cd-header-danger{% endif %}">
+
+  {# Top row: back link + badges + status pill #}
+  <div class="cd-header-top">
+    <a href="{{ return_url or '/requests' }}" class="cd-back-link" id="case-detail-back">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+      Back to Requests
+    </a>
+    <div class="cd-badge-row">
+      {% if case.is_emergency %}<span class="badge danger">🚨 Emergency</span>{% endif %}
+      {% if case.red_flags_present %}<span class="badge danger">RED FLAG</span>{% endif %}
+      {% if not case.is_resolved and case.priority and case.priority not in ('normal', 'routine', '999 Emergency') %}
+        <span class="badge warn">{{ case.priority|title }}</span>
+      {% endif %}
+      <span class="badge {{ case.request_type }}">{{ case.request_type_label }}</span>
+    </div>
+    <span class="badge {{ case.primary_status_class }} cd-status-pill">{{ case.primary_status_label }}</span>
   </div>
-  <div class="detail-primary-actions">
-    <span class="badge request-type-pill">{{ case.request_type_label }}</span>
-    <span class="badge {{ case.primary_status_class }}">{{ case.primary_status_label }}</span>
+
+  {# Patient name #}
+  <h1 class="cd-patient-name">{{ case.patient_name or "Name not captured" }}</h1>
+
+  {# Meta grid: label | value pairs #}
+  <div class="cd-meta-grid">
+    {% if case.dob %}
+      <span class="cd-meta-label">DOB</span>
+      <span class="cd-meta-value">{{ case.dob_display }}{% if case.age_label %} · {{ case.age_label }}{% endif %}</span>
+    {% endif %}
+    {% if case.nhs_number %}
+      <span class="cd-meta-label">NHS</span>
+      <span class="cd-meta-value">{{ case.nhs_number }}</span>
+    {% endif %}
+    {% if case.callback_number %}
+      <span class="cd-meta-label">Phone</span>
+      <span class="cd-meta-value">{{ case.callback_number_display }}</span>
+    {% endif %}
+    {% if case.emis_number or case.matched_patient_ref %}
+      <span class="cd-meta-label">EMIS</span>
+      <span class="cd-meta-value">{{ case.emis_number or case.matched_patient_ref }}</span>
+    {% endif %}
+    {% if case.gender %}
+      <span class="cd-meta-label">Gender</span>
+      <span class="cd-meta-value">{{ case.gender }}</span>
+    {% endif %}
+    <span class="cd-meta-label">Received</span>
+    <span class="cd-meta-value">{{ case.timestamp_display }}</span>
+    {% if case.age_label_short %}
+      <span class="cd-meta-label">Age</span>
+      <span class="cd-meta-value cd-meta-value cd-age-{{ case.age_class }}">{{ case.age_label_short }}</span>
+    {% endif %}
+    {% if case.duration_label %}
+      <span class="cd-meta-label">Duration</span>
+      <span class="cd-meta-value">{{ case.duration_label }}</span>
+    {% endif %}
+  </div>
+
+  {# Quick action row: call, copy buttons #}
+  <div class="cd-action-row">
+    {% if case.callback_number %}
+      <a class="cd-action-btn" href="tel:{{ case.callback_number }}">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.39 2 2 0 0 1 3.58 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.54a16 16 0 0 0 6.29 6.29l.92-.92a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+        Call
+      </a>
+    {% endif %}
+    <button type="button" class="cd-action-btn" data-copy-button data-copy-text="{{ case.copy_safe_identifiers }}">
+      Copy Identifiers
+    </button>
+    <button type="button" class="cd-action-btn" data-copy-button data-copy-action="copied_patient_record_note" data-call-id="{{ case.call_id }}" data-copy-text="{{ case.copy_safe_emis_note }}">
+      Copy Record Note
+    </button>
+    <button type="button" class="cd-action-btn" data-copy-button data-copy-action="copied_staff_task" data-call-id="{{ case.call_id }}" data-copy-text="{{ case.copy_safe_task }}">
+      Copy Staff Task
+    </button>
+  </div>
+
+  {# Primary action buttons: Escalate + Resolve / Reopen #}
+  <div class="cd-primary-actions">
     {% if case.is_resolved %}
-      <form method="post" action="/case/{{ case.call_id }}/quick_action">
+      <form method="post" action="/case/{{ case.call_id }}/quick_action" class="cd-primary-form">
         <input type="hidden" name="action" value="reopen">
         <input type="hidden" name="return_url" value="{{ return_url }}">
-        <button type="submit" {% if current_staff and current_staff.role == "readonly" %}disabled title="Read-only staff cannot update cases."{% endif %}>Reopen</button>
+        <button type="submit" class="cd-reopen-btn" {% if current_staff and current_staff.role == "readonly" %}disabled title="Read-only staff cannot update cases."{% endif %}>
+          ↩ Reopen Case
+        </button>
       </form>
     {% elif case.requires_individual_review %}
-      <form method="post" action="/case/{{ case.call_id }}/quick_action">
+      <form method="post" action="/case/{{ case.call_id }}/quick_action" class="cd-primary-form">
         <input type="hidden" name="action" value="start_review">
         <input type="hidden" name="return_url" value="{{ return_url }}">
-        <button type="submit" {% if current_staff and current_staff.role == "readonly" %}disabled title="Read-only staff cannot update cases."{% endif %}>Start Review</button>
+        <button type="submit" class="cd-escalate-btn" {% if current_staff and current_staff.role == "readonly" %}disabled{% endif %}>
+          Start Review
+        </button>
       </form>
     {% else %}
-      <form method="post" action="/case/{{ case.call_id }}/quick_action">
+      <form method="post" action="/case/{{ case.call_id }}/quick_action" class="cd-primary-form">
         <input type="hidden" name="action" value="resolve">
         <input type="hidden" name="return_url" value="{{ return_url }}">
-        <button type="submit" {% if current_staff and current_staff.role == "readonly" %}disabled title="Read-only staff cannot update cases."{% endif %}>Resolve</button>
+        <button type="submit" class="cd-resolve-btn" {% if current_staff and current_staff.role == "readonly" %}disabled title="Read-only staff cannot update cases."{% endif %}>
+          ✓ Mark as Resolved
+        </button>
       </form>
     {% endif %}
-    <a class="button-link secondary-page" href="{{ return_url }}">Back to Patient Requests</a>
   </div>
-</section>
 
-<nav class="detail-tabs" aria-label="Case detail sections">
-  <a href="#information">Action Needed</a>
-  <a href="#conversation">Conversation Evidence</a>
-  <a href="#audit">Audit</a>
+</div>{# end cd-header #}
+
+{# ── TABS ───────────────────────────────────────────────────────── #}
+<nav class="cd-tabs" aria-label="Case detail sections">
+  <button class="cd-tab active" data-cd-tab="action">Action Needed</button>
+  <button class="cd-tab" data-cd-tab="conversation">Conversation</button>
+  {% if pathway_items %}<button class="cd-tab" data-cd-tab="triage">Triage</button>{% endif %}
+  <button class="cd-tab" data-cd-tab="audit">Audit</button>
 </nav>
 
-{% if case.is_emergency %}
-  <div class="emergency-banner">Emergency red-flag case - immediate staff review required</div>
+{# Emergency/identity banners — only for active (non-resolved) cases #}
+{% if case.is_emergency and not case.is_resolved %}
+  <div class="cd-emergency-banner">🚨 Emergency red-flag case — immediate staff review required</div>
 {% endif %}
-{% if case.identity_review_required %}
-  <div class="identity-banner">Identity review required</div>
+{% if case.identity_review_required and not case.is_resolved %}
+  <div class="cd-identity-banner">🪪 Identity review required before processing</div>
 {% endif %}
 
-<section id="information" class="detail-section panel">
-  <div class="section-head">
-    <h2>Action Needed</h2>
-    <div class="badge-row">
-      <span class="badge priority {{ 'danger' if case.priority == '999 Emergency' else 'priority-routine' if case.priority == 'routine' else 'review' }}">{{ case.priority }}</span>
-      <span class="badge {% if case.red_flags_present %}danger{% else %}neutral{% endif %}">{{ "Red Flag" if case.red_flags_present else "No Red Flag" }}</span>
-      <span class="badge {% if case.safe_to_queue %}safe{% else %}not-safe{% endif %}">{{ case.safe_to_queue_label }}</span>
-      <span class="badge {% if case.staff_review_required %}review{% else %}neutral{% endif %}">{{ case.staff_review_label }}</span>
-      <span class="badge {% if case.identity_review_required %}identity{% else %}neutral{% endif %}">Verification: {{ case.verification_status }}</span>
-    </div>
-  </div>
-  {% if case.processing_output_missing %}
-    <p class="warning">Processing output missing - staff review required.</p>
-  {% endif %}
-  <div class="action-needed-card">
-    <div class="identifier-row">
-      <span><strong>EMIS</strong> {{ case.emis_number or case.matched_patient_ref or "n/a" }}</span>
-      <button type="button" class="copy-btn compact-copy" data-copy-button data-copy-text="{{ case.emis_number or case.matched_patient_ref }}" aria-label="Copy EMIS number"{% if not (case.emis_number or case.matched_patient_ref) %} disabled{% endif %}>Copy EMIS</button>
-      <span><strong>NHS</strong> {{ case.nhs_number or "n/a" }}</span>
-      <button type="button" class="copy-btn compact-copy" data-copy-button data-copy-text="{{ case.nhs_number }}" aria-label="Copy NHS number"{% if not case.nhs_number %} disabled{% endif %}>Copy NHS</button>
-      <span><strong>Callback</strong> {{ case.callback_number or "n/a" }}</span>
-      <button type="button" class="copy-btn compact-copy" data-copy-button data-copy-text="{{ case.callback_number }}" aria-label="Copy callback"{% if not case.callback_number %} disabled{% endif %}>Copy callback</button>
-    </div>
-    <div class="copy-action-row" aria-label="Copy actions">
-      <button type="button" class="copy-btn primary-copy" data-copy-button data-copy-action="copied_patient_record_note" data-call-id="{{ case.call_id }}" data-copy-text="{{ case.copy_safe_emis_note }}">Copy Patient Record Note</button>
-      <button type="button" class="copy-btn" data-copy-button data-copy-action="copied_staff_task" data-call-id="{{ case.call_id }}" data-copy-text="{{ case.copy_safe_task }}">Copy Staff Task</button>
-      <button type="button" class="copy-btn" data-copy-button data-copy-action="copied_ai_summary" data-call-id="{{ case.call_id }}" data-copy-text="{{ case.copy_safe_summary }}">Copy Summary</button>
-      <button type="button" class="copy-btn" data-copy-button data-copy-text="{{ case.copy_safe_identifiers }}">Copy Identifiers</button>
-    </div>
-    <div class="action-content-grid">
-      <section class="task-summary-column">
-        <h3>Staff Task</h3>
-        <strong>{{ case.staff_task_title or "Staff review required" }}</strong>
-        <p>{{ case.staff_task_display }}</p>
-        <h3>AI-assisted Request Summary</h3>
-        <p>{{ case.ai_summary_display }}</p>
-      </section>
-      <section class="patient-record-note">
-        <h3>Patient Record Note</h3>
-        <p>{{ case.patient_record_note_display }}</p>
-        <p class="muted">Review before pasting into the patient record.</p>
-      </section>
-    </div>
-  </div>
+{# ══════════════════════════════════════════════════════════════════
+   ACTION NEEDED TAB
+   ══════════════════════════════════════════════════════════════════ #}
+<div class="cd-tab-content" data-cd-content="action">
+  <div class="cd-content-grid">
 
-  {% if case.is_resolved %}
-    <section class="workflow-form detail-workflow simplified-workflow">
-      <h3>Staff Workflow</h3>
-      <div class="workflow-meta-row">
-        <span>Status <strong>{{ case.status_label }}</strong></span>
-        <span>Assigned <strong>{{ case.assigned_to or "Unassigned" }}</strong></span>
-        <span>Resolved by <strong>{{ case.resolved_by or "n/a" }}</strong></span>
-        <span>Last edited by <strong>{{ case.last_edited_by or current_staff.display_name if current_staff else "demo_user" }}</strong></span>
+    {# ── Left / Main column ── #}
+    <div class="cd-content-main">
+
+      {# AI Summary #}
+      <div class="cd-card">
+        <div class="cd-card-hd">AI Summary</div>
+        <p class="cd-card-body">{{ case.ai_summary_display }}</p>
       </div>
-      <form method="post" action="/case/{{ case.call_id }}/quick_action" class="workflow-action-row">
-        <input type="hidden" name="action" value="reopen">
-        <input type="hidden" name="return_url" value="{{ return_url }}">
-        <button type="submit" class="primary-action" {% if current_staff and current_staff.role == "readonly" %}disabled title="Read-only staff cannot update cases."{% endif %}>Reopen</button>
-        <a class="button-link secondary-page" href="{{ return_url }}">Back to Patient Requests</a>
-      </form>
-    </section>
-  {% else %}
-    <form method="post" action="/case/{{ case.call_id }}/update" class="workflow-form detail-workflow simplified-workflow">
-      <input type="hidden" name="return_url" value="{{ return_url }}">
-      <h3>Staff Workflow</h3>
-      {% if detail_error %}
-        <p class="warning" role="alert">{{ detail_error }}</p>
-      {% endif %}
-      <div class="workflow-meta-row">
-        <span>Status <strong>{{ case.status_label }}</strong></span>
-        <span>Assigned <strong>{{ case.assigned_to or current_staff.display_name if current_staff else "demo_user" }}</strong></span>
-        <span>Resolved by <strong>{{ case.resolved_by or current_staff.display_name if current_staff else "demo_user" }}</strong></span>
-        <span>Last edited by <strong>{{ case.last_edited_by or current_staff.display_name if current_staff else "demo_user" }}</strong></span>
-      </div>
-      <label>Outcome note
-        <textarea name="outcome_notes" rows="3">{{ case.outcome_notes or "Processed according to JeffLocal workflow." }}</textarea>
-      </label>
-      <label class="check-row">
-        <input type="checkbox" name="mark_resolved" value="yes">
-        I confirm staff review is complete and this request is ready to resolve.
-      </label>
+
+      {# Red Flag Warning #}
       {% if case.red_flags_present %}
-        <p class="warning">Outcome notes are required before resolving a red-flag case. Resolved By is also required.</p>
-      {% endif %}
-      {% if case.identity_review_required %}
-        <p class="warning">Outcome notes are required before resolving an identity issue.</p>
-      {% endif %}
-      <div class="workflow-action-row">
-        <button type="submit" name="intent" value="resolve" class="primary-action" {% if current_staff and current_staff.role == "readonly" %}disabled title="Read-only staff cannot update cases."{% endif %}>Mark as Resolved</button>
-        <button type="submit" name="intent" value="save_progress" class="secondary-button" {% if current_staff and current_staff.role == "readonly" %}disabled title="Read-only staff cannot update cases."{% endif %}>Save progress</button>
-        <a class="button-link secondary-page" href="{{ return_url }}">Back to Patient Requests</a>
+      <div class="cd-card cd-card-danger">
+        <div class="cd-card-hd cd-card-hd-danger">⚠ Red Flag Warning</div>
+        <p class="cd-card-body">{{ case.action_needed or "Red flag indicators detected. Immediate clinical review required." }}</p>
       </div>
-      <details class="advanced-staff-fields">
-        <summary>Advanced staff fields</summary>
-        <label>Status
-          <select name="status">
-            {% for status in statuses %}
-              <option value="{{ status }}" {% if status == case.status %}selected{% endif %}>{{ status }}</option>
-            {% endfor %}
-          </select>
-        </label>
-        <label>Assigned To
-          <input name="assigned_to" value="{{ case.assigned_to or current_staff.display_name if current_staff else '' }}">
-        </label>
-        <label>Action Needed
-          <textarea name="action_needed" rows="2">{{ case.action_needed or "Review and process according to local workflow." }}</textarea>
-        </label>
-        <label>Staff Action
-          <textarea name="staff_action" rows="2">{{ case.staff_action or "" }}</textarea>
-        </label>
-        <label>Resolved By
-          <input name="resolved_by" value="{{ case.resolved_by or current_staff.display_name if current_staff else '' }}">
-        </label>
-        <label>Last Edited By
-          <input name="last_edited_by" value="{{ case.last_edited_by or current_staff.display_name if current_staff else '' }}">
-        </label>
-      </details>
-    </form>
-  {% endif %}
-  <details class="quality-details">
-    <summary>Locked JeffLocal fields</summary>
-    <dl class="field-list">
-      {% for field in display_fields %}
-        <dt>{{ field.label }}</dt><dd>{{ field.value | display_ts }}</dd>
-      {% endfor %}
-    </dl>
-  </details>
-</section>
-
-<section id="conversation" class="panel call-evidence-panel">
-  <h2>Conversation Evidence</h2>
-  <div class="call-evidence-grid">
-    <div class="evidence-card recording-panel">
-      <h3>Recording</h3>
-      <p><strong>Status:</strong> {{ recording.recording_label }}</p>
-      {% if recording.recording_reference %}
-        <p class="muted">{{ recording.recording_help }}</p>
-        <button type="button" class="copy-btn" data-copy-button data-copy-text="{{ recording.recording_reference }}" aria-label="Copy recording reference">Copy recording reference</button>
-      {% else %}
-        <p class="muted">Recording expected after call completion.</p>
       {% endif %}
+
+      {# Staff Task / Suggested Actions #}
+      <div class="cd-card">
+        <div class="cd-card-hd">Staff Task &amp; Suggested Actions</div>
+        {% if case.staff_task_title %}
+          <p class="cd-card-title">{{ case.staff_task_title }}</p>
+        {% endif %}
+        <p class="cd-card-body">{{ case.staff_task_display }}</p>
+      </div>
+
+      {# Patient Record Note #}
+      <div class="cd-card">
+        <div class="cd-card-hd">
+          Patient Record Note
+          <span class="cd-card-hd-meta">Review before pasting into patient record</span>
+        </div>
+        <p class="cd-card-body cd-card-mono">{{ case.patient_record_note_display }}</p>
+        <button type="button" class="cd-copy-btn" data-copy-button data-copy-action="copied_patient_record_note" data-call-id="{{ case.call_id }}" data-copy-text="{{ case.copy_safe_emis_note }}">
+          Copy to clipboard
+        </button>
+      </div>
+
+      {# Processing warning #}
+      {% if case.processing_output_missing %}
+        <p class="warning">Processing output missing — staff review required.</p>
+      {% endif %}
+
+      {# Locked fields #}
+      <details class="cd-locked-fields cd-card">
+        <summary>Locked JeffLocal fields</summary>
+        <dl class="field-list" style="margin-top:10px">
+          {% for field in display_fields %}
+            <dt>{{ field.label }}</dt><dd>{{ field.value | display_ts }}</dd>
+          {% endfor %}
+        </dl>
+      </details>
+
+    </div>{# end cd-content-main #}
+
+    {# ── Right / Side column ── #}
+    <div class="cd-content-side">
+
+      {# Identifiers card #}
+      <div class="cd-card">
+        <div class="cd-card-hd">Identifiers</div>
+        <div class="cd-id-row">
+          <span class="cd-id-label">EMIS</span>
+          <span class="cd-id-value">{{ case.emis_number or case.matched_patient_ref or "n/a" }}</span>
+          <button type="button" class="cd-copy-sm" data-copy-button data-copy-text="{{ case.emis_number or case.matched_patient_ref }}" {% if not (case.emis_number or case.matched_patient_ref) %}disabled{% endif %}>Copy</button>
+        </div>
+        <div class="cd-id-row">
+          <span class="cd-id-label">NHS</span>
+          <span class="cd-id-value">{{ case.nhs_number or "n/a" }}</span>
+          <button type="button" class="cd-copy-sm" data-copy-button data-copy-text="{{ case.nhs_number }}" {% if not case.nhs_number %}disabled{% endif %}>Copy</button>
+        </div>
+        <div class="cd-id-row">
+          <span class="cd-id-label">Callback</span>
+          <span class="cd-id-value">{{ case.callback_number_display or "n/a" }}</span>
+          <button type="button" class="cd-copy-sm" data-copy-button data-copy-text="{{ case.callback_number }}" {% if not case.callback_number %}disabled{% endif %}>Copy</button>
+        </div>
+      </div>
+
+      {# Status / safety badges #}
+      <div class="cd-card">
+        <div class="cd-card-hd">Safety &amp; Status</div>
+        <div class="cd-status-badges">
+          <span class="badge priority {{ 'danger' if case.priority == '999 Emergency' else 'priority-routine' if case.priority == 'routine' else 'review' }}">{{ case.priority }}</span>
+          <span class="badge {% if case.red_flags_present %}danger{% else %}neutral{% endif %}">{{ "Red Flag" if case.red_flags_present else "No Red Flag" }}</span>
+          <span class="badge {% if case.safe_to_queue %}safe{% else %}not-safe{% endif %}">{{ case.safe_to_queue_label }}</span>
+          {% if not case.is_resolved %}
+          <span class="badge {% if case.staff_review_required %}review{% else %}neutral{% endif %}">{{ case.staff_review_label }}</span>
+          <span class="badge {% if case.identity_review_required %}identity{% else %}neutral{% endif %}">Verification: {{ case.verification_status }}</span>
+          {% else %}
+          <span class="badge neutral" title="Verification status at time of resolution">Verification: {{ case.verification_status }}</span>
+          {% endif %}
+        </div>
+      </div>
+
+      {# Staff Workflow card #}
+      {% if case.is_resolved %}
+        <div class="cd-card">
+          <div class="cd-card-hd">Staff Workflow</div>
+          <div class="cd-workflow-meta">
+            <span>Status <strong>{{ case.status_label }}</strong></span>
+            <span>Assigned <strong>{{ case.assigned_to or "Unassigned" }}</strong></span>
+            <span>Resolved <strong>{{ case.resolved_at_display or "n/a" }}</strong></span>
+            <span>Resolved by <strong>{{ case.resolved_by_display or "n/a" }}</strong></span>
+            {% if case.turnaround_minutes_display %}<span>Turnaround <strong>{{ case.turnaround_minutes_display }}</strong></span>{% endif %}
+            <span>Last edited <strong>{{ case.last_edited_by or "n/a" }}</strong></span>
+          </div>
+          <form method="post" action="/case/{{ case.call_id }}/quick_action" class="cd-workflow-actions">
+            <input type="hidden" name="action" value="reopen">
+            <input type="hidden" name="return_url" value="{{ return_url }}">
+            <button type="submit" class="cd-reopen-btn" {% if current_staff and current_staff.role == "readonly" %}disabled{% endif %}>↩ Reopen</button>
+            <a class="cd-action-btn" href="{{ return_url }}" style="text-align:center;justify-content:center">Back to Requests</a>
+          </form>
+        </div>
+      {% else %}
+        <div class="cd-card">
+          <div class="cd-card-hd">Staff Workflow</div>
+          <form method="post" action="/case/{{ case.call_id }}/update" class="cd-workflow-form">
+            <input type="hidden" name="return_url" value="{{ return_url }}">
+            {% if detail_error %}
+              <p class="warning" role="alert">{{ detail_error }}</p>
+            {% endif %}
+            <div class="cd-workflow-meta">
+              <span>Status <strong>{{ case.status_label }}</strong></span>
+              <span>Assigned <strong>{{ case.assigned_to or current_staff.display_name if current_staff else "demo_user" }}</strong></span>
+            </div>
+            <label class="cd-label">Outcome note
+              <textarea name="outcome_notes" rows="3">{{ case.outcome_notes or "Processed according to JeffLocal workflow." }}</textarea>
+            </label>
+            <label class="check-row">
+              <input type="checkbox" name="mark_resolved" value="yes">
+              I confirm staff review is complete and this request is ready to resolve.
+            </label>
+            {% if case.red_flags_present %}
+              <p class="warning">Outcome notes required before resolving a red-flag case.</p>
+            {% endif %}
+            {% if case.identity_review_required %}
+              <p class="warning">Outcome notes required before resolving an identity issue.</p>
+            {% endif %}
+            <div class="cd-workflow-actions">
+              <button type="submit" name="intent" value="resolve" class="cd-resolve-btn" {% if current_staff and current_staff.role == "readonly" %}disabled{% endif %}>✓ Mark as Resolved</button>
+              <button type="submit" name="intent" value="save_progress" class="secondary-button" {% if current_staff and current_staff.role == "readonly" %}disabled{% endif %}>Save progress</button>
+              <a class="cd-action-btn" href="{{ return_url }}" style="text-align:center;justify-content:center">Back to Requests</a>
+            </div>
+            <details class="advanced-staff-fields" style="margin-top:8px">
+              <summary>Advanced staff fields</summary>
+              <label>Status
+                <select name="status">
+                  {% for status in statuses %}
+                    <option value="{{ status }}" {% if status == case.status %}selected{% endif %}>{{ status }}</option>
+                  {% endfor %}
+                </select>
+              </label>
+              <label>Assigned To
+                <input name="assigned_to" value="{{ case.assigned_to or current_staff.display_name if current_staff else '' }}">
+              </label>
+              <label>Action Needed
+                <textarea name="action_needed" rows="2">{{ case.action_needed or "Review and process according to local workflow." }}</textarea>
+              </label>
+              <label>Staff Action
+                <textarea name="staff_action" rows="2">{{ case.staff_action or "" }}</textarea>
+              </label>
+              <label>Resolved By
+                <input name="resolved_by" value="{{ case.resolved_by or current_staff.display_name if current_staff else '' }}">
+              </label>
+              <label>Last Edited By
+                <input name="last_edited_by" value="{{ case.last_edited_by or current_staff.display_name if current_staff else '' }}">
+              </label>
+            </details>
+          </form>
+        </div>
+      {% endif %}
+
+    </div>{# end cd-content-side #}
+  </div>
+</div>
+
+{# ══════════════════════════════════════════════════════════════════
+   CONVERSATION TAB
+   ══════════════════════════════════════════════════════════════════ #}
+<div class="cd-tab-content" data-cd-content="conversation" hidden>
+  <div class="cd-content-grid">
+
+    <div class="cd-content-main">
+      <div class="cd-card">
+        <div class="cd-card-hd">Transcript</div>
+        <div class="conversation-transcript cd-transcript">
+          {% for line in transcript_lines %}
+            <div class="conversation-line {{ line.role }}">
+              <strong>{{ line.speaker }}</strong>
+              <p>{{ line.text }}</p>
+            </div>
+          {% else %}
+            <p class="muted">Transcript not available.</p>
+          {% endfor %}
+        </div>
+        {% if raw_transcript %}
+          <details class="raw-transcript" style="margin-top:10px">
+            <summary>Show raw transcript</summary>
+            <p style="font-size:var(--text-xs);margin-top:8px;white-space:pre-wrap">{{ raw_transcript }}</p>
+          </details>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="cd-content-side">
+      {# Recording #}
+      <div class="cd-card">
+        <div class="cd-card-hd">Recording</div>
+        <p style="font-size:var(--text-sm)"><strong>Status:</strong> {{ recording.recording_label }}</p>
+        {% if recording.recording_reference %}
+          <p class="muted" style="font-size:var(--text-xs)">{{ recording.recording_help }}</p>
+          <button type="button" class="cd-copy-btn" data-copy-button data-copy-text="{{ recording.recording_reference }}">
+            Copy recording reference
+          </button>
+        {% else %}
+          <p class="muted" style="font-size:var(--text-xs)">Recording expected after call completion.</p>
+        {% endif %}
+      </div>
+
+      {# Pathway Q&A moved to dedicated Triage tab #}
       {% if pathway_items %}
-        <section class="pathway-response-panel">
-          <h3>Pathway Questions &amp; Responses</h3>
-          <ul class="pathway-response-list">
-            {% for item in pathway_items %}
-              <li><strong>{{ item.label }}:</strong> {{ item.value }}</li>
+      <div class="cd-card">
+        <div class="cd-card-hd">Pathway Summary</div>
+        <p class="muted" style="font-size:var(--text-xs)">
+          {{ pathway_items | length }} pathway question{{ 's' if pathway_items | length != 1 }} captured.
+          See the <strong>Triage</strong> tab for full details.
+        </p>
+      </div>
+      {% endif %}
+    </div>
+
+  </div>
+</div>
+
+{# ══════════════════════════════════════════════════════════════════
+   TRIAGE TAB — pathway-specific Q&A only
+   ══════════════════════════════════════════════════════════════════ #}
+{% if pathway_items %}
+<div class="cd-tab-content" data-cd-content="triage" hidden>
+  <div class="cd-content-grid single-col">
+    <div class="cd-content-main">
+      <div class="cd-card">
+        <div class="cd-card-hd">{{ case.request_type_label }} — Pathway Questions &amp; Responses</div>
+        <p class="muted" style="font-size:var(--text-sm);margin-bottom:12px">
+          Answers captured by Jeff during the call. Review before processing.
+        </p>
+        <ul class="cd-pathway-list cd-pathway-list-full">
+          {% for item in pathway_items %}
+            <li class="cd-pathway-item">
+              <span class="cd-pathway-q">{{ item.label }}</span>
+              <span class="cd-pathway-a">{{ item.value }}</span>
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{# ══════════════════════════════════════════════════════════════════
+   AUDIT TAB
+   ══════════════════════════════════════════════════════════════════ #}
+<div class="cd-tab-content" data-cd-content="audit" hidden>
+  <div class="cd-content-grid single-col">
+    <div class="cd-content-main">
+      <div class="cd-card">
+        <div class="cd-card-hd">Audit History</div>
+        {% if audit_events %}
+          <ul class="cd-audit-list">
+            {% for event in audit_events %}
+              <li class="cd-audit-item">
+                <span class="cd-audit-time">{{ event.timestamp_display }}</span>
+                <span class="cd-audit-text">{{ event.friendly_text }}</span>
+                <details class="cd-audit-tech">
+                  <summary>Technical detail</summary>
+                  <code>{{ event.action }}: {{ event.changed_fields }}</code>
+                </details>
+              </li>
             {% endfor %}
           </ul>
-        </section>
-      {% endif %}
-    </div>
-    <div class="evidence-card transcript-panel">
-      <h3>Transcript</h3>
-      <div class="conversation-transcript">
-        {% for line in transcript_lines %}
-          <div class="conversation-line {{ line.role }}">
-            <strong>{{ line.speaker }}</strong>
-            <p>{{ line.text }}</p>
-          </div>
         {% else %}
-          <p class="muted">Transcript not available.</p>
-        {% endfor %}
+          <p class="muted">No recent history.</p>
+        {% endif %}
       </div>
-      {% if raw_transcript %}
-        <details class="raw-transcript">
-          <summary>Show raw transcript</summary>
-          <p>{{ raw_transcript }}</p>
-        </details>
-      {% endif %}
     </div>
   </div>
-</section>
+</div>
 
-<section id="audit" class="panel audit-panel">
-  <h2>Audit</h2>
-  {% if audit_events %}
-    <ul class="audit-list">
-      {% for event in audit_events %}
-        <li>
-          <strong>{{ event.timestamp_display }}</strong> - {{ event.friendly_text }}
-          <details class="technical-audit">
-            <summary>Show technical audit details</summary>
-            <code>{{ event.action }}: {{ event.changed_fields }}</code>
-          </details>
-        </li>
-      {% endfor %}
-    </ul>
-  {% else %}
-    <p class="muted">No recent history.</p>
-  {% endif %}
-</section>
+</div>{# end page-scroll #}
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // ── Case detail JS tab switching ─────────────────────────────────
+  (function () {
+    var tabs     = document.querySelectorAll('[data-cd-tab]');
+    var contents = document.querySelectorAll('[data-cd-content]');
+    var storageKey = 'jefflocal.cd.tab.{{ case.call_id }}';
+
+    function activate(target) {
+      tabs.forEach(function (t) { t.classList.toggle('active', t.dataset.cdTab === target); });
+      contents.forEach(function (c) { c.hidden = c.dataset.cdContent !== target; });
+      sessionStorage.setItem(storageKey, target);
+    }
+
+    // Restore previously active tab
+    var stored = sessionStorage.getItem(storageKey);
+    if (stored && document.querySelector('[data-cd-tab="' + stored + '"]')) {
+      activate(stored);
+    }
+
+    tabs.forEach(function (tab) {
+      tab.addEventListener('click', function () { activate(tab.dataset.cdTab); });
+    });
+
+    // Anchor hash support
+    if (window.location.hash) {
+      var map = { '#information': 'action', '#conversation': 'conversation', '#audit': 'audit' };
+      var target = map[window.location.hash];
+      if (target) activate(target);
+    }
+  })();
+</script>
 {% endblock %}

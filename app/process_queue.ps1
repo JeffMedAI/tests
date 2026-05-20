@@ -620,8 +620,14 @@ if (@($duplicateBatchIds).Count -gt 0) {
             $pathwayText
         ) -join " "
 
+        $KNOWN_REQUEST_TYPES = @("prescription","sick_note","referral","test_result","appointment_redirect","admin")
+        $normalizedOriginal = Normalize-JeffRequestType $originalRequestType
+
         $requestType = if (-not [string]::IsNullOrWhiteSpace($selectedPathway)) {
             Normalize-JeffRequestType $selectedPathway
+        }
+        elseif ($KNOWN_REQUEST_TYPES -contains $normalizedOriginal) {
+            $normalizedOriginal
         }
         else {
             Normalize-JeffRequestType $classificationText

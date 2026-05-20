@@ -18,13 +18,16 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from .audit import write_audit_event
-from .db import connect, init_db, row_to_dict
+from .db import DB_PATH, connect, init_db, row_to_dict
 from .importer import import_handoffs
 from .models import (
     ALLOWED_STATUSES,
     EDITABLE_FORM_FIELDS,
     FINAL_STATUSES,
     format_display_timestamp,
+    format_dob_uk,
+    format_phone_uk,
+    format_turnaround_time,
     utc_now_iso,
 )
 
@@ -104,6 +107,20 @@ SORT_OPTIONS = [
 ]
 
 RESOLVED_STATUSES = ("Resolved", "Unable to Complete")
+TERMINAL_CASE_STATUSES = (
+    "resolved",
+    "closed",
+    "completed",
+    "complete",
+    "cancelled",
+    "canceled",
+    "archived",
+    "duplicate",
+    "dismissed",
+    "unable to complete",
+)
+STAFF_REVIEW_STATUS_NAMES = ("staff review", "needs review", "urgent review", "escalated")
+IN_PROGRESS_STATUS_NAMES = ("in progress", "active processing")
 IDENTITY_REVIEW_STATUSES = {"possible_match", "possible_match_weak", "no_match", "insufficient_data", "needs_review"}
 SAFE_MATCH_STATUSES = {"matched", "exact_match", "verified_match"}
 OPEN_BATCH_STATUSES = {"New", "In Progress", "Waiting for Patient", "Waiting for GP"}
@@ -208,6 +225,112 @@ def range_clause(range_name: str) -> tuple[str, tuple[Any, ...]]:
     return "1=1", ()
 
 
+def resolved_at_range_clause(range_name: str) -> tuple[str, tuple[Any, ...]]:
+    now = datetime.now(timezone.utc)
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    if range_name == "today":
+        return "resolved_at >= ?", (today_start.isoformat(),)
+    if range_name == "7d":
+        return "resolved_at >= ?", ((today_start - timedelta(days=6)).isoformat(),)
+    if range_name == "30d":
+        return "resolved_at >= ?", ((today_start - timedelta(days=29)).isoformat(),)
+    return "COALESCE(TRIM(resolved_at), '') <> ''", ()
+
+
+def normalize_case_status(value: object) -> str:
+    return str(value or "").replace("_", " ").strip().lower()
+
+
+def normalize_lookup_value(value: object) -> str:
+    return str(value or "").strip().lower()
+
+
+def has_text(value: object) -> bool:
+    return bool(str(value or "").strip())
+
+
+def is_resolved_case(case: dict[str, Any]) -> bool:
+    status = normalize_case_status(case.get("status"))
+    if status in TERMINAL_CASE_STATUSES:
+        return True
+    return has_text(case.get("resolved_at"))
+
+
+def is_active_case(case: dict[str, Any]) -> bool:
+    return not is_resolved_case(case)
+
+
+def requires_staff_action(case: dict[str, Any]) -> bool:
+    return bool(
+        is_active_red_flag(case)
+        or is_active_staff_review(case)
+        or is_active_identity_check(case)
+        or normalize_case_status(case.get("status")) in {"failed", "failed safety queue", "awaiting processing", "active processing"}
+    )
+
+
+def is_active_red_flag(case: dict[str, Any]) -> bool:
+    return is_active_case(case) and bool(case.get("red_flags_present") or str(case.get("priority") or "").strip() == "999 Emergency")
+
+
+def is_active_identity_check(case: dict[str, Any]) -> bool:
+    return is_active_case(case) and normalize_lookup_value(case.get("verification_status")) in IDENTITY_REVIEW_STATUSES
+
+
+def is_active_staff_review(case: dict[str, Any]) -> bool:
+    return is_active_case(case) and bool(case.get("staff_review_required") or normalize_case_status(case.get("status")) in STAFF_REVIEW_STATUS_NAMES)
+
+
+def sql_placeholders(values: tuple[Any, ...]) -> str:
+    return ", ".join(["?"] * len(values))
+
+
+def sql_column(column: str, table_alias: str = "") -> str:
+    return f"{table_alias}.{column}" if table_alias else column
+
+
+def normalized_status_sql(table_alias: str = "", column: str = "status") -> str:
+    return f"LOWER(REPLACE(TRIM(COALESCE({sql_column(column, table_alias)}, '')), '_', ' '))"
+
+
+def normalized_lookup_sql(table_alias: str = "", column: str = "status") -> str:
+    return f"LOWER(TRIM(COALESCE({sql_column(column, table_alias)}, '')))"
+
+
+def active_case_clause(table_alias: str = "") -> tuple[str, tuple[Any, ...]]:
+    status_expr = normalized_status_sql(table_alias)
+    resolved_at_expr = f"COALESCE(TRIM({sql_column('resolved_at', table_alias)}), '') <> ''"
+    clause = f"NOT ({status_expr} IN ({sql_placeholders(TERMINAL_CASE_STATUSES)}) OR {resolved_at_expr})"
+    return clause, TERMINAL_CASE_STATUSES
+
+
+def resolved_case_clause(table_alias: str = "") -> tuple[str, tuple[Any, ...]]:
+    active_sql, active_params = active_case_clause(table_alias)
+    return f"NOT ({active_sql})", active_params
+
+
+def active_red_flag_clause(table_alias: str = "") -> tuple[str, tuple[Any, ...]]:
+    active_sql, active_params = active_case_clause(table_alias)
+    return f"({active_sql}) AND ({sql_column('red_flags_present', table_alias)} = 1 OR {sql_column('priority', table_alias)} = ?)", (*active_params, "999 Emergency")
+
+
+def active_staff_review_clause(table_alias: str = "") -> tuple[str, tuple[Any, ...]]:
+    active_sql, active_params = active_case_clause(table_alias)
+    status_expr = normalized_status_sql(table_alias)
+    clause = (
+        f"({active_sql}) AND ({sql_column('staff_review_required', table_alias)} = 1 "
+        f"OR {status_expr} IN ({sql_placeholders(STAFF_REVIEW_STATUS_NAMES)}))"
+    )
+    return clause, (*active_params, *STAFF_REVIEW_STATUS_NAMES)
+
+
+def active_identity_check_clause(table_alias: str = "") -> tuple[str, tuple[Any, ...]]:
+    active_sql, active_params = active_case_clause(table_alias)
+    verification_expr = normalized_lookup_sql(table_alias, "verification_status")
+    clause = f"({active_sql}) AND {verification_expr} IN ({sql_placeholders(tuple(IDENTITY_REVIEW_STATUSES))})"
+    return clause, (*active_params, *tuple(IDENTITY_REVIEW_STATUSES))
+
+
 def update_staff_fields(
     conn,
     call_id: str,
@@ -242,18 +365,21 @@ def update_staff_fields(
 
 def filter_clause(filter_name: str) -> tuple[str, tuple[Any, ...]]:
     today = datetime.now(timezone.utc).date().isoformat()
+    active_sql, active_params = active_case_clause()
+    resolved_sql, resolved_params = resolved_case_clause()
+    red_flag_sql, red_flag_params = active_red_flag_clause()
+    staff_review_sql, staff_review_params = active_staff_review_clause()
+    identity_sql, identity_params = active_identity_check_clause()
+    resolved_today_sql = f"({resolved_sql}) AND resolved_at LIKE ?"
     filters: dict[str, tuple[str, tuple[Any, ...]]] = {
         "all": ("1=1", ()),
-        "urgent_red_flags": ("red_flags_present = 1 OR priority = ?", ("999 Emergency",)),
-        "needs_review": ("staff_review_required = 1 OR status IN (?, ?, ?)", ("Needs Review", "Urgent Review", "Escalated")),
-        "identity_issues": (
-            "verification_status IN (?, ?, ?, ?, ?)",
-            ("possible_match", "possible_match_weak", "needs_review", "no_match", "insufficient_data"),
-        ),
-        "open": ("status NOT IN (?, ?)", RESOLVED_STATUSES),
-        "unresolved": ("status NOT IN (?, ?)", RESOLVED_STATUSES),
-        "resolved": ("status IN (?, ?)", RESOLVED_STATUSES),
-        "resolved_today": ("resolved_at LIKE ?", (f"{today}%",)),
+        "urgent_red_flags": (red_flag_sql, red_flag_params),
+        "needs_review": (staff_review_sql, staff_review_params),
+        "identity_issues": (identity_sql, identity_params),
+        "open": (active_sql, active_params),
+        "unresolved": (active_sql, active_params),
+        "resolved": (resolved_sql, resolved_params),
+        "resolved_today": (resolved_today_sql, (*resolved_params, f"{today}%")),
     }
     return filters.get(filter_name, filters["all"])
 
@@ -275,7 +401,7 @@ def sort_clause(sort: str) -> str:
             call_id ASC
         """,
         "unresolved": """
-            CASE WHEN status IN ('Resolved', 'Unable to Complete') THEN 1 ELSE 0 END ASC,
+            CASE WHEN LOWER(REPLACE(TRIM(COALESCE(status, '')), '_', ' ')) IN ('resolved', 'closed', 'completed', 'complete', 'cancelled', 'canceled', 'archived', 'duplicate', 'dismissed', 'unable to complete') THEN 1 ELSE 0 END ASC,
             red_flags_present DESC,
             staff_review_required DESC,
             COALESCE(call_timestamp_sort, 0) DESC,
@@ -295,25 +421,6 @@ def worklist_order_clause(sort: str, filter_name: str, explicit_sort: bool) -> s
     return sort_clause(sort)
 
 
-def compact_digits(value: str) -> str:
-    return re.sub(r"\D+", "", value or "")
-
-
-def sqlite_compact_identifier_expr(column: str) -> str:
-    return f"REPLACE(REPLACE(REPLACE(REPLACE(COALESCE({column}, ''), ' ', ''), '-', ''), '.', ''), '+', '')"
-
-
-def add_digit_identifier_search(conditions: list[str], values: list[Any], query: str, columns: tuple[str, ...]) -> None:
-    digits = compact_digits(query)
-    if not digits:
-        return
-
-    digit_like = f"%{digits}%"
-    for column in columns:
-        conditions.append(f"{sqlite_compact_identifier_expr(column)} LIKE ?")
-        values.append(digit_like)
-
-
 def make_query(filter_name: str, sort: str, q: str, request_type: str) -> tuple[str, tuple[Any, ...]]:
     where, params = filter_clause(filter_name)
     parts = [where]
@@ -323,32 +430,18 @@ def make_query(filter_name: str, sort: str, q: str, request_type: str) -> tuple[
         values.append(request_type)
     if q:
         like = f"%{q}%"
-        conditions = [
-            "call_id LIKE ?",
-            "patient_name LIKE ?",
-            "dob LIKE ?",
-            "postcode LIKE ?",
-            "callback_number LIKE ?",
-            "emis_number LIKE ?",
-            "nhs_number LIKE ?",
-            "matched_patient_ref LIKE ?",
-            "call_summary LIKE ?",
-            "ai_summary LIKE ?",
-            "task_title LIKE ?",
-            "task_body LIKE ?",
-            "staff_task_title LIKE ?",
-            "staff_task_body LIKE ?",
-            "patient_record_note LIKE ?",
-            "verification_status LIKE ?",
-        ]
-        values.extend([like] * len(conditions))
-        add_digit_identifier_search(
-            conditions,
-            values,
-            q,
-            ("callback_number", "nhs_number", "emis_number", "matched_patient_ref"),
+        parts.append(
+            """
+            (
+                call_id LIKE ? OR patient_name LIKE ? OR dob LIKE ? OR postcode LIKE ?
+                OR callback_number LIKE ? OR emis_number LIKE ? OR nhs_number LIKE ?
+                OR call_summary LIKE ? OR ai_summary LIKE ? OR task_title LIKE ? OR task_body LIKE ?
+                OR staff_task_title LIKE ? OR staff_task_body LIKE ? OR patient_record_note LIKE ?
+                OR verification_status LIKE ?
+            )
+            """
         )
-        parts.append("(" + " OR ".join(conditions) + ")")
+        values.extend([like] * 15)
     return " AND ".join(f"({part})" for part in parts), tuple(values)
 
 
@@ -517,7 +610,7 @@ def format_safe_to_queue(value: object) -> str:
 
 def primary_display_status(case: dict[str, Any]) -> tuple[str, str]:
     status = str(case.get("status") or "").replace("_", " ").strip().lower()
-    if status in {value.replace("_", " ").strip().lower() for value in RESOLVED_STATUSES}:
+    if is_resolved_case(case):
         return "RESOLVED", "resolved"
     if status in {"in review", "in progress"}:
         return "IN REVIEW", "in-review"
@@ -532,60 +625,88 @@ def primary_display_status(case: dict[str, Any]) -> tuple[str, str]:
     return "OPEN", "open"
 
 
+def build_suggested_actions(case: dict[str, Any]) -> list[str]:
+    """Return 3-5 clinical triage action strings derived from case data."""
+    actions: list[str] = []
+    priority = str(case.get("priority") or "routine").strip().lower()
+    red_flag = bool(case.get("red_flags_present"))
+    verification = str(case.get("verification_status") or "").strip().lower()
+    request_type = str(case.get("request_type") or "").strip().lower()
+    staff_review = bool(case.get("staff_review_required"))
+    is_emergency = red_flag or priority in {"999 emergency", "urgent"}
+
+    if is_emergency:
+        actions.append("Escalate immediately — possible urgent / emergency presentation")
+    actions.append("Assess urgency and triage category")
+    if red_flag:
+        actions.append("Check for red flag symptoms — follow local emergency protocol")
+    if verification in {"failed", "unverified", "partial", "unable to verify"}:
+        actions.append("Verify patient identity before routing")
+    if request_type in {"appointment", "gp appointment", "urgent appointment"}:
+        actions.append("Route to appropriate GP or duty clinician")
+    elif request_type in {"prescription", "repeat prescription"}:
+        actions.append("Route to prescribing team for authorisation")
+    elif request_type in {"sick note", "sick_note", "fit note"}:
+        actions.append("Assign to GP for fit note review")
+    elif request_type in {"test result", "test_result"}:
+        actions.append("Check if results are available and notify clinician")
+    elif request_type in {"referral"}:
+        actions.append("Check referral pathway and confirm with GP")
+    else:
+        actions.append("Route to appropriate GP or team")
+    if staff_review and not is_emergency:
+        actions.append("Staff review required before processing")
+    return actions[:5]
+
+
 def summary_chips_for_case(case: dict[str, Any]) -> list[dict[str, str]]:
+    """Generate status pills for case display. Avoids duplicate/redundant pills."""
     chips: list[dict[str, str]] = []
     priority = str(case.get("priority") or "routine").replace("_", " ")
     is_emergency = bool(case.get("red_flags_present") or str(case.get("priority") or "").strip() == "999 Emergency")
     verification_status = str(case.get("verification_status") or "").strip().lower()
     recording_label = case.get("recording", {}).get("recording_label") if isinstance(case.get("recording"), dict) else ""
+    staff_review = case.get("staff_review_required")
+
+    # Resolved cases: no action-required chips — type badge + RESOLVED footer is sufficient
+    # Emergency resolved cases retain Red Flag badge for audit visibility
+    if case.get("is_resolved") or is_resolved_case(case):
+        if is_emergency:
+            chips.append({"label": "Red Flag", "class": "danger"})
+        return chips
+
+    # Emergency cases: Priority + Red Flag + Safe to Queue
     if is_emergency:
         chips.append({"label": priority, "class": "danger"})
         chips.append({"label": "Red Flag", "class": "danger"})
         chips.append({"label": format_safe_to_queue(case.get("safe_to_queue")), "class": "safe" if case.get("safe_to_queue") else "not-safe"})
-        if case.get("staff_review_required"):
-            chips.append({"label": "Review Required", "class": "review"})
-        chips.append({"label": f"Recording: {recording_label or 'Pending'}", "class": "safe" if recording_label and str(recording_label).lower() == "available" else "neutral"})
-        return chips[:5]
-    if str(case.get("verification_status") or "").strip().lower() in IDENTITY_REVIEW_STATUSES:
+        return chips[:3]
+
+    # Identity check cases: Priority + Identity Check + Verification status (if not matched)
+    if verification_status in IDENTITY_REVIEW_STATUSES:
         chips.append({"label": priority, "class": "priority-routine" if priority.lower() == "routine" else "review"})
         chips.append({"label": "Identity Check", "class": "identity"})
-        if verification_status:
-            chips.append({"label": f"Verification: {case.get('verification_status') or 'unknown'}", "class": "identity" if verification_status in IDENTITY_REVIEW_STATUSES else "neutral"})
-        chips.append({"label": f"Recording: {recording_label or 'Pending'}", "class": "safe" if recording_label and str(recording_label).lower() == "available" else "neutral"})
-        return chips[:5]
-    if case.get("staff_review_required"):
+        if verification_status not in ("matched", "exact_match", "verified_match"):
+            chips.append({"label": f"Verification: {case.get('verification_status') or 'unknown'}", "class": "identity"})
+        return chips[:3]
+
+    # Staff review cases: Priority + Review Required + Safe to Queue
+    if staff_review:
         chips.append({"label": priority, "class": "priority-routine" if priority.lower() == "routine" else "review"})
         chips.append({"label": "Review Required", "class": "review"})
-        if verification_status:
-            chips.append({"label": f"Verification: {case.get('verification_status') or 'unknown'}", "class": "identity" if verification_status in IDENTITY_REVIEW_STATUSES else "neutral"})
-        chips.append({"label": f"Recording: {recording_label or 'Pending'}", "class": "safe" if recording_label and str(recording_label).lower() == "available" else "neutral"})
-        return chips[:5]
-    chips.append(
-        {
-            "label": priority,
-            "class": "danger" if case.get("priority") == "999 Emergency" else "priority-routine" if priority.lower() == "routine" else "review",
-        }
-    )
-    chips.append(
-        {
-            "label": format_safe_to_queue(case.get("safe_to_queue")),
-            "class": "safe" if case.get("safe_to_queue") else "not-safe",
-        }
-    )
-    if verification_status:
-        chips.append(
-            {
-                "label": f"Verification: {case.get('verification_status') or 'unknown'}",
-                "class": "identity" if verification_status in IDENTITY_REVIEW_STATUSES else "neutral",
-            }
-        )
-    chips.append(
-        {
-            "label": f"Recording: {recording_label or 'Pending'}",
-            "class": "safe" if recording_label and str(recording_label).lower() == "available" else "neutral",
-        }
-    )
-    return chips[:4]
+        chips.append({"label": format_safe_to_queue(case.get("safe_to_queue")), "class": "safe" if case.get("safe_to_queue") else "not-safe"})
+        return chips[:3]
+
+    # Default case: Priority + Safe to Queue only (minimal)
+    chips.append({
+        "label": priority,
+        "class": "danger" if case.get("priority") == "999 Emergency" else "priority-routine" if priority.lower() == "routine" else "review",
+    })
+    chips.append({
+        "label": format_safe_to_queue(case.get("safe_to_queue")),
+        "class": "safe" if case.get("safe_to_queue") else "not-safe",
+    })
+    return chips[:2]
 
 
 def dedupe_repeated_display_sentences(value: object) -> str:
@@ -619,14 +740,48 @@ def prepare_case(row: dict[str, Any]) -> dict[str, Any]:
     case["age_label"] = calculate_age_label(case.get("dob"), case.get("age"))
     case["call_summary_short"] = case.get("ai_summary") or case.get("staff_task_body") or ""
     case["duration_label"] = f"{case.get('call_duration_seconds')}s" if case.get("call_duration_seconds") not in ("", None) else ""
-    case["is_resolved"] = case.get("status") in RESOLVED_STATUSES
+    case["is_resolved"] = is_resolved_case(case)
     case["is_emergency"] = bool(case.get("red_flags_present") or case.get("priority") == "999 Emergency")
     case["timestamp_display"] = format_display_timestamp(case.get("timestamp"))
     case["last_updated_display"] = format_display_timestamp(case.get("last_updated"))
     case["resolved_at_display"] = format_display_timestamp(case.get("resolved_at"))
     case["last_edited_at_display"] = format_display_timestamp(case.get("last_edited_at"))
+    # Format resolved_by staff name (fallback to empty if not available)
+    case["resolved_by_display"] = str(case.get("resolved_by") or "").strip()
+    # Format turnaround time (show as "2h 15m" or "45 mins")
+    case["turnaround_minutes_display"] = format_turnaround_time(case.get("turnaround_minutes"))
+    # Format DOB and phone number to NHS/UK standards
+    case["dob_display"] = format_dob_uk(case.get("dob")) if case.get("dob") else ""
+    case["callback_number_display"] = format_phone_uk(case.get("callback_number")) if case.get("callback_number") else ""
     case["primary_status_label"], case["primary_status_class"] = primary_display_status(case)
     case["summary_chips"] = summary_chips_for_case(case)
+    case["suggested_actions"] = build_suggested_actions(case)
+    # Age since the call (used for card age colouring)
+    try:
+        ts_raw = str(case.get("timestamp") or "").strip()
+        if ts_raw:
+            _dt = datetime.fromisoformat(ts_raw.replace("Z", "+00:00").replace(" ", "T"))
+            _age_secs = max(0, int((datetime.now(timezone.utc) - _dt).total_seconds()))
+            _age_mins = _age_secs // 60
+            case["age_minutes"] = _age_mins
+            if _age_mins < 60:
+                case["age_label_short"] = f"{_age_mins}m ago"
+            elif _age_mins < 1440:
+                case["age_label_short"] = f"{_age_mins // 60}h {_age_mins % 60}m ago"
+            else:
+                case["age_label_short"] = f"{_age_mins // 1440}d ago"
+            case["age_class"] = "fresh" if _age_mins < 15 else "recent" if _age_mins < 60 else "old"
+        else:
+            case["age_minutes"] = None
+            case["age_label_short"] = ""
+            case["age_class"] = ""
+    except Exception:
+        case["age_minutes"] = None
+        case["age_label_short"] = ""
+        case["age_class"] = ""
+    # Short time display: extract HH:MM from timestamp_display ("DD-MM-YYYY T HH.MM")
+    _ts_disp = case.get("timestamp_display") or ""
+    case["time_display"] = _ts_disp.split(" T ")[-1].replace(".", ":") if " T " in _ts_disp else _ts_disp
     case["processing_output_missing"] = not (
         str(case.get("staff_task_title") or "").strip()
         and str(case.get("staff_task_body") or "").strip()
@@ -889,26 +1044,32 @@ def friendly_audit_text(event: dict[str, Any]) -> str:
 
 def get_summary_cards(conn, date_range: str) -> list[dict[str, Any]]:
     range_where, range_params = range_clause(date_range)
+    active_sql, active_params = active_case_clause()
+    resolved_sql, resolved_params = resolved_case_clause()
+    red_flag_sql, red_flag_params = active_red_flag_clause()
+    staff_review_sql, staff_review_params = active_staff_review_clause()
+    identity_sql, identity_params = active_identity_check_clause()
     total_open = conn.execute(
-        f"SELECT COUNT(*) FROM cases WHERE ({range_where}) AND status NOT IN (?, ?)",
-        (*range_params, *RESOLVED_STATUSES),
+        f"SELECT COUNT(*) FROM cases WHERE ({range_where}) AND ({active_sql})",
+        (*range_params, *active_params),
     ).fetchone()[0]
     red_flags = conn.execute(
-        f"SELECT COUNT(*) FROM cases WHERE ({range_where}) AND (red_flags_present = 1 OR priority = ?)",
-        (*range_params, "999 Emergency"),
+        f"SELECT COUNT(*) FROM cases WHERE ({range_where}) AND ({red_flag_sql})",
+        (*range_params, *red_flag_params),
     ).fetchone()[0]
     needs_review = conn.execute(
-        f"SELECT COUNT(*) FROM cases WHERE ({range_where}) AND (staff_review_required = 1 OR status IN (?, ?, ?))",
-        (*range_params, "Needs Review", "Urgent Review", "Escalated"),
+        f"SELECT COUNT(*) FROM cases WHERE ({range_where}) AND ({staff_review_sql})",
+        (*range_params, *staff_review_params),
     ).fetchone()[0]
     identity_issues = conn.execute(
-        f"SELECT COUNT(*) FROM cases WHERE ({range_where}) AND verification_status IN (?, ?, ?, ?, ?)",
-        (*range_params, *tuple(IDENTITY_REVIEW_STATUSES)),
+        f"SELECT COUNT(*) FROM cases WHERE ({range_where}) AND ({identity_sql})",
+        (*range_params, *identity_params),
     ).fetchone()[0]
     resolved_label = "Resolved Today" if date_range == "today" else "Resolved in Range"
+    resolved_range_where, resolved_range_params = resolved_at_range_clause(date_range)
     resolved_count = conn.execute(
-        f"SELECT COUNT(*) FROM cases WHERE ({range_where}) AND status IN (?, ?)",
-        (*range_params, *RESOLVED_STATUSES),
+        f"SELECT COUNT(*) FROM cases WHERE ({resolved_range_where}) AND ({resolved_sql})",
+        (*resolved_range_params, *resolved_params),
     ).fetchone()[0]
     return [
         {"label": "Total Open", "value": total_open, "url": worklist_url("open", "newest", "", "", date_range)},
@@ -921,14 +1082,15 @@ def get_summary_cards(conn, date_range: str) -> list[dict[str, Any]]:
 
 def get_request_type_breakdown(conn, date_range: str) -> list[dict[str, Any]]:
     range_where, range_params = range_clause(date_range)
+    active_sql, active_params = active_case_clause()
     rows = conn.execute(
         f"""
         SELECT COALESCE(request_type, 'unknown') AS request_type, COUNT(*) AS count
         FROM cases
-        WHERE ({range_where})
+        WHERE ({range_where}) AND ({active_sql})
         GROUP BY COALESCE(request_type, 'unknown')
         """,
-        range_params,
+        (*range_params, *active_params),
     ).fetchall()
     counts = {row["request_type"] or "unknown": row["count"] for row in rows}
     max_count = max(counts.values(), default=0)
@@ -942,7 +1104,7 @@ def get_request_type_breakdown(conn, date_range: str) -> list[dict[str, Any]]:
                 "label": label,
                 "count": count,
                 "width": width,
-                "url": worklist_url("all", "newest", "", value, date_range),
+                "url": worklist_url("open", "newest", "", value, date_range),
             }
         )
     return breakdown
@@ -951,25 +1113,30 @@ def get_request_type_breakdown(conn, date_range: str) -> list[dict[str, Any]]:
 def get_kpi_cards(conn, date_range: str) -> list[dict[str, Any]]:
     range_where, range_params = range_clause(date_range)
     today = datetime.now(timezone.utc).date().isoformat()
+    active_sql, active_params = active_case_clause()
+    resolved_sql, resolved_params = resolved_case_clause()
+    red_flag_sql, red_flag_params = active_red_flag_clause()
+    staff_review_sql, staff_review_params = active_staff_review_clause()
+    identity_sql, identity_params = active_identity_check_clause()
     open_cases = conn.execute(
-        f"SELECT COUNT(*) FROM cases WHERE ({range_where}) AND status NOT IN (?, ?)",
-        (*range_params, *RESOLVED_STATUSES),
+        f"SELECT COUNT(*) FROM cases WHERE ({range_where}) AND ({active_sql})",
+        (*range_params, *active_params),
     ).fetchone()[0]
     red_flags = conn.execute(
-        f"SELECT COUNT(*) FROM cases WHERE ({range_where}) AND (red_flags_present = 1 OR priority = ?)",
-        (*range_params, "999 Emergency"),
+        f"SELECT COUNT(*) FROM cases WHERE ({range_where}) AND ({red_flag_sql})",
+        (*range_params, *red_flag_params),
     ).fetchone()[0]
     staff_review = conn.execute(
-        f"SELECT COUNT(*) FROM cases WHERE ({range_where}) AND (staff_review_required = 1 OR status IN (?, ?, ?))",
-        (*range_params, "Needs Review", "Urgent Review", "Escalated"),
+        f"SELECT COUNT(*) FROM cases WHERE ({range_where}) AND ({staff_review_sql})",
+        (*range_params, *staff_review_params),
     ).fetchone()[0]
     identity_checks = conn.execute(
-        f"SELECT COUNT(*) FROM cases WHERE ({range_where}) AND verification_status IN (?, ?, ?, ?, ?)",
-        (*range_params, *tuple(IDENTITY_REVIEW_STATUSES)),
+        f"SELECT COUNT(*) FROM cases WHERE ({range_where}) AND ({identity_sql})",
+        (*range_params, *identity_params),
     ).fetchone()[0]
     resolved_today = conn.execute(
-        "SELECT COUNT(*) FROM cases WHERE resolved_at LIKE ? AND status IN (?, ?)",
-        (f"{today}%", *RESOLVED_STATUSES),
+        f"SELECT COUNT(*) FROM cases WHERE resolved_at LIKE ? AND ({resolved_sql})",
+        (f"{today}%", *resolved_params),
     ).fetchone()[0]
     return [
         {"label": "Open Cases", "value": open_cases, "url": worklist_url("open", "newest", "", "", date_range)},
@@ -981,28 +1148,40 @@ def get_kpi_cards(conn, date_range: str) -> list[dict[str, Any]]:
 
 
 def get_urgent_attention(conn) -> dict[str, Any]:
+    red_flag_sql, red_flag_params = active_red_flag_clause()
+    staff_review_sql, staff_review_params = active_staff_review_clause()
+    identity_sql, identity_params = active_identity_check_clause()
+    alert_case_active_sql, alert_case_active_params = active_case_clause("c")
     red_flags = conn.execute(
-        "SELECT COUNT(*) FROM cases WHERE red_flags_present = 1 OR priority = ?",
-        ("999 Emergency",),
+        f"SELECT COUNT(*) FROM cases WHERE {red_flag_sql}",
+        red_flag_params,
     ).fetchone()[0]
     staff_review = conn.execute(
-        "SELECT COUNT(*) FROM cases WHERE staff_review_required = 1 OR status IN (?, ?, ?)",
-        ("Needs Review", "Urgent Review", "Escalated"),
+        f"SELECT COUNT(*) FROM cases WHERE {staff_review_sql}",
+        staff_review_params,
     ).fetchone()[0]
     identity_checks = conn.execute(
-        f"SELECT COUNT(*) FROM cases WHERE verification_status IN ({', '.join(['?'] * len(IDENTITY_REVIEW_STATUSES))})",
-        tuple(IDENTITY_REVIEW_STATUSES),
+        f"SELECT COUNT(*) FROM cases WHERE {identity_sql}",
+        identity_params,
     ).fetchone()[0]
     alert_row = conn.execute(
-        """
-        SELECT alert_id, timestamp, alert_type, severity, count, message,
-               first_call_id, first_patient, first_priority, source_workflow,
-               dedupe_key, acknowledged_at, acknowledged_by, acknowledgement_source
-        FROM alert_events
-        WHERE acknowledged_at IS NULL AND LOWER(COALESCE(severity, '')) = 'critical'
-        ORDER BY timestamp DESC, id DESC
+        f"""
+        SELECT ae.alert_id, ae.timestamp, ae.alert_type, ae.severity, ae.count, ae.message,
+               ae.first_call_id, ae.first_patient, ae.first_priority, ae.source_workflow,
+               ae.dedupe_key, ae.acknowledged_at, ae.acknowledged_by, ae.acknowledgement_source
+        FROM alert_events ae
+        LEFT JOIN cases c ON c.call_id = ae.first_call_id
+        WHERE ae.acknowledged_at IS NULL
+          AND LOWER(COALESCE(ae.severity, '')) = 'critical'
+          AND (
+            COALESCE(TRIM(ae.first_call_id), '') = ''
+            OR c.call_id IS NULL
+            OR ({alert_case_active_sql})
+          )
+        ORDER BY ae.timestamp DESC, ae.id DESC
         LIMIT 1
-        """
+        """,
+        alert_case_active_params,
     ).fetchone()
     latest = alert_row_to_display(alert_row) if alert_row is not None else None
     return {
@@ -1010,6 +1189,58 @@ def get_urgent_attention(conn) -> dict[str, Any]:
         "staff_review": staff_review,
         "identity_checks": identity_checks,
         "latest": latest,
+    }
+
+
+def get_queue_status_card(conn, date_range: str) -> dict[str, Any]:
+    """Return queue status counts matching the Churchtown sidebar design."""
+    today = datetime.now(timezone.utc).date().isoformat()
+    active_sql, active_params = active_case_clause()
+    resolved_sql, resolved_params = resolved_case_clause()
+    red_flag_sql, red_flag_params = active_red_flag_clause()
+    open_count = conn.execute(
+        f"SELECT COUNT(*) FROM cases WHERE {active_sql}", active_params
+    ).fetchone()[0]
+    resolved_today = conn.execute(
+        f"SELECT COUNT(*) FROM cases WHERE resolved_at LIKE ? AND ({resolved_sql})",
+        (f"{today}%", *resolved_params),
+    ).fetchone()[0]
+    red_flags = conn.execute(
+        f"SELECT COUNT(*) FROM cases WHERE {red_flag_sql}", red_flag_params
+    ).fetchone()[0]
+    # Overdue: active cases older than 2 hours (7200 seconds)
+    cutoff = datetime.now(timezone.utc).timestamp() - 7200
+    overdue = conn.execute(
+        f"SELECT COUNT(*) FROM cases WHERE ({active_sql}) AND COALESCE(call_timestamp_sort,0) > 0 AND call_timestamp_sort <= ?",
+        (*active_params, cutoff),
+    ).fetchone()[0]
+    return {
+        "open": open_count,
+        "overdue": overdue,
+        "resolved_today": resolved_today,
+        "red_flags": red_flags,
+    }
+
+
+def get_call_analytics_card(conn) -> dict[str, Any]:
+    """Return call analytics metrics for the sidebar."""
+    total = conn.execute("SELECT COUNT(*) FROM cases").fetchone()[0]
+    safe = conn.execute("SELECT COUNT(*) FROM cases WHERE safe_to_queue = 1").fetchone()[0]
+    avg_row = conn.execute(
+        "SELECT AVG(turnaround_minutes) FROM cases WHERE turnaround_minutes IS NOT NULL AND turnaround_minutes > 0"
+    ).fetchone()[0]
+    avg_turnaround = round(avg_row) if avg_row else None
+    success_rate = round((safe / total) * 100, 1) if total else 0.0
+    resolved_sql, resolved_params = resolved_case_clause()
+    dropped = conn.execute(
+        f"SELECT COUNT(*) FROM cases WHERE LOWER(COALESCE(status,'')) LIKE '%unable%' OR LOWER(COALESCE(status,'')) LIKE '%fail%'"
+    ).fetchone()[0]
+    return {
+        "total_calls": total,
+        "safe_to_queue": safe,
+        "dropped": dropped,
+        "avg_turnaround": avg_turnaround,
+        "success_rate": success_rate,
     }
 
 
@@ -1044,7 +1275,7 @@ def compact_workload(workload: dict[str, Any]) -> dict[str, Any]:
         "active_processing": "Not tracked" if str(active).lower() == "not available" else active,
         "processed_today": queue.get("processed_today", 0),
         "failed": queue.get("failed", 0),
-        "failed_safety_queue": queue.get("deadletter", 0),
+        "failed_safety_queue": queue.get("failed_safety_queue", queue.get("deadletter", 0)),
         "last_checked": format_display_timestamp(workload.get("timestamp")),
     }
 
@@ -1088,23 +1319,29 @@ def demo_data_present(conn) -> bool:
 
 def get_team_activity(conn, range_name: str = "today") -> dict[str, Any]:
     range_name = range_name if range_name in {"today", "7d", "30d"} else "today"
-    range_where, range_params = range_clause(range_name)
-    unresolved_clause = "status NOT IN (?, ?)"
+    resolved_range_where, resolved_range_params = resolved_at_range_clause(range_name)
+    active_sql, active_params = active_case_clause()
+    resolved_sql, resolved_params = resolved_case_clause()
+    status_expr = normalized_status_sql()
     resolved_today = conn.execute(
-        f"SELECT COUNT(*) FROM cases WHERE ({range_where}) AND status IN (?, ?)",
-        (*range_params, *RESOLVED_STATUSES),
+        f"SELECT COUNT(*) FROM cases WHERE ({resolved_range_where}) AND ({resolved_sql})",
+        (*resolved_range_params, *resolved_params),
     ).fetchone()[0]
     in_progress = conn.execute(
-        "SELECT COUNT(*) FROM cases WHERE status = ?",
-        ("In Progress",),
+        f"""
+        SELECT COUNT(*) FROM cases
+        WHERE ({active_sql})
+          AND ({status_expr} IN ({sql_placeholders(IN_PROGRESS_STATUS_NAMES)}) OR COALESCE(TRIM(assigned_to), '') <> '')
+        """,
+        (*active_params, *IN_PROGRESS_STATUS_NAMES),
     ).fetchone()[0]
     avg_turnaround = conn.execute(
-        f"SELECT AVG(turnaround_minutes) FROM cases WHERE ({range_where}) AND turnaround_minutes IS NOT NULL",
-        range_params,
+        f"SELECT AVG(turnaround_minutes) FROM cases WHERE ({resolved_range_where}) AND turnaround_minutes IS NOT NULL",
+        resolved_range_params,
     ).fetchone()[0]
     escalations = conn.execute(
-        f"SELECT COUNT(*) FROM cases WHERE ({range_where}) AND status = ?",
-        (*range_params, "Escalated"),
+        f"SELECT COUNT(*) FROM cases WHERE ({active_sql}) AND {status_expr} = ?",
+        (*active_params, "escalated"),
     ).fetchone()[0]
     reopened = conn.execute(
         """
@@ -1127,24 +1364,24 @@ def get_team_activity(conn, range_name: str = "today") -> dict[str, Any]:
     for staff in staff_rows:
         name = staff["display_name"]
         assigned_open = conn.execute(
-            f"SELECT COUNT(*) FROM cases WHERE assigned_to = ? AND {unresolved_clause}",
-            (name, *RESOLVED_STATUSES),
+            f"SELECT COUNT(*) FROM cases WHERE assigned_to = ? AND ({active_sql})",
+            (name, *active_params),
         ).fetchone()[0]
         staff_resolved = conn.execute(
-            f"SELECT COUNT(*) FROM cases WHERE ({range_where}) AND resolved_by = ? AND status IN (?, ?)",
-            (*range_params, name, *RESOLVED_STATUSES),
+            f"SELECT COUNT(*) FROM cases WHERE ({resolved_range_where}) AND (resolved_by = ? OR assigned_to = ?) AND ({resolved_sql})",
+            (*resolved_range_params, name, name, *resolved_params),
         ).fetchone()[0]
         staff_avg = conn.execute(
-            f"SELECT AVG(turnaround_minutes) FROM cases WHERE ({range_where}) AND resolved_by = ? AND turnaround_minutes IS NOT NULL",
-            (*range_params, name),
+            f"SELECT AVG(turnaround_minutes) FROM cases WHERE ({resolved_range_where}) AND (resolved_by = ? OR assigned_to = ?) AND turnaround_minutes IS NOT NULL",
+            (*resolved_range_params, name, name),
         ).fetchone()[0]
         staff_alerts = conn.execute(
             "SELECT COUNT(*) FROM alert_events WHERE acknowledged_by = ?",
             (name,),
         ).fetchone()[0]
         staff_escalations = conn.execute(
-            f"SELECT COUNT(*) FROM cases WHERE ({range_where}) AND last_edited_by = ? AND status = ?",
-            (*range_params, name, "Escalated"),
+            f"SELECT COUNT(*) FROM cases WHERE last_edited_by = ? AND ({active_sql}) AND {status_expr} = ?",
+            (name, *active_params, "escalated"),
         ).fetchone()[0]
         rows.append(
             {
@@ -1164,7 +1401,7 @@ def get_team_activity(conn, range_name: str = "today") -> dict[str, Any]:
         "team": {
             "resolved_today": resolved_today,
             "in_progress": in_progress,
-            "average_turnaround": "" if avg_turnaround is None else f"{int(avg_turnaround)} min",
+            "average_turnaround": None if avg_turnaround is None else int(avg_turnaround),
             "escalations": escalations,
             "reopened": reopened,
             "alerts_acknowledged": alerts_acknowledged,
@@ -1192,6 +1429,7 @@ def get_system_workload() -> dict[str, Any]:
         "processed_today": 0,
         "failed": folder_file_count("queue/failed"),
         "deadletter": folder_file_count("queue/deadletter"),
+        "failed_safety_queue": folder_file_count("queue/deadletter"),
     }
     processed_folder = ROOT_DIR / "queue" / "processed"
     today = datetime.now(timezone.utc).date()
@@ -1202,13 +1440,36 @@ def get_system_workload() -> dict[str, Any]:
             if path.is_file() and datetime.fromtimestamp(path.stat().st_mtime, timezone.utc).date() == today
         )
     with connect() as conn:
-        processed_cases_today = conn.execute(
-            "SELECT COUNT(*) FROM cases WHERE resolved_at LIKE ?",
-            (f"{today.isoformat()}%",),
+        active_sql, active_params = active_case_clause()
+        status_expr = normalized_status_sql()
+        awaiting_cases = conn.execute(
+            f"SELECT COUNT(*) FROM cases WHERE ({active_sql}) AND {status_expr} = ?",
+            (*active_params, "awaiting processing"),
         ).fetchone()[0]
+        active_processing_cases = conn.execute(
+            f"SELECT COUNT(*) FROM cases WHERE ({active_sql}) AND {status_expr} = ?",
+            (*active_params, "active processing"),
+        ).fetchone()[0]
+        failed_cases = conn.execute(
+            f"SELECT COUNT(*) FROM cases WHERE ({active_sql}) AND {status_expr} = ?",
+            (*active_params, "failed"),
+        ).fetchone()[0]
+        failed_safety_cases = conn.execute(
+            f"SELECT COUNT(*) FROM cases WHERE ({active_sql}) AND {status_expr} = ?",
+            (*active_params, "failed safety queue"),
+        ).fetchone()[0]
+        queue_depth["encrypted_raw"] += awaiting_cases
+        queue_depth["processing"] += active_processing_cases
+        queue_depth["failed"] += failed_cases
+        queue_depth["failed_safety_queue"] += failed_safety_cases
+        processed_cases_today = conn.execute(
+            f"SELECT COUNT(*) FROM cases WHERE resolved_at LIKE ? AND ({resolved_case_clause()[0]})",
+            (f"{today.isoformat()}%", *resolved_case_clause()[1]),
+        ).fetchone()[0]
+        queue_depth["processed_today"] = max(queue_depth["processed_today"], processed_cases_today)
         avg_turnaround = conn.execute(
-            "SELECT AVG(turnaround_minutes) FROM cases WHERE resolved_at LIKE ? AND turnaround_minutes IS NOT NULL",
-            (f"{today.isoformat()}%",),
+            f"SELECT AVG(turnaround_minutes) FROM cases WHERE resolved_at LIKE ? AND ({resolved_case_clause()[0]}) AND turnaround_minutes IS NOT NULL",
+            (f"{today.isoformat()}%", *resolved_case_clause()[1]),
         ).fetchone()[0]
     active_queue = queue_depth["incoming"] + queue_depth["encrypted_raw"] + queue_depth["processing"]
     status = "idle"
@@ -1408,7 +1669,7 @@ def as_optional_int(value: Any) -> int | None:
 
 
 def resolve_skip_reason(case: dict[str, Any]) -> str | None:
-    if case.get("status") in RESOLVED_STATUSES:
+    if is_resolved_case(case):
         return "already_resolved"
     if case.get("red_flags_present") or case.get("priority") == "999 Emergency":
         return "red_flag"
@@ -1443,7 +1704,7 @@ def bulk_action_cases(conn, call_ids: list[str], action: str, staff_name: str, n
             skipped.append({"call_id": call_id, "reason": "not_found"})
             continue
         if action in {"assign_to_me", "start_review"}:
-            if case.get("status") in RESOLVED_STATUSES:
+            if is_resolved_case(case):
                 skipped.append({"call_id": call_id, "reason": "already_resolved"})
                 continue
             updates = {
@@ -1536,17 +1797,17 @@ def api_sync(rawmock_only: bool = False) -> dict[str, Any]:
 @app.get("/api/red-flags")
 def api_red_flags() -> dict[str, Any]:
     ensure_ready()
+    red_flag_sql, red_flag_params = active_red_flag_clause()
     with connect() as conn:
         rows = conn.execute(
-            """
+            f"""
             SELECT call_id, patient_name, request_type, priority, red_flags_present,
                    safe_to_queue, status, call_summary
             FROM cases
-            WHERE (red_flags_present = 1 OR priority = ?)
-              AND status NOT IN (?, ?)
+            WHERE {red_flag_sql}
             ORDER BY COALESCE(call_timestamp_sort, 0) DESC, call_id ASC
             """,
-            ("999 Emergency", *RESOLVED_STATUSES),
+            red_flag_params,
         ).fetchall()
     cases = [api_case(row) for row in rows]
     return {
@@ -1560,18 +1821,19 @@ def api_red_flags() -> dict[str, Any]:
 def api_overdue(threshold_hours: float = 24) -> dict[str, Any]:
     ensure_ready()
     cutoff = datetime.now(timezone.utc).timestamp() - (threshold_hours * 3600)
+    active_sql, active_params = active_case_clause()
     with connect() as conn:
         rows = conn.execute(
-            """
+            f"""
             SELECT call_id, patient_name, request_type, priority, red_flags_present,
                    safe_to_queue, status, call_summary
             FROM cases
-            WHERE status NOT IN (?, ?)
+            WHERE ({active_sql})
               AND COALESCE(call_timestamp_sort, 0) > 0
               AND call_timestamp_sort <= ?
             ORDER BY COALESCE(call_timestamp_sort, 0) DESC, call_id ASC
             """,
-            (*RESOLVED_STATUSES, cutoff),
+            (*active_params, cutoff),
         ).fetchall()
     cases = [api_case(row) for row in rows]
     return {
@@ -1595,22 +1857,26 @@ def alert_row_to_display(row: Any) -> dict[str, Any]:
 def api_daily_summary() -> dict[str, Any]:
     ensure_ready()
     with connect() as conn:
+        active_sql, active_params = active_case_clause()
+        resolved_sql, resolved_params = resolved_case_clause()
+        red_flag_sql, red_flag_params = active_red_flag_clause()
+        identity_sql, identity_params = active_identity_check_clause()
         total = conn.execute("SELECT COUNT(*) FROM cases").fetchone()[0]
         unresolved = conn.execute(
-            "SELECT COUNT(*) FROM cases WHERE status NOT IN (?, ?)",
-            RESOLVED_STATUSES,
+            f"SELECT COUNT(*) FROM cases WHERE {active_sql}",
+            active_params,
         ).fetchone()[0]
         resolved = conn.execute(
-            "SELECT COUNT(*) FROM cases WHERE status IN (?, ?)",
-            RESOLVED_STATUSES,
+            f"SELECT COUNT(*) FROM cases WHERE {resolved_sql}",
+            resolved_params,
         ).fetchone()[0]
         red_flags = conn.execute(
-            "SELECT COUNT(*) FROM cases WHERE red_flags_present = 1 OR priority = ?",
-            ("999 Emergency",),
+            f"SELECT COUNT(*) FROM cases WHERE {red_flag_sql}",
+            red_flag_params,
         ).fetchone()[0]
         identity_issues = conn.execute(
-            "SELECT COUNT(*) FROM cases WHERE verification_status IN (?, ?, ?, ?, ?)",
-            tuple(IDENTITY_REVIEW_STATUSES),
+            f"SELECT COUNT(*) FROM cases WHERE {identity_sql}",
+            identity_params,
         ).fetchone()[0]
         avg_turnaround = conn.execute(
             "SELECT AVG(turnaround_minutes) FROM cases WHERE turnaround_minutes IS NOT NULL"
@@ -1679,11 +1945,13 @@ def fallback_service_statuses(reason: str = "Service status unavailable") -> dic
     }
 
 
-def check_local_n8n(timeout_seconds: float = 0.35) -> dict[str, Any]:
+def check_local_n8n(timeout_seconds: float = 2.0) -> dict[str, Any]:
+    """Check n8n health via /healthz (not /). Timeout raised to 2 s so the
+    dashboard doesn't falsely report n8n as Offline when it's merely slow."""
     checked_at = utc_now_iso()
     try:
         conn = http.client.HTTPConnection("localhost", 5678, timeout=timeout_seconds)
-        conn.request("GET", "/")
+        conn.request("GET", "/healthz")
         response = conn.getresponse()
         response.read(256)
         conn.close()
@@ -1826,7 +2094,7 @@ def api_services_refresh(payload: dict[str, Any] = Body(default_factory=dict)) -
 
 
 @app.post("/staff/select")
-def select_staff(staff_id: int = Form(...), next_url: str = Form("/")) -> RedirectResponse:
+def select_staff(staff_id: int | None = Form(None), next_url: str = Form("/")) -> RedirectResponse:
     ensure_ready()
     with connect() as conn:
         staff = get_staff_by_id(conn, staff_id)
@@ -2154,6 +2422,179 @@ def api_case_copy_audit(call_id: str, request: Request, payload: dict[str, Any] 
             new_values={"copy_audit_only": True},
         )
     return {"ok": True, "audited": True, "action": action}
+
+
+@app.post("/api/cases/{call_id}/action")
+def api_case_action(
+    request: Request,
+    call_id: str,
+    payload: dict[str, Any] = Body(...),
+) -> dict[str, Any]:
+    """Perform a quick action (resolve/reopen/escalate/start_review) and return updated case JSON."""
+    ensure_ready()
+    action = str(payload.get("action") or "").strip()
+    if action not in {"resolve", "reopen", "start_review", "escalate", "flag_issue"}:
+        raise HTTPException(status_code=400, detail="Unsupported action")
+    outcome_notes = str(payload.get("outcome_notes") or "").strip()
+    resolved_by_override = str(payload.get("resolved_by") or "").strip()
+    assigned_to_override = str(payload.get("assigned_to") or "").strip()
+    now = utc_now_iso()
+
+    with connect() as conn:
+        current_staff = current_staff_from_request(request, conn)
+        require_staff_edit(current_staff)
+        selected_staff_name = "" if current_staff.get("demo_fallback") else staff_display(current_staff)
+        row = conn.execute("SELECT * FROM cases WHERE call_id = ?", (call_id,)).fetchone()
+        case = row_to_dict(row)
+        if case is None:
+            raise HTTPException(status_code=404, detail="Case not found")
+
+        updates: dict[str, Any] = {
+            "last_updated": now,
+            "last_edited_at": now,
+            "last_edited_by": resolved_by_override or selected_staff_name,
+        }
+
+        if action == "start_review":
+            updates["status"] = "In Progress"
+            updates["resolved_at"] = ""
+            updates["resolved_by"] = ""
+            updates["turnaround_minutes"] = None
+            if assigned_to_override or selected_staff_name:
+                updates["assigned_to"] = assigned_to_override or selected_staff_name
+            updates["action_needed"] = case.get("action_needed") or DEFAULT_ACTION_NEEDED
+        elif action == "resolve":
+            resolved_name = resolved_by_override or selected_staff_name
+            protected_case = bool(case["red_flags_present"] or case["priority"] == "999 Emergency" or case["verification_status"] in IDENTITY_REVIEW_STATUSES)
+            effective_outcome = outcome_notes or case["outcome_notes"] or ("" if protected_case else DEFAULT_OUTCOME_NOTES)
+            if (case["red_flags_present"] or case["priority"] == "999 Emergency") and not effective_outcome:
+                raise HTTPException(status_code=400, detail="Outcome notes are required before resolving a red-flag case.")
+            if case["verification_status"] in IDENTITY_REVIEW_STATUSES and not effective_outcome:
+                raise HTTPException(status_code=400, detail="Outcome notes are required before resolving an identity issue.")
+            if not resolved_name:
+                raise HTTPException(status_code=400, detail="Staff identity is required to resolve a case")
+            updates.update({
+                "status": "Resolved",
+                "outcome_notes": effective_outcome,
+                "resolved_by": resolved_name,
+                "resolved_at": case["resolved_at"] or now,
+                "turnaround_minutes": calculate_turnaround_minutes(case["timestamp"], case["resolved_at"] or now),
+            })
+        elif action == "reopen":
+            updates.update({
+                "status": "Needs Review",
+                "resolved_at": "",
+                "resolved_by": "",
+                "turnaround_minutes": None,
+            })
+        elif action == "escalate":
+            updates.update({
+                "status": "Escalated",
+                "action_needed": "Escalated for staff review",
+                "resolved_at": "",
+                "resolved_by": "",
+                "turnaround_minutes": None,
+            })
+        elif action == "flag_issue":
+            updates.update({
+                "status": "Needs Review",
+                "action_needed": "Issue flagged by staff",
+                "resolved_at": "",
+                "resolved_by": "",
+                "turnaround_minutes": None,
+            })
+
+        update_staff_fields(conn, call_id, updates, updates.get("last_edited_by", ""))
+        updated_row = conn.execute("SELECT * FROM cases WHERE call_id = ?", (call_id,)).fetchone()
+
+    updated_case = prepare_case(row_to_dict(updated_row))
+    _s = lambda k: str(updated_case.get(k) or "")
+    return {
+        "ok": True,
+        "action": action,
+        "call_id": call_id,
+        "status": _s("status"),
+        "is_resolved": bool(updated_case.get("is_resolved")),
+        "primary_status_label": _s("primary_status_label"),
+        "primary_status_class": _s("primary_status_class"),
+        "ai_summary": _s("ai_summary"),
+        "call_summary_short": _s("call_summary_short"),
+        "assigned_to": _s("assigned_to"),
+    }
+
+
+@app.post("/api/cases/{call_id}/enrich")
+def api_case_enrich(call_id: str, request: Request) -> dict[str, Any]:
+    """Re-run Ollama enrichment on an existing case and update ai_summary."""
+    ensure_ready()
+    from .importer import ollama_clinical_summary
+    with connect() as conn:
+        require_staff_edit(current_staff_from_request(request, conn))
+        row = conn.execute("SELECT * FROM cases WHERE call_id = ?", (call_id,)).fetchone()
+        if row is None:
+            raise HTTPException(status_code=404, detail="Case not found")
+        case = row_to_dict(row)
+        transcript = case.get("transcript") or ""
+        summary = ollama_clinical_summary(transcript, case)
+        if not summary:
+            return {"ok": False, "detail": "Ollama unavailable or no transcript"}
+        now = utc_now_iso()
+        conn.execute(
+            "UPDATE cases SET ai_summary = ?, call_summary = ?, last_updated = ? WHERE call_id = ?",
+            (summary, summary, now, call_id),
+        )
+        conn.commit()
+    return {"ok": True, "ai_summary": summary}
+
+
+@app.get("/api/cases/{call_id}")
+def api_case_get(call_id: str) -> dict[str, Any]:
+    """Return key case fields as JSON for the inline detail panel."""
+    ensure_ready()
+    with connect() as conn:
+        row = conn.execute("SELECT * FROM cases WHERE call_id = ?", (call_id,)).fetchone()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Case not found")
+    case = prepare_case(row_to_dict(row))
+    _safe_str = lambda k: str(case.get(k) or "")
+    return {
+        "call_id":                 _safe_str("call_id"),
+        "patient_name":            _safe_str("patient_name"),
+        "gender":                  _safe_str("gender"),
+        "dob":                     _safe_str("dob"),
+        "age_label":               _safe_str("age_label"),
+        "nhs_number":              _safe_str("nhs_number"),
+        "emis_number":             _safe_str("emis_number") or _safe_str("matched_patient_ref"),
+        "callback_number":         _safe_str("callback_number"),
+        "postcode":                _safe_str("postcode"),
+        "timestamp_display":       _safe_str("timestamp_display"),
+        "time_display":            _safe_str("time_display"),
+        "age_minutes":             case.get("age_minutes"),
+        "age_label_short":         _safe_str("age_label_short"),
+        "age_class":               _safe_str("age_class"),
+        "request_type":            _safe_str("request_type"),
+        "request_type_label":      _safe_str("request_type_label"),
+        "priority":                _safe_str("priority"),
+        "red_flags_present":       bool(case.get("red_flags_present")),
+        "is_emergency":            bool(case.get("is_emergency")),
+        "status":                  _safe_str("status"),
+        "primary_status_label":    _safe_str("primary_status_label"),
+        "primary_status_class":    _safe_str("primary_status_class"),
+        "assigned_to":             _safe_str("assigned_to"),
+        "ai_summary":              _safe_str("ai_summary"),
+        "staff_task_title":        _safe_str("staff_task_title"),
+        "staff_task_body":         _safe_str("staff_task_body"),
+        "patient_record_note":     _safe_str("patient_record_note"),
+        "open_details":            _safe_str("open_details"),
+        "is_resolved":             bool(case.get("is_resolved")),
+        "requires_individual_review": bool(case.get("requires_individual_review")),
+        "safe_to_queue":           bool(case.get("safe_to_queue")),
+        "staff_review_required":   bool(case.get("staff_review_required")),
+        "summary_chips":           case.get("summary_chips") or [],
+        "call_summary_short":      _safe_str("call_summary_short"),
+        "suggested_actions":       build_suggested_actions(case),
+        "transcript_excerpt":      str(case.get("transcript") or "")[:400].strip(),
+    }
 
 
 def alert_dedupe_key(payload: dict[str, Any]) -> str:
@@ -2646,6 +3087,8 @@ def index(
         show_demo_banner = demo_data_present(conn)
         staff_activity = get_team_activity(conn, "today")
         urgent_attention = get_urgent_attention(conn)
+        queue_status_card = get_queue_status_card(conn, date_range)
+        call_analytics_card = get_call_analytics_card(conn)
         range_where, range_params = range_clause(date_range)
     try:
         services_status = get_service_statuses()
@@ -2689,11 +3132,19 @@ def index(
         }
     system_health = get_system_health_card(services_status, show_demo_banner)
     workload_card = compact_workload(workload)
+    _filter_counts: dict[str, Any] = {
+        "open":             kpi_cards[0]["value"] if kpi_cards else None,
+        "urgent_red_flags": urgent_attention.get("red_flags"),
+        "needs_review":     urgent_attention.get("staff_review"),
+        "identity_issues":  urgent_attention.get("identity_checks"),
+        "resolved_today":   kpi_cards[4]["value"] if len(kpi_cards) > 4 else None,
+    }
     filter_links = [
         {
             "value": item,
             "label": item.replace("_", " "),
             "url": worklist_url(item, sort, q, request_type, date_range),
+            "count": _filter_counts.get(item),
         }
         for item in filters
     ]
@@ -2761,6 +3212,8 @@ def index(
             "system_health": system_health,
             "workload": workload,
             "workload_card": workload_card,
+            "queue_status_card": queue_status_card,
+            "call_analytics_card": call_analytics_card,
             "filters": filters,
             "current_list_url": current_list_url,
             "active_filter_label": active_filter_label,
@@ -2812,26 +3265,12 @@ def patients_page(request: Request, q: str = "") -> Any:
         where = "1=1"
         if search:
             like = f"%{search}%"
-            conditions = [
-                "patient_name LIKE ?",
-                "dob LIKE ?",
-                "postcode LIKE ?",
-                "callback_number LIKE ?",
-                "emis_number LIKE ?",
-                "nhs_number LIKE ?",
-                "matched_patient_ref LIKE ?",
-                "top_candidate_name LIKE ?",
-                "verification_status LIKE ?",
-            ]
-            values: list[Any] = [like] * len(conditions)
-            add_digit_identifier_search(
-                conditions,
-                values,
-                search,
-                ("callback_number", "nhs_number", "emis_number", "matched_patient_ref"),
-            )
-            where = " OR ".join(conditions)
-            params = tuple(values)
+            where = """
+                patient_name LIKE ? OR dob LIKE ? OR postcode LIKE ?
+                OR emis_number LIKE ? OR nhs_number LIKE ? OR matched_patient_ref LIKE ?
+                OR top_candidate_name LIKE ? OR verification_status LIKE ?
+            """
+            params = (like, like, like, like, like, like, like, like)
         rows = conn.execute(
             f"""
             SELECT call_id, patient_name, dob, postcode, verification_status,
@@ -2844,6 +3283,11 @@ def patients_page(request: Request, q: str = "") -> Any:
             """,
             params,
         ).fetchall()
+    patient_rows = []
+    for row in rows:
+        p = row_to_dict(row)
+        p["dob_display"] = format_dob_uk(p.get("dob")) if p.get("dob") else "n/a"
+        patient_rows.append(p)
     return templates.TemplateResponse(
         request,
         "patients.html",
@@ -2852,7 +3296,7 @@ def patients_page(request: Request, q: str = "") -> Any:
             "staff_users": staff_users,
             "active_nav": "patients",
             "search_query": search,
-            "patients": [row_to_dict(row) for row in rows],
+            "patients": patient_rows,
         },
     )
 
@@ -2898,9 +3342,47 @@ def settings_page(request: Request) -> Any:
         ("Pathway configuration", ROOT_DIR / "config" / "pathways.json"),
         ("Monitoring thresholds", ROOT_DIR / "config" / "model_monitoring.json"),
     ]
+    db_path = DB_PATH
     with connect() as conn:
         current_staff = current_staff_from_request(request, conn)
         staff_users = get_staff_users(conn)
+        cases_total = conn.execute("SELECT COUNT(*) FROM cases").fetchone()[0]
+        active_sql, active_params = active_case_clause()
+        resolved_sql, resolved_params = resolved_case_clause()
+        resolved_range_where, resolved_range_params = resolved_at_range_clause("today")
+        cases_open = conn.execute(f"SELECT COUNT(*) FROM cases WHERE ({active_sql})", active_params).fetchone()[0]
+        cases_resolved_today = conn.execute(
+            f"SELECT COUNT(*) FROM cases WHERE ({resolved_range_where}) AND ({resolved_sql})",
+            (*resolved_range_params, *resolved_params),
+        ).fetchone()[0]
+        alerts_unacked = conn.execute(
+            "SELECT COUNT(*) FROM alert_events WHERE acknowledged_at IS NULL"
+        ).fetchone()[0]
+        staff_active = conn.execute(
+            "SELECT COUNT(*) FROM staff_users WHERE active = 1"
+        ).fetchone()[0]
+        last_import_row = conn.execute(
+            "SELECT MAX(timestamp) FROM audit_events WHERE action = 'import'"
+        ).fetchone()
+        last_import_ts = format_display_timestamp(last_import_row[0]) if last_import_row and last_import_row[0] else "Never"
+    db_exists = db_path.exists()
+    db_writable = False
+    if db_exists:
+        try:
+            import os as _os
+            db_writable = _os.access(str(db_path), _os.W_OK)
+        except Exception:
+            db_writable = False
+    diagnostics = [
+        {"label": "Database file", "value": "Found" if db_exists else "Missing", "state": "ok" if db_exists else "danger"},
+        {"label": "Database writable", "value": "Yes" if db_writable else "No", "state": "ok" if db_writable else "warn"},
+        {"label": "Last import", "value": last_import_ts, "state": "ok"},
+        {"label": "Total cases", "value": str(cases_total), "state": "ok"},
+        {"label": "Open cases", "value": str(cases_open), "state": "ok" if cases_open < 50 else "warn"},
+        {"label": "Resolved today", "value": str(cases_resolved_today), "state": "ok"},
+        {"label": "Unacknowledged alerts", "value": str(alerts_unacked), "state": "ok" if alerts_unacked == 0 else "warn"},
+        {"label": "Active staff", "value": str(staff_active), "state": "ok" if staff_active > 0 else "warn"},
+    ]
     return templates.TemplateResponse(
         request,
         "settings.html",
@@ -2916,6 +3398,7 @@ def settings_page(request: Request) -> Any:
                 }
                 for label, path in config_files
             ],
+            "diagnostics": diagnostics,
         },
     )
 
@@ -3050,6 +3533,7 @@ def update_case(
         submitted["action_needed"] = submitted["action_needed"] or old.get("action_needed") or DEFAULT_ACTION_NEEDED
         submitted["outcome_notes"] = submitted["outcome_notes"] or old.get("outcome_notes") or (DEFAULT_OUTCOME_NOTES if wants_resolve and mark_checked else "")
 
+        status_is_terminal = normalize_case_status(submitted["status"]) in TERMINAL_CASE_STATUSES
         if wants_resolve and mark_checked:
             if (old["red_flags_present"] or old["priority"] == "999 Emergency") and not submitted["outcome_notes"]:
                 raise HTTPException(status_code=400, detail="Outcome notes are required before resolving a red-flag case.")
@@ -3062,8 +3546,17 @@ def update_case(
             submitted["resolved_by"] = submitted["resolved_by"] or submitted["last_edited_by"]
             submitted["resolved_at"] = old["resolved_at"] or now
             submitted["turnaround_minutes"] = calculate_turnaround_minutes(old["timestamp"], submitted["resolved_at"])
+        elif status_is_terminal:
+            submitted["resolved_by"] = submitted["resolved_by"] or old.get("resolved_by") or submitted["last_edited_by"]
+            submitted["resolved_at"] = old.get("resolved_at") or now
+            submitted["turnaround_minutes"] = old.get("turnaround_minutes") or calculate_turnaround_minutes(old["timestamp"], submitted["resolved_at"])
+        elif is_resolved_case({**old, "status": old.get("status"), "resolved_at": old.get("resolved_at")}):
+            submitted["resolved_at"] = ""
+            submitted["resolved_by"] = ""
+            submitted["turnaround_minutes"] = None
         else:
             submitted["resolved_at"] = old["resolved_at"]
+            submitted["resolved_by"] = old.get("resolved_by", submitted["resolved_by"])
             submitted["turnaround_minutes"] = old["turnaround_minutes"]
 
         submitted["last_updated"] = now
@@ -3118,6 +3611,9 @@ def quick_action(
 
         if action == "start_review":
             updates["status"] = "In Progress"
+            updates["resolved_at"] = ""
+            updates["resolved_by"] = ""
+            updates["turnaround_minutes"] = None
             if assigned_to.strip() or selected_staff_name:
                 updates["assigned_to"] = assigned_to.strip() or selected_staff_name
             updates["action_needed"] = case.get("action_needed") or DEFAULT_ACTION_NEEDED
@@ -3154,6 +3650,9 @@ def quick_action(
                 {
                     "status": "Escalated",
                     "action_needed": "Escalated for staff review",
+                    "resolved_at": "",
+                    "resolved_by": "",
+                    "turnaround_minutes": None,
                 }
             )
         elif action == "flag_issue":
@@ -3161,6 +3660,9 @@ def quick_action(
                 {
                     "status": "Needs Review",
                     "action_needed": "Issue flagged by staff",
+                    "resolved_at": "",
+                    "resolved_by": "",
+                    "turnaround_minutes": None,
                 }
             )
         else:

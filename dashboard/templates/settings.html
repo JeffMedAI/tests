@@ -1,6 +1,7 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 {% block title %}Settings - JeffLocal{% endblock %}
 {% block content %}
+<div class="page-scroll">
 <section class="page-head app-header">
   <div>
     <span class="page-kicker">Local configuration</span>
@@ -23,4 +24,21 @@
   </article>
   {% endfor %}
 </section>
+
+<section class="panel" style="margin: 0 24px 24px;">
+  <div class="section-head">
+    <h2>System Diagnostics</h2>
+    <span class="muted">Live checks — read-only</span>
+  </div>
+  <div class="diag-grid">
+    {% for check in diagnostics %}
+    <div class="diag-row">
+      <span class="diag-label">{{ check.label }}</span>
+      <span class="diag-value {{ check.state }}">{{ check.value }}</span>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+</div>
 {% endblock %}
+

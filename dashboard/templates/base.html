@@ -4,117 +4,189 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}JeffLocal Staff Dashboard{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', path='/dashboard.css') }}?v=2">
   {% block head %}{% endblock %}
-  <link rel="stylesheet" href="{{ url_for('static', path='/dashboard.css?v=figma-phase1') }}">
 </head>
 <body>
-<span class="sr-only" data-compat-marker="not-tracked">Not tracked</span>
-  <aside class="sidebar" aria-label="JeffLocal navigation">
-    <a class="brand sidebar-brand" href="/">
+
+  {# ── TOP BAR ────────────────────────────────────────────────────── #}
+  <header class="topbar">
+    <div class="topbar-brand">
       <span class="brand-mark">JL</span>
-      <span>JeffLocal</span>
-    </a>
-    <nav class="side-nav">
-      <a class="nav-link {% if active_nav|default('dashboard') == 'dashboard' %}active{% endif %}" href="/"><span class="nav-icon" aria-hidden="true">D</span><span>Dashboard</span></a>
-      <a class="nav-link {% if active_nav|default('') == 'requests' %}active{% endif %}" href="/requests"><span class="nav-icon" aria-hidden="true">R</span><span>Requests</span></a>
-      <a class="nav-link {% if active_nav|default('') == 'patients' %}active{% endif %}" href="/patients"><span class="nav-icon" aria-hidden="true">P</span><span>Patients</span></a>
-      <a class="nav-link {% if active_nav|default('') == 'staff' %}active{% endif %}" href="/staff"><span class="nav-icon" aria-hidden="true">S</span><span>Staff</span></a>
-      <a class="nav-link {% if active_nav|default('') == 'reports' %}active{% endif %}" href="/reports"><span class="nav-icon" aria-hidden="true">M</span><span>Reports</span></a>
-      <a class="nav-link {% if active_nav|default('') == 'settings' %}active{% endif %}" href="/settings"><span class="nav-icon" aria-hidden="true">C</span><span>Settings</span></a>
-    </nav>
-    <div class="side-support">
-      <strong>Help &amp; Support</strong>
-      <a href="/alerts">View All Alerts</a>
-      <form method="post" action="/import">
-        <button type="submit">Import Handoffs</button>
-      </form>
+      <div>
+        <div class="topbar-org">JeffLocal</div>
+        <div class="topbar-date" id="topbar-date"></div>
+      </div>
     </div>
-    <div class="side-user">
-      {% if staff_users is defined %}
-      <form method="post" action="/staff/select" class="staff-picker">
-        <input type="hidden" name="next_url" value="{{ request.url.path }}{% if request.url.query %}?{{ request.url.query }}{% endif %}">
-        <span>DEMO ONLY</span>
-        <span>Logged in</span>
-        <label>
-          <select name="staff_id" onchange="this.form.submit()">
+
+    <nav class="topbar-nav" aria-label="Main navigation">
+      <a href="/"         class="topbar-nav-link {% if active_nav|default('dashboard') == 'dashboard' %}active{% endif %}">Dashboard</a>
+      <a href="/requests" class="topbar-nav-link {% if active_nav|default('') == 'requests' %}active{% endif %}">Requests</a>
+      <a href="/patients" class="topbar-nav-link {% if active_nav|default('') == 'patients' %}active{% endif %}">Patients</a>
+      <a href="/staff"    class="topbar-nav-link {% if active_nav|default('') == 'staff' %}active{% endif %}">Staff</a>
+      <a href="/reports"  class="topbar-nav-link {% if active_nav|default('') == 'reports' %}active{% endif %}">Reports</a>
+      <a href="/settings" class="topbar-nav-link {% if active_nav|default('') == 'settings' %}active{% endif %}">Settings</a>
+    </nav>
+
+    <div class="topbar-center">{% block topbar_search %}{% endblock %}</div>
+
+    <div class="topbar-actions">
+      <a href="/alerts" class="topbar-icon-btn" title="View Alerts" aria-label="Alerts">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      </a>
+
+      <div class="topbar-divider"></div>
+
+      <div class="topbar-user">
+        <div class="topbar-user-info">
+          <span class="topbar-user-name">
+            {%- if current_staff is defined and current_staff and not current_staff.demo_fallback -%}
+              {{ current_staff.display_name }}
+            {%- else -%}
+              demo_user
+            {%- endif -%}
+          </span>
+          <span class="topbar-user-role">
+            {%- if current_staff is defined and current_staff -%}
+              {{ current_staff.role|title }}
+            {%- else -%}
+              Staff
+            {%- endif -%}
+          </span>
+        </div>
+        <div class="avatar" aria-hidden="true">
+          {%- if current_staff is defined and current_staff and current_staff.display_name -%}
+            {{ current_staff.display_name[0]|upper }}
+          {%- else -%}U{%- endif -%}
+        </div>
+        {%- if staff_users is defined and staff_users %}
+        <form method="post" action="/staff/select" class="staff-switch-form">
+          <input type="hidden" name="next_url" value="{{ request.url.path }}{% if request.url.query %}?{{ request.url.query }}{% endif %}">
+          <select name="staff_id" onchange="this.form.submit()" aria-label="Switch staff member" class="staff-switch-select">
             <option value="">demo_user</option>
-            {% for staff_user in staff_users %}
-              <option value="{{ staff_user.id }}" {% if current_staff and staff_user.id == current_staff.id %}selected{% endif %}>{{ staff_user.display_name }} ({{ staff_user.role }})</option>
+            {% for su in staff_users %}
+              <option value="{{ su.id }}" {% if current_staff and su.id == current_staff.id %}selected{% endif %}>{{ su.display_name }}</option>
             {% endfor %}
           </select>
-        </label>
-      </form>
-      {% elif current_staff %}
-        <span class="staff-chip">{{ current_staff.display_name }} ({{ current_staff.role }})</span>
-      {% endif %}
+        </form>
+        {%- endif %}
+      </div>
     </div>
-  </aside>
-  <main class="app-main">
+  </header>
+
+  {# ── APP BODY ────────────────────────────────────────────────────── #}
+  <div class="app-body">
     {% block content %}{% endblock %}
-  </main>
+  </div>
+
+  {# ── SHARED SCRIPTS ──────────────────────────────────────────────── #}
   <script>
+    // Sidebar collapse toggle with localStorage persistence (fallback for non-dashboard pages)
+    (function () {
+      var sidebarEl = document.getElementById('analytics-sidebar');
+      var toggleBtn = document.getElementById('sidebar-toggle-btn');
+      if (!sidebarEl || !toggleBtn) return;
+      var key = 'jefflocal_sidebar_collapsed';
+      if (localStorage.getItem(key) === 'true') {
+        sidebarEl.classList.add('is-collapsed');
+      }
+      if (!toggleBtn._sidebarListenerAdded) {
+        toggleBtn.addEventListener('click', function () {
+          var isCollapsed = sidebarEl.classList.toggle('is-collapsed');
+          localStorage.setItem(key, isCollapsed);
+        });
+        toggleBtn._sidebarListenerAdded = true;
+      }
+    })();
+
+    // Live date in top bar
+    (function () {
+      var el = document.getElementById('topbar-date');
+      if (el) {
+        el.textContent = new Date().toLocaleDateString('en-GB', {
+          weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+        });
+      }
+    })();
+
+    // Copy-to-clipboard helper
     function fallbackCopyText(text) {
-      const area = document.createElement("textarea");
+      var area = document.createElement('textarea');
       area.value = text;
-      area.setAttribute("readonly", "");
-      area.style.position = "fixed";
-      area.style.left = "-9999px";
+      area.setAttribute('readonly', '');
+      area.style.position = 'fixed';
+      area.style.left = '-9999px';
       document.body.appendChild(area);
       area.select();
-      document.execCommand("copy");
+      document.execCommand('copy');
       document.body.removeChild(area);
     }
 
     function setCopyState(button, message) {
-      const original = button.dataset.originalLabel || button.textContent;
+      var original = button.dataset.originalLabel || button.textContent;
       button.dataset.originalLabel = original;
       button.textContent = message;
-      window.setTimeout(() => {
-        button.textContent = original;
-      }, 1600);
+      window.setTimeout(function () { button.textContent = original; }, 1600);
     }
 
     async function copyDashboardText(button) {
-      const targetSelector = button.dataset.copyTarget;
-      const target = targetSelector ? document.querySelector(targetSelector) : null;
-      const text = target ? target.value : (button.dataset.copyText || "");
-      if (!text.trim()) {
-        setCopyState(button, "Not available");
-        return;
-      }
+      var targetSelector = button.dataset.copyTarget;
+      var target = targetSelector ? document.querySelector(targetSelector) : null;
+      var text = target ? target.value : (button.dataset.copyText || '');
+      if (!text.trim()) { setCopyState(button, 'Not available'); return; }
       try {
         if (navigator.clipboard && window.isSecureContext) {
           await navigator.clipboard.writeText(text);
         } else {
           fallbackCopyText(text);
         }
-        setCopyState(button, "Copied");
-      } catch {
+        setCopyState(button, 'Copied');
+      } catch (_) {
         fallbackCopyText(text);
-        setCopyState(button, "Copied");
+        setCopyState(button, 'Copied');
       }
       if (button.dataset.copyAction && button.dataset.callId) {
-        fetch(`/api/cases/${encodeURIComponent(button.dataset.callId)}/copy-audit`, {
-          method: "POST",
-          headers: {"Content-Type": "application/json"},
-          body: JSON.stringify({action: button.dataset.copyAction})
-        }).catch(() => {});
+        fetch('/api/cases/' + encodeURIComponent(button.dataset.callId) + '/copy-audit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: button.dataset.copyAction })
+        }).catch(function () {});
       }
     }
 
-    document.addEventListener("click", (event) => {
-      const copyButton = event.target.closest("[data-copy-button]");
+    document.addEventListener('click', function (event) {
+      var copyButton = event.target.closest('[data-copy-button]');
       if (copyButton) {
         event.preventDefault();
         event.stopPropagation();
         copyDashboardText(copyButton);
         return;
       }
-      if (event.target.closest("[data-no-toggle]")) {
+      if (event.target.closest('[data-no-toggle]')) {
         event.stopPropagation();
       }
     });
+
+    // Handle quick_action form submission with loading spinner
+    document.addEventListener('submit', function (event) {
+      var form = event.target;
+      if (form.action && form.action.includes('/case/') && form.action.includes('/quick_action')) {
+        var btn = form.querySelector('button[type="submit"]');
+        if (btn && !btn.disabled) {
+          var originalText = btn.textContent;
+          btn.textContent = '⏳ Loading...';
+          btn.disabled = true;
+          btn.classList.add('btn-loading');
+          // Re-enable after 3 seconds if something went wrong
+          setTimeout(function() {
+            btn.textContent = originalText;
+            btn.disabled = false;
+            btn.classList.remove('btn-loading');
+          }, 3000);
+        }
+      }
+    });
   </script>
+  {% block scripts %}{% endblock %}
 </body>
 </html>
-

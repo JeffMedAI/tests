@@ -1,6 +1,7 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 {% block title %}Patients - JeffLocal{% endblock %}
 {% block content %}
+<div class="page-scroll">
 <section class="page-head app-header">
   <div>
     <span class="page-kicker">Identity and lookup</span>
@@ -56,7 +57,7 @@
       <tr>
         <td><a href="/case/{{ patient.call_id }}">{{ patient.call_id }}</a></td>
         <td>{{ patient.patient_name or "Unknown patient" }}</td>
-        <td>{{ patient.dob or "n/a" }}</td>
+        <td>{{ patient.dob_display or "n/a" }}</td>
         <td>{{ patient.postcode or "n/a" }}</td>
         <td>{{ patient.verification_status or "n/a" }}</td>
         <td>{{ patient.emis_number or patient.matched_patient_ref or "n/a" }}</td>
@@ -69,4 +70,6 @@
     </tbody>
   </table>
 </section>
+</div>
 {% endblock %}
+
