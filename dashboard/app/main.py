@@ -902,7 +902,7 @@ def get_staff_users(conn, active_only: bool = True) -> list[dict[str, Any]]:
     where = "WHERE active = 1" if active_only else ""
     rows = conn.execute(
         f"""
-        SELECT id, display_name, email, role, active, created_at, updated_at
+        SELECT id, display_name, email, role, active, username, last_login_at, created_at, updated_at
         FROM staff_users
         {where}
         ORDER BY active DESC, role ASC, display_name ASC
