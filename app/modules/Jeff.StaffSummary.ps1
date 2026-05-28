@@ -613,7 +613,9 @@ function Get-JeffVerifiedStaffFacingText {
             $bodySentences += "Caller-stated patient: $patientName."
         }
         $bodySentences += "No verified EMIS/NHS match."
-        $bodySentences += ($missingText.Substring(0, 1).ToUpperInvariant() + $missingText.Substring(1) + ".")
+        if ($missingText.Length -gt 0) {
+            $bodySentences += ($missingText.Substring(0, 1).ToUpperInvariant() + $missingText.Substring(1) + ".")
+        }
     }
 
     $bodySentences += $callbackSentence
