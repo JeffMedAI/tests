@@ -78,21 +78,13 @@
 
   {# ── SHARED SCRIPTS ──────────────────────────────────────────────── #}
   <script>
-    // Sidebar collapse toggle with localStorage persistence (fallback for non-dashboard pages)
+    // Restore sidebar collapsed state from localStorage (handler registered per-page)
     (function () {
       var sidebarEl = document.getElementById('analytics-sidebar');
-      var toggleBtn = document.getElementById('sidebar-toggle-btn');
-      if (!sidebarEl || !toggleBtn) return;
+      if (!sidebarEl) return;
       var key = 'jefflocal_sidebar_collapsed';
       if (localStorage.getItem(key) === 'true') {
         sidebarEl.classList.add('is-collapsed');
-      }
-      if (!toggleBtn._sidebarListenerAdded) {
-        toggleBtn.addEventListener('click', function () {
-          var isCollapsed = sidebarEl.classList.toggle('is-collapsed');
-          localStorage.setItem(key, isCollapsed);
-        });
-        toggleBtn._sidebarListenerAdded = true;
       }
     })();
 
