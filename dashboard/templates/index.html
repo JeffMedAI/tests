@@ -1232,6 +1232,19 @@
       });
     }
 
+    // "View" button → open slide-in panel instead of navigating to case page
+    if (caseListScroll) {
+      caseListScroll.addEventListener('click', function (event) {
+        var link = event.target.closest('a[data-no-toggle]');
+        if (!link) return;
+        var card = link.closest('[data-case-row]');
+        if (!card) return;
+        event.preventDefault();
+        var callId = card.id.replace(/^case-/, '');
+        if (callId) openPanel(callId);
+      });
+    }
+
     // Toast notification
     function showToast(msg, type) {
       var t = document.createElement('div');
