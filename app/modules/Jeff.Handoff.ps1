@@ -108,7 +108,7 @@ function Get-JeffHandoffDisposition {
         elseif ($hasIdentityUncertainty -or $callbackMissing) {
             $priority = "review_required"
         }
-        elseif ($priority -eq "urgent_review") {
+        elseif ($priority -eq "urgent_review" -and [string]::IsNullOrWhiteSpace($FlagPriority)) {
             $priority = "review_required"
         }
     }
