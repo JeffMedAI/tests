@@ -215,10 +215,10 @@
     <section class="urgent-panel" aria-label="Urgent Attention">
       <div>
         <h2>⚠️ Urgent Attention</h2>
-        {% if urgent_attention.latest %}
+        {% if not urgent_attention.latest and not urgent_attention.red_flags and not urgent_attention.staff_review and not urgent_attention.identity_checks %}
+          <p class="urgent-ok">✓ No critical issues detected</p>
+        {% elif urgent_attention.latest %}
           <p>{{ urgent_attention.latest.alert_type }}: {{ urgent_attention.latest.message }}</p>
-        {% else %}
-          <p>✓ No critical issues detected</p>
         {% endif %}
       </div>
       {% if urgent_attention.red_flags > 0 or urgent_attention.staff_review > 0 or urgent_attention.identity_checks > 0 %}
