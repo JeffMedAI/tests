@@ -2929,7 +2929,7 @@ def api_case_action(
         if action == "start_review":
             updates["status"] = "In Progress"
             updates["resolved_at"] = None
-            updates["resolved_by"] = ""
+            updates["resolved_by"] = None
             updates["turnaround_minutes"] = None
             if assigned_to_override or selected_staff_name:
                 updates["assigned_to"] = assigned_to_override or selected_staff_name
@@ -4104,7 +4104,7 @@ def update_case(
             submitted["turnaround_minutes"] = old.get("turnaround_minutes") or calculate_turnaround_minutes(old["timestamp"], submitted["resolved_at"])
         elif is_resolved_case({**old, "status": old.get("status"), "resolved_at": old.get("resolved_at")}):
             submitted["resolved_at"] = None
-            submitted["resolved_by"] = ""
+            submitted["resolved_by"] = None
             submitted["turnaround_minutes"] = None
         else:
             submitted["resolved_at"] = old["resolved_at"]
@@ -4164,7 +4164,7 @@ def quick_action(
         if action == "start_review":
             updates["status"] = "In Progress"
             updates["resolved_at"] = None
-            updates["resolved_by"] = ""
+            updates["resolved_by"] = None
             updates["turnaround_minutes"] = None
             if assigned_to.strip() or selected_staff_name:
                 updates["assigned_to"] = assigned_to.strip() or selected_staff_name
