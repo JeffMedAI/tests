@@ -192,6 +192,12 @@ def init_db(conn: sqlite3.Connection) -> None:
         )
         """
     )
+    # ── Create indexes for frequently-queried columns ──────────────────────────
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_cases_status ON cases (status)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_cases_call_timestamp_sort ON cases (call_timestamp_sort)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_cases_assigned_to ON cases (assigned_to)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_audit_events_call_id ON audit_events (call_id)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_audit_events_action ON audit_events (action)")
     # ── Migrate staff_users auth columns (added 2026-05-22) ───────────────────
     staff_cols = {row["name"] for row in conn.execute("PRAGMA table_info(staff_users)").fetchall()}
     _staff_auth_cols = {

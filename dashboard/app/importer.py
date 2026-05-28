@@ -4,6 +4,7 @@ import json
 import sqlite3
 import urllib.request
 import urllib.error
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -352,7 +353,7 @@ def map_handoff_to_case(data: dict[str, Any], source_path: Path | None = None) -
         "source_file_mtime": (
             utc_now_iso()
             if source_path is None
-            else source_path.stat().st_mtime_ns
+            else datetime.fromtimestamp(source_path.stat().st_mtime, tz=timezone.utc).isoformat()
         ),
         "imported_at": utc_now_iso(),
     }
