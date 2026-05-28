@@ -116,7 +116,8 @@ def login_page(request: Request, next: str = "/", error: str = "", info: str = "
             conn.row_factory = __import__("sqlite3").Row
             user = get_session_user(conn, token)
         if user:
-            return RedirectResponse(url=next or "/", status_code=302)
+            safe_next = next if next and next.startswith("/") and not next.startswith("//") else "/"
+            return RedirectResponse(url=safe_next, status_code=302)
     return templates.TemplateResponse(request, "login.html", {
         "error": error, "info": info, "next": next,
         "prefill_username": "", "auth_method": "password",
@@ -942,7 +943,7 @@ def current_staff_from_request(request: Request | None, conn) -> dict[str, Any]:
                     "active": 1,
                     "username": user.get("username", ""),
                 }
-    return {"id": None, "display_name": "demo_user", "email": "", "role": "staff", "active": 1, "demo_fallback": True}
+    return {"id": None, "display_name": "demo_user", "email": "", "role": "viewer", "active": 1, "demo_fallback": True}
 
 
 def staff_can_edit(staff: dict[str, Any]) -> bool:
@@ -1761,7 +1762,7 @@ def get_team_activity(conn, range_name: str = "today") -> dict[str, Any]:
         SELECT COUNT(*) FROM audit_events
         WHERE action = ? AND timestamp >= ?
         """,
-        ("staff_update", datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0).isoformat()),
+        ("case_reopened", datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0).isoformat()),
     ).fetchone()[0]
     acknowledged_since = {
         "today": datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0),
@@ -1789,8 +1790,8 @@ def get_team_activity(conn, range_name: str = "today") -> dict[str, Any]:
             (*resolved_range_params, name, name),
         ).fetchone()[0]
         staff_alerts = conn.execute(
-            "SELECT COUNT(*) FROM alert_events WHERE acknowledged_by = ?",
-            (name,),
+            "SELECT COUNT(*) FROM alert_events WHERE acknowledged_by = ? AND acknowledged_at >= ?",
+            (name, acknowledged_since),
         ).fetchone()[0]
         staff_escalations = conn.execute(
             f"SELECT COUNT(*) FROM cases WHERE last_edited_by = ? AND ({active_sql}) AND {status_expr} = ?",
@@ -2121,7 +2122,7 @@ def bulk_action_cases(conn, call_ids: list[str], action: str, staff_name: str, n
                 skipped.append({"call_id": call_id, "reason": "already_resolved"})
                 continue
             updates = {
-                "assigned_to": case.get("assigned_to") or staff_name,
+                "assigned_to": staff_name if action == "assign_to_me" else (case.get("assigned_to") or staff_name),
                 "status": "In Progress" if case.get("status") in {"", "New", "Open"} else case.get("status"),
                 "last_updated": now,
                 "last_edited_at": now,
@@ -2514,7 +2515,11 @@ def api_services_status() -> dict[str, Any]:
 
 
 @app.post("/api/services/refresh")
-def api_services_refresh(payload: dict[str, Any] = Body(default_factory=dict)) -> dict[str, Any]:
+def api_services_refresh(request: Request, payload: dict[str, Any] = Body(default_factory=dict)) -> dict[str, Any]:
+    ensure_ready()
+    with connect() as conn:
+        staff = current_staff_from_request(request, conn)
+        require_staff_admin(staff)
     start_missing = payload.get("start_missing") is True
     actions: list[dict[str, Any]] = []
     if start_missing:
@@ -2923,7 +2928,7 @@ def api_case_action(
 
         if action == "start_review":
             updates["status"] = "In Progress"
-            updates["resolved_at"] = ""
+            updates["resolved_at"] = None
             updates["resolved_by"] = ""
             updates["turnaround_minutes"] = None
             if assigned_to_override or selected_staff_name:
@@ -3096,8 +3101,11 @@ def write_alert_jsonl(alert: dict[str, Any]) -> None:
 
 
 @app.post("/api/alerts/log")
-def api_alert_log(payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
+def api_alert_log(request: Request, payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
     ensure_ready()
+    with connect() as conn:
+        staff = current_staff_from_request(request, conn)
+        require_staff_edit(staff)
     alert = sanitize_alert_payload(payload)
     if not alert["alert_type"]:
         raise HTTPException(status_code=400, detail="alert_type is required")
@@ -4095,7 +4103,7 @@ def update_case(
             submitted["resolved_at"] = old.get("resolved_at") or now
             submitted["turnaround_minutes"] = old.get("turnaround_minutes") or calculate_turnaround_minutes(old["timestamp"], submitted["resolved_at"])
         elif is_resolved_case({**old, "status": old.get("status"), "resolved_at": old.get("resolved_at")}):
-            submitted["resolved_at"] = ""
+            submitted["resolved_at"] = None
             submitted["resolved_by"] = ""
             submitted["turnaround_minutes"] = None
         else:
@@ -4155,7 +4163,7 @@ def quick_action(
 
         if action == "start_review":
             updates["status"] = "In Progress"
-            updates["resolved_at"] = ""
+            updates["resolved_at"] = None
             updates["resolved_by"] = ""
             updates["turnaround_minutes"] = None
             if assigned_to.strip() or selected_staff_name:
