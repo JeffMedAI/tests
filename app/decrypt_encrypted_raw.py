@@ -104,6 +104,7 @@ class SecurityConfig:
     public_key_path: Path
     hmac_secret_path: Path
     nonce_store_path: Path
+    private_key_passphrase_path: Path | None = None
 
 
 def utc_now() -> datetime:
@@ -193,6 +194,7 @@ def load_config(config_path: Path = CONFIG_PATH) -> SecurityConfig:
         public_key_path=Path(data["public_key_path"]),
         hmac_secret_path=Path(data["hmac_secret_path"]),
         nonce_store_path=nonce_store,
+        private_key_passphrase_path=Path(data["private_key_passphrase_path"]) if data.get("private_key_passphrase_path") else None,
     )
 
 
@@ -383,7 +385,8 @@ def verify_hmac_signature(
 
 def load_private_key(config: SecurityConfig, envelope: dict[str, Any], source_file: Path) -> Any:
     try:
-        return serialization.load_pem_private_key(config.private_key_path.read_bytes(), password=None)
+        passphrase = config.private_key_passphrase_path.read_bytes().strip() if config.private_key_passphrase_path else None
+        return serialization.load_pem_private_key(config.private_key_path.read_bytes(), password=passphrase)
     except Exception as exc:
         raise DecryptStageError(
             "load_private_key",
