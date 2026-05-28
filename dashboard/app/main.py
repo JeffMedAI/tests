@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import hashlib
 import http.client
@@ -18,6 +19,24 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from .audit import write_audit_event
+from .auth import (
+    clear_failed_attempts,
+    consume_reset_token,
+    create_reset_token,
+    create_session,
+    get_session_user,
+    hash_password,
+    hash_pin,
+    invalidate_session,
+    is_account_locked,
+    lookup_user_by_username,
+    purge_expired_sessions,
+    record_failed_attempt,
+    set_new_password,
+    set_new_pin,
+    verify_password,
+    verify_pin,
+)
 from .db import DB_PATH, connect, init_db, row_to_dict
 from .importer import import_handoffs
 from .models import (
@@ -58,6 +77,315 @@ app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
 templates.env.filters["display_ts"] = format_display_timestamp
 
+SESSION_COOKIE = "jefflocal_session"
+AUTH_PUBLIC_PATHS = {"/login", "/logout", "/forgot", "/reset", "/favicon.ico"}
+AUTH_PUBLIC_PREFIXES = ("/static/", "/api/health", "/api/n8n/", "/api/alerts/")
+
+
+def _is_public_path(path: str) -> bool:
+    return path in AUTH_PUBLIC_PATHS or any(path.startswith(p) for p in AUTH_PUBLIC_PREFIXES)
+
+
+@app.middleware("http")
+async def enforce_auth(request: Request, call_next):
+    if _is_public_path(request.url.path):
+        return await call_next(request)
+    token = request.cookies.get(SESSION_COOKIE)
+    if not token:
+        return RedirectResponse(url=f"/login?next={quote(str(request.url.path), safe='')}", status_code=302)
+    with connect() as conn:
+        conn.row_factory = __import__("sqlite3").Row
+        user = get_session_user(conn, token)
+    if user is None:
+        resp = RedirectResponse(url=f"/login?next={quote(str(request.url.path), safe='')}", status_code=302)
+        resp.delete_cookie(SESSION_COOKIE)
+        return resp
+    response = await call_next(request)
+    # Refresh cookie on every authenticated request to keep session active
+    response.set_cookie(SESSION_COOKIE, token, httponly=True, samesite="lax", secure=True, max_age=3600)
+    return response
+
+
+# ── Auth routes ────────────────────────────────────────────────────────────────
+
+@app.get("/login")
+def login_page(request: Request, next: str = "/", error: str = "", info: str = ""):
+    token = request.cookies.get(SESSION_COOKIE)
+    if token:
+        with connect() as conn:
+            conn.row_factory = __import__("sqlite3").Row
+            user = get_session_user(conn, token)
+        if user:
+            return RedirectResponse(url=next or "/", status_code=302)
+    return templates.TemplateResponse(request, "login.html", {
+        "error": error, "info": info, "next": next,
+        "prefill_username": "", "auth_method": "password",
+    })
+
+
+@app.post("/login")
+async def login_post(
+    request: Request,
+    username: str = Form(""),
+    password: str = Form(""),
+    pin: str = Form(""),
+    auth_method: str = Form("password"),
+    next: str = Form("/"),
+):
+    username = username.strip().lower()
+    error_ctx = {"prefill_username": username, "auth_method": auth_method, "next": next}
+
+    def fail(msg: str):
+        return templates.TemplateResponse(request, "login.html", {"error": msg, "info": "", **error_ctx})
+
+    if not username:
+        return fail("Please enter your username.")
+
+    with connect() as conn:
+        conn.row_factory = __import__("sqlite3").Row
+        purge_expired_sessions(conn)
+        user = lookup_user_by_username(conn, username)
+        if user is None:
+            return fail("Invalid username or credentials.")
+        if not user.get("active"):
+            return fail("Your account is inactive. Contact your administrator.")
+        if is_account_locked(user):
+            return fail(f"Account locked after too many failed attempts. Please try again in 15 minutes.")
+
+        if auth_method == "pin":
+            stored = user.get("pin_hash") or ""
+            ok = bool(stored) and verify_pin(pin.strip(), stored)
+        else:
+            stored = user.get("password_hash") or ""
+            ok = bool(stored) and verify_password(password, stored)
+
+        if not ok:
+            remaining = MAX_FAILED_ATTEMPTS - record_failed_attempt(conn, user["id"])
+            msg = f"Invalid credentials. {max(0, remaining)} attempt(s) remaining before lockout."
+            write_audit_event(conn, "__auth__", "login_failed", username, [], {}, {"method": auth_method})
+            return fail(msg)
+
+        clear_failed_attempts(conn, user["id"])
+        ip = request.client.host if request.client else ""
+        ua = request.headers.get("user-agent", "")[:200]
+        token = create_session(conn, user["id"], ip, ua)
+        write_audit_event(conn, "__auth__", "login_success", username, [], {}, {"method": auth_method})
+        force_change = bool(user.get("must_change_password"))
+
+    safe_next = next if next and next.startswith("/") and not next.startswith("//") else "/"
+    # Force staff to update credentials before proceeding if flag is set
+    if force_change:
+        safe_next = "/profile?must_change=1"
+    response = RedirectResponse(url=safe_next, status_code=302)
+    response.set_cookie(SESSION_COOKIE, token, httponly=True, samesite="lax", secure=True, max_age=3600)
+    return response
+
+
+@app.get("/logout")
+def logout(request: Request):
+    token = request.cookies.get(SESSION_COOKIE)
+    if token:
+        with connect() as conn:
+            invalidate_session(conn, token)
+    resp = RedirectResponse(url="/login?info=You+have+been+signed+out.", status_code=302)
+    resp.delete_cookie(SESSION_COOKIE)
+    return resp
+
+
+@app.get("/forgot")
+def forgot_page(request: Request):
+    return templates.TemplateResponse(request, "forgot.html", {
+        "mode": "request", "error": "", "success": "", "reset_link": None,
+    })
+
+
+@app.post("/forgot")
+async def forgot_post(request: Request, username: str = Form(""), reset_type: str = Form("password")):
+    username = username.strip().lower()
+    reset_link = None
+    error = ""
+    success = ""
+    with connect() as conn:
+        conn.row_factory = __import__("sqlite3").Row
+        user = lookup_user_by_username(conn, username)
+        if user:
+            token = create_reset_token(conn, user["id"], reset_type)
+            base = str(request.base_url).rstrip("/")
+            reset_link = f"{base}/reset?token={token}&type={reset_type}"
+            write_audit_event(conn, "__auth__", "reset_requested", username, [], {}, {"type": reset_type})
+            success = f"Reset link generated for '{username}'. Share it securely."
+        else:
+            error = "Username not found."
+    return templates.TemplateResponse(request, "forgot.html", {
+        "mode": "request", "error": error, "success": success, "reset_link": reset_link,
+    })
+
+
+@app.get("/reset")
+def reset_page(request: Request, token: str = "", type: str = "password"):
+    if not token:
+        return RedirectResponse(url="/forgot", status_code=302)
+    return templates.TemplateResponse(request, "forgot.html", {
+        "mode": "reset", "token": token, "reset_type": type, "error": "",
+    })
+
+
+@app.post("/reset")
+async def reset_post(
+    request: Request,
+    token: str = Form(""),
+    reset_type: str = Form("password"),
+    new_value: str = Form(""),
+    confirm_value: str = Form(""),
+):
+    error = ""
+    if new_value != confirm_value:
+        error = "Values do not match."
+    elif reset_type == "password" and len(new_value) < 8:
+        error = "Password must be at least 8 characters."
+    elif reset_type == "pin" and (not new_value.isdigit() or not 4 <= len(new_value) <= 6):
+        error = "PIN must be 4–6 digits."
+    if error:
+        return templates.TemplateResponse(request, "forgot.html", {
+            "mode": "reset", "token": token, "reset_type": reset_type, "error": error,
+        })
+    with connect() as conn:
+        conn.row_factory = __import__("sqlite3").Row
+        user_id = consume_reset_token(conn, token, reset_type)
+        if user_id is None:
+            return templates.TemplateResponse(request, "forgot.html", {
+                "mode": "reset", "token": token, "reset_type": reset_type,
+                "error": "This reset link is invalid or has expired.",
+            })
+        if reset_type == "pin":
+            set_new_pin(conn, user_id, new_value)
+        else:
+            set_new_password(conn, user_id, new_value)
+        write_audit_event(conn, "__auth__", "credentials_reset", f"user_id:{user_id}", [], {}, {"type": reset_type})
+    return templates.TemplateResponse(request, "forgot.html", {
+        "mode": "done", "success": f"Your {reset_type} has been updated. You can now sign in.",
+    })
+
+MAX_FAILED_ATTEMPTS = 5
+
+
+# ── Profile routes ─────────────────────────────────────────────────────────────
+
+@app.get("/profile")
+def profile_page(
+    request: Request,
+    pw_error: str = "", pw_success: str = "",
+    pin_error: str = "", pin_success: str = "",
+):
+    ensure_ready()
+    with connect() as conn:
+        conn.row_factory = __import__("sqlite3").Row
+        current_staff = current_staff_from_request(request, conn)
+        sessions = []
+        if current_staff.get("id"):
+            token = request.cookies.get(SESSION_COOKIE, "")
+            rows = conn.execute(
+                "SELECT created_at, last_active_at, ip_address, token FROM sessions "
+                "WHERE user_id=? AND expires_at > ? ORDER BY last_active_at DESC LIMIT 10",
+                (current_staff["id"], __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat()),
+            ).fetchall()
+            sessions = [dict(r) | {"is_current": r["token"] == token} for r in rows]
+        staff_users = []
+    return templates.TemplateResponse(request, "profile.html", {
+        "current_staff": current_staff,
+        "staff_users": staff_users,
+        "sessions": sessions,
+        "pw_error": pw_error, "pw_success": pw_success,
+        "pin_error": pin_error, "pin_success": pin_success,
+        "active_nav": "profile",
+    })
+
+
+@app.post("/profile/change-password")
+async def profile_change_password(
+    request: Request,
+    current_password: str = Form(""),
+    new_password: str = Form(""),
+    confirm_password: str = Form(""),
+):
+    ensure_ready()
+
+    def fail(msg: str):
+        return RedirectResponse(url=f"/profile?pw_error={quote(msg, safe='')}", status_code=302)
+
+    if new_password != confirm_password:
+        return fail("New passwords do not match.")
+    if len(new_password) < 8:
+        return fail("New password must be at least 8 characters.")
+    with connect() as conn:
+        conn.row_factory = __import__("sqlite3").Row
+        current_staff = current_staff_from_request(request, conn)
+        if not current_staff.get("id"):
+            return RedirectResponse(url="/login", status_code=302)
+        user = conn.execute(
+            "SELECT password_hash FROM staff_users WHERE id=?", (current_staff["id"],)
+        ).fetchone()
+        if user is None or not verify_password(current_password, user["password_hash"] or ""):
+            return fail("Current password is incorrect.")
+        set_new_password(conn, current_staff["id"], new_password)
+        write_audit_event(conn, "__auth__", "password_changed", current_staff.get("username", ""), [], {}, {})
+    token = request.cookies.get(SESSION_COOKIE, "")
+    with connect() as conn:
+        if token:
+            conn.execute("INSERT OR IGNORE INTO sessions (token, user_id, created_at, last_active_at, expires_at) SELECT ?, ?, ?, ?, ? WHERE 0", (token, 0, "", "", ""))
+        user_id = current_staff["id"]
+        conn.execute("DELETE FROM sessions WHERE user_id=? AND token!=?", (user_id, token))
+        conn.commit()
+    resp = RedirectResponse(url="/profile?pw_success=Password+updated+successfully.", status_code=302)
+    return resp
+
+
+@app.post("/profile/change-pin")
+async def profile_change_pin(
+    request: Request,
+    current_password: str = Form(""),
+    new_pin: str = Form(""),
+    confirm_pin: str = Form(""),
+):
+    ensure_ready()
+
+    def fail(msg: str):
+        return RedirectResponse(url=f"/profile?pin_error={quote(msg, safe='')}", status_code=302)
+
+    if new_pin != confirm_pin:
+        return fail("PINs do not match.")
+    if not new_pin.isdigit() or not 4 <= len(new_pin) <= 6:
+        return fail("PIN must be 4–6 digits.")
+    with connect() as conn:
+        conn.row_factory = __import__("sqlite3").Row
+        current_staff = current_staff_from_request(request, conn)
+        if not current_staff.get("id"):
+            return RedirectResponse(url="/login", status_code=302)
+        user = conn.execute(
+            "SELECT password_hash FROM staff_users WHERE id=?", (current_staff["id"],)
+        ).fetchone()
+        if user is None or not verify_password(current_password, user["password_hash"] or ""):
+            return fail("Current password is incorrect.")
+        set_new_pin(conn, current_staff["id"], new_pin)
+        write_audit_event(conn, "__auth__", "pin_changed", current_staff.get("username", ""), [], {}, {})
+    return RedirectResponse(url="/profile?pin_success=PIN+updated+successfully.", status_code=302)
+
+
+@app.post("/profile/sign-out-all")
+async def profile_sign_out_all(request: Request):
+    ensure_ready()
+    token = request.cookies.get(SESSION_COOKIE, "")
+    with connect() as conn:
+        conn.row_factory = __import__("sqlite3").Row
+        current_staff = current_staff_from_request(request, conn)
+        if current_staff.get("id"):
+            from .auth import invalidate_all_user_sessions
+            invalidate_all_user_sessions(conn, current_staff["id"])
+            write_audit_event(conn, "__auth__", "sign_out_all", current_staff.get("username", ""), [], {}, {})
+    resp = RedirectResponse(url="/login?info=Signed+out+of+all+devices.", status_code=302)
+    resp.delete_cookie(SESSION_COOKIE)
+    return resp
+
 
 LOCKED_DETAIL_FIELDS = [
     ("Open Details", "open_details"),
@@ -97,6 +425,37 @@ LOCKED_DETAIL_FIELDS = [
     ("Resolved At", "resolved_at"),
     ("Last Edited At", "last_edited_at"),
     ("Turnaround Minutes", "turnaround_minutes"),
+]
+
+LOCKED_FIELD_CATEGORIES = [
+    {
+        "title": "Call Details",
+        "fields": ["call_id", "timestamp", "last_updated", "call_duration_seconds", "open_details"],
+    },
+    {
+        "title": "Patient Identity",
+        "fields": ["patient_name", "dob", "age", "gender", "postcode", "callback_number"],
+    },
+    {
+        "title": "Verification & Matching",
+        "fields": ["verification_status", "verification_reason", "matched_patient_ref", "emis_number", "nhs_number", "top_candidate_name"],
+    },
+    {
+        "title": "Request & Routing",
+        "fields": ["request_type", "priority", "safe_to_queue", "staff_review_required", "red_flags_present"],
+    },
+    {
+        "title": "Task Content",
+        "fields": ["task_title", "task_body", "staff_task_title", "staff_task_body"],
+    },
+    {
+        "title": "AI & Quality Signals",
+        "fields": ["ai_summary", "call_summary", "patient_record_note", "caller_sentiment", "caller_difficulty", "transcript_quality", "handoff_confidence", "extraction_confidence"],
+    },
+    {
+        "title": "Audit & Timing",
+        "fields": ["resolved_at", "last_edited_at", "turnaround_minutes"],
+    },
 ]
 
 SORT_OPTIONS = [
@@ -172,11 +531,23 @@ def ensure_ready() -> None:
         init_db(conn)
 
 
+async def _daily_session_purge() -> None:
+    """Background task: purge expired sessions once per day."""
+    while True:
+        try:
+            with connect() as conn:
+                purge_expired_sessions(conn)
+        except Exception:
+            pass
+        await asyncio.sleep(86400)
+
+
 @app.on_event("startup")
 def startup() -> None:
     with connect() as conn:
         init_db(conn)
         import_handoffs(conn)
+    asyncio.create_task(_daily_session_purge())
 
 
 @app.get("/favicon.ico")
@@ -539,22 +910,6 @@ def get_staff_users(conn, active_only: bool = True) -> list[dict[str, Any]]:
     return [row_to_dict(row) or {} for row in rows]
 
 
-def get_staff_by_id(conn, staff_id: object) -> dict[str, Any] | None:
-    try:
-        numeric_id = int(str(staff_id))
-    except (TypeError, ValueError):
-        return None
-    row = conn.execute(
-        """
-        SELECT id, display_name, email, role, active, created_at, updated_at
-        FROM staff_users
-        WHERE id = ? AND active = 1
-        """,
-        (numeric_id,),
-    ).fetchone()
-    return row_to_dict(row)
-
-
 def get_staff_any_by_id(conn, staff_id: object) -> dict[str, Any] | None:
     try:
         numeric_id = int(str(staff_id))
@@ -572,9 +927,21 @@ def get_staff_any_by_id(conn, staff_id: object) -> dict[str, Any] | None:
 
 
 def current_staff_from_request(request: Request | None, conn) -> dict[str, Any]:
-    staff = get_staff_by_id(conn, request.cookies.get("jefflocal_staff_id") if request else None)
-    if staff:
-        return staff
+    if request:
+        token = request.cookies.get(SESSION_COOKIE)
+        if token:
+            import sqlite3 as _sqlite3
+            conn.row_factory = _sqlite3.Row
+            user = get_session_user(conn, token)
+            if user:
+                return {
+                    "id": user.get("id") or user.get("user_id"),
+                    "display_name": user.get("display_name", ""),
+                    "email": user.get("email", ""),
+                    "role": user.get("role", "staff"),
+                    "active": 1,
+                    "username": user.get("username", ""),
+                }
     return {"id": None, "display_name": "demo_user", "email": "", "role": "staff", "active": 1, "demo_fallback": True}
 
 
@@ -659,6 +1026,45 @@ def build_suggested_actions(case: dict[str, Any]) -> list[str]:
     return actions[:5]
 
 
+_EMIS_STEPS: dict[str, list[str]] = {
+    "prescription": [
+        "Find patient on EMIS",
+        "Paste AI-generated record note into patient record",
+        "Assign task to Medicines Management",
+    ],
+    "sick_note": [
+        "Find patient on EMIS",
+        "Check GP fit note policy and prior sick notes",
+        "Create task for GP to authorise and issue fit note",
+    ],
+    "referral": [
+        "Find patient on EMIS",
+        "Confirm referral pathway with GP or clinical lead",
+        "Raise referral via EMIS task or e-Referrals (eRS)",
+    ],
+    "test_result": [
+        "Find patient on EMIS",
+        "File result in patient record",
+        "Assign to responsible clinician for review and action",
+    ],
+    "admin": [
+        "Find patient on EMIS",
+        "Log contact in patient record",
+        "Action or route to appropriate team",
+    ],
+    "appointment_redirect": [
+        "Find patient on EMIS",
+        "Check appointment availability or redirect protocol",
+        "Book or redirect as appropriate",
+    ],
+}
+
+
+def emis_workflow_steps(request_type: str | None) -> list[str]:
+    rt = str(request_type or "").strip().lower()
+    return _EMIS_STEPS.get(rt, _EMIS_STEPS["admin"])
+
+
 def summary_chips_for_case(case: dict[str, Any]) -> list[dict[str, str]]:
     """Generate status pills for case display. Avoids duplicate/redundant pills."""
     chips: list[dict[str, str]] = []
@@ -682,12 +1088,15 @@ def summary_chips_for_case(case: dict[str, Any]) -> list[dict[str, str]]:
         chips.append({"label": format_safe_to_queue(case.get("safe_to_queue")), "class": "safe" if case.get("safe_to_queue") else "not-safe"})
         return chips[:3]
 
-    # Identity check cases: Priority + Identity Check + Verification status (if not matched)
+    # Identity check cases: Priority + merged ID pill
     if verification_status in IDENTITY_REVIEW_STATUSES:
         chips.append({"label": priority, "class": "priority-routine" if priority.lower() == "routine" else "review"})
-        chips.append({"label": "Identity Check", "class": "identity"})
-        if verification_status not in ("matched", "exact_match", "verified_match"):
-            chips.append({"label": f"Verification: {case.get('verification_status') or 'unknown'}", "class": "identity"})
+        _vs_human = (case.get("verification_status") or "unknown").replace("_", " ").title()
+        chips.append({
+            "label": f"ID: {_vs_human}",
+            "class": "review",
+            "tooltip": f"Identity Check · Verification: {case.get('verification_status') or 'unknown'}",
+        })
         return chips[:3]
 
     # Staff review cases: Priority + Review Required + Safe to Queue
@@ -779,9 +1188,9 @@ def prepare_case(row: dict[str, Any]) -> dict[str, Any]:
         case["age_minutes"] = None
         case["age_label_short"] = ""
         case["age_class"] = ""
-    # Short time display: extract HH:MM from timestamp_display ("DD-MM-YYYY T HH.MM")
+    # Short time display: extract HH:MM from timestamp_display ("DD-MM-YYYY T HH:MM")
     _ts_disp = case.get("timestamp_display") or ""
-    case["time_display"] = _ts_disp.split(" T ")[-1].replace(".", ":") if " T " in _ts_disp else _ts_disp
+    case["time_display"] = _ts_disp.split(" T ")[-1] if " T " in _ts_disp else _ts_disp
     case["processing_output_missing"] = not (
         str(case.get("staff_task_title") or "").strip()
         and str(case.get("staff_task_body") or "").strip()
@@ -860,7 +1269,11 @@ def prepare_case(row: dict[str, Any]) -> dict[str, Any]:
         and bool(case.get("callback_number"))
         and bool(case.get("emis_number") or case.get("matched_patient_ref") or case.get("nhs_number") or case.get("patient_name"))
     )
-    case["requires_individual_review"] = bool(case["is_emergency"] or case["identity_review_required"] or case.get("staff_review_required"))
+    _already_in_review = normalize_case_status(str(case.get("status") or "")) in {"in review", "in progress"}
+    case["requires_individual_review"] = bool(
+        not _already_in_review
+        and (case["is_emergency"] or case["identity_review_required"] or case.get("staff_review_required"))
+    )
     case["audit_events"] = []
     return case
 
@@ -1904,6 +2317,63 @@ def api_daily_summary() -> dict[str, Any]:
     }
 
 
+@app.get("/api/staff-workload")
+def api_staff_workload() -> dict[str, Any]:
+    """Live per-staff workload: open, in-progress, resolved today for each active staff member."""
+    ensure_ready()
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    with connect() as conn:
+        staff_rows = conn.execute(
+            "SELECT id, display_name, username, role FROM staff_users WHERE active=1 ORDER BY display_name"
+        ).fetchall()
+        result = []
+        for s in staff_rows:
+            name = s["display_name"] or s["username"] or "Unknown"
+            assigned = s["display_name"] or s["username"] or ""
+            # Open (unresolved, assigned to this staff member)
+            open_count = conn.execute(
+                "SELECT COUNT(*) FROM cases WHERE assigned_to=? AND status NOT IN ('resolved','cancelled','closed')",
+                (assigned,),
+            ).fetchone()[0]
+            # In-progress
+            inprogress = conn.execute(
+                "SELECT COUNT(*) FROM cases WHERE assigned_to=? AND status='in_progress'",
+                (assigned,),
+            ).fetchone()[0]
+            # Resolved today
+            resolved_today = conn.execute(
+                "SELECT COUNT(*) FROM cases WHERE resolved_by=? AND resolved_at LIKE ?",
+                (assigned, f"{today}%"),
+            ).fetchone()[0]
+            result.append({
+                "name": name,
+                "username": s["username"] or "",
+                "role": s["role"],
+                "open": open_count,
+                "in_progress": inprogress,
+                "resolved_today": resolved_today,
+            })
+        # Team totals
+        totals = conn.execute(
+            """SELECT
+                SUM(CASE WHEN status NOT IN ('resolved','cancelled','closed') THEN 1 ELSE 0 END) AS open,
+                SUM(CASE WHEN status='in_progress' THEN 1 ELSE 0 END) AS in_progress,
+                SUM(CASE WHEN resolved_at LIKE ? THEN 1 ELSE 0 END) AS resolved_today
+            FROM cases""",
+            (f"{today}%",),
+        ).fetchone()
+    return {
+        "ok": True,
+        "timestamp": utc_now_iso(),
+        "staff": result,
+        "totals": {
+            "open": totals["open"] or 0,
+            "in_progress": totals["in_progress"] or 0,
+            "resolved_today": totals["resolved_today"] or 0,
+        },
+    }
+
+
 def service_status(name: str, status: str, url: str, details: str, checked_at: str) -> dict[str, Any]:
     return {
         "name": name,
@@ -2093,24 +2563,6 @@ def api_services_refresh(payload: dict[str, Any] = Body(default_factory=dict)) -
     return status
 
 
-@app.post("/staff/select")
-def select_staff(staff_id: int | None = Form(None), next_url: str = Form("/")) -> RedirectResponse:
-    ensure_ready()
-    with connect() as conn:
-        staff = get_staff_by_id(conn, staff_id)
-    response = RedirectResponse(next_url if next_url.startswith("/") else "/", status_code=303)
-    if staff is None:
-        response.delete_cookie("jefflocal_staff_id")
-    else:
-        response.set_cookie(
-            "jefflocal_staff_id",
-            str(staff["id"]),
-            httponly=True,
-            samesite="lax",
-            max_age=60 * 60 * 8,
-        )
-    return response
-
 
 @app.get("/staff")
 def staff_page(request: Request) -> Any:
@@ -2148,36 +2600,50 @@ def staff_page(request: Request) -> Any:
 def staff_create(
     request: Request,
     display_name: str = Form(...),
+    username: str = Form(""),
     email: str = Form(""),
     role: str = Form("staff"),
+    password: str = Form(""),
+    pin: str = Form(""),
 ) -> RedirectResponse:
     ensure_ready()
     display_name = display_name.strip()
+    username = username.strip().lower().replace(" ", ".")
     email = email.strip()
     role = role.strip()
     if not display_name:
         raise HTTPException(status_code=400, detail="display_name is required")
+    if not username:
+        # Auto-generate username from display name
+        username = display_name.lower().replace(" ", ".")
     if role not in STAFF_ROLES:
         raise HTTPException(status_code=400, detail="Unsupported role")
+    if password and len(password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+    if pin and not pin.isdigit():
+        raise HTTPException(status_code=400, detail="PIN must be numeric digits only")
     with connect() as conn:
         current_staff = current_staff_from_request(request, conn)
         require_staff_admin(current_staff)
         now = utc_now_iso()
+        pw_hash = hash_password(password) if password else None
+        pin_hash = hash_pin(pin) if pin else None
         conn.execute(
             """
-            INSERT INTO staff_users (display_name, email, role, demo_pin_hash, active, created_at, updated_at)
-            VALUES (?, ?, ?, NULL, 1, ?, ?)
+            INSERT INTO staff_users (display_name, username, email, role, password_hash, pin_hash,
+                                     failed_attempts, must_change_password, active, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, 0, 0, 1, ?, ?)
             """,
-            (display_name, email or None, role, now, now),
+            (display_name, username, email or None, role, pw_hash, pin_hash, now, now),
         )
         write_audit_event(
             conn,
             call_id="staff",
             action="staff_created",
             edited_by=staff_display(current_staff),
-            changed_fields=["display_name", "email", "role", "active"],
+            changed_fields=["display_name", "username", "email", "role", "active"],
             old_values={},
-            new_values={"display_name": display_name, "email": email, "role": role, "active": True},
+            new_values={"display_name": display_name, "username": username, "email": email, "role": role, "active": True},
         )
     return RedirectResponse("/staff", status_code=303)
 
@@ -2562,10 +3028,12 @@ def api_case_get(call_id: str) -> dict[str, Any]:
         "patient_name":            _safe_str("patient_name"),
         "gender":                  _safe_str("gender"),
         "dob":                     _safe_str("dob"),
+        "dob_display":             _safe_str("dob_display"),
         "age_label":               _safe_str("age_label"),
         "nhs_number":              _safe_str("nhs_number"),
         "emis_number":             _safe_str("emis_number") or _safe_str("matched_patient_ref"),
         "callback_number":         _safe_str("callback_number"),
+        "callback_number_display": _safe_str("callback_number_display"),
         "postcode":                _safe_str("postcode"),
         "timestamp_display":       _safe_str("timestamp_display"),
         "time_display":            _safe_str("time_display"),
@@ -2594,6 +3062,7 @@ def api_case_get(call_id: str) -> dict[str, Any]:
         "call_summary_short":      _safe_str("call_summary_short"),
         "suggested_actions":       build_suggested_actions(case),
         "transcript_excerpt":      str(case.get("transcript") or "")[:400].strip(),
+        "pathway_items":           pathway_question_responses(case),
     }
 
 
@@ -2980,6 +3449,11 @@ def n8ntest_dashboard_cases(call_ids: list[str] | None = None) -> list[dict[str,
 
 @app.post("/api/n8n/test-intake-batch")
 def api_n8n_test_intake_batch(payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
+    """SANDBOX / TEST ONLY — bypasses n8n entirely.
+    All real calls must route through n8n webhook: POST /webhook/jefflocal-test-intake (port 5678).
+    This endpoint is guarded by test_mode=true and N8NTEST-/GPDEMO- prefix requirements.
+    It will be removed before production deployment.
+    """
     ensure_ready()
     if payload.get("test_mode") is not True:
         raise HTTPException(status_code=400, detail="test_mode must be true")
@@ -3090,6 +3564,26 @@ def index(
         queue_status_card = get_queue_status_card(conn, date_range)
         call_analytics_card = get_call_analytics_card(conn)
         range_where, range_params = range_clause(date_range)
+        # Live per-staff workload for sidebar widget (seeded server-side, refreshed by AJAX)
+        today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        staff_workload_rows = conn.execute(
+            "SELECT display_name, username FROM staff_users WHERE active=1 ORDER BY display_name"
+        ).fetchall()
+        staff_workload_list = []
+        for sw in staff_workload_rows:
+            _name = sw["display_name"] or sw["username"] or "Unknown"
+            _open = conn.execute(
+                "SELECT COUNT(*) FROM cases WHERE assigned_to=? AND status NOT IN ('resolved','cancelled','closed')",
+                (_name,),
+            ).fetchone()[0]
+            _prog = conn.execute(
+                "SELECT COUNT(*) FROM cases WHERE assigned_to=? AND status='in_progress'", (_name,)
+            ).fetchone()[0]
+            _done = conn.execute(
+                "SELECT COUNT(*) FROM cases WHERE resolved_by=? AND resolved_at LIKE ?",
+                (_name, f"{today_str}%"),
+            ).fetchone()[0]
+            staff_workload_list.append({"name": _name, "open": _open, "in_progress": _prog, "resolved_today": _done})
     try:
         services_status = get_service_statuses()
     except Exception as exc:
@@ -3214,6 +3708,7 @@ def index(
             "workload_card": workload_card,
             "queue_status_card": queue_status_card,
             "call_analytics_card": call_analytics_card,
+            "staff_workload_list": staff_workload_list,
             "filters": filters,
             "current_list_url": current_list_url,
             "active_filter_label": active_filter_label,
@@ -3411,6 +3906,16 @@ def import_cases() -> RedirectResponse:
     return RedirectResponse("/", status_code=303)
 
 
+@app.post("/api/import")
+def api_import_cases() -> dict[str, Any]:
+    """JSON import endpoint — returns count of newly imported cases.
+    Used by the dashboard AJAX import button to trigger audio/toast on new arrivals."""
+    ensure_ready()
+    with connect() as conn:
+        count = import_handoffs(conn)
+    return {"ok": True, "imported": count, "timestamp": utc_now_iso()}
+
+
 @app.get("/case/{call_id}")
 def case_detail(request: Request, call_id: str, return_url: str = "", error: str = "") -> Any:
     ensure_ready()
@@ -3445,14 +3950,42 @@ def case_detail(request: Request, call_id: str, return_url: str = "", error: str
         }
         for label, key in LOCKED_DETAIL_FIELDS
     ]
+    bool_keys = {"safe_to_queue", "staff_review_required", "red_flags_present"}
+    ts_labels = {"Timestamp", "Last Updated", "Resolved At", "Last Edited At"}
+    long_labels = {"Task Body", "Staff Task Body", "AI Summary", "Patient Record Note"}
+    label_map = {key: label for label, key in LOCKED_DETAIL_FIELDS}
+    field_lookup = {}
     for field in display_fields:
-        field["value"] = format_display_timestamp(field["value"]) if field["label"] in {"Timestamp", "Last Updated", "Resolved At", "Last Edited At"} else field["value"]
-        if field["label"] in {"Task Body", "Staff Task Body", "AI Summary", "Patient Record Note"}:
+        field["value"] = format_display_timestamp(field["value"]) if field["label"] in ts_labels else field["value"]
+        if field["label"] in long_labels:
             field["value"] = dedupe_repeated_display_sentences(field["value"])
+        field_lookup[field["label"]] = field["value"]
+    display_field_groups = []
+    for cat in LOCKED_FIELD_CATEGORIES:
+        rows = []
+        for key in cat["fields"]:
+            label = label_map.get(key, key.replace("_", " ").title())
+            raw = case.get(key, "")
+            if key in bool_keys:
+                val = "Yes" if raw else "No"
+            elif label in ts_labels:
+                val = format_display_timestamp(str(raw)) if raw else ""
+            elif label in long_labels:
+                val = dedupe_repeated_display_sentences(str(raw)) if raw else ""
+            else:
+                val = str(raw) if raw not in (None, "") else ""
+            rows.append({"label": label, "key": key, "value": val})
+        display_field_groups.append({"title": cat["title"], "rows": rows})
     safe_return_url = safe_local_return_url(request, return_url)
     detail_error = ""
+    detail_error_modal = False
     if error == "resolve_confirmation_required":
         detail_error = "Tick the confirmation box before marking this request as resolved."
+    elif error == "outcome_notes_required":
+        detail_error = "Outcome notes are required before resolving this case. Please add notes describing the action taken."
+        detail_error_modal = True
+    elif error == "resolved_by_required":
+        detail_error = "Please ensure your name is set in the Resolved By field before resolving."
     return templates.TemplateResponse(
         request,
         "case_detail.html",
@@ -3460,6 +3993,7 @@ def case_detail(request: Request, call_id: str, return_url: str = "", error: str
             "case": case,
             "current_staff": current_staff,
             "display_fields": display_fields,
+            "display_field_groups": display_field_groups,
             "audit_events": [
                 {
                     **event_row,
@@ -3472,9 +4006,12 @@ def case_detail(request: Request, call_id: str, return_url: str = "", error: str
             "transcript_lines": transcript_conversation_lines(case.get("transcript")),
             "raw_transcript": case.get("transcript") or "",
             "pathway_items": pathway_question_responses(case),
+            "emis_steps": emis_workflow_steps(case.get("request_type")),
             "statuses": ALLOWED_STATUSES,
             "return_url": safe_return_url,
             "detail_error": detail_error,
+            "detail_error_modal": detail_error_modal,
+            "active_nav": "requests",
         },
     )
 
@@ -3535,12 +4072,19 @@ def update_case(
 
         status_is_terminal = normalize_case_status(submitted["status"]) in TERMINAL_CASE_STATUSES
         if wants_resolve and mark_checked:
-            if (old["red_flags_present"] or old["priority"] == "999 Emergency") and not submitted["outcome_notes"]:
-                raise HTTPException(status_code=400, detail="Outcome notes are required before resolving a red-flag case.")
-            if old["verification_status"] in IDENTITY_REVIEW_STATUSES and not submitted["outcome_notes"]:
-                raise HTTPException(status_code=400, detail="Outcome notes are required before resolving an identity issue.")
+            needs_notes = (
+                old["red_flags_present"]
+                or old["priority"] == "999 Emergency"
+                or old.get("verification_status") in IDENTITY_REVIEW_STATUSES
+            )
+            if needs_notes and not submitted["outcome_notes"]:
+                detail_url = detail_case_url(call_id, safe_return_url)
+                sep = "&" if "?" in detail_url else "?"
+                return RedirectResponse(f"{detail_url}{sep}error=outcome_notes_required", status_code=303)
             if not submitted["resolved_by"]:
-                raise HTTPException(status_code=400, detail="Resolved By is required before resolving a case")
+                detail_url = detail_case_url(call_id, safe_return_url)
+                sep = "&" if "?" in detail_url else "?"
+                return RedirectResponse(f"{detail_url}{sep}error=resolved_by_required", status_code=303)
             if submitted["status"] not in FINAL_STATUSES:
                 submitted["status"] = "Resolved"
             submitted["resolved_by"] = submitted["resolved_by"] or submitted["last_edited_by"]

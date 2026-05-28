@@ -13,6 +13,7 @@ $ErrorActionPreference = "Stop"
 . "C:\JeffLocal\app\modules\Jeff.RequestType.ps1"
 . "C:\JeffLocal\app\modules\Jeff.Validation.ps1"
 . "C:\JeffLocal\app\modules\Jeff.Emergency.ps1"
+. "C:\JeffLocal\app\call_ollama.ps1"
 . "C:\JeffLocal\app\detect_flags.ps1"
 . "C:\JeffLocal\app\generate_staff_summary.ps1"
 . "C:\JeffLocal\app\build_handoff.ps1"
@@ -475,6 +476,63 @@ if (@($duplicateBatchIds).Count -gt 0) {
 
         $callNormalizedInput = Get-ObjectPropertyValue -Object $call -Name "normalized_input" -Default $null
         $pathwayResponses = Get-ObjectPropertyValue -Object $call -Name "pathway_responses" -Default $null
+
+        # If voice agent did not supply pathway_responses, extract from transcript via Ollama
+        if ($null -eq $pathwayResponses) {
+            $rawTranscript = [string](Get-ObjectPropertyValue -Object $call -Name "raw_transcript" -Default "")
+            $ollamaDisabled = $false
+            if ($appSettings.PSObject.Properties["ollama_pathway_extraction_disabled"]) {
+                $ollamaDisabled = ($appSettings.ollama_pathway_extraction_disabled -eq $true)
+            }
+
+            if (-not $ollamaDisabled -and -not [string]::IsNullOrWhiteSpace($rawTranscript)) {
+                try {
+                    $ollamaModel = "gemma4:e2b"
+                    if ($appSettings.PSObject.Properties["ollama_model"]) {
+                        $ollamaModel = [string]$appSettings.ollama_model
+                    }
+                    $outputsOllamaRaw = [string](Get-ObjectPropertyValue -Object $appSettings -Name "outputs_ollama_raw" -Default "C:\JeffLocal\outputs\ollama_raw")
+                    New-Item -ItemType Directory -Force -Path $outputsOllamaRaw | Out-Null
+
+                    $niMeds = Get-ObjectPropertyValue -Object $callNormalizedInput -Name "medications_requested" -Default @()
+                    $medsRaw = if ($niMeds -is [array]) { $niMeds -join ", " } else { [string]$niMeds }
+
+                    $callAdapter = [pscustomobject]@{
+                        call_id                 = $call.call_id
+                        request_type            = [string](Get-ObjectPropertyValue -Object $call -Name "request_type" -Default "")
+                        patient_name_raw        = [string](Get-ObjectPropertyValue -Object $callNormalizedInput -Name "patient_name" -Default "")
+                        dob_raw                 = [string](Get-ObjectPropertyValue -Object $callNormalizedInput -Name "dob" -Default "")
+                        callback_number_raw     = [string](Get-ObjectPropertyValue -Object $callNormalizedInput -Name "callback_number" -Default "")
+                        medications_raw         = $medsRaw
+                        urgency_note_raw        = [string](Get-ObjectPropertyValue -Object $callNormalizedInput -Name "urgency_note" -Default "")
+                        pharmacy_raw            = [string](Get-ObjectPropertyValue -Object $callNormalizedInput -Name "pharmacy" -Default "")
+                        caller_for_raw          = [string](Get-ObjectPropertyValue -Object $callNormalizedInput -Name "caller_for" -Default "self")
+                        raw_transcript          = $rawTranscript
+                        call_transcript_summary = [string](Get-ObjectPropertyValue -Object $call -Name "transcript_summary" -Default "")
+                    }
+
+                    Write-Host "Pathway_responses missing  -  running Ollama extraction for $callId"
+                    $ollamaResult = Invoke-JeffOllamaExtraction -Model $ollamaModel -Call $callAdapter -OutputsDir $outputsOllamaRaw
+                    $llmData = $ollamaResult.llm_data
+
+                    if ($null -ne $llmData) {
+                        $extractedPathway = Get-ObjectPropertyValue -Object $llmData -Name "pathway_responses" -Default $null
+                        if ($null -ne $extractedPathway) {
+                            $pathwayResponses = $extractedPathway
+                            if ($call.PSObject.Properties["pathway_responses"]) {
+                                $call.PSObject.Properties["pathway_responses"].Value = $pathwayResponses
+                            } else {
+                                $call | Add-Member -NotePropertyName "pathway_responses" -NotePropertyValue $pathwayResponses -Force
+                            }
+                            Write-Host "Ollama pathway extraction succeeded for $callId"
+                        }
+                    }
+                } catch {
+                    Write-Host "Ollama pathway extraction failed (non-fatal): $($_.Exception.Message)"
+                }
+            }
+        }
+
         $identityResponses = Get-ObjectPropertyValue -Object $pathwayResponses -Name "identity" -Default $null
         $prescriptionResponses = Get-ObjectPropertyValue -Object $pathwayResponses -Name "prescription" -Default $null
         $urgencyAssessment = Get-ObjectPropertyValue -Object $pathwayResponses -Name "urgency_assessment" -Default $null

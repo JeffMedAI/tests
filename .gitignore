@@ -44,3 +44,7 @@ Thumbs.db
 
 # Local manual UI backups
 *.pre_figma_ui_backup
+
+# Temp / test working dirs
+.tmp/
+JeffLocal.tmppytest/

@@ -16,7 +16,7 @@
       {% if case.is_emergency %}<span class="badge danger">🚨 Emergency</span>{% endif %}
       {% if case.red_flags_present %}<span class="badge danger">RED FLAG</span>{% endif %}
       {% if not case.is_resolved and case.priority and case.priority not in ('normal', 'routine', '999 Emergency') %}
-        <span class="badge warn">{{ case.priority|title }}</span>
+        <span class="badge review">{{ case.priority|title }}</span>
       {% endif %}
       <span class="badge {{ case.request_type }}">{{ case.request_type_label }}</span>
     </div>
@@ -51,7 +51,7 @@
     <span class="cd-meta-label">Received</span>
     <span class="cd-meta-value">{{ case.timestamp_display }}</span>
     {% if case.age_label_short %}
-      <span class="cd-meta-label">Age</span>
+      <span class="cd-meta-label">Call age</span>
       <span class="cd-meta-value cd-meta-value cd-age-{{ case.age_class }}">{{ case.age_label_short }}</span>
     {% endif %}
     {% if case.duration_label %}
@@ -158,6 +158,18 @@
         <p class="cd-card-body">{{ case.staff_task_display }}</p>
       </div>
 
+      {# EMIS Workflow Steps #}
+      {% if emis_steps %}
+      <div class="cd-card cd-emis-steps">
+        <div class="cd-card-hd">EMIS Workflow Steps</div>
+        <ol class="cd-emis-list">
+          {% for step in emis_steps %}
+            <li>{{ step }}</li>
+          {% endfor %}
+        </ol>
+      </div>
+      {% endif %}
+
       {# Patient Record Note #}
       <div class="cd-card">
         <div class="cd-card-hd">
@@ -175,14 +187,27 @@
         <p class="warning">Processing output missing — staff review required.</p>
       {% endif %}
 
-      {# Locked fields #}
+      {# Locked fields — categorised read-only table #}
       <details class="cd-locked-fields cd-card">
         <summary>Locked JeffLocal fields</summary>
-        <dl class="field-list" style="margin-top:10px">
-          {% for field in display_fields %}
-            <dt>{{ field.label }}</dt><dd>{{ field.value | display_ts }}</dd>
-          {% endfor %}
-        </dl>
+        <p class="cd-locked-note">System-generated data. Read-only. Edit access is restricted to the pipeline.</p>
+        {% for group in display_field_groups %}
+          <div class="cd-locked-group">
+            <div class="cd-locked-group-title">{{ group.title }}</div>
+            <table class="cd-locked-table">
+              <tbody>
+                {% for row in group.rows %}
+                  {% if row.value %}
+                  <tr>
+                    <th class="cd-locked-th">{{ row.label }}</th>
+                    <td class="cd-locked-td {% if row.key in ['task_body','staff_task_body','ai_summary','patient_record_note','verification_reason'] %}cd-locked-wrap{% endif %}">{{ row.value }}</td>
+                  </tr>
+                  {% endif %}
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% endfor %}
       </details>
 
     </div>{# end cd-content-main #}
@@ -214,14 +239,14 @@
       <div class="cd-card">
         <div class="cd-card-hd">Safety &amp; Status</div>
         <div class="cd-status-badges">
-          <span class="badge priority {{ 'danger' if case.priority == '999 Emergency' else 'priority-routine' if case.priority == 'routine' else 'review' }}">{{ case.priority }}</span>
+          <span class="badge {{ 'danger' if case.priority == '999 Emergency' else 'priority-routine' if case.priority == 'routine' else 'review' }}">{{ case.priority }}</span>
           <span class="badge {% if case.red_flags_present %}danger{% else %}neutral{% endif %}">{{ "Red Flag" if case.red_flags_present else "No Red Flag" }}</span>
           <span class="badge {% if case.safe_to_queue %}safe{% else %}not-safe{% endif %}">{{ case.safe_to_queue_label }}</span>
           {% if not case.is_resolved %}
           <span class="badge {% if case.staff_review_required %}review{% else %}neutral{% endif %}">{{ case.staff_review_label }}</span>
-          <span class="badge {% if case.identity_review_required %}identity{% else %}neutral{% endif %}">Verification: {{ case.verification_status }}</span>
+          <span class="badge {% if case.identity_review_required %}identity{% else %}neutral{% endif %}">ID: {{ case.verification_status | replace('_', ' ') | title }}</span>
           {% else %}
-          <span class="badge neutral" title="Verification status at time of resolution">Verification: {{ case.verification_status }}</span>
+          <span class="badge neutral" title="Verification status at time of resolution">ID: {{ case.verification_status | replace('_', ' ') | title }}</span>
           {% endif %}
         </div>
       </div>
@@ -250,7 +275,7 @@
           <div class="cd-card-hd">Staff Workflow</div>
           <form method="post" action="/case/{{ case.call_id }}/update" class="cd-workflow-form">
             <input type="hidden" name="return_url" value="{{ return_url }}">
-            {% if detail_error %}
+            {% if detail_error and not detail_error_modal %}
               <p class="warning" role="alert">{{ detail_error }}</p>
             {% endif %}
             <div class="cd-workflow-meta">
@@ -420,6 +445,17 @@
     </div>
   </div>
 </div>
+
+{% if detail_error_modal %}
+<div class="auth-modal-backdrop" id="cd-error-modal">
+  <div class="auth-modal" role="dialog" aria-modal="true" aria-labelledby="cd-error-modal-title">
+    <div class="auth-modal-icon">⚠️</div>
+    <h2 id="cd-error-modal-title">Action required</h2>
+    <p>{{ detail_error }}</p>
+    <button class="auth-modal-ok" onclick="document.getElementById('cd-error-modal').remove(); document.getElementById('outcome_notes').focus();">OK</button>
+  </div>
+</div>
+{% endif %}
 
 </div>{# end page-scroll #}
 {% endblock %}

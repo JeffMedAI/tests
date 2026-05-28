@@ -1,166 +1,265 @@
-﻿{% extends "base.html" %}
-{% block title %}Staff - JeffLocal{% endblock %}
+{% extends "base.html" %}
+{% block title %}Staff Management — JeffLocal{% endblock %}
+
 {% block content %}
 <div class="page-scroll">
-<section class="page-head app-header">
-  <div>
-    <span class="page-kicker">Team operations</span>
-    <h1>Staff Management</h1>
-    <p class="muted">Demo staff selector is for local demonstration. Production login will use email/password and invitation flow.</p>
-  </div>
-  <div class="header-actions">
-    <a class="button-link secondary-page" href="/reports">Team Metrics</a>
-  </div>
-</section>
 
-<section class="insight-grid">
-  <div class="panel">
-    <div class="section-head"><h2>Staff Workload</h2><span class="muted">Current assignments</span></div>
-    <p class="muted">Use the Requests page to assign active cases to staff and track in-progress workload.</p>
-  </div>
-  <div class="panel">
-    <div class="section-head"><h2>Assignments</h2><span class="muted">Operational view</span></div>
-    <p class="muted">Assigned, in-progress, resolved, and reopened counts are available from the reports dashboard.</p>
-  </div>
-  <div class="panel">
-    <div class="section-head"><h2>Alerts Acknowledged</h2><span class="muted">Audit backed</span></div>
-    <p class="muted">Alert acknowledgements are recorded locally in the dashboard audit trail.</p>
-  </div>
-</section>
+  <section class="page-head app-header">
+    <div>
+      <span class="page-kicker">Team operations</span>
+      <h1 class="page-title">Staff Management</h1>
+      <p class="page-subtitle">Manage staff accounts, roles, and credentials.</p>
+    </div>
+    <div class="header-actions">
+      {% if can_manage_staff %}
+      <button class="btn btn-primary btn-sm" id="add-staff-toggle" type="button">+ Add Staff</button>
+      {% endif %}
+      <a class="btn btn-outline btn-sm" href="/reports">Team Metrics</a>
+    </div>
+  </section>
 
-{% if can_manage_staff %}
-<section class="panel">
-  <h2>Add Staff Member</h2>
-  <form method="post" action="/staff/create" class="search-sort-form">
-    <label>Display Name
-      <input name="display_name" required>
-    </label>
-    <label>Email Optional
-      <input name="email" type="email">
-    </label>
-    <label>Role
-      <select name="role">
-        {% for role in roles %}
-          <option value="{{ role }}">{{ role|title }}</option>
-        {% endfor %}
-      </select>
-    </label>
-    <button type="submit">Create</button>
-  </form>
-</section>
-
-<section class="panel">
-  <h2>Create Future Invitation Placeholder</h2>
-  <p class="muted">Email sending not enabled yet.</p>
-  <form method="post" action="/staff/invitations/create" class="search-sort-form">
-    <label>Email
-      <input name="email" type="email" required>
-    </label>
-    <label>Role
-      <select name="role">
-        {% for role in roles %}
-          <option value="{{ role }}">{{ role|title }}</option>
-        {% endfor %}
-      </select>
-    </label>
-    <button type="submit">Create Pending Invitation</button>
-  </form>
-</section>
-{% endif %}
-
-{% macro staff_table(title, rows) %}
-<section class="panel alert-table-wrap">
-  <h2>{{ title }}</h2>
-  <table class="alert-table">
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Email</th>
-        <th>Role</th>
-        <th>Active</th>
-        <th>Updated</th>
-        {% if can_manage_staff %}
-        <th>Save</th>
-        <th>Action</th>
-        {% endif %}
-      </tr>
-    </thead>
-    <tbody>
-      {% for staff in rows %}
-      <tr>
-        {% if can_manage_staff %}
-        <form method="post" action="/staff/{{ staff.id }}/edit">
-          <td><input name="display_name" value="{{ staff.display_name }}" required></td>
-          <td><input name="email" type="email" value="{{ staff.email or '' }}"></td>
-          <td>
-            <select name="role">
-              {% for role in roles %}
-                <option value="{{ role }}" {% if staff.role == role %}selected{% endif %}>{{ role|title }}</option>
-              {% endfor %}
-            </select>
-          </td>
-          <td><label class="check-row"><input type="checkbox" name="active" value="yes" {% if staff.active %}checked{% endif %}> Active</label></td>
-          <td>{{ staff.updated_at|display_ts }}</td>
-          <td><button type="submit">Save</button></td>
+  {# ── Add Staff Form (collapsed by default) ──────────────────────── #}
+  {% if can_manage_staff %}
+  <div id="add-staff-panel" class="staff-add-panel" style="display:none;">
+    <div class="panel" style="margin:0 24px 20px;">
+      <div class="panel-header" style="display:flex;align-items:center;justify-content:space-between;">
+        <span class="panel-title">New Staff Member</span>
+        <button type="button" class="btn btn-outline btn-sm" id="add-staff-close">Cancel</button>
+      </div>
+      <div class="panel-body">
+        <form method="post" action="/staff/create" class="staff-create-form">
+          <div class="staff-form-row">
+            <div class="form-group">
+              <label class="form-label">Display Name <span style="color:#dc2626">*</span></label>
+              <input name="display_name" class="form-input" placeholder="e.g. Jane Smith" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Username <span style="color:#dc2626">*</span></label>
+              <input name="username" class="form-input" placeholder="e.g. jane.smith" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Email</label>
+              <input name="email" type="email" class="form-input" placeholder="jane@practice.nhs.uk">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Role <span style="color:#dc2626">*</span></label>
+              <select name="role" class="form-input">
+                {% for role in roles %}
+                  <option value="{{ role }}">{{ role|title }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Password <span style="color:#dc2626">*</span></label>
+              <input name="password" type="password" class="form-input" placeholder="Min 8 characters" minlength="8" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">PIN <span style="color:#dc2626">*</span></label>
+              <input name="pin" type="tel" class="form-input" inputmode="numeric" pattern="[0-9]{4,6}" maxlength="6" placeholder="4–6 digits" required>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary btn-sm">Create Staff Member</button>
         </form>
-        <td>
-          {% if staff.active %}
-          <form method="post" action="/staff/{{ staff.id }}/deactivate">
-            <button type="submit">Deactivate</button>
-          </form>
-          {% else %}
-          <form method="post" action="/staff/{{ staff.id }}/reactivate">
-            <button type="submit">Reactivate</button>
-          </form>
-          {% endif %}
-        </td>
-        {% else %}
-          <td>{{ staff.display_name }}</td>
-          <td>{{ staff.email or "" }}</td>
-          <td>{{ staff.role|title }}</td>
-          <td>{{ "Yes" if staff.active else "No" }}</td>
-          <td>{{ staff.updated_at|display_ts }}</td>
-        {% endif %}
-      </tr>
-      {% else %}
-      <tr><td colspan="{% if can_manage_staff %}7{% else %}5{% endif %}" class="muted">No staff in this section.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</section>
-{% endmacro %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
 
-{{ staff_table("Active Staff", active_staff_users) }}
-{{ staff_table("Inactive Staff", inactive_staff_users) }}
+  {# ── Active Staff Cards ─────────────────────────────────────────── #}
+  <div class="staff-section-label">Active Staff ({{ active_staff_users|length }})</div>
+  <div class="staff-cards-grid">
+    {% for staff in active_staff_users %}
+    <div class="staff-card">
+      <div class="staff-card-top">
+        <div class="avatar avatar-md" style="flex-shrink:0;">{{ (staff.display_name or 'U')[0]|upper }}</div>
+        <div class="staff-card-info">
+          <div class="staff-card-name">{{ staff.display_name or '—' }}</div>
+          <div class="staff-card-username">@{{ staff.username or '—' }}</div>
+          <span class="badge badge-role-{{ staff.role }}">{{ staff.role|title }}</span>
+        </div>
+        <div class="staff-card-status">
+          <span class="status-pill"><i class="health-dot ok"></i>Active</span>
+        </div>
+      </div>
+      <div class="staff-card-meta">
+        <span>{{ staff.email or 'No email' }}</span>
+        <span>Last login: {{ staff.last_login_at[:10] if staff.last_login_at else 'Never' }}</span>
+      </div>
+      {% if can_manage_staff %}
+      <details class="staff-card-edit">
+        <summary class="staff-card-edit-toggle">Edit</summary>
+        <form method="post" action="/staff/{{ staff.id }}/edit" class="staff-edit-form">
+          <div class="staff-form-row">
+            <div class="form-group">
+              <label class="form-label">Display Name</label>
+              <input name="display_name" class="form-input" value="{{ staff.display_name }}" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Email</label>
+              <input name="email" type="email" class="form-input" value="{{ staff.email or '' }}">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Role</label>
+              <select name="role" class="form-input">
+                {% for role in roles %}
+                  <option value="{{ role }}" {% if staff.role == role %}selected{% endif %}>{{ role|title }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">
+                <input type="checkbox" name="active" value="yes" {% if staff.active %}checked{% endif %}> Active
+              </label>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button type="submit" class="btn btn-primary btn-sm">Save Changes</button>
+            <form method="post" action="/staff/{{ staff.id }}/deactivate" style="display:inline;">
+              <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Deactivate {{ staff.display_name }}?')">Deactivate</button>
+            </form>
+          </div>
+        </form>
+      </details>
+      {% endif %}
+    </div>
+    {% else %}
+    <div class="staff-empty-state">No active staff accounts yet.</div>
+    {% endfor %}
+  </div>
 
-{% if can_manage_staff %}
-<section class="panel alert-table-wrap">
-  <h2>Pending Invitations</h2>
-  <table class="alert-table">
-    <thead><tr><th>Email</th><th>Role</th><th>Status</th><th>Invited By</th><th>Created</th><th>Action</th></tr></thead>
-    <tbody>
-      {% for invitation in invitations %}
-      <tr>
-        <td>{{ invitation.email }}</td>
-        <td>{{ invitation.role }}</td>
-        <td>{{ invitation.status }}</td>
-        <td>{{ invitation.invited_by or "" }}</td>
-        <td>{{ invitation.created_at|display_ts }}</td>
-        <td>
-          {% if invitation.status == "pending" %}
-          <form method="post" action="/staff/invitations/{{ invitation.id }}/cancel">
-            <button type="submit">Cancel Invitation</button>
-          </form>
-          {% endif %}
-        </td>
-      </tr>
-      {% else %}
-      <tr><td colspan="6" class="muted">No invitations.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</section>
-{% endif %}
+  {# ── Inactive Staff ─────────────────────────────────────────────── #}
+  {% if inactive_staff_users %}
+  <div class="staff-section-label" style="margin-top:24px">Inactive Staff ({{ inactive_staff_users|length }})</div>
+  <div class="staff-cards-grid">
+    {% for staff in inactive_staff_users %}
+    <div class="staff-card staff-card-inactive">
+      <div class="staff-card-top">
+        <div class="avatar avatar-md" style="flex-shrink:0;opacity:.5;">{{ (staff.display_name or 'U')[0]|upper }}</div>
+        <div class="staff-card-info">
+          <div class="staff-card-name" style="opacity:.6;">{{ staff.display_name or '—' }}</div>
+          <div class="staff-card-username" style="opacity:.5;">@{{ staff.username or '—' }}</div>
+          <span class="badge badge-role-{{ staff.role }}" style="opacity:.6;">{{ staff.role|title }}</span>
+        </div>
+        <div class="staff-card-status">
+          <span class="status-pill" style="opacity:.7;"><i class="health-dot warn"></i>Inactive</span>
+        </div>
+      </div>
+      {% if can_manage_staff %}
+      <form method="post" action="/staff/{{ staff.id }}/reactivate" style="margin-top:10px;">
+        <button type="submit" class="btn btn-outline btn-sm">Reactivate</button>
+      </form>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {# ── Pending Invitations ────────────────────────────────────────── #}
+  {% if can_manage_staff and invitations %}
+  <div class="staff-section-label" style="margin-top:24px">Pending Invitations</div>
+  <div class="panel" style="margin:0 24px 24px;">
+    <table class="settings-diag-grid" style="width:100%;border-collapse:collapse;">
+      <thead>
+        <tr style="border-bottom:1px solid var(--line);">
+          <th style="text-align:left;padding:8px 12px;font-size:11px;font-weight:600;color:var(--ink-subtle);">Email</th>
+          <th style="text-align:left;padding:8px 12px;font-size:11px;font-weight:600;color:var(--ink-subtle);">Role</th>
+          <th style="text-align:left;padding:8px 12px;font-size:11px;font-weight:600;color:var(--ink-subtle);">Status</th>
+          <th style="text-align:left;padding:8px 12px;font-size:11px;font-weight:600;color:var(--ink-subtle);">Created</th>
+          <th style="padding:8px 12px;"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for invitation in invitations %}
+        <tr style="border-bottom:1px solid var(--line);">
+          <td style="padding:10px 12px;font-size:13px;">{{ invitation.email }}</td>
+          <td style="padding:10px 12px;font-size:13px;">{{ invitation.role|title }}</td>
+          <td style="padding:10px 12px;font-size:13px;text-transform:capitalize;">{{ invitation.status }}</td>
+          <td style="padding:10px 12px;font-size:12px;color:var(--ink-subtle);">{{ invitation.created_at|display_ts }}</td>
+          <td style="padding:10px 12px;">
+            {% if invitation.status == 'pending' %}
+            <form method="post" action="/staff/invitations/{{ invitation.id }}/cancel">
+              <button type="submit" class="btn btn-danger btn-sm">Cancel</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
 </div>
-{% endblock %}
 
+<style>
+.staff-section-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .7px;
+  color: var(--ink-subtle);
+  padding: 0 24px;
+  margin-bottom: 10px;
+}
+.staff-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 12px;
+  padding: 0 24px;
+}
+.staff-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: box-shadow .12s;
+}
+.staff-card:hover { box-shadow: var(--shadow-sm); }
+.staff-card-inactive { opacity: .8; }
+.staff-card-top { display: flex; align-items: flex-start; gap: 12px; }
+.avatar-md { width: 42px; height: 42px; font-size: 18px; }
+.staff-card-info { flex: 1; min-width: 0; }
+.staff-card-name { font-size: 15px; font-weight: 700; color: var(--ink); }
+.staff-card-username { font-size: 12px; color: var(--ink-subtle); margin: 2px 0 6px; }
+.staff-card-status { flex-shrink: 0; }
+.staff-card-meta { display: flex; flex-direction: column; gap: 2px; font-size: 11px; color: var(--ink-subtle); padding-top: 6px; border-top: 1px solid var(--line); }
+.staff-card-edit { margin-top: 4px; }
+.staff-card-edit-toggle { font-size: 12px; font-weight: 600; color: var(--accent); cursor: pointer; list-style: none; padding: 4px 0; }
+.staff-card-edit-toggle::-webkit-details-marker { display: none; }
+.staff-edit-form { margin-top: 10px; }
+.staff-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+.staff-create-form .staff-form-row { grid-template-columns: repeat(3, 1fr); }
+.badge-role-admin    { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; border-radius: 5px; font-size: 11px; font-weight: 600; padding: 2px 8px; }
+.badge-role-staff    { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; border-radius: 5px; font-size: 11px; font-weight: 600; padding: 2px 8px; }
+.badge-role-readonly { background: #f3f4f6; color: #6b7280; border: 1px solid #e5e7eb; border-radius: 5px; font-size: 11px; font-weight: 600; padding: 2px 8px; }
+.btn-danger { background: #dc2626; color: #fff; border: none; border-radius: 7px; font-weight: 600; cursor: pointer; font-size: 13px; padding: 7px 14px; }
+.btn-danger:hover { background: #b91c1c; }
+.staff-add-panel { margin-bottom: 4px; }
+.staff-empty-state { padding: 32px 24px; text-align: center; color: var(--ink-subtle); font-size: 13px; grid-column: 1 / -1; }
+@media (max-width: 700px) {
+  .staff-form-row, .staff-create-form .staff-form-row { grid-template-columns: 1fr; }
+}
+</style>
+
+<script>
+var addBtn   = document.getElementById('add-staff-toggle');
+var addPanel = document.getElementById('add-staff-panel');
+var closeBtn = document.getElementById('add-staff-close');
+if (addBtn && addPanel) {
+  addBtn.addEventListener('click', function() {
+    addPanel.style.display = addPanel.style.display === 'none' ? 'block' : 'none';
+    addBtn.textContent = addPanel.style.display === 'none' ? '+ Add Staff' : '— Close';
+  });
+}
+if (closeBtn && addPanel) {
+  closeBtn.addEventListener('click', function() {
+    addPanel.style.display = 'none';
+    if (addBtn) addBtn.textContent = '+ Add Staff';
+  });
+}
+</script>
+
+{% endblock %}

@@ -31,45 +31,42 @@
     <div class="topbar-center">{% block topbar_search %}{% endblock %}</div>
 
     <div class="topbar-actions">
+      {% if active_nav in ['dashboard', 'requests'] %}
+      <button id="topbar-import-btn" class="topbar-import-btn" type="button" title="Pull new handoff files into the dashboard">Import</button>
+      {% endif %}
       <a href="/alerts" class="topbar-icon-btn" title="View Alerts" aria-label="Alerts">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
       </a>
 
       <div class="topbar-divider"></div>
 
-      <div class="topbar-user">
-        <div class="topbar-user-info">
-          <span class="topbar-user-name">
-            {%- if current_staff is defined and current_staff and not current_staff.demo_fallback -%}
-              {{ current_staff.display_name }}
-            {%- else -%}
-              demo_user
-            {%- endif -%}
-          </span>
-          <span class="topbar-user-role">
-            {%- if current_staff is defined and current_staff -%}
-              {{ current_staff.role|title }}
-            {%- else -%}
-              Staff
-            {%- endif -%}
-          </span>
-        </div>
-        <div class="avatar" aria-hidden="true">
-          {%- if current_staff is defined and current_staff and current_staff.display_name -%}
-            {{ current_staff.display_name[0]|upper }}
-          {%- else -%}U{%- endif -%}
-        </div>
-        {%- if staff_users is defined and staff_users %}
-        <form method="post" action="/staff/select" class="staff-switch-form">
-          <input type="hidden" name="next_url" value="{{ request.url.path }}{% if request.url.query %}?{{ request.url.query }}{% endif %}">
-          <select name="staff_id" onchange="this.form.submit()" aria-label="Switch staff member" class="staff-switch-select">
-            <option value="">demo_user</option>
-            {% for su in staff_users %}
-              <option value="{{ su.id }}" {% if current_staff and su.id == current_staff.id %}selected{% endif %}>{{ su.display_name }}</option>
-            {% endfor %}
-          </select>
-        </form>
-        {%- endif %}
+      <div class="topbar-user" id="topbar-user-menu-wrap">
+        <a href="/profile" class="topbar-user-link" title="Your profile">
+          <div class="topbar-user-info">
+            <span class="topbar-user-name">
+              {%- if current_staff is defined and current_staff and not current_staff.demo_fallback -%}
+                {{ current_staff.display_name }}
+              {%- else -%}
+                demo_user
+              {%- endif -%}
+            </span>
+            <span class="topbar-user-role">
+              {%- if current_staff is defined and current_staff -%}
+                {{ current_staff.role|title }}
+              {%- else -%}
+                Staff
+              {%- endif -%}
+            </span>
+          </div>
+          <div class="avatar" aria-hidden="true">
+            {%- if current_staff is defined and current_staff and current_staff.display_name -%}
+              {{ current_staff.display_name[0]|upper }}
+            {%- else -%}U{%- endif -%}
+          </div>
+        </a>
+        <a href="/logout" class="topbar-signout-btn" title="Sign out">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        </a>
       </div>
     </div>
   </header>

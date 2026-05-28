@@ -118,7 +118,43 @@ def init_db(conn: sqlite3.Connection) -> None:
             demo_pin_hash TEXT,
             active INTEGER NOT NULL DEFAULT 1,
             created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL
+            updated_at TEXT NOT NULL,
+            username TEXT,
+            password_hash TEXT,
+            pin_hash TEXT,
+            failed_attempts INTEGER NOT NULL DEFAULT 0,
+            locked_until TEXT,
+            last_login_at TEXT,
+            must_change_password INTEGER NOT NULL DEFAULT 0
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS sessions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            token TEXT NOT NULL UNIQUE,
+            user_id INTEGER NOT NULL,
+            created_at TEXT NOT NULL,
+            last_active_at TEXT NOT NULL,
+            expires_at TEXT NOT NULL,
+            ip_address TEXT,
+            user_agent TEXT,
+            FOREIGN KEY (user_id) REFERENCES staff_users(id) ON DELETE CASCADE
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS auth_reset_tokens (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            token TEXT NOT NULL UNIQUE,
+            token_type TEXT NOT NULL DEFAULT 'password',
+            created_at TEXT NOT NULL,
+            expires_at TEXT NOT NULL,
+            used INTEGER NOT NULL DEFAULT 0,
+            FOREIGN KEY (user_id) REFERENCES staff_users(id) ON DELETE CASCADE
         )
         """
     )
@@ -156,6 +192,22 @@ def init_db(conn: sqlite3.Connection) -> None:
         )
         """
     )
+    # ── Migrate staff_users auth columns (added 2026-05-22) ───────────────────
+    staff_cols = {row["name"] for row in conn.execute("PRAGMA table_info(staff_users)").fetchall()}
+    _staff_auth_cols = {
+        "username": "TEXT",
+        "password_hash": "TEXT",
+        "pin_hash": "TEXT",
+        "failed_attempts": "INTEGER NOT NULL DEFAULT 0",
+        "locked_until": "TEXT",
+        "last_login_at": "TEXT",
+        "must_change_password": "INTEGER NOT NULL DEFAULT 0",
+    }
+    for col, defn in _staff_auth_cols.items():
+        if col not in staff_cols:
+            conn.execute(f"ALTER TABLE staff_users ADD COLUMN {col} {defn}")
+
+    # ── Migrate cases columns ──────────────────────────────────────────────────
     columns = {
         row["name"]
         for row in conn.execute("PRAGMA table_info(cases)").fetchall()

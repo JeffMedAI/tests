@@ -21,6 +21,11 @@
     <span class="sidebar-hd-title">Analytics</span>
     <button class="sidebar-toggle" id="sidebar-toggle-btn" aria-label="Toggle sidebar" title="Collapse sidebar">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      <span class="sidebar-alert-badge{% if not urgent_attention.red_flags or urgent_attention.red_flags == 0 %} is-hidden{% endif %}"
+            id="sidebar-alert-badge"
+            aria-label="{{ urgent_attention.red_flags }} critical issue{{ 's' if urgent_attention.red_flags != 1 else '' }}"
+            title="{{ urgent_attention.red_flags }} critical issue{{ 's' if urgent_attention.red_flags != 1 else '' }} — click to expand sidebar"
+      >{{ urgent_attention.red_flags if urgent_attention.red_flags else '' }}</span>
     </button>
   </div>
 
@@ -38,14 +43,16 @@
 
     {# ── Queue status ── #}
     {% if queue_status_card is defined %}
-    <div class="analytics-card">
-      <div class="sidebar-section-hd" style="margin-bottom:8px">📊 Quick Status</div>
+    <div class="analytics-card" title="Quick Status" data-metric=" · {{ queue_status_card.open }} open">
+      <div class="card-collapsed-icon" title="Quick Status">📊</div>
+      <div class="card-full-content"></div>
+      <div class="sidebar-section-hd">📊 Quick Status</div>
       <div class="analytics-row">
         <span class="ar-label"><span class="ar-dot blue"></span>Open</span>
         <span class="ar-value">{{ queue_status_card.open }}</span>
       </div>
       <div class="analytics-row">
-        <span class="ar-label"><span class="ar-dot" style="background:var(--danger)"></span>Overdue</span>
+        <span class="ar-label"><span class="ar-dot danger"></span>Overdue</span>
         <span class="ar-value {{ 'danger-text' if queue_status_card.overdue else '' }}">{{ queue_status_card.overdue }}</span>
       </div>
       <div class="analytics-row">
@@ -53,7 +60,7 @@
         <span class="ar-value">{{ queue_status_card.resolved_today }}</span>
       </div>
       <div class="analytics-row">
-        <span class="ar-label"><span class="ar-dot" style="background:var(--danger)"></span>Critical</span>
+        <span class="ar-label"><span class="ar-dot danger"></span>Critical</span>
         <span class="ar-value {{ 'danger-text' if queue_status_card.red_flags else '' }}">{{ queue_status_card.red_flags }}</span>
       </div>
     </div>
@@ -61,60 +68,58 @@
 
     {# ── Critical Issues alert card ── #}
     {% if urgent_attention.red_flags > 0 %}
-    <a class="red-flag-card" href="{{ filter_links[1].url if filter_links|length > 1 else '/requests?filter=urgent_red_flags' }}" style="background-color: rgba(220, 38, 38, 0.05); border: 2px solid #dc2626;">
+    <a class="red-flag-card" href="{{ filter_links[1].url if filter_links|length > 1 else '/requests?filter=urgent_red_flags' }}">
       <span class="rf-icon">⚠️</span>
       <div class="rf-body">
-        <span class="rf-label" style="color: #dc2626; font-weight: bold;">Critical Issues</span>
-        <span class="rf-value" style="color: #dc2626; font-size: 1.5em;">{{ urgent_attention.red_flags }}</span>
+        <span class="rf-label">Critical Issues</span>
+        <span class="rf-value">{{ urgent_attention.red_flags }}</span>
         <span class="rf-sub">Needs immediate attention</span>
       </div>
       <span class="rf-value-coll">{{ urgent_attention.red_flags }}</span>
     </a>
     {% else %}
-    <div class="analytics-card" style="background-color: rgba(34, 197, 94, 0.05); border: 1px solid #22c55e;">
-      <span style="color: #22c55e; font-weight: bold;">✓ All Clear</span>
-      <span style="display: block; font-size: 0.9em; color: #666; margin-top: 4px;">No critical issues</span>
+    <div class="analytics-card sidebar-card-clear">
+      <span class="sidebar-card-clear-label">✓ All Clear</span>
+      <span class="sidebar-card-clear-sub">No critical issues</span>
     </div>
     {% endif %}
 
-    {# ── Team performance ── #}
-    <div class="analytics-card">
-      <div class="sidebar-section-hd" style="margin-bottom:8px">Team Performance</div>
-      <div class="analytics-row">
-        <span class="ar-label"><span class="ar-dot green"></span>Resolved Today</span>
-        <span class="ar-value">{{ staff_activity.team.resolved_today }}</span>
+    {# ── Staff Workload (live) ── #}
+    <div class="analytics-card" title="Staff Workload" id="staff-workload-card" data-metric=" · {{ staff_workload_list|length }} staff">
+      <div class="card-collapsed-icon">👥</div>
+      <div class="sidebar-section-hd">
+        Staff Workload
+        <span id="staff-workload-refresh-ts" class="sidebar-card-ts"></span>
       </div>
-      <div class="analytics-row">
-        <span class="ar-label"><span class="ar-dot amber"></span>In Progress</span>
-        <span class="ar-value">{{ staff_activity.team.in_progress }}</span>
-      </div>
-      <div class="analytics-row">
-        <span class="ar-label"><span class="ar-dot blue"></span>Alerts Ack</span>
-        <span class="ar-value">{{ staff_activity.team.alerts_acknowledged }}</span>
-      </div>
-      {% if staff_activity.team.average_turnaround %}
-      <div class="progress-block">
-        <div class="progress-hd">
-          <span class="progress-hd-label">Avg Response Time</span>
-          <span class="progress-hd-value" title="Average response time: {{ staff_activity.team.average_turnaround }} min">
-            {% set hours = staff_activity.team.average_turnaround // 60 %}
-            {% if hours > 24 %}
-              {{ (hours // 24) }}d {{ (hours % 24) }}h
-            {% elif hours > 0 %}
-              {{ hours }}h {{ (staff_activity.team.average_turnaround % 60) }}m
-            {% else %}
-              {{ staff_activity.team.average_turnaround }} min
-            {% endif %}
+      <div id="staff-workload-list">
+        {# Seeded with server-side data; refreshed by JS every 60s #}
+        {% for su in staff_workload_list|default([]) %}
+        <div class="staff-workload-row">
+          <span class="staff-workload-name" title="{{ su.name }}">{{ su.name }}</span>
+          <span class="staff-workload-pills">
+            <span class="swp swp-open"   title="Open cases">{{ su.open }}</span>
+            <span class="swp swp-active" title="In progress">{{ su.in_progress }}</span>
+            <span class="swp swp-done"   title="Resolved today">{{ su.resolved_today }}</span>
           </span>
         </div>
+        {% else %}
+        <div class="analytics-row ar-row--muted">Loading…</div>
+        {% endfor %}
       </div>
-      {% endif %}
+      <div class="analytics-row sidebar-legend-row">
+        <span class="ar-label sidebar-legend-label">
+          <span class="ar-dot legend-open"></span>Open
+          <span class="ar-dot legend-active"></span>Active
+          <span class="ar-dot legend-done"></span>Done
+        </span>
+      </div>
     </div>
 
     {# ── Call analytics ── #}
     {% if call_analytics_card is defined %}
-    <div class="analytics-card">
-      <div class="sidebar-section-hd" style="margin-bottom:8px">Call Analytics</div>
+    <div class="analytics-card" title="Call Analytics" data-metric=" · {{ call_analytics_card.total_calls }} calls">
+      <div class="card-collapsed-icon">📞</div>
+      <div class="sidebar-section-hd">Call Analytics</div>
       <div class="analytics-row">
         <span class="ar-label">Total Calls</span>
         <span class="ar-value">{{ call_analytics_card.total_calls }}</span>
@@ -129,7 +134,7 @@
       </div>
       <div class="analytics-row">
         <span class="ar-label">Success Rate</span>
-        <span class="ar-value" style="color:var(--success)">{{ call_analytics_card.success_rate }}%</span>
+        <span class="ar-value success">{{ call_analytics_card.success_rate }}%</span>
       </div>
       {% if call_analytics_card.avg_turnaround %}
       <div class="analytics-row">
@@ -150,8 +155,9 @@
     {% endif %}
 
     {# ── Live workload ── #}
-    <div class="analytics-card">
-      <div class="sidebar-section-hd" style="margin-bottom:8px">Live Workload</div>
+    <div class="analytics-card" title="Live Workload" data-metric=" · {{ workload_card.incoming }} queued">
+      <div class="card-collapsed-icon">⚙️</div>
+      <div class="sidebar-section-hd">Live Workload</div>
       <div class="analytics-row">
         <span class="ar-label"><span class="ar-dot blue"></span>Incoming Queue</span>
         <span class="ar-value">{{ workload_card.incoming }}</span>
@@ -166,7 +172,7 @@
       </div>
       {% if workload_card.failed %}
       <div class="analytics-row">
-        <span class="ar-label"><span class="ar-dot" style="background:var(--danger)"></span>Failed</span>
+        <span class="ar-label"><span class="ar-dot danger"></span>Failed</span>
         <span class="ar-value">{{ workload_card.failed }}</span>
       </div>
       {% endif %}
@@ -235,10 +241,10 @@
         <a class="kpi-card" href="{{ card.url }}" title="Click to view details">
           <span>{{ card.label }}</span>
           <strong>{{ card.value if card.value is not none else "n/a" }}</strong>
-          <small style="opacity: 0.6; font-size: 0.75em;">→ View</small>
+          <small>→ View</small>
         </a>
       {% endfor %}
-      <div class="kpi-card system-health-card" aria-label="System Status" style="opacity: 0.9;">
+      <div class="kpi-card system-health-card" aria-label="System Status">
         <span>System Status</span>
         <div class="health-list">
           <div data-service-key="dashboard"><i class="health-dot {{ system_health.dashboard.state }}"></i>Dashboard <strong>{{ system_health.dashboard.label }}</strong></div>
@@ -473,12 +479,12 @@
           </label>
 
           {# Top: badges + patient info + time #}
-          <div class="card-top" style="padding-left:26px">
+          <div class="card-top">
             <div class="card-top-left">
               <div class="card-badges">
                 <span class="badge {{ case.request_type }}">{{ case.request_type_label }}</span>
                 {% for chip in case.summary_chips %}
-                  <span class="badge {{ chip.class }}">{{ chip.label }}</span>
+                  <span class="badge {{ chip.class }}"{% if chip.tooltip %} title="{{ chip.tooltip }}"{% endif %}>{{ chip.label }}</span>
                 {% endfor %}
               </div>
               <div class="card-patient">
@@ -593,11 +599,11 @@
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.39 2 2 0 0 1 3.58 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.54a16 16 0 0 0 6.29 6.29l.92-.92a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
                 Call
               </button>
-              <button class="panel-btn" id="panel-btn-sms" title="SMS patient (coming soon)" disabled style="opacity:0.45;cursor:not-allowed">
+              <button class="panel-btn" id="panel-btn-sms" title="SMS patient (coming soon)" disabled>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
                 SMS
               </button>
-              <button class="panel-btn" id="panel-btn-gp" title="GP workflow (coming soon)" disabled style="opacity:0.45;cursor:not-allowed">
+              <button class="panel-btn" id="panel-btn-gp" title="GP workflow (coming soon)" disabled>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
                 Send to GP
               </button>
@@ -631,10 +637,9 @@
 
             {# Triage tab #}
             <div data-panel-content="triage" hidden>
-              <div class="panel-section-hd">Staff Task</div>
-              <p class="panel-text" id="panel-staff-task"></p>
-              <div class="panel-section-hd">Patient Record Note</div>
-              <p class="panel-text" id="panel-record-note"></p>
+              <div class="panel-section-hd" id="panel-triage-hd">Pathway Q&amp;A</div>
+              <ul class="panel-pathway-list" id="panel-pathway-list"></ul>
+              <p class="panel-text muted" id="panel-pathway-empty" hidden>No pathway data captured for this call.</p>
             </div>
 
             {# Transcript tab #}
@@ -694,6 +699,14 @@
   </section>
 </div>
 
+<div class="modal-backdrop" id="cd-action-error-modal" hidden>
+  <section class="alert-modal" role="dialog" aria-modal="true" aria-labelledby="cd-action-error-title">
+    <h2 id="cd-action-error-title">Action Failed</h2>
+    <p id="cd-action-error-message"></p>
+    <button type="button" id="cd-action-error-ok">OK</button>
+  </section>
+</div>
+
 {# ── SCRIPTS ─────────────────────────────────────────────────────── #}
 <script>
   // Sidebar collapse toggle with localStorage persistence
@@ -702,13 +715,24 @@
     var btn = document.getElementById('sidebar-toggle-btn');
     if (!sidebar || !btn) return;
     var key = 'jefflocal_sidebar_collapsed';
+
+    function updateToggleLabel(collapsed) {
+      var label = collapsed ? 'Expand sidebar' : 'Collapse sidebar';
+      btn.setAttribute('aria-label', label);
+      btn.setAttribute('title', label);
+    }
+
     // Load saved state from localStorage (persists across sessions)
-    if (localStorage.getItem(key) === 'true') {
+    var startCollapsed = localStorage.getItem(key) === 'true';
+    if (startCollapsed) {
       sidebar.classList.add('is-collapsed');
     }
+    updateToggleLabel(startCollapsed);
+
     btn.addEventListener('click', function () {
       var isCollapsed = sidebar.classList.toggle('is-collapsed');
       localStorage.setItem(key, isCollapsed);
+      updateToggleLabel(isCollapsed);
     });
   })();
 
@@ -1009,12 +1033,12 @@
       // Meta grid
       var ageClass = data.age_class ? 'age-' + data.age_class : '';
       document.getElementById('panel-patient-meta').innerHTML = [
-        metaCell('DOB',      data.dob              || 'n/a'),
+        metaCell('DOB',      data.dob_display        || data.dob              || 'n/a'),
         metaCell('NHS',      data.nhs_number        || 'n/a'),
-        metaCell('Phone',    data.callback_number   || 'n/a'),
+        metaCell('Phone',    data.callback_number_display || data.callback_number || 'n/a'),
         metaCell('EMIS',     data.emis_number       || 'n/a'),
         metaCell('Received', data.time_display || data.timestamp_display || 'n/a'),
-        metaCell('Age',      data.age_label_short   || data.age_label || 'n/a', ageClass),
+        metaCell('Call age', data.age_label_short   || data.age_label || 'n/a', ageClass),
       ].join('');
 
       // AI summary
@@ -1046,11 +1070,23 @@
         suggestedSection.hidden = true;
       }
 
-      // Triage tab
-      document.getElementById('panel-staff-task').textContent =
-        data.staff_task_body || data.staff_task_title || 'No task assigned.';
-      document.getElementById('panel-record-note').textContent =
-        data.patient_record_note || 'No record note available.';
+      // Triage tab — pathway Q&A
+      var pathwayList  = document.getElementById('panel-pathway-list');
+      var pathwayEmpty = document.getElementById('panel-pathway-empty');
+      var triageHd     = document.getElementById('panel-triage-hd');
+      var items = Array.isArray(data.pathway_items) ? data.pathway_items : [];
+      if (triageHd) triageHd.textContent = (data.request_type_label || 'Pathway') + ' — Q&A';
+      if (pathwayList) {
+        pathwayList.innerHTML = '';
+        items.forEach(function (item) {
+          var li = document.createElement('li');
+          li.className = 'panel-pathway-item';
+          li.innerHTML = '<span class="panel-pathway-q">' + (item.label || '') + '</span>'
+                       + '<span class="panel-pathway-a">' + (item.value || '') + '</span>';
+          pathwayList.appendChild(li);
+        });
+      }
+      if (pathwayEmpty) pathwayEmpty.hidden = items.length > 0;
 
       // Resolve button state + start-review gate
       var resolveBtn    = document.getElementById('panel-btn-resolve');
@@ -1209,6 +1245,14 @@
       }, 3200);
     }
 
+    function showActionError(msg) {
+      document.getElementById('cd-action-error-message').textContent = msg || 'Action failed. Please try again.';
+      document.getElementById('cd-action-error-modal').hidden = false;
+    }
+    document.getElementById('cd-action-error-ok')?.addEventListener('click', function () {
+      document.getElementById('cd-action-error-modal').hidden = true;
+    });
+
     // Update the open-tab count badge after a resolve/reopen
     function adjustTabCount(delta) {
       var openTab = document.querySelector('.filter-tab[href*="filter=open"]')
@@ -1287,7 +1331,7 @@
         });
         var data = await res.json();
         if (!res.ok) {
-          alert(data.detail || 'Action failed. Please open the full case to resolve.');
+          showActionError(data.detail || 'Action failed. Please open the full case to resolve.');
           btn.disabled = false;
           btn.textContent = original;
           return;
@@ -1326,7 +1370,7 @@
       } catch {
         btn.disabled = false;
         btn.textContent = original;
-        alert('Network error. Please reload and try again.');
+        showActionError('Network error. Please reload and try again.');
       }
     });
 
@@ -1413,5 +1457,150 @@
   });
 
   loadModalAlert();
+
+  // ── Audio notifications ─────────────────────────────────────────
+  // Beep plays ONLY on: (1) new case imported, (2) service health alert.
+  // No ambient 30-second polling audio.
+
+  function _makeAudioCtx() {
+    return new (window.AudioContext || window.webkitAudioContext)();
+  }
+
+  /** Pleasant double-beep: fired when new cases arrive via import. */
+  function playNewCaseBeep() {
+    try {
+      var ctx = _makeAudioCtx();
+      function tone(freq, startT, dur) {
+        var osc = ctx.createOscillator();
+        var g   = ctx.createGain();
+        osc.connect(g); g.connect(ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, startT);
+        g.gain.setValueAtTime(0.15, startT);
+        g.gain.exponentialRampToValueAtTime(0.001, startT + dur);
+        osc.start(startT); osc.stop(startT + dur);
+      }
+      tone(880, ctx.currentTime,       0.18);
+      tone(1100, ctx.currentTime + 0.22, 0.18);
+      setTimeout(function () { ctx.close(); }, 700);
+    } catch (_) {}
+  }
+
+  /** Urgent triple-pulse: fired when a service is detected as down. */
+  function playServiceDownAlarm() {
+    try {
+      var ctx = _makeAudioCtx();
+      [0, 0.28, 0.56].forEach(function (offset) {
+        var osc = ctx.createOscillator();
+        var g   = ctx.createGain();
+        osc.connect(g); g.connect(ctx.destination);
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(440, ctx.currentTime + offset);
+        g.gain.setValueAtTime(0.10, ctx.currentTime + offset);
+        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + offset + 0.20);
+        osc.start(ctx.currentTime + offset);
+        osc.stop(ctx.currentTime + offset + 0.22);
+      });
+      setTimeout(function () { ctx.close(); }, 1200);
+    } catch (_) {}
+  }
+
+  // ── AJAX import with audio feedback ────────────────────────────
+  var _importBtn = document.getElementById('topbar-import-btn');
+  if (_importBtn) {
+    _importBtn.addEventListener('click', async function (e) {
+      e.preventDefault();
+      _importBtn.disabled = true;
+      _importBtn.textContent = 'Importing…';
+      try {
+        var r = await fetch('/api/import', { method: 'POST' });
+        if (!r.ok) throw new Error('Import failed');
+        var d = await r.json();
+        if (d.imported > 0) {
+          playNewCaseBeep();
+          showToast(d.imported + ' new case' + (d.imported > 1 ? 's' : '') + ' imported', 'success');
+          setTimeout(function () { window.location.reload(); }, 1000);
+        } else {
+          showToast('No new cases found', 'info');
+        }
+      } catch (_) {
+        showToast('Import failed — check logs', 'error');
+      } finally {
+        _importBtn.disabled = false;
+        _importBtn.textContent = 'Import';
+      }
+    });
+  }
+
+  // ── Service health poll — every 10 minutes ───────────────────────
+  // Fires alarm ONLY if a service is reported down. No audio for normal polling.
+  var _knownServiceDown = false;
+
+  async function checkServiceHealth() {
+    try {
+      var r = await fetch('/api/health');
+      if (!r.ok) {
+        if (!_knownServiceDown) {
+          playServiceDownAlarm();
+          showToast('⚠ Dashboard health check failed', 'error');
+          _knownServiceDown = true;
+        }
+        return;
+      }
+      var d = await r.json();
+      var allOk = d.ok && d.checks && d.checks.dashboard && d.checks.database;
+      if (!allOk && !_knownServiceDown) {
+        playServiceDownAlarm();
+        showToast('⚠ System health issue detected — check service status', 'error');
+        _knownServiceDown = true;
+      } else if (allOk) {
+        _knownServiceDown = false;
+      }
+    } catch (_) {
+      if (!_knownServiceDown) {
+        playServiceDownAlarm();
+        showToast('⚠ Cannot reach dashboard health endpoint', 'error');
+        _knownServiceDown = true;
+      }
+    }
+  }
+
+  checkServiceHealth();
+  setInterval(checkServiceHealth, 600000); // every 10 minutes
+
+  // ── Live staff workload widget refresh ─────────────────────────
+  async function refreshStaffWorkload() {
+    try {
+      var r = await fetch('/api/staff-workload');
+      if (!r.ok) return;
+      var d = await r.json();
+      if (!d.ok || !d.staff) return;
+      var list = document.getElementById('staff-workload-list');
+      var ts   = document.getElementById('staff-workload-refresh-ts');
+      if (!list) return;
+      var html = '';
+      d.staff.forEach(function (s) {
+        html += '<div class="staff-workload-row">' +
+          '<span class="staff-workload-name" title="' + (s.name||'') + '">' + (s.name||'—') + '</span>' +
+          '<span class="staff-workload-pills">' +
+          '<span class="swp swp-open"   title="Open cases">' + s.open + '</span>' +
+          '<span class="swp swp-active" title="In progress">' + s.in_progress + '</span>' +
+          '<span class="swp swp-done"   title="Resolved today">' + s.resolved_today + '</span>' +
+          '</span></div>';
+      });
+      if (!html) html = '<div class="analytics-row ar-row--muted">No staff found</div>';
+      list.innerHTML = html;
+      // Update collapsed tooltip metric
+      var card = document.getElementById('staff-workload-card');
+      if (card) card.dataset.metric = ' · ' + d.staff.length + ' staff';
+      if (ts) {
+        var now = new Date();
+        ts.textContent = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+      }
+    } catch (_) {}
+  }
+
+  refreshStaffWorkload();
+  setInterval(refreshStaffWorkload, 60000); // every 60 seconds
 </script>
 {% endblock %}
