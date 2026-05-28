@@ -110,16 +110,16 @@ async def enforce_auth(request: Request, call_next):
 
 @app.get("/login")
 def login_page(request: Request, next: str = "/", error: str = "", info: str = ""):
+    safe_next = next if next and next.startswith("/") and not next.startswith("//") else "/"
     token = request.cookies.get(SESSION_COOKIE)
     if token:
         with connect() as conn:
             conn.row_factory = __import__("sqlite3").Row
             user = get_session_user(conn, token)
         if user:
-            safe_next = next if next and next.startswith("/") and not next.startswith("//") else "/"
             return RedirectResponse(url=safe_next, status_code=302)
     return templates.TemplateResponse(request, "login.html", {
-        "error": error, "info": info, "next": next,
+        "error": error, "info": info, "next": safe_next,
         "prefill_username": "", "auth_method": "password",
     })
 
@@ -2954,24 +2954,24 @@ def api_case_action(
         elif action == "reopen":
             updates.update({
                 "status": "Needs Review",
-                "resolved_at": "",
-                "resolved_by": "",
+                "resolved_at": None,
+                "resolved_by": None,
                 "turnaround_minutes": None,
             })
         elif action == "escalate":
             updates.update({
                 "status": "Escalated",
                 "action_needed": "Escalated for staff review",
-                "resolved_at": "",
-                "resolved_by": "",
+                "resolved_at": None,
+                "resolved_by": None,
                 "turnaround_minutes": None,
             })
         elif action == "flag_issue":
             updates.update({
                 "status": "Needs Review",
                 "action_needed": "Issue flagged by staff",
-                "resolved_at": "",
-                "resolved_by": "",
+                "resolved_at": None,
+                "resolved_by": None,
                 "turnaround_minutes": None,
             })
 
@@ -4192,8 +4192,8 @@ def quick_action(
             updates.update(
                 {
                     "status": "Needs Review",
-                    "resolved_at": "",
-                    "resolved_by": "",
+                    "resolved_at": None,
+                    "resolved_by": None,
                     "turnaround_minutes": None,
                 }
             )
@@ -4202,8 +4202,8 @@ def quick_action(
                 {
                     "status": "Escalated",
                     "action_needed": "Escalated for staff review",
-                    "resolved_at": "",
-                    "resolved_by": "",
+                    "resolved_at": None,
+                    "resolved_by": None,
                     "turnaround_minutes": None,
                 }
             )
@@ -4212,8 +4212,8 @@ def quick_action(
                 {
                     "status": "Needs Review",
                     "action_needed": "Issue flagged by staff",
-                    "resolved_at": "",
-                    "resolved_by": "",
+                    "resolved_at": None,
+                    "resolved_by": None,
                     "turnaround_minutes": None,
                 }
             )
@@ -4233,7 +4233,7 @@ def quick_action(
                     "resolved_at": case.get("resolved_at"),
                     "resolved_by": case.get("resolved_by"),
                 },
-                new_values={"status": "Needs Review", "resolved_at": "", "resolved_by": ""},
+                new_values={"status": "Needs Review", "resolved_at": None, "resolved_by": None},
             )
 
     notice = ""
