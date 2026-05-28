@@ -1,0 +1,70 @@
+{
+  "_meta": {
+    "version": "1.0",
+    "created": "2026-05-23",
+    "author": "TechLead",
+    "description": "Handoff output templates per pathway. All outputs are admin tasks for human reception staff. The system does not make clinical decisions."
+  },
+  "pathways": {
+    "prescription": {
+      "task_type": "admin_task",
+      "title_template": "Prescription request — {patient_name}",
+      "body_template": "Patient {patient_name} requests {prescription_type} prescription for: {medications_list}. Preferred pharmacy: {pharmacy}. Run out: {run_out_status}. Please process and contact patient.",
+      "queue": "normal",
+      "staff_group": "reception",
+      "clinical_decision_required": false,
+      "notes": "Staff process prescription request via standard admin channel. Clinical decision on appropriateness rests with GP."
+    },
+    "sick_note": {
+      "task_type": "admin_task",
+      "title_template": "Sick note request — {patient_name}",
+      "body_template": "Patient {patient_name} requests {request_type} sick note from {start_date}. Duration: {duration_requested}. Purpose: {purpose}. Please arrange with GP and contact patient.",
+      "queue": "normal",
+      "staff_group": "reception",
+      "clinical_decision_required": false,
+      "notes": "GP decides on fitness assessment. Staff coordinate the admin process."
+    },
+    "referral": {
+      "task_type": "admin_task",
+      "title_template": "Referral query — {patient_name}",
+      "body_template": "Patient {patient_name} is {referral_type} referral to {hospital_name} ({specialty}). Submitted approx {approx_submission_date}. Please check e-RS / referral records and contact patient with update.",
+      "queue": "normal",
+      "staff_group": "reception",
+      "clinical_decision_required": false,
+      "notes": "Staff check e-RS status. Clinical priority of referral is set by GP, not this system."
+    },
+    "test_result": {
+      "task_type": "admin_task",
+      "title_template": "Test result query — {patient_name}",
+      "body_template": "Patient {patient_name} querying {test_type} result from approx {approx_test_date}. Reference: {reference_number}. Please check records and arrange for appropriate staff member to contact patient.",
+      "queue": "normal",
+      "staff_group": "reception",
+      "clinical_decision_required": false,
+      "notes": "Staff locate result. Clinician decides on disclosure and interpretation — not this system."
+    },
+    "appointment_redirect": {
+      "task_type": "admin_task",
+      "title_template": "Appointment request — {patient_name}",
+      "body_template": "Patient {patient_name} requests to {appointment_type} appointment. Urgency: {urgency}. Preferred clinician: {preferred_clinician}. Please contact patient to arrange.",
+      "queue": "normal",
+      "staff_group": "reception",
+      "clinical_decision_required": false,
+      "notes": "Reception books appointment via standard system. Triage staff assess clinical priority — not this system."
+    },
+    "admin": {
+      "task_type": "admin_task",
+      "title_template": "Admin request — {patient_name}",
+      "body_template": "Patient {patient_name} has an admin request: {admin_type}. Details: {detail}. Please action and contact patient if needed.",
+      "queue": "normal",
+      "staff_group": "reception",
+      "clinical_decision_required": false,
+      "notes": "General admin request. No clinical involvement required."
+    }
+  },
+  "global_rules": {
+    "all_outputs_are_admin_tasks": true,
+    "llm_does_not_make_routing_decisions": true,
+    "deterministic_code_makes_final_routing": true,
+    "clinical_decisions_are_made_by_staff_not_system": true
+  }
+}

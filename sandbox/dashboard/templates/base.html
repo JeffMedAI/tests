@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ practice_name | default('JeffLocal') }} Staff Dashboard{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', path='/dashboard.css') }}?v=4">
+  {% block head %}{% endblock %}
+</head>
+<body>
+
+  {# ── SANDBOX BANNER ─────────────────────────────────────────────── #}
+  {% if environment == 'sandbox' %}
+  <div class="sandbox-banner" role="alert" aria-label="Sandbox environment notice">
+    <span class="sandbox-banner-icon">⚠</span>
+    <span class="sandbox-banner-text">SANDBOX — {{ practice_name }} — Not for live patient use. Testing and development only.</span>
+    <span class="sandbox-banner-icon">⚠</span>
+  </div>
+  {% endif %}
+
+  {# ── TOP BAR ────────────────────────────────────────────────────── #}
+  <header class="topbar">
+    <div class="topbar-brand">
+      <span class="brand-mark">{{ practice_short_code | default('JL') }}</span>
+      <div>
+        <div class="topbar-org">{{ practice_name | default('JeffLocal') }}</div>
+        <div class="topbar-date" id="topbar-date"></div>
+      </div>
+    </div>
+
+    <nav class="topbar-nav" aria-label="Main navigation">
+      <a href="/"         class="topbar-nav-link {% if active_nav|default('dashboard') == 'dashboard' %}active{% endif %}">Dashboard</a>
+      <a href="/requests" class="topbar-nav-link {% if active_nav|default('') == 'requests' %}active{% endif %}">Requests</a>
+      <a href="/patients" class="topbar-nav-link {% if active_nav|default('') == 'patients' %}active{% endif %}">Patients</a>
+      <a href="/staff"    class="topbar-nav-link {% if active_nav|default('') == 'staff' %}active{% endif %}">Staff</a>
+      <a href="/reports"  class="topbar-nav-link {% if active_nav|default('') == 'reports' %}active{% endif %}">Reports</a>
+      <a href="/settings" class="topbar-nav-link {% if active_nav|default('') == 'settings' %}active{% endif %}">Settings</a>
+    </nav>
+
+    <div class="topbar-center">{% block topbar_search %}{% endblock %}</div>
+
+    <div class="topbar-actions">
+      {% if active_nav in ['dashboard', 'requests'] %}
+      <button id="topbar-import-btn" class="topbar-import-btn" type="button" title="Pull new handoff files into the dashboard">Import</button>
+      {% endif %}
+      <a href="/alerts" class="topbar-icon-btn" title="View Alerts" aria-label="Alerts">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      </a>
+
+      <div class="topbar-divider"></div>
+
+      <div class="topbar-user" id="topbar-user-menu-wrap">
+        <a href="/profile" class="topbar-user-link" title="Your profile">
+          <div class="topbar-user-info">
+            <span class="topbar-user-name">
+              {%- if current_staff is defined and current_staff and not current_staff.demo_fallback -%}
+                {{ current_staff.display_name }}
+              {%- else -%}
+                demo_user
+              {%- endif -%}
+            </span>
+            <span class="topbar-user-role">
+              {%- if current_staff is defined and current_staff -%}
+                {{ current_staff.role|title }}
+              {%- else -%}
+                Staff
+              {%- endif -%}
+            </span>
+          </div>
+          <div class="avatar" aria-hidden="true">
+            {%- if current_staff is defined and current_staff and current_staff.display_name -%}
+              {{ current_staff.display_name[0]|upper }}
+            {%- else -%}U{%- endif -%}
+          </div>
+        </a>
+        <a href="/logout" class="topbar-signout-btn" title="Sign out">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  {# ── APP BODY ────────────────────────────────────────────────────── #}
+  <div class="app-body">
+    {% block content %}{% endblock %}
+  </div>
+
+  {# ── SHARED SCRIPTS ──────────────────────────────────────────────── #}
+  <script>
+    // Sidebar collapse toggle — responsive-aware with mobile overlay backdrop
+    (function () {
+      var sidebarEl = document.getElementById('analytics-sidebar');
+      var toggleBtn = document.getElementById('sidebar-toggle-btn');
+      if (!sidebarEl || !toggleBtn) return;
+
+      var key = 'jefflocal_sidebar_collapsed';
+
+      // Create backdrop for mobile tap-outside dismiss
+      var backdrop = document.createElement('div');
+      backdrop.className = 'sidebar-backdrop';
+      backdrop.setAttribute('aria-hidden', 'true');
+      document.body.appendChild(backdrop);
+
+      function isMobile() { return window.innerWidth < 600; }
+
+      function setCollapsed(collapsed) {
+        sidebarEl.classList.toggle('is-collapsed', collapsed);
+        backdrop.classList.toggle('is-visible', !collapsed && isMobile());
+        if (!isMobile()) {
+          localStorage.setItem(key, collapsed);
+        }
+      }
+
+      // On load: mobile → always collapsed; desktop/tablet → restore preference
+      if (isMobile()) {
+        setCollapsed(true);
+      } else if (localStorage.getItem(key) === 'true') {
+        setCollapsed(true);
+      }
+
+      // Toggle button
+      if (!toggleBtn._sidebarListenerAdded) {
+        toggleBtn.addEventListener('click', function () {
+          setCollapsed(!sidebarEl.classList.contains('is-collapsed'));
+        });
+        toggleBtn._sidebarListenerAdded = true;
+      }
+
+      // Backdrop tap → collapse sidebar
+      backdrop.addEventListener('click', function () {
+        setCollapsed(true);
+      });
+
+      // On resize: if crossing mobile boundary, fix state
+      window.addEventListener('resize', function () {
+        if (!isMobile()) {
+          backdrop.classList.remove('is-visible');
+        }
+      });
+    })();
+
+    // Live date in top bar
+    (function () {
+      var el = document.getElementById('topbar-date');
+      if (el) {
+        el.textContent = new Date().toLocaleDateString('en-GB', {
+          weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+        });
+      }
+    })();
+
+    // Copy-to-clipboard helper
+    function fallbackCopyText(text) {
+      var area = document.createElement('textarea');
+      area.value = text;
+      area.setAttribute('readonly', '');
+      area.style.position = 'fixed';
+      area.style.left = '-9999px';
+      document.body.appendChild(area);
+      area.select();
+      document.execCommand('copy');
+      document.body.removeChild(area);
+    }
+
+    function setCopyState(button, message) {
+      var original = button.dataset.originalLabel || button.textContent;
+      button.dataset.originalLabel = original;
+      button.textContent = message;
+      window.setTimeout(function () { button.textContent = original; }, 1600);
+    }
+
+    async function copyDashboardText(button) {
+      var targetSelector = button.dataset.copyTarget;
+      var target = targetSelector ? document.querySelector(targetSelector) : null;
+      var text = target ? target.value : (button.dataset.copyText || '');
+      if (!text.trim()) { setCopyState(button, 'Not available'); return; }
+      try {
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(text);
+        } else {
+          fallbackCopyText(text);
+        }
+        setCopyState(button, 'Copied');
+      } catch (_) {
+        fallbackCopyText(text);
+        setCopyState(button, 'Copied');
+      }
+      if (button.dataset.copyAction && button.dataset.callId) {
+        fetch('/api/cases/' + encodeURIComponent(button.dataset.callId) + '/copy-audit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: button.dataset.copyAction })
+        }).catch(function () {});
+      }
+    }
+
+    document.addEventListener('click', function (event) {
+      var copyButton = event.target.closest('[data-copy-button]');
+      if (copyButton) {
+        event.preventDefault();
+        event.stopPropagation();
+        copyDashboardText(copyButton);
+        return;
+      }
+      if (event.target.closest('[data-no-toggle]')) {
+        event.stopPropagation();
+      }
+    });
+
+    // Handle quick_action form submission with loading spinner
+    document.addEventListener('submit', function (event) {
+      var form = event.target;
+      if (form.action && form.action.includes('/case/') && form.action.includes('/quick_action')) {
+        var btn = form.querySelector('button[type="submit"]');
+        if (btn && !btn.disabled) {
+          var originalText = btn.textContent;
+          btn.textContent = '⏳ Loading...';
+          btn.disabled = true;
+          btn.classList.add('btn-loading');
+          // Re-enable after 3 seconds if something went wrong
+          setTimeout(function() {
+            btn.textContent = originalText;
+            btn.disabled = false;
+            btn.classList.remove('btn-loading');
+          }, 3000);
+        }
+      }
+    });
+  </script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

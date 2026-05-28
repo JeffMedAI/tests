@@ -1,0 +1,74 @@
+{
+  "_meta": {
+    "version": "1.0",
+    "created": "2026-05-23",
+    "author": "TechLead",
+    "description": "Active pathway definitions. Externalises pathway configuration from process_queue.ps1. All pathways produce admin tasks for human staff only."
+  },
+  "active_pathways": [
+    {
+      "id": "prescription",
+      "name": "Prescription Request",
+      "enabled": true,
+      "required_fields": ["prescription_type", "medications_requested"],
+      "optional_fields": ["pharmacy", "run_out_status", "callback_number"],
+      "routing_queue": "normal",
+      "staff_group": "reception",
+      "clinical_decision": false
+    },
+    {
+      "id": "sick_note",
+      "name": "Sick Note Request",
+      "enabled": true,
+      "required_fields": ["request_type"],
+      "optional_fields": ["purpose", "start_date", "duration_requested", "employer_name"],
+      "routing_queue": "normal",
+      "staff_group": "reception",
+      "clinical_decision": false
+    },
+    {
+      "id": "referral",
+      "name": "Referral Query",
+      "enabled": true,
+      "required_fields": ["referral_type"],
+      "optional_fields": ["hospital_name", "approx_submission_date", "specialty", "reference_number"],
+      "routing_queue": "normal",
+      "staff_group": "reception",
+      "clinical_decision": false
+    },
+    {
+      "id": "test_result",
+      "name": "Test Result Query",
+      "enabled": true,
+      "required_fields": ["test_type"],
+      "optional_fields": ["approx_test_date", "reference_number", "requesting_doctor"],
+      "routing_queue": "normal",
+      "staff_group": "reception",
+      "clinical_decision": false
+    },
+    {
+      "id": "appointment_redirect",
+      "name": "Appointment Request",
+      "enabled": true,
+      "required_fields": ["appointment_type"],
+      "optional_fields": ["urgency", "preferred_clinician", "preferred_time"],
+      "routing_queue": "normal",
+      "staff_group": "reception",
+      "clinical_decision": false
+    },
+    {
+      "id": "admin",
+      "name": "Admin Request",
+      "enabled": true,
+      "required_fields": ["admin_type"],
+      "optional_fields": ["detail", "reference_number"],
+      "routing_queue": "normal",
+      "staff_group": "reception",
+      "clinical_decision": false,
+      "is_default": true,
+      "notes": "Default pathway for unrecognised or general admin requests."
+    }
+  ],
+  "fallback_pathway": "admin",
+  "total_pathways": 6
+}

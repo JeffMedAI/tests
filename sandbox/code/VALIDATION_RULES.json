@@ -1,0 +1,146 @@
+{
+  "_meta": {
+    "version": "1.0",
+    "created": "2026-05-23",
+    "author": "TechLead",
+    "description": "Field validation rules per pathway. Used by Jeff.Handoff.ps1 to validate extracted fields before queuing."
+  },
+  "pathways": {
+    "prescription": {
+      "required_fields": ["prescription_type", "medications_requested"],
+      "optional_fields": ["pharmacy", "run_out_status", "callback_number"],
+      "field_rules": {
+        "prescription_type": {
+          "type": "string",
+          "allowed_values": ["repeat", "new", "urgent_repeat", "unknown"],
+          "default": "unknown"
+        },
+        "medications_requested": {
+          "type": "array",
+          "min_items": 0,
+          "item_type": "string",
+          "default": []
+        },
+        "pharmacy": {
+          "type": "string",
+          "max_length": 200,
+          "default": ""
+        },
+        "run_out_status": {
+          "type": "string",
+          "allowed_values": ["yes", "no", "soon", "unknown"],
+          "default": "unknown"
+        }
+      }
+    },
+    "sick_note": {
+      "required_fields": ["request_type"],
+      "optional_fields": ["purpose", "start_date", "duration_requested", "employer_name"],
+      "field_rules": {
+        "request_type": {
+          "type": "string",
+          "allowed_values": ["new", "extension", "unknown"],
+          "default": "unknown"
+        },
+        "purpose": {
+          "type": "string",
+          "max_length": 500,
+          "default": ""
+        },
+        "start_date": {
+          "type": "string",
+          "format": "free_text",
+          "default": ""
+        },
+        "duration_requested": {
+          "type": "string",
+          "default": ""
+        }
+      }
+    },
+    "referral": {
+      "required_fields": ["referral_type"],
+      "optional_fields": ["hospital_name", "approx_submission_date", "specialty", "reference_number"],
+      "field_rules": {
+        "referral_type": {
+          "type": "string",
+          "allowed_values": ["chase", "query", "new_request", "unknown"],
+          "default": "unknown"
+        },
+        "hospital_name": {
+          "type": "string",
+          "max_length": 200,
+          "default": ""
+        },
+        "approx_submission_date": {
+          "type": "string",
+          "format": "free_text",
+          "default": ""
+        },
+        "specialty": {
+          "type": "string",
+          "max_length": 200,
+          "default": ""
+        }
+      }
+    },
+    "test_result": {
+      "required_fields": ["test_type"],
+      "optional_fields": ["approx_test_date", "reference_number", "requesting_doctor"],
+      "field_rules": {
+        "test_type": {
+          "type": "string",
+          "allowed_values": ["blood", "scan", "mri", "ct", "xray", "urine", "swab", "ultrasound", "biopsy", "other", "unknown"],
+          "default": "unknown"
+        },
+        "approx_test_date": {
+          "type": "string",
+          "format": "free_text",
+          "default": ""
+        },
+        "reference_number": {
+          "type": "string",
+          "max_length": 100,
+          "default": ""
+        }
+      }
+    },
+    "appointment_redirect": {
+      "required_fields": ["appointment_type"],
+      "optional_fields": ["urgency", "preferred_clinician", "preferred_time"],
+      "field_rules": {
+        "appointment_type": {
+          "type": "string",
+          "allowed_values": ["book", "cancel", "reschedule", "query", "unknown"],
+          "default": "unknown"
+        },
+        "urgency": {
+          "type": "string",
+          "allowed_values": ["routine", "same_day", "unknown"],
+          "default": "routine"
+        },
+        "preferred_clinician": {
+          "type": "string",
+          "max_length": 200,
+          "default": ""
+        }
+      }
+    },
+    "admin": {
+      "required_fields": ["admin_type"],
+      "optional_fields": ["detail", "reference_number"],
+      "field_rules": {
+        "admin_type": {
+          "type": "string",
+          "allowed_values": ["records", "registration", "letter", "complaint", "address_change", "online_access", "other"],
+          "default": "other"
+        },
+        "detail": {
+          "type": "string",
+          "max_length": 1000,
+          "default": ""
+        }
+      }
+    }
+  }
+}

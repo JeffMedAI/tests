@@ -1,0 +1,22 @@
+{
+  "_meta": {
+    "version": "1.0",
+    "created": "2026-05-23",
+    "author": "TechLead",
+    "description": "Ollama model configuration. Externalises values previously hardcoded in process_queue.ps1 and call_ollama.ps1."
+  },
+  "model_name": "llama3.2",
+  "model_type": "llm",
+  "temperature": 0.3,
+  "top_p": 0.9,
+  "max_tokens": 2000,
+  "timeout_seconds": 30,
+  "retry_count": 3,
+  "retry_delay_seconds": 2,
+  "ollama_base_url": "http://localhost:11434",
+  "ollama_api_endpoint": "/api/generate",
+  "stream": false,
+  "context_window": 4096,
+  "extraction_only": true,
+  "notes": "extraction_only=true enforces that the LLM is used for text extraction only. All routing, verification, and patient-matching decisions are made by deterministic code."
+}

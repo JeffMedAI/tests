@@ -1,0 +1,126 @@
+{
+  "_meta": {
+    "version": "1.0",
+    "created": "2026-05-23",
+    "author": "TechLead",
+    "description": "Queue routing rules per pathway and condition. Deterministic code in Jeff.Handoff.ps1 applies these rules. LLM does not make routing decisions."
+  },
+  "routing_rules": [
+    {
+      "pathway_id": "prescription",
+      "condition": "default",
+      "target_queue": "normal",
+      "staff_group": "reception",
+      "notes": "Standard prescription request"
+    },
+    {
+      "pathway_id": "prescription",
+      "condition": "identity_incomplete",
+      "target_queue": "review",
+      "staff_group": "reception",
+      "notes": "Patient identity could not be verified — staff must confirm before processing"
+    },
+    {
+      "pathway_id": "prescription",
+      "condition": "run_out_and_safety_flag",
+      "target_queue": "urgent",
+      "staff_group": "reception",
+      "notes": "Patient has run out of medication and safety flag raised — prioritise"
+    },
+    {
+      "pathway_id": "sick_note",
+      "condition": "default",
+      "target_queue": "normal",
+      "staff_group": "reception",
+      "notes": "Standard sick note request"
+    },
+    {
+      "pathway_id": "sick_note",
+      "condition": "identity_incomplete",
+      "target_queue": "review",
+      "staff_group": "reception",
+      "notes": "Identity or dates unclear — staff to clarify before processing"
+    },
+    {
+      "pathway_id": "referral",
+      "condition": "default",
+      "target_queue": "normal",
+      "staff_group": "reception",
+      "notes": "Standard referral query"
+    },
+    {
+      "pathway_id": "referral",
+      "condition": "referral_not_found",
+      "target_queue": "review",
+      "staff_group": "reception",
+      "notes": "Referral cannot be located — staff investigation needed"
+    },
+    {
+      "pathway_id": "test_result",
+      "condition": "default",
+      "target_queue": "normal",
+      "staff_group": "reception",
+      "notes": "Standard test result query"
+    },
+    {
+      "pathway_id": "test_result",
+      "condition": "caller_flagged_urgent",
+      "target_queue": "review",
+      "staff_group": "reception",
+      "notes": "Caller expressed urgency — staff to assess and escalate to clinician if needed. System does not assess clinical urgency."
+    },
+    {
+      "pathway_id": "appointment_redirect",
+      "condition": "default",
+      "target_queue": "normal",
+      "staff_group": "reception",
+      "notes": "Standard appointment request"
+    },
+    {
+      "pathway_id": "appointment_redirect",
+      "condition": "same_day_request",
+      "target_queue": "urgent",
+      "staff_group": "reception",
+      "notes": "Same-day appointment requested — reception to prioritise. Clinical triage rests with staff."
+    },
+    {
+      "pathway_id": "appointment_redirect",
+      "condition": "complex_or_unclear",
+      "target_queue": "review",
+      "staff_group": "reception",
+      "notes": "Request is complex or unclear — staff to review before actioning"
+    },
+    {
+      "pathway_id": "admin",
+      "condition": "default",
+      "target_queue": "normal",
+      "staff_group": "reception",
+      "notes": "Standard admin request"
+    },
+    {
+      "pathway_id": "admin",
+      "condition": "complaint",
+      "target_queue": "review",
+      "staff_group": "practice_manager",
+      "notes": "Complaint — escalate to practice manager per complaints procedure"
+    }
+  ],
+  "queue_definitions": {
+    "normal": {
+      "description": "Standard reception queue, actioned in order",
+      "sla_hours": 24
+    },
+    "urgent": {
+      "description": "Prioritised queue, actioned before normal",
+      "sla_hours": 2
+    },
+    "review": {
+      "description": "Requires staff review before actioning",
+      "sla_hours": 8
+    },
+    "deadletter": {
+      "description": "Failed processing — manual investigation required",
+      "sla_hours": 4
+    }
+  }
+}
