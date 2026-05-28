@@ -449,7 +449,7 @@ def current_staff_from_request(request: Request | None, conn) -> dict[str, Any]:
     staff = get_staff_by_id(conn, request.cookies.get("jefflocal_staff_id") if request else None)
     if staff:
         return staff
-    return {"id": None, "display_name": "demo_user", "email": "", "role": "staff", "active": 1, "demo_fallback": True}
+    return {"id": None, "display_name": "demo_user", "email": "", "role": "viewer", "active": 1, "demo_fallback": True}
 
 
 def staff_can_edit(staff: dict[str, Any]) -> bool:
@@ -1743,7 +1743,11 @@ def api_services_status() -> dict[str, Any]:
 
 
 @app.post("/api/services/refresh")
-def api_services_refresh(payload: dict[str, Any] = Body(default_factory=dict)) -> dict[str, Any]:
+def api_services_refresh(request: Request, payload: dict[str, Any] = Body(default_factory=dict)) -> dict[str, Any]:
+    ensure_ready()
+    with connect() as conn:
+        staff = current_staff_from_request(request, conn)
+    require_staff_admin(staff)
     start_missing = payload.get("start_missing") is True
     actions: list[dict[str, Any]] = []
     if start_missing:
@@ -2153,8 +2157,11 @@ def write_alert_jsonl(alert: dict[str, Any]) -> None:
 
 
 @app.post("/api/alerts/log")
-def api_alert_log(payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
+def api_alert_log(request: Request, payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
     ensure_ready()
+    with connect() as conn:
+        staff = current_staff_from_request(request, conn)
+    require_staff_edit(staff)
     alert = sanitize_alert_payload(payload)
     if not alert["alert_type"]:
         raise HTTPException(status_code=400, detail="alert_type is required")

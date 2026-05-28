@@ -138,8 +138,10 @@ def alert_payload():
 
 
 def test_api_alert_log_writes_sqlite_and_jsonl(tmp_path, monkeypatch):
-    client_context, _db_path = make_client(tmp_path, monkeypatch)
+    client_context, db_path = make_client(tmp_path, monkeypatch)
+    sid = staff_id(db_path, "Reception Demo")
     with client_context as client:
+        client.cookies.set("jefflocal_staff_id", str(sid))
         response = client.post("/api/alerts/log", json=alert_payload())
 
     assert response.status_code == 200
@@ -154,8 +156,10 @@ def test_api_alert_log_writes_sqlite_and_jsonl(tmp_path, monkeypatch):
 
 
 def test_api_alert_log_dedupes_recent_duplicate(tmp_path, monkeypatch):
-    client_context, _db_path = make_client(tmp_path, monkeypatch)
+    client_context, db_path = make_client(tmp_path, monkeypatch)
+    sid = staff_id(db_path, "Reception Demo")
     with client_context as client:
+        client.cookies.set("jefflocal_staff_id", str(sid))
         first = client.post("/api/alerts/log", json=alert_payload())
         second = client.post("/api/alerts/log", json=alert_payload())
 
@@ -169,8 +173,10 @@ def test_api_alert_log_dedupes_recent_duplicate(tmp_path, monkeypatch):
 
 
 def test_api_alerts_recent_returns_logged_alerts(tmp_path, monkeypatch):
-    client_context, _db_path = make_client(tmp_path, monkeypatch)
+    client_context, db_path = make_client(tmp_path, monkeypatch)
+    sid = staff_id(db_path, "Reception Demo")
     with client_context as client:
+        client.cookies.set("jefflocal_staff_id", str(sid))
         client.post("/api/alerts/log", json=alert_payload())
         response = client.get("/api/alerts/recent?limit=5")
 
@@ -185,6 +191,7 @@ def test_api_alerts_recent_returns_logged_alerts(tmp_path, monkeypatch):
 
 def test_api_alert_logging_does_not_alter_locked_case_fields(tmp_path, monkeypatch):
     client_context, db_path = make_client(tmp_path, monkeypatch)
+    sid = staff_id(db_path, "Reception Demo")
     fields = """
         priority, safe_to_queue, staff_review_required, red_flags_present,
         verification_status, verification_reason, matched_patient_ref,
@@ -198,6 +205,7 @@ def test_api_alert_logging_does_not_alter_locked_case_fields(tmp_path, monkeypat
             ).fetchone()
         )
     with client_context as client:
+        client.cookies.set("jefflocal_staff_id", str(sid))
         response = client.post("/api/alerts/log", json=alert_payload())
     with connect(db_path) as conn:
         after = dict(
@@ -428,7 +436,8 @@ def test_api_services_status_dashboard_online_and_n8n_offline_graceful(tmp_path,
 
 
 def test_api_services_refresh_check_only_does_not_start_services(tmp_path, monkeypatch):
-    client_context, _db_path = make_client(tmp_path, monkeypatch)
+    client_context, db_path = make_client(tmp_path, monkeypatch)
+    admin = staff_id(db_path, "Admin Demo")
     called = {"start": False}
 
     def fake_run(*args, **kwargs):
@@ -439,6 +448,7 @@ def test_api_services_refresh_check_only_does_not_start_services(tmp_path, monke
     monkeypatch.setattr(main_module, "check_local_n8n", lambda timeout_seconds=1.5: main_module.service_status("n8n", "offline", "http://localhost:5678", "Localhost check failed: test", main_module.utc_now_iso()))
 
     with client_context as client:
+        client.cookies.set("jefflocal_staff_id", str(admin))
         response = client.post("/api/services/refresh", json={"start_missing": False})
 
     assert response.status_code == 200
@@ -509,11 +519,13 @@ def test_demo_banner_renders_for_test_cases(tmp_path, monkeypatch):
 
 def test_alert_modal_api_and_acknowledgement_flow(tmp_path, monkeypatch):
     client_context, db_path = make_client(tmp_path, monkeypatch)
+    sid = staff_id(db_path, "Reception Demo")
     with connect(db_path) as conn:
         insert_alert(conn, "alert-modal-critical", "critical")
         insert_alert(conn, "alert-modal-info", "info", "Daily Summary")
 
     with client_context as client:
+        client.cookies.set("jefflocal_staff_id", str(sid))
         response = client.get("/api/alerts/unacknowledged?modal_only=true")
         alert_id = response.json()["alerts"][0]["alert_id"]
         ack = client.post(f"/api/alerts/{alert_id}/acknowledge", json={})
@@ -523,22 +535,24 @@ def test_alert_modal_api_and_acknowledgement_flow(tmp_path, monkeypatch):
     assert response.json()["count"] == 1
     assert response.json()["alerts"][0]["alert_type"] == "JeffLocal Red Flag"
     assert ack.status_code == 200
-    assert ack.json()["acknowledged_by"] == "demo_user"
+    assert ack.json()["acknowledged_by"] == "Reception Demo"
     assert after.json()["count"] == 0
     with connect(db_path) as conn:
         row = conn.execute("SELECT acknowledged_at, acknowledged_by, acknowledgement_source FROM alert_events WHERE alert_id = ?", (alert_id,)).fetchone()
         audit_count = conn.execute("SELECT COUNT(*) FROM audit_events WHERE action = 'alert_acknowledged'").fetchone()[0]
     assert row["acknowledged_at"]
-    assert row["acknowledged_by"] == "demo_user"
+    assert row["acknowledged_by"] == "Reception Demo"
     assert row["acknowledgement_source"] == "dashboard_modal"
     assert audit_count == 1
 
 
 def test_alert_message_leading_equals_cleaned_for_new_and_existing_alerts(tmp_path, monkeypatch):
     client_context, db_path = make_client(tmp_path, monkeypatch)
+    sid = staff_id(db_path, "Reception Demo")
     payload = alert_payload()
     payload["message"] = "=JeffLocal has a red flag alert"
     with client_context as client:
+        client.cookies.set("jefflocal_staff_id", str(sid))
         logged = client.post("/api/alerts/log", json=payload)
         alerts_page = client.get("/alerts")
 
