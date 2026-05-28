@@ -241,10 +241,10 @@
         <a class="kpi-card" href="{{ card.url }}" title="Click to view details">
           <span>{{ card.label }}</span>
           <strong>{{ card.value if card.value is not none else "n/a" }}</strong>
-          <small>→ View</small>
+          <small style="opacity: 0.6; font-size: 0.75em;">→ View</small>
         </a>
       {% endfor %}
-      <div class="kpi-card system-health-card" aria-label="System Status">
+      <div class="kpi-card system-health-card" aria-label="System Status" style="opacity: 0.9;">
         <span>System Status</span>
         <div class="health-list">
           <div data-service-key="dashboard"><i class="health-dot {{ system_health.dashboard.state }}"></i>Dashboard <strong>{{ system_health.dashboard.label }}</strong></div>
@@ -312,7 +312,7 @@
           <tbody>
           {% for row in staff_activity.rows %}
             <tr>
-              <td><span class="staff-name-cell"><span class="staff-avatar-sm" title="{{ row.staff_name }}">{{ row.staff_name[0]|upper }}</span><span class="staff-name-text">{{ row.staff_name }}</span></span></td>
+              <td><span class="staff-name-cell"><span class="staff-avatar-sm" title="{{ row.staff_name }}">{{ row.staff_name[0]|upper }}</span>{{ row.staff_name }}</span></td>
               <td>{{ row.assigned_open }}</td>
               <td>{{ row.resolved_today }}</td>
               <td>{{ row.alerts_acknowledged }}</td>
@@ -438,7 +438,7 @@
         <p class="muted" id="batch-status-message">Bulk actions apply to selected cases on this page only.</p>
       </div>
       <div class="selection-controls">
-        <button type="button" id="select-visible-button" data-select-all-visible {% if current_staff and current_staff.role in ("readonly", "viewer") %}disabled title="Read-only staff cannot update cases."{% endif %}>Select all visible</button>
+        <button type="button" id="select-visible-button" data-select-all-visible {% if current_staff and current_staff.role == "readonly" %}disabled title="Read-only staff cannot update cases."{% endif %}>Select all visible</button>
         <button type="button" id="clear-selection-button" data-clear-selection disabled>Clear selection</button>
       </div>
       <div class="bulk-actions">
@@ -475,11 +475,11 @@
                    data-status="{{ case.status }}"
                    data-patient="{{ case.patient_name }}"
                    data-callback="{{ case.callback_number }}"
-                   {% if current_staff and current_staff.role in ("readonly", "viewer") %}disabled title="Read-only staff cannot update cases."{% endif %}>
+                   {% if current_staff and current_staff.role == "readonly" %}disabled title="Read-only staff cannot update cases."{% endif %}>
           </label>
 
           {# Top: badges + patient info + time #}
-          <div class="card-top">
+          <div class="card-top" style="padding-left:26px">
             <div class="card-top-left">
               <div class="card-badges">
                 <span class="badge {{ case.request_type }}">{{ case.request_type_label }}</span>
@@ -533,13 +533,13 @@
               <form method="post" action="/case/{{ case.call_id }}/quick_action" data-no-toggle>
                 <input type="hidden" name="action" value="reopen">
                 <input type="hidden" name="return_url" value="{{ current_list_url }}">
-                <button type="submit" class="btn-sm" {% if current_staff and current_staff.role in ("readonly", "viewer") %}disabled title="Read-only staff cannot update cases."{% endif %}>Reopen</button>
+                <button type="submit" class="btn-sm" {% if current_staff and current_staff.role == "readonly" %}disabled title="Read-only staff cannot update cases."{% endif %}>Reopen</button>
               </form>
               {% elif case.requires_individual_review %}
               <form method="post" action="/case/{{ case.call_id }}/quick_action" data-no-toggle>
                 <input type="hidden" name="action" value="start_review">
                 <input type="hidden" name="return_url" value="{{ current_list_url }}">
-                <button type="submit" class="btn-sm" {% if current_staff and current_staff.role in ("readonly", "viewer") %}disabled title="Read-only staff cannot update cases."{% endif %}>Start Review</button>
+                <button type="submit" class="btn-sm" {% if current_staff and current_staff.role == "readonly" %}disabled title="Read-only staff cannot update cases."{% endif %}>Start Review</button>
               </form>
               {% else %}
               <form method="post" action="/case/{{ case.call_id }}/quick_action" data-no-toggle>
@@ -547,7 +547,7 @@
                 <input type="hidden" name="return_url" value="{{ current_list_url }}">
                 <input type="hidden" name="outcome_notes" value="{{ case.outcome_notes or '' }}">
                 <input type="hidden" name="resolved_by" value="{{ case.resolved_by or '' }}">
-                <button type="submit" class="btn-sm" {% if current_staff and current_staff.role in ("readonly", "viewer") %}disabled title="Read-only staff cannot update cases."{% endif %}>Resolve</button>
+                <button type="submit" class="btn-sm" {% if current_staff and current_staff.role == "readonly" %}disabled title="Read-only staff cannot update cases."{% endif %}>Resolve</button>
               </form>
               {% endif %}
               <a class="button-link secondary-page btn-sm" href="/case/{{ case.call_id }}?return_url={{ current_list_url|urlencode }}" data-no-toggle>View</a>
@@ -599,11 +599,11 @@
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.39 2 2 0 0 1 3.58 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.54a16 16 0 0 0 6.29 6.29l.92-.92a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
                 Call
               </button>
-              <button class="panel-btn" id="panel-btn-sms" title="SMS patient (coming soon)" disabled>
+              <button class="panel-btn" id="panel-btn-sms" title="SMS patient (coming soon)" disabled style="opacity:0.45;cursor:not-allowed">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
                 SMS
               </button>
-              <button class="panel-btn" id="panel-btn-gp" title="GP workflow (coming soon)" disabled>
+              <button class="panel-btn" id="panel-btn-gp" title="GP workflow (coming soon)" disabled style="opacity:0.45;cursor:not-allowed">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
                 Send to GP
               </button>
@@ -715,24 +715,13 @@
     var btn = document.getElementById('sidebar-toggle-btn');
     if (!sidebar || !btn) return;
     var key = 'jefflocal_sidebar_collapsed';
-
-    function updateToggleLabel(collapsed) {
-      var label = collapsed ? 'Expand sidebar' : 'Collapse sidebar';
-      btn.setAttribute('aria-label', label);
-      btn.setAttribute('title', label);
-    }
-
     // Load saved state from localStorage (persists across sessions)
-    var startCollapsed = localStorage.getItem(key) === 'true';
-    if (startCollapsed) {
+    if (localStorage.getItem(key) === 'true') {
       sidebar.classList.add('is-collapsed');
     }
-    updateToggleLabel(startCollapsed);
-
     btn.addEventListener('click', function () {
       var isCollapsed = sidebar.classList.toggle('is-collapsed');
       localStorage.setItem(key, isCollapsed);
-      updateToggleLabel(isCollapsed);
     });
   })();
 
@@ -830,19 +819,19 @@
 
   // ── Batch selection ──────────────────────────────────────────────
   var selectionContext = JSON.stringify({
-    filter: {{ active_filter | tojson }},
-    q: {{ search_query | tojson }},
-    requestType: {{ active_request_type | tojson }},
-    range: {{ active_date_range | tojson }},
-    sort: {{ active_sort | tojson }},
-    page: {{ pagination.page | tojson }},
-    pageSize: {{ pagination.page_size | tojson }}
+    filter: '{{ active_filter }}',
+    q: '{{ search_query }}',
+    requestType: '{{ active_request_type }}',
+    range: '{{ active_date_range }}',
+    sort: '{{ active_sort }}',
+    page: '{{ pagination.page }}',
+    pageSize: '{{ pagination.page_size }}'
   });
   var selectionContextKey = 'jefflocal.selection.context';
   var selectionKey = 'jefflocal.selection.' + selectionContext;
   var previousSelectionContext = sessionStorage.getItem(selectionContextKey);
   var statusMessage = document.getElementById('batch-status-message');
-  var readonlyStaff = ['readonly', 'viewer'].includes({{ (current_staff.role if current_staff else 'staff') | tojson }});
+  var readonlyStaff = '{{ current_staff.role if current_staff else "staff" }}' === 'readonly';
   var selectedCallIds = new Set();
   var selectionClearedNotice = false;
 
@@ -1604,3 +1593,4 @@
   setInterval(refreshStaffWorkload, 60000); // every 60 seconds
 </script>
 {% endblock %}
+                                                                         
