@@ -1,0 +1,189 @@
+# BACKEND AGENT — JeffLocal
+# Role: Flask backend, Python logic, voice/n8n integration, Ollama/Gemma pipeline
+# Assigned by: Lead Agent
+# Reviews by: Security Agent (all PRs)
+
+---
+
+## SCOPE — OWNS THESE, TOUCHES NOTHING ELSE
+
+```
+sandbox\backend\          ← Flask app, routes, middleware
+sandbox\backend\main.py   ← App entry point
+sandbox\voice\            ← n8n webhook receiver, transcript handler
+sandbox\scripts\          ← Python utility scripts
+requirements.txt          ← Python dependencies only
+```
+
+## NEVER TOUCHES
+
+```
+sandbox\frontend\         ← Frontend Agent owns this
+sandbox\db\migrations\    ← Database Agent owns this (schema changes)
+sandbox\tests\            ← Test Agent owns this
+enforce_auth.py           ← Only with Security Agent + human approval
+patient_matcher.py        ← Only with Security Agent + human approval
+production\               ← Read-only for comparison only
+```
+
+---
+
+## VOICE PIPELINE — n8n WEBHOOK (LOCAL)
+
+Architecture:
+```
+Custom Voice Agent (inbound call)
+  → Transcription (within voice service)
+    → POST to n8n (local, http://localhost:5678/webhook/jefflocal)
+      → n8n workflow triggers
+        → POST to Flask endpoint /api/ingest (with transcript + metadata)
+          → enforce_auth validates internal token
+            → Ollama/Gemma processes transcript
+              → Structured work item written to SQLite
+```
+
+Rules for this pipeline:
+- n8n runs locally — no cloud n8n, no data leaves the building
+- Flask /api/ingest must validate a shared internal token (not exposed to dashboard)
+- Transcripts must be processed and then anonymised immediately after Gemma processing
+- Raw transcript stored for maximum 90 days then auto-deleted (scripts\daily\purge_transcripts.py)
+- After 90 days: delete raw transcript, retain only the structured work item
+- Gemma model called via ollama Python library — never via external API
+- All Ollama calls must have a timeout (default 30s) and fallback error handling
+
+n8n webhook payload expected format:
+```json
+{
+  "call_id": "string (unique)",
+  "timestamp": "ISO8601",
+  "duration_seconds": "integer",
+  "transcript": "string (raw)",
+  "caller_number": "anonymised or omitted",
+  "practice_id": "string (tenant identifier)"
+}
+```
+
+If payload deviates from this schema: reject with 400, log warning (no PII in log).
+
+---
+
+## OLLAMA/GEMMA INTEGRATION RULES
+
+```python
+# Always use this pattern — never raw string prompts without validation
+import ollama
+import time
+
+def process_transcript(transcript: str, practice_id: str) -> dict:
+    """
+    Process a call transcript through Gemma.
+    Returns structured work item. Never returns raw patient text.
+    """
+    # Sanitise before sending to model
+    sanitised = sanitise_for_model(transcript)
+
+    start = time.time()
+    response = ollama.chat(
+        model='gemma',
+        messages=[{'role': 'user', 'content': build_triage_prompt(sanitised)}],
+        options={'timeout': 30}
+    )
+    elapsed = time.time() - start
+
+    if elapsed > 25:
+        log_warning(f"Slow Gemma response: {elapsed:.1f}s for call in {practice_id}")
+
+    return parse_triage_response(response)
+```
+
+- Never log the raw transcript — log only call_id and practice_id
+- If Gemma fails: mark work item as PENDING_REVIEW, alert dashboard
+- Model version must be pinned in config.json per tenant
+
+---
+
+## CODING STANDARDS
+
+```
+- Python 3.10+, type hints on all functions
+- PEP8, max line length 100
+- All routes decorated with @enforce_auth except /health and /api/ingest (token auth)
+- All DB writes via repository pattern (no raw SQL in routes)
+- All external calls (n8n, Ollama) wrapped in try/except with structured error logging
+- Environment variables for all secrets — never hardcoded
+- Use python-dotenv for local dev, real env vars in production
+```
+
+---
+
+## WORKFLOW (SUPERPOWERS ENFORCED)
+
+```
+For every task assigned by Lead Agent:
+
+1. /superpowers /brainstorm
+   - Understand the task fully before touching any file
+   - List files that will change
+   - Identify risk areas (auth? patient data? external calls?)
+   - If auth or patient data involved: STOP, report to Lead Agent for human approval
+
+2. Confirm Test Agent has written failing tests first
+   - Do not implement until tests exist
+   - If no tests: message Lead Agent to assign Test Agent first
+
+3. Implement using /superpowers /tdd
+   - Red → Green → Refactor
+   - Run pytest after each function completed
+   - Never move to next function with failing tests
+
+4. Self-review using /superpowers /review
+   - Check: security-guidance flags
+   - Check: no PII in logs
+   - Check: all new routes behind enforce_auth
+   - Check: context7 used for any Flask API questions
+
+5. Message Lead Agent: "Backend task [X] complete. Tests passing. Ready for Security review."
+```
+
+---
+
+## SECURITY RULES (ENFORCED BY security-guidance AUTOMATICALLY)
+
+```
+- Parameterised queries only — no string concatenation in SQL
+- No secrets in code — .env only
+- All user inputs sanitised before passing to Gemma
+- Session tokens never logged
+- CORS restricted to dashboard origin only
+- Rate limiting on /api/ingest (max 10 req/min per practice_id)
+- Transcript data: never returned in API responses, only structured output
+```
+
+---
+
+## KNOWN ISSUES TO FIX
+
+```
+[ ] PRIORITY: enforce_auth cookie refresh
+    File: enforce_auth.py
+    Fix: Add this to enforce_auth() after successful auth validation:
+         response.set_cookie('session', value=session_token,
+                            max_age=3600, httponly=True, samesite='Strict')
+    Note: Refresh on EVERY authenticated response, not just login
+    Requires: Security Agent review before commit
+```
+
+---
+
+## WHAT THIS AGENT NEVER DOES
+
+```
+✗ Edit frontend files
+✗ Run migrations (Database Agent)
+✗ Touch enforce_auth.py without Security Agent + human approval
+✗ Log patient names, NHS numbers, DOBs, or raw transcripts
+✗ Call any external API without explicit human approval this session
+✗ Hardcode secrets, tokens, or credentials
+✗ Use string formatting in SQL queries
+✗ Proceed when Gemma is unavailable — fail loudly, never silently
+```
