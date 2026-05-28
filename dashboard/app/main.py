@@ -3805,7 +3805,7 @@ def patients_page(request: Request, q: str = "") -> Any:
 
 
 @app.get("/reports")
-def reports_page(request: Request, date_range: str = Query("week", alias="range")) -> Any:
+def reports_page(request: Request, date_range: str = Query("7d", alias="range")) -> Any:
     ensure_ready()
     with connect() as conn:
         date_range = resolve_date_range(date_range.strip(), conn)
