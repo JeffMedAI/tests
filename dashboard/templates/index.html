@@ -438,7 +438,7 @@
         <p class="muted" id="batch-status-message">Bulk actions apply to selected cases on this page only.</p>
       </div>
       <div class="selection-controls">
-        <button type="button" id="select-visible-button" data-select-all-visible {% if current_staff and current_staff.role == "readonly" %}disabled title="Read-only staff cannot update cases."{% endif %}>Select all visible</button>
+        <button type="button" id="select-visible-button" data-select-all-visible {% if current_staff and current_staff.role in ("readonly", "viewer") %}disabled title="Read-only staff cannot update cases."{% endif %}>Select all visible</button>
         <button type="button" id="clear-selection-button" data-clear-selection disabled>Clear selection</button>
       </div>
       <div class="bulk-actions">
@@ -475,7 +475,7 @@
                    data-status="{{ case.status }}"
                    data-patient="{{ case.patient_name }}"
                    data-callback="{{ case.callback_number }}"
-                   {% if current_staff and current_staff.role == "readonly" %}disabled title="Read-only staff cannot update cases."{% endif %}>
+                   {% if current_staff and current_staff.role in ("readonly", "viewer") %}disabled title="Read-only staff cannot update cases."{% endif %}>
           </label>
 
           {# Top: badges + patient info + time #}
@@ -533,13 +533,13 @@
               <form method="post" action="/case/{{ case.call_id }}/quick_action" data-no-toggle>
                 <input type="hidden" name="action" value="reopen">
                 <input type="hidden" name="return_url" value="{{ current_list_url }}">
-                <button type="submit" class="btn-sm" {% if current_staff and current_staff.role == "readonly" %}disabled title="Read-only staff cannot update cases."{% endif %}>Reopen</button>
+                <button type="submit" class="btn-sm" {% if current_staff and current_staff.role in ("readonly", "viewer") %}disabled title="Read-only staff cannot update cases."{% endif %}>Reopen</button>
               </form>
               {% elif case.requires_individual_review %}
               <form method="post" action="/case/{{ case.call_id }}/quick_action" data-no-toggle>
                 <input type="hidden" name="action" value="start_review">
                 <input type="hidden" name="return_url" value="{{ current_list_url }}">
-                <button type="submit" class="btn-sm" {% if current_staff and current_staff.role == "readonly" %}disabled title="Read-only staff cannot update cases."{% endif %}>Start Review</button>
+                <button type="submit" class="btn-sm" {% if current_staff and current_staff.role in ("readonly", "viewer") %}disabled title="Read-only staff cannot update cases."{% endif %}>Start Review</button>
               </form>
               {% else %}
               <form method="post" action="/case/{{ case.call_id }}/quick_action" data-no-toggle>
@@ -547,7 +547,7 @@
                 <input type="hidden" name="return_url" value="{{ current_list_url }}">
                 <input type="hidden" name="outcome_notes" value="{{ case.outcome_notes or '' }}">
                 <input type="hidden" name="resolved_by" value="{{ case.resolved_by or '' }}">
-                <button type="submit" class="btn-sm" {% if current_staff and current_staff.role == "readonly" %}disabled title="Read-only staff cannot update cases."{% endif %}>Resolve</button>
+                <button type="submit" class="btn-sm" {% if current_staff and current_staff.role in ("readonly", "viewer") %}disabled title="Read-only staff cannot update cases."{% endif %}>Resolve</button>
               </form>
               {% endif %}
               <a class="button-link secondary-page btn-sm" href="/case/{{ case.call_id }}?return_url={{ current_list_url|urlencode }}" data-no-toggle>View</a>
@@ -830,19 +830,19 @@
 
   // ── Batch selection ──────────────────────────────────────────────
   var selectionContext = JSON.stringify({
-    filter: '{{ active_filter }}',
-    q: '{{ search_query }}',
-    requestType: '{{ active_request_type }}',
-    range: '{{ active_date_range }}',
-    sort: '{{ active_sort }}',
-    page: '{{ pagination.page }}',
-    pageSize: '{{ pagination.page_size }}'
+    filter: {{ active_filter | tojson }},
+    q: {{ search_query | tojson }},
+    requestType: {{ active_request_type | tojson }},
+    range: {{ active_date_range | tojson }},
+    sort: {{ active_sort | tojson }},
+    page: {{ pagination.page | tojson }},
+    pageSize: {{ pagination.page_size | tojson }}
   });
   var selectionContextKey = 'jefflocal.selection.context';
   var selectionKey = 'jefflocal.selection.' + selectionContext;
   var previousSelectionContext = sessionStorage.getItem(selectionContextKey);
   var statusMessage = document.getElementById('batch-status-message');
-  var readonlyStaff = '{{ current_staff.role if current_staff else "staff" }}' === 'readonly';
+  var readonlyStaff = ['readonly', 'viewer'].includes({{ (current_staff.role if current_staff else 'staff') | tojson }});
   var selectedCallIds = new Set();
   var selectionClearedNotice = false;
 
