@@ -88,7 +88,7 @@
       {% if can_manage_staff %}
       <details class="staff-card-edit">
         <summary class="staff-card-edit-toggle">Edit</summary>
-        <form method="post" action="/staff/{{ staff.id }}/edit" class="staff-edit-form">
+        <form method="post" action="/staff/{{ staff.id }}/edit" class="staff-edit-form" id="staff-edit-{{ staff.id }}">
           <div class="staff-form-row">
             <div class="form-group">
               <label class="form-label">Display Name</label>
@@ -112,13 +112,13 @@
               </label>
             </div>
           </div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;">
-            <button type="submit" class="btn btn-primary btn-sm">Save Changes</button>
-            <form method="post" action="/staff/{{ staff.id }}/deactivate" style="display:inline;">
-              <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Deactivate {{ staff.display_name }}?')">Deactivate</button>
-            </form>
-          </div>
         </form>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button type="submit" form="staff-edit-{{ staff.id }}" class="btn btn-primary btn-sm">Save Changes</button>
+          <form method="post" action="/staff/{{ staff.id }}/deactivate" id="staff-deactivate-{{ staff.id }}" style="display:inline;">
+            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Deactivate {{ staff.display_name }}?')">Deactivate</button>
+          </form>
+        </div>
       </details>
       {% endif %}
     </div>
