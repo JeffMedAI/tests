@@ -68,7 +68,7 @@
 
     {# ── Critical Issues alert card ── #}
     {% if urgent_attention.red_flags > 0 %}
-    <a class="red-flag-card" href="{{ filter_links[1].url if filter_links|length > 1 else '/requests?filter=urgent_red_flags' }}">
+    <a class="red-flag-card" title="Critical Issues" href="{{ filter_links[1].url if filter_links|length > 1 else '/requests?filter=urgent_red_flags' }}">
       <span class="rf-icon">⚠️</span>
       <div class="rf-body">
         <span class="rf-label">Critical Issues</span>
@@ -78,7 +78,8 @@
       <span class="rf-value-coll">{{ urgent_attention.red_flags }}</span>
     </a>
     {% else %}
-    <div class="analytics-card sidebar-card-clear">
+    <div class="analytics-card sidebar-card-clear" title="All Clear">
+      <div class="card-collapsed-icon">✓</div>
       <span class="sidebar-card-clear-label">✓ All Clear</span>
       <span class="sidebar-card-clear-sub">No critical issues</span>
     </div>
@@ -88,7 +89,7 @@
     <div class="analytics-card" title="Staff Workload" id="staff-workload-card" data-metric=" · {{ staff_workload_list|length }} staff">
       <div class="card-collapsed-icon">👥</div>
       <div class="sidebar-section-hd">
-        Staff Workload
+        👥 Staff Workload
         <span id="staff-workload-refresh-ts" class="sidebar-card-ts"></span>
       </div>
       <div id="staff-workload-list">
@@ -119,7 +120,7 @@
     {% if call_analytics_card is defined %}
     <div class="analytics-card" title="Call Analytics" data-metric=" · {{ call_analytics_card.total_calls }} calls">
       <div class="card-collapsed-icon">📞</div>
-      <div class="sidebar-section-hd">Call Analytics</div>
+      <div class="sidebar-section-hd">📞 Call Analytics</div>
       <div class="analytics-row">
         <span class="ar-label">Total Calls</span>
         <span class="ar-value">{{ call_analytics_card.total_calls }}</span>
@@ -157,7 +158,7 @@
     {# ── Live workload ── #}
     <div class="analytics-card" title="Live Workload" data-metric=" · {{ workload_card.incoming }} queued">
       <div class="card-collapsed-icon">⚙️</div>
-      <div class="sidebar-section-hd">Live Workload</div>
+      <div class="sidebar-section-hd">⚙️ Live Workload</div>
       <div class="analytics-row">
         <span class="ar-label"><span class="ar-dot blue"></span>Incoming Queue</span>
         <span class="ar-value">{{ workload_card.incoming }}</span>

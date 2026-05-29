@@ -331,6 +331,7 @@ h1, h2, h3, h4 { line-height: 1.25; }
 }
 
 .is-collapsed .sidebar-hd-title { display: none; }
+.is-collapsed .sidebar-hd { justify-content: center; padding: 10px 0; }
 
 .sidebar-toggle {
   width: 26px;
@@ -572,6 +573,10 @@ h1, h2, h3, h4 { line-height: 1.25; }
 .sidebar-card-clear { background: rgba(34, 197, 94, 0.05); border-color: #22c55e; }
 .sidebar-card-clear-label { color: #22c55e; font-weight: 700; }
 .sidebar-card-clear-sub   { display: block; font-size: 0.9em; color: var(--ink-muted); margin-top: 4px; }
+.is-collapsed .sidebar-card-clear-label,
+.is-collapsed .sidebar-card-clear-sub { display: none; }
+/* All-clear collapsed icon colour */
+.is-collapsed .sidebar-card-clear .card-collapsed-icon { color: #22c55e; font-weight: 700; font-size: 18px; }
 
 /* Legend row at bottom of staff-workload card */
 .sidebar-legend-row {
@@ -639,6 +644,26 @@ h1, h2, h3, h4 { line-height: 1.25; }
 .rf-sub   { font-size: var(--text-xs); color: #b91c1c; display: block; }
 .is-collapsed .rf-body { display: none; }
 .is-collapsed .rf-value-coll { font-size: var(--text-sm); font-weight: 700; color: var(--danger); text-align: center; }
+
+/* Tooltip for collapsed red-flag card */
+.is-collapsed .red-flag-card[title]:hover::after {
+  content: attr(title) " · " attr(data-metric);
+  position: absolute;
+  left: calc(var(--sidebar-coll-w) + 4px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--ink);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 4px 9px;
+  border-radius: 6px;
+  white-space: nowrap;
+  z-index: 200;
+  pointer-events: none;
+  box-shadow: var(--shadow-md);
+}
+.is-collapsed .red-flag-card { position: relative; }
 
 .analytics-row {
   display: flex;
