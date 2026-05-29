@@ -25,6 +25,13 @@ sandbox\frontend\    ← Frontend Agent
 sandbox\db\          ← Database Agent
 sandbox\tests\       ← Test Agent
 Any live tenant database or production config directly
+
+C:\JeffLocal\dashboard\   ← PRODUCTION dashboard. NEVER deploy, restart, or
+                             modify files here without Saeed's explicit approval
+                             in the current session. No carry-over from prior sessions.
+                             Git branch name ≠ environment.
+                             PRODUCTION = C:\JeffLocal\dashboard\ (port 8765)
+                             SANDBOX    = C:\JeffLocal\sandbox\dashboard\ (port 5000)
 ```
 
 ---
