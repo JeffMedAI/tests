@@ -85,9 +85,12 @@ Security Agent has VETO authority over all PRs. Lead Agent enforces vetoes.
 - Sidebar R3/R1/R2 implemented in sandbox, synced to production
 - Bell badge on topbar: LIVE (deployed 2026-05-29, accepted by Saeed)
 - All 4 missing config files created (model_settings, routing_rules, pathways, model_monitoring)
-- Watchdog monitoring production every 5 minutes
+- Watchdog REWRITTEN (2026-05-29 Dispatch): now covers all 5 services (prod 8765, sandbox 5000,
+  n8n 5678, Ollama 11434, Cloudflare tunnel) — restart cap 3/hr, WhatsApp alerts, CRITICAL on cap hit
+  PENDING: git commit + Task Scheduler registration (Saeed to run manually — see session 2026-05-29-2000.md)
 - Strategy Agent: fully onboarded (2026-05-29)
-- Daily report script: C:\JeffLocal\scripts\daily\strategy_daily.ps1 (registered in Task Scheduler)
+- Daily report script: UPDATED with state verification (drift detection vs PROJECT_MEMORY)
+- WhatsApp daily report delivery: built and committed (5c80d76)
 
 ### Blocking Pilot 1 go-live
 - No real staff accounts (need names, roles, emails from Saeed)
@@ -99,6 +102,7 @@ Security Agent has VETO authority over all PRs. Lead Agent enforces vetoes.
 1. Cookie expiry fix — approval pack ready at APPROVAL_PACK_COOKIE_FIX_FINAL.md
 2. Sandbox "Status Degraded" fix — 1-line change in sandbox/dashboard/app/main.py
 3. Sidebar sandbox changes — close as "already promoted" (production already has these)
+4. TOOLING: Claude Desktop reinstall broke PowerShell computer-use (typing disabled, click-only). Needs fixing so Claude can type into PowerShell/terminal again. Check Claude Desktop settings or raise with Anthropic support.
 
 ### Open technical tasks (priority order)
 ```

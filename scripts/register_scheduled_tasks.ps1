@@ -54,6 +54,33 @@ Register-ScheduledTask `
 
 Write-Host "Registered: JeffLocal - Health Check (every 5 min)" -ForegroundColor Green
 
+# --- Task 3: Watchdog — continuous loop, starts at boot ---
+$action3 = New-ScheduledTaskAction `
+    -Execute "powershell.exe" `
+    -Argument "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File C:\JeffLocal\scripts\service_control\watchdog.ps1 -IntervalSeconds 60"
+
+# Trigger: at system startup
+$trigger3 = New-ScheduledTaskTrigger -AtStartup
+
+$settings3 = New-ScheduledTaskSettingsSet `
+    -ExecutionTimeLimit (New-TimeSpan -Days 365) `
+    -RestartCount 5 `
+    -RestartInterval (New-TimeSpan -Minutes 2) `
+    -StartWhenAvailable `
+    -MultipleInstances IgnoreNew
+
+Register-ScheduledTask `
+    -TaskName "JeffLocal - Service Watchdog" `
+    -TaskPath "\JeffLocal\" `
+    -Action $action3 `
+    -Trigger $trigger3 `
+    -Settings $settings3 `
+    -Description "Monitors all JeffLocal services (dashboard, sandbox, n8n, Ollama, Cloudflare tunnel). Restarts if down. Sends WhatsApp alerts on failure." `
+    -RunLevel Highest `
+    -Force
+
+Write-Host "Registered: JeffLocal - Service Watchdog (continuous, starts at boot)" -ForegroundColor Green
+
 Write-Host ""
 Write-Host "All tasks registered. Verify in Task Scheduler under \JeffLocal\" -ForegroundColor Cyan
 Write-Host ""

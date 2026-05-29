@@ -7,10 +7,15 @@
 #   1. Reads all session logs from last 24 hours (docs\sessions\)
 #   2. Reads git log for last 24 hours
 #   3. Checks document freshness
-#   4. Updates PROJECT_MEMORY.md current status section
-#   5. Generates daily briefing: what we did / plan today / blockers
-#   6. Saves report to docs\reports\{date}.md
-#   7. Commits and pushes to git
+#   4. Checks document freshness
+#   5. STATE VERIFICATION: compares PROJECT_MEMORY current status vs session logs
+#      — extracts pending/blocked items from memory
+#      — checks for drift (memory items with no recent log activity)
+#      — appends STATE VERIFICATION section to report
+#   6. Updates PROJECT_MEMORY.md current status section
+#   7. Generates daily briefing: what we did / plan today / blockers
+#   8. Saves report to docs\reports\{date}.md
+#   9. Commits and pushes to git
 #
 # Last updated: 2026-05-29
 
@@ -108,7 +113,99 @@ if (Test-Path $ProjectDocs) {
     }
 }
 
-# ── 5. Update PROJECT_MEMORY.md date + git state ─────────────────────────────
+# ── 5. STATE VERIFICATION — compare PROJECT_MEMORY with session logs ─────────
+Write-Log "Running state verification..."
+
+$MemoryContent = if (Test-Path $MemoryFile) { Get-Content $MemoryFile -Raw } else { "" }
+
+# Extract CURRENT STATUS section from PROJECT_MEMORY.md
+$MemoryStatus = ""
+if ($MemoryContent -match "(?s)## CURRENT STATUS.*?(?=\n---|\n## )") {
+    $MemoryStatus = $Matches[0]
+}
+
+# Pull last 5 commits for cross-reference
+Push-Location $RepoRoot
+try {
+    $Last5Commits = git log --oneline -5 2>&1
+} catch {
+    $Last5Commits = "(git log failed)"
+}
+Pop-Location
+
+# Extract pending/blocked items from PROJECT_MEMORY current status
+$MemoryPendingItems = @()
+if ($MemoryStatus) {
+    foreach ($line in ($MemoryStatus -split "`n")) {
+        $l = $line.Trim()
+        if ($l -match "(BLOCKED|Awaiting Saeed|PENDING|awaiting sign-off)" -and $l -ne "") {
+            $MemoryPendingItems += $l -replace "^\|?\s*", "" -replace "\s*\|.*$", ""
+        }
+    }
+}
+
+# Collect all topics mentioned in session logs (last 24h)
+$SessionTopics = @()
+foreach ($session in $SessionSummaries) {
+    foreach ($line in ($session.Content -split "`n")) {
+        $l = $line.Trim()
+        if ($l -match "(cookie|main\.py|N1|N2|R2|GDPR|sandbox|degraded|sign-off|approval)" -and $l -ne "") {
+            $SessionTopics += $l
+        }
+    }
+}
+
+# Detect drift: memory items with no corresponding session log activity
+$DriftItems = @()
+foreach ($item in $MemoryPendingItems) {
+    # Check if any session log line references keywords from this item
+    $keywords = ($item -replace "[|#\[\]\(\)\*`"]","").Split(" ") |
+        Where-Object { $_.Length -gt 5 } | Select-Object -First 3
+    $found = $false
+    foreach ($kw in $keywords) {
+        if ($SessionTopics -join " " -match [regex]::Escape($kw)) { $found = $true; break }
+    }
+    if (-not $found) { $DriftItems += $item }
+}
+
+# Build STATE VERIFICATION section text
+$MemoryPendingText = if ($MemoryPendingItems.Count -gt 0) {
+    ($MemoryPendingItems | Select-Object -First 10 | ForEach-Object { "- $_" }) -join "`n"
+} else { "- No pending/blocked items found in PROJECT_MEMORY current status." }
+
+$DriftText = if ($DriftItems.Count -gt 0) {
+    ($DriftItems | ForEach-Object { "- DRIFT: No recent session activity for: $_" }) -join "`n"
+} else { "- No drift detected. All memory items have corresponding recent log activity." }
+
+$CommitText = if ($Last5Commits -is [array]) { $Last5Commits -join "`n" } else { $Last5Commits }
+
+$StateVerificationSection = @"
+
+---
+
+## STATE VERIFICATION
+
+*Cross-check: PROJECT_MEMORY current status vs session logs (last 24h)*
+
+### What PROJECT_MEMORY says is pending / blocked
+
+$MemoryPendingText
+
+### Last 5 commits (cross-reference anchor)
+
+$CommitText
+
+### Drift analysis
+
+$DriftText
+
+*Drift = items marked pending/blocked in PROJECT_MEMORY with no matching session log activity in the last 24h.*
+*If drift items are present, they may need manual review — either genuinely stale or session log missing.*
+"@
+
+Write-Log "State verification complete. Memory pending items: $($MemoryPendingItems.Count). Drift items: $($DriftItems.Count)."
+
+# ── 6. Update PROJECT_MEMORY.md date + git state ────────────────────────────
 Write-Log "Updating PROJECT_MEMORY.md..."
 if (Test-Path $MemoryFile) {
     $memory = Get-Content $MemoryFile -Raw
@@ -120,7 +217,7 @@ if (Test-Path $MemoryFile) {
     Write-Log "PROJECT_MEMORY.md updated"
 }
 
-# ── 6. Build daily briefing ───────────────────────────────────────────────────
+# ── 7. Build daily briefing ───────────────────────────────────────────────────
 $DidSection = if ($WhatWeDid.Count -gt 0) { ($WhatWeDid | Select-Object -First 8 | ForEach-Object { "- $_" }) -join "`n" } else { "- No session logs found for last 24h. Check docs\sessions\." }
 $BlockerSection = if ($Blockers.Count -gt 0) { ($Blockers | Select-Object -Unique | ForEach-Object { "- $_" }) -join "`n" } else { "- None logged." }
 $ApprovalSection = if ($Approvals.Count -gt 0) { ($Approvals | Select-Object -Unique | ForEach-Object { "- [ ] $_" }) -join "`n" } else { "- None outstanding." }
@@ -176,19 +273,20 @@ $SessionFiles
 ## DOCUMENT HEALTH
 
 $StaleSection
+$StateVerificationSection
 
 ---
 
 *Auto-generated 07:00. Session logs: docs\sessions\  Full memory: PROJECT_MEMORY.md*
 "@
 
-# ── 7. Save report ────────────────────────────────────────────────────────────
+# ── 8. Save report ────────────────────────────────────────────────────────────
 if (-not (Test-Path $ReportsDir)) { New-Item -ItemType Directory -Path $ReportsDir -Force | Out-Null }
 $ReportPath = "$ReportsDir\$Today.md"
 Set-Content -Path $ReportPath -Value $Report -Encoding UTF8
 Write-Log "Report saved: $ReportPath"
 
-# ── 8. Commit + push ──────────────────────────────────────────────────────────
+# ── 9. Commit + push ──────────────────────────────────────────────────────────
 Write-Log "Committing to git..."
 Push-Location $RepoRoot
 try {
@@ -203,18 +301,22 @@ try {
 }
 Pop-Location
 
-# ── 9. Write last_run summary ─────────────────────────────────────────────────
+# ── 10. Write last_run summary ────────────────────────────────────────────────
 $Summary = "COMPLETE | Sessions: $($SessionSummaries.Count) | Stale docs: $($StaleDocs.Count) | Report: $ReportPath"
 Write-Log $Summary
 Set-Content -Path $LogFile -Value "[$Today $NowUTC UTC] strategy_daily $Summary" -Encoding UTF8
 Write-Host "Done. Report: $ReportPath" -ForegroundColor Green
 
-# ── 10. Send report via WhatsApp ──────────────────────────────────────────────
+# ── 11. Send report via WhatsApp ──────────────────────────────────────────────
 Write-Log "Sending report via WhatsApp..."
-$PythonScript = "$RepoRoot\scripts\daily\send_whatsapp.py"
-try {
-    $result = python $PythonScript $ReportPath 2>&1
-    Write-Log "WhatsApp send result: $result"
-} catch {
-    Write-Log "WARNING: WhatsApp send failed - $_"
+$PythonScript = "$RepoRoot\scripts\daily\send_whatsapp_report.py"
+if (Test-Path $PythonScript) {
+    try {
+        $result = python $PythonScript $ReportPath 2>&1
+        Write-Log "WhatsApp send result: $result"
+    } catch {
+        Write-Log "WARNING: WhatsApp send failed - $_"
+    }
+} else {
+    Write-Log "WARNING: WhatsApp sender not found at $PythonScript"
 }
