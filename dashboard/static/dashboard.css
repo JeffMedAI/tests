@@ -2187,4 +2187,39 @@ button:disabled { background: var(--gray-200); color: var(--gray-500); border-co
 .page-scroll {
   flex: 1;
   overflow-y: auto;
-  min-widt
+  min-width: 0;
+  min-height: 0;
+  padding: 20px 24px 28px;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   R3 — INLINE STYLE ELIMINATION
+   Utility and component classes that replace inline styles in templates.
+   Dynamic data-driven values (flex ratios, bar widths from Jinja2) stay
+   as inline styles — only static presentational styles move here.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* Spacing utility — replaces style="margin-top:24px" on section labels */
+.mt-section { margin-top: 24px; }
+
+/* Form inline — replaces style="display:inline" on small action forms */
+.form-inline { display: inline; }
+
+/* Required field asterisk — replaces style="color:#dc2626" */
+.required-mark { color: var(--danger); }
+
+/* Staff "no username" placeholder text */
+.no-username { color: var(--ink-subtle); font-style: italic; }
+
+/* case_detail.html — advanced staff fields details block */
+.advanced-staff-fields { margin-top: 8px; }
+
+/* case_detail.html — raw transcript details block */
+.raw-transcript { margin-top: 10px; }
+.raw-transcript p { font-size: var(--text-xs); margin-top: 8px; white-space: pre-wrap; }
+
+/* case_detail.html — recording card status line */
+.cd-recording-status { font-size: var(--text-sm); }
+
+/* case_detail.html — pathway intro paragraph in Triage tab */
+.cd-pathway-desc { font-size: var(--text-sm); margin-bottom: 12px; }

@@ -267,7 +267,7 @@
             <input type="hidden" name="action" value="reopen">
             <input type="hidden" name="return_url" value="{{ return_url }}">
             <button type="submit" class="cd-reopen-btn" {% if current_staff and current_staff.role == "readonly" %}disabled{% endif %}>↩ Reopen</button>
-            <a class="cd-action-btn" href="{{ return_url }}" style="text-align:center;justify-content:center">Back to Requests</a>
+            <a class="cd-action-btn" href="{{ return_url }}">Back to Requests</a>
           </form>
         </div>
       {% else %}
@@ -298,9 +298,9 @@
             <div class="cd-workflow-actions">
               <button type="submit" name="intent" value="resolve" class="cd-resolve-btn" {% if current_staff and current_staff.role == "readonly" %}disabled{% endif %}>✓ Mark as Resolved</button>
               <button type="submit" name="intent" value="save_progress" class="secondary-button" {% if current_staff and current_staff.role == "readonly" %}disabled{% endif %}>Save progress</button>
-              <a class="cd-action-btn" href="{{ return_url }}" style="text-align:center;justify-content:center">Back to Requests</a>
+              <a class="cd-action-btn" href="{{ return_url }}">Back to Requests</a>
             </div>
-            <details class="advanced-staff-fields" style="margin-top:8px">
+            <details class="advanced-staff-fields">
               <summary>Advanced staff fields</summary>
               <label>Status
                 <select name="status">
@@ -353,9 +353,9 @@
           {% endfor %}
         </div>
         {% if raw_transcript %}
-          <details class="raw-transcript" style="margin-top:10px">
+          <details class="raw-transcript">
             <summary>Show raw transcript</summary>
-            <p style="font-size:var(--text-xs);margin-top:8px;white-space:pre-wrap">{{ raw_transcript }}</p>
+            <p>{{ raw_transcript }}</p>
           </details>
         {% endif %}
       </div>
@@ -365,14 +365,14 @@
       {# Recording #}
       <div class="cd-card">
         <div class="cd-card-hd">Recording</div>
-        <p style="font-size:var(--text-sm)"><strong>Status:</strong> {{ recording.recording_label }}</p>
+        <p class="cd-recording-status"><strong>Status:</strong> {{ recording.recording_label }}</p>
         {% if recording.recording_reference %}
-          <p class="muted" style="font-size:var(--text-xs)">{{ recording.recording_help }}</p>
+          <p class="muted">{{ recording.recording_help }}</p>
           <button type="button" class="cd-copy-btn" data-copy-button data-copy-text="{{ recording.recording_reference }}">
             Copy recording reference
           </button>
         {% else %}
-          <p class="muted" style="font-size:var(--text-xs)">Recording expected after call completion.</p>
+          <p class="muted">Recording expected after call completion.</p>
         {% endif %}
       </div>
 
@@ -380,7 +380,7 @@
       {% if pathway_items %}
       <div class="cd-card">
         <div class="cd-card-hd">Pathway Summary</div>
-        <p class="muted" style="font-size:var(--text-xs)">
+        <p class="muted">
           {{ pathway_items | length }} pathway question{{ 's' if pathway_items | length != 1 }} captured.
           See the <strong>Triage</strong> tab for full details.
         </p>
@@ -400,7 +400,7 @@
     <div class="cd-content-main">
       <div class="cd-card">
         <div class="cd-card-hd">{{ case.request_type_label }} — Pathway Questions &amp; Responses</div>
-        <p class="muted" style="font-size:var(--text-sm);margin-bottom:12px">
+        <p class="muted cd-pathway-desc">
           Answers captured by Jeff during the call. Review before processing.
         </p>
         <ul class="cd-pathway-list cd-pathway-list-full">

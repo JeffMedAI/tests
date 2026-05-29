@@ -123,7 +123,7 @@ With human:
 ## TASK QUEUE (update after each completed task)
 
 ```
-[ ] R3 — Unified Card CSS (Frontend Agent)
+[x] R3 — Unified Card CSS (Frontend Agent) — completed 2026-05-29
 [ ] R1 — Icon-only collapsed sidebar with tooltips (Frontend Agent)
 [ ] R2 — Critical alert badge on sidebar toggle (Frontend Agent)
 [ ] enforce_auth cookie refresh fix (Backend Agent)
