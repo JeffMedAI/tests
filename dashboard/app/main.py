@@ -77,6 +77,19 @@ app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
 templates.env.filters["display_ts"] = format_display_timestamp
 
+
+def _nav_alert_count() -> int:
+    try:
+        with connect() as conn:
+            return conn.execute(
+                "SELECT COUNT(*) FROM alert_events WHERE acknowledged_at IS NULL"
+            ).fetchone()[0]
+    except Exception:
+        return 0
+
+
+templates.env.globals["nav_alert_count"] = _nav_alert_count
+
 SESSION_COOKIE = "jefflocal_session"
 AUTH_PUBLIC_PATHS = {"/login", "/logout", "/forgot", "/reset", "/favicon.ico"}
 AUTH_PUBLIC_PREFIXES = ("/static/", "/api/health", "/api/n8n/", "/api/alerts/")

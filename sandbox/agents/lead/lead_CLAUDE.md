@@ -25,6 +25,7 @@ Step 1 — Read all context
   - Read agents\test\CLAUDE.md
   - Read agents\security\CLAUDE.md
   - Read agents\devops\CLAUDE.md
+  - Read agents\strategy\strategy_CLAUDE.md
   - Read JEFFLOCAL_MASTER_PROMPT.md
 
 Step 2 — Check system state
@@ -32,6 +33,7 @@ Step 2 — Check system state
   - Run: git log --oneline -10
   - Run: cat scripts\daily\last_run.log (check daily tasks completed)
   - Run: cat reports\daily\{today}.json (if exists)
+  - Read: docs\reports\{yesterday}.md (Strategy Agent daily report, if exists)
 
 Step 3 — Check open work
   - Read GitHub open issues (via GitHub plugin)
@@ -58,6 +60,8 @@ Step 4 — Report to human BEFORE doing anything else
 - Assign ONE task to ONE agent at a time unless explicitly running parallel mode
 - Parallel mode allowed when: tasks are fully independent (e.g. Test Agent writing
   tests while Backend Agent works on a different, unrelated module)
+- Strategy Agent can always run in parallel with any technical agent
+  (its files never overlap with code files)
 - Never assign two agents to the same file simultaneously
 - Always assign in this order for any feature:
     1. Test Agent (write failing tests first)
@@ -99,6 +103,9 @@ With human:
 - Any decision affecting the deployment pipeline
 - Any new external dependency (npm package, pip package, webhook endpoint)
 - Anything that would affect a live production tenant
+- Strategy Agent has flagged a document as stale for 7+ days
+- Strategy Agent has a major document change proposal ready for approval
+- Marketing content from Strategy Agent is ready for external publication
 ```
 
 ---
@@ -125,6 +132,10 @@ With human:
 ```
 [x] R3 — Unified Card CSS (Frontend Agent) — completed 2026-05-29
 [x] R1 — Icon-only collapsed sidebar with tooltips (Frontend Agent) — completed 2026-05-29
+[x] Onboard Strategy Agent (Lead Agent self) — completed 2026-05-29
+[ ] Register strategy_daily.ps1 in Windows Task Scheduler (DevOps Agent)
+      → Task brief: scripts\daily\TASK_REGISTER_STRATEGY_DAILY.md
+      → Label: "JeffLocal — Strategy Agent Daily Report", trigger: daily 07:00
 [ ] R2 — Critical alert badge on sidebar toggle (Frontend Agent)
 [ ] enforce_auth cookie refresh fix (Backend Agent)
 [ ] Daily task scripts in scripts\daily\ (DevOps Agent)
@@ -149,6 +160,35 @@ With human:
    Next session should start with: [one task]
    Open questions for human: [list or "none"]
    ---
+```
+
+---
+
+## STRATEGY AGENT — ASSIGNMENT SCOPE
+
+Assign Strategy Agent for:
+```
+- Document updates (minor: autonomous; major: approval pack required)
+- Daily report generation (also runs on schedule)
+- Marketing content drafts — LinkedIn posts, email copy, website copy
+- Monthly document review and freshness audit
+- Agent prompt review memos
+```
+
+Never assign Strategy Agent for:
+```
+- Code tasks of any kind
+- Database tasks
+- Deployment or DevOps tasks
+- Security reviews
+```
+
+Major document changes from Strategy Agent:
+```
+1. Strategy Agent submits: draft change + rationale
+2. Lead Agent reviews for accuracy and completeness
+3. Lead Agent includes in approval pack for Saeed
+4. Saeed replies "approved" before change is finalised
 ```
 
 ---

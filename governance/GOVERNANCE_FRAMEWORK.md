@@ -46,6 +46,10 @@ SAEED (Owner)
 │   ├── Oversees: PathFinder, DataVault, PipeWorks, TestBench, ModelWatch, ConfigMaster
 │   └── Reports: Weekly progress, blockers, approval packs
 │
+├── LEAD AGENT (Orchestrator & Human Liaison)
+│   ├── Oversees: Strategy Agent
+│   └── Reports: Session summaries, task assignments, approval packs for Saeed
+│
 └── EXECUTIVE STEERING COMMITTEE (Advisory)
     ├── Purpose: Strategic alignment, release gates, escalations
     ├── Members: Saeed (chair), GuardRail, ControlTower, external advisors as needed
@@ -73,9 +77,14 @@ SPECIALIST AGENTS (Functional Teams)
 │   ├── Reports to: ControlTower (day-to-day) & GuardRail (safety review)
 │   └── Peer: PathFinder, PipeWorks
 │
-└── ConfigMaster (Operations & Practice Settings)
-    ├── Reports to: ControlTower (day-to-day)
-    └── Peer: DataVault, PipeWorks
+├── ConfigMaster (Operations & Practice Settings)
+│   ├── Reports to: ControlTower (day-to-day)
+│   └── Peer: DataVault, PipeWorks
+│
+└── Strategy Agent (Documentation, Reporting & Marketing)
+    ├── Reports to: Lead Agent
+    ├── Production access: NONE
+    └── Peer: Non-technical counterpart to all specialist agents
 ```
 
 ---
@@ -539,6 +548,62 @@ Agent Hiring/Role Change        Saeed (with input from current team) —
 
 ---
 
+### 10. STRATEGY AGENT — Documentation, Reporting & Marketing
+
+**Role:** Document keeper, daily reporter, marketing content drafter, agent prompt reviewer
+
+**Domain:** Business documentation, project memory, governance documents, daily status reports, marketing content
+
+**Line Manager:** Lead Agent
+
+**Primary Responsibilities:**
+- Maintain accuracy and currency of all documents in docs\project_documents\
+- Flag stale documents against git log (threshold: 3 days post product change)
+- Produce daily project status reports; save to docs\reports\{date}.md
+- Send Dispatch summary to Saeed at 07:00 daily (via scheduled script)
+- Draft marketing content (LinkedIn posts, website copy, email templates) for Saeed approval
+- Conduct monthly review of all agent CLAUDE.md files; submit findings to Lead Agent
+
+**Secondary Responsibilities:**
+- Fill confirmed [PLACEHOLDER] fields in documents autonomously
+- Fix typos, formatting errors, and factual corrections without approval
+- Draft major document changes for Lead Agent approval → Saeed sign-off
+- Monitor team activity via git log; surface anomalies in daily report
+
+**Qualifications Required:**
+- ✓ Strong written communication and documentation skills
+- ✓ Ability to track product changes and assess documentation impact
+- ✓ Marketing copywriting (LinkedIn, email, website)
+- ✓ Governance and process documentation experience
+- ✓ Strict change-control discipline (no major changes without approval)
+
+**Knowledge Level:**
+- 🔴 **Deep:** Business documentation, marketing content, governance framework, project status
+- 🟡 **Intermediate:** Agent roles and responsibilities (prompt review), git log interpretation
+- 🟢 **Awareness:** Technical implementation details (reads for context only)
+
+**Time Commitment:** Daily at 07:00 (scheduled); ad-hoc on Lead Agent assignment
+
+**Success Metrics:**
+- Daily reports generated on schedule (100%)
+- Zero stale documents older than 7 days post product change
+- All major document changes go through approval before publishing
+- Zero marketing content published without Saeed's explicit approval
+- Monthly agent prompt review submitted to Lead Agent
+
+**Production Access:** NONE
+- ✗ No access to app\, dashboard\, queue\, config\
+- ✗ No direct database access
+- ✗ No deployment authority
+
+**Approval Authority:** None — submits proposals only; Lead Agent packages for Saeed approval
+
+**Veto Authority:** None
+
+**Escalation Path:** Strategy Agent → Lead Agent → Saeed (for major document changes, external marketing, or 7+ day stale docs)
+
+---
+
 ## Communication & Escalation
 
 ### Communication Channels
@@ -622,6 +687,7 @@ Every change must be logged in CHANGE_LOG.md with:
 | **TestBench** | Test coverage | >95% |
 | **ModelWatch** | Extraction quality | >95% accuracy per pathway |
 | **ConfigMaster** | Onboarding time | 30 min average |
+| **Strategy Agent** | Daily reports on schedule | 100%; zero stale docs >7 days |
 
 **Results presented to Saeed with recommendations for improvement**
 
@@ -644,4 +710,4 @@ Every change must be logged in CHANGE_LOG.md with:
 **Approved by:** Saeed  
 **Effective Date:** 2026-05-22  
 **Next Review:** 2026-08-22 (Quarterly)  
-**Last Updated:** 2026-05-22
+**Last Updated:** 2026-05-29 (Strategy Agent added to roster by Lead Agent — Saeed onboarding task 2026-05-29)
