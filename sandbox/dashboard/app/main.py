@@ -67,7 +67,7 @@ N8NTEST_ARCHIVE_FOLDERS = [
 ]
 SERVICE_START_SCRIPT = ROOT_DIR / "scripts" / "service_control" / "start_jefflocal_services.ps1"
 LOCAL_SERVICE_URLS = {
-    "dashboard": "http://127.0.0.1:8765",
+    "dashboard": "http://127.0.0.1:5000",  # sandbox runs on 5000, not 8765
     "n8n": "http://localhost:5678",
     "voice_agent": "local webhook/test intake",
 }
