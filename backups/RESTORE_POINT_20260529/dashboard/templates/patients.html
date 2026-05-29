@@ -1,0 +1,75 @@
+﻿{% extends "base.html" %}
+{% block title %}Patients - JeffLocal{% endblock %}
+{% block content %}
+<div class="page-scroll">
+<section class="page-head app-header">
+  <div>
+    <span class="page-kicker">Identity and lookup</span>
+    <h1>Patients</h1>
+    <p class="muted">Lookup identity status, verified records, and candidate matches from local handoff data.</p>
+  </div>
+  <div class="header-actions">
+    <span class="status-pill">Local lookup</span>
+    <a class="button-link secondary-page" href="/requests?filter=identity_issues&range=all">Identity Checks</a>
+  </div>
+</section>
+
+<section class="panel">
+  <form method="get" action="/patients" class="search-sort-form">
+    <label>Patient lookup
+      <input name="q" value="{{ search_query }}" placeholder="Name, DOB, postcode, EMIS, NHS, verification status">
+    </label>
+    <button type="submit">Search</button>
+  </form>
+</section>
+
+<section class="insight-grid">
+  <div class="panel">
+    <div class="section-head"><h2>Match Status</h2><span class="muted">Current worklist</span></div>
+    <p class="muted">Search results show matched, possible match, weak match, no match, and insufficient-data cases.</p>
+  </div>
+  <div class="panel">
+    <div class="section-head"><h2>Candidate Matches</h2><span class="muted">Review aid</span></div>
+    <p class="muted">Possible candidate details remain read-only and require staff identity review before processing.</p>
+  </div>
+  <div class="panel">
+    <div class="section-head"><h2>Verification History</h2><span class="muted">Placeholder</span></div>
+    <p class="muted">Verification activity will be shown here as the local audit trail expands.</p>
+  </div>
+</section>
+
+<section class="panel table-panel">
+  <table class="alert-table">
+    <thead>
+      <tr>
+        <th>Call ID</th>
+        <th>Patient</th>
+        <th>DOB</th>
+        <th>Postcode</th>
+        <th>Verification</th>
+        <th>EMIS</th>
+        <th>NHS</th>
+        <th>Top Candidate</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for patient in patients %}
+      <tr>
+        <td><a href="/case/{{ patient.call_id }}">{{ patient.call_id }}</a></td>
+        <td>{{ patient.patient_name or "Unknown patient" }}</td>
+        <td>{{ patient.dob_display or "n/a" }}</td>
+        <td>{{ patient.postcode or "n/a" }}</td>
+        <td>{{ patient.verification_status or "n/a" }}</td>
+        <td>{{ patient.emis_number or patient.matched_patient_ref or "n/a" }}</td>
+        <td>{{ patient.nhs_number or "n/a" }}</td>
+        <td>{{ patient.top_candidate_name or "n/a" }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="8">No patient records found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+</div>
+{% endblock %}
+

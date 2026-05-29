@@ -21,6 +21,11 @@
     <span class="sidebar-hd-title">Analytics</span>
     <button class="sidebar-toggle" id="sidebar-toggle-btn" aria-label="Toggle sidebar" title="Collapse sidebar">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      <span class="sidebar-alert-badge{% if not urgent_attention.red_flags or urgent_attention.red_flags == 0 %} is-hidden{% endif %}"
+            id="sidebar-alert-badge"
+            aria-label="{{ urgent_attention.red_flags }} critical issue{{ 's' if urgent_attention.red_flags != 1 else '' }}"
+            title="{{ urgent_attention.red_flags }} critical issue{{ 's' if urgent_attention.red_flags != 1 else '' }} — click to expand sidebar"
+      >{{ urgent_attention.red_flags if urgent_attention.red_flags else '' }}</span>
     </button>
   </div>
 
@@ -38,16 +43,16 @@
 
     {# ── Queue status ── #}
     {% if queue_status_card is defined %}
-    <div class="analytics-card" title="Quick Status">
+    <div class="analytics-card" title="Quick Status" data-metric=" · {{ queue_status_card.open }} open">
       <div class="card-collapsed-icon" title="Quick Status">📊</div>
       <div class="card-full-content"></div>
-      <div class="sidebar-section-hd" style="margin-bottom:8px">📊 Quick Status</div>
+      <div class="sidebar-section-hd">📊 Quick Status</div>
       <div class="analytics-row">
         <span class="ar-label"><span class="ar-dot blue"></span>Open</span>
         <span class="ar-value">{{ queue_status_card.open }}</span>
       </div>
       <div class="analytics-row">
-        <span class="ar-label"><span class="ar-dot" style="background:var(--danger)"></span>Overdue</span>
+        <span class="ar-label"><span class="ar-dot danger"></span>Overdue</span>
         <span class="ar-value {{ 'danger-text' if queue_status_card.overdue else '' }}">{{ queue_status_card.overdue }}</span>
       </div>
       <div class="analytics-row">
@@ -55,7 +60,7 @@
         <span class="ar-value">{{ queue_status_card.resolved_today }}</span>
       </div>
       <div class="analytics-row">
-        <span class="ar-label"><span class="ar-dot" style="background:var(--danger)"></span>Critical</span>
+        <span class="ar-label"><span class="ar-dot danger"></span>Critical</span>
         <span class="ar-value {{ 'danger-text' if queue_status_card.red_flags else '' }}">{{ queue_status_card.red_flags }}</span>
       </div>
     </div>
@@ -63,28 +68,29 @@
 
     {# ── Critical Issues alert card ── #}
     {% if urgent_attention.red_flags > 0 %}
-    <a class="red-flag-card" href="{{ filter_links[1].url if filter_links|length > 1 else '/requests?filter=urgent_red_flags' }}" style="background-color: rgba(220, 38, 38, 0.05); border: 2px solid #dc2626;">
+    <a class="red-flag-card" title="Critical Issues" href="{{ filter_links[1].url if filter_links|length > 1 else '/requests?filter=urgent_red_flags' }}">
       <span class="rf-icon">⚠️</span>
       <div class="rf-body">
-        <span class="rf-label" style="color: #dc2626; font-weight: bold;">Critical Issues</span>
-        <span class="rf-value" style="color: #dc2626; font-size: 1.5em;">{{ urgent_attention.red_flags }}</span>
+        <span class="rf-label">Critical Issues</span>
+        <span class="rf-value">{{ urgent_attention.red_flags }}</span>
         <span class="rf-sub">Needs immediate attention</span>
       </div>
       <span class="rf-value-coll">{{ urgent_attention.red_flags }}</span>
     </a>
     {% else %}
-    <div class="analytics-card" style="background-color: rgba(34, 197, 94, 0.05); border: 1px solid #22c55e;">
-      <span style="color: #22c55e; font-weight: bold;">✓ All Clear</span>
-      <span style="display: block; font-size: 0.9em; color: #666; margin-top: 4px;">No critical issues</span>
+    <div class="analytics-card sidebar-card-clear" title="All Clear">
+      <div class="card-collapsed-icon">✓</div>
+      <span class="sidebar-card-clear-label">✓ All Clear</span>
+      <span class="sidebar-card-clear-sub">No critical issues</span>
     </div>
     {% endif %}
 
     {# ── Staff Workload (live) ── #}
-    <div class="analytics-card" title="Staff Workload" id="staff-workload-card">
+    <div class="analytics-card" title="Staff Workload" id="staff-workload-card" data-metric=" · {{ staff_workload_list|length }} staff">
       <div class="card-collapsed-icon">👥</div>
-      <div class="sidebar-section-hd" style="margin-bottom:8px">
-        Staff Workload
-        <span id="staff-workload-refresh-ts" style="font-size:9px;font-weight:400;color:var(--ink-subtle);margin-left:6px;"></span>
+      <div class="sidebar-section-hd">
+        👥 Staff Workload
+        <span id="staff-workload-refresh-ts" class="sidebar-card-ts"></span>
       </div>
       <div id="staff-workload-list">
         {# Seeded with server-side data; refreshed by JS every 60s #}
@@ -98,23 +104,23 @@
           </span>
         </div>
         {% else %}
-        <div class="analytics-row" style="color:var(--ink-subtle);font-size:11px;">Loading…</div>
+        <div class="analytics-row ar-row--muted">Loading…</div>
         {% endfor %}
       </div>
-      <div class="analytics-row" style="margin-top:6px;padding-top:6px;border-top:1px solid var(--line)">
-        <span class="ar-label" style="font-size:10px;color:var(--ink-subtle)">
-          <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#1d4ed8;margin-right:3px;vertical-align:middle;"></span>Open
-          <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#854d0e;margin-left:6px;margin-right:3px;vertical-align:middle;"></span>Active
-          <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#166534;margin-left:6px;margin-right:3px;vertical-align:middle;"></span>Done
+      <div class="analytics-row sidebar-legend-row">
+        <span class="ar-label sidebar-legend-label">
+          <span class="ar-dot legend-open"></span>Open
+          <span class="ar-dot legend-active"></span>Active
+          <span class="ar-dot legend-done"></span>Done
         </span>
       </div>
     </div>
 
     {# ── Call analytics ── #}
     {% if call_analytics_card is defined %}
-    <div class="analytics-card" title="Call Analytics">
+    <div class="analytics-card" title="Call Analytics" data-metric=" · {{ call_analytics_card.total_calls }} calls">
       <div class="card-collapsed-icon">📞</div>
-      <div class="sidebar-section-hd" style="margin-bottom:8px">Call Analytics</div>
+      <div class="sidebar-section-hd">📞 Call Analytics</div>
       <div class="analytics-row">
         <span class="ar-label">Total Calls</span>
         <span class="ar-value">{{ call_analytics_card.total_calls }}</span>
@@ -129,7 +135,7 @@
       </div>
       <div class="analytics-row">
         <span class="ar-label">Success Rate</span>
-        <span class="ar-value" style="color:var(--success)">{{ call_analytics_card.success_rate }}%</span>
+        <span class="ar-value success">{{ call_analytics_card.success_rate }}%</span>
       </div>
       {% if call_analytics_card.avg_turnaround %}
       <div class="analytics-row">
@@ -150,9 +156,9 @@
     {% endif %}
 
     {# ── Live workload ── #}
-    <div class="analytics-card" title="Live Workload">
+    <div class="analytics-card" title="Live Workload" data-metric=" · {{ workload_card.incoming }} queued">
       <div class="card-collapsed-icon">⚙️</div>
-      <div class="sidebar-section-hd" style="margin-bottom:8px">Live Workload</div>
+      <div class="sidebar-section-hd">⚙️ Live Workload</div>
       <div class="analytics-row">
         <span class="ar-label"><span class="ar-dot blue"></span>Incoming Queue</span>
         <span class="ar-value">{{ workload_card.incoming }}</span>
@@ -167,7 +173,7 @@
       </div>
       {% if workload_card.failed %}
       <div class="analytics-row">
-        <span class="ar-label"><span class="ar-dot" style="background:var(--danger)"></span>Failed</span>
+        <span class="ar-label"><span class="ar-dot danger"></span>Failed</span>
         <span class="ar-value">{{ workload_card.failed }}</span>
       </div>
       {% endif %}
