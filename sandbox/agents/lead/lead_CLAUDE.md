@@ -55,6 +55,28 @@ Step 4 — Report to human BEFORE doing anything else
 
 ---
 
+## PRODUCTION ENVIRONMENT LOCK — SAEED APPROVAL REQUIRED
+
+```
+DIRECTORY MAPPING (memorise this — git branch name does NOT indicate environment):
+
+  C:\JeffLocal\dashboard\          = PRODUCTION  (port 8765, watchdog auto-restart)
+  C:\JeffLocal\sandbox\dashboard\  = SANDBOX     (port 5000, manual launch)
+
+RULE: No agent may edit any file under C:\JeffLocal\dashboard\ unless Saeed has
+explicitly approved the change IN THIS SESSION. "I approved it last time" does not
+count. The approval must be stated by Saeed in the current conversation.
+
+BEFORE assigning any task that could touch dashboard files:
+  1. Confirm with the agent WHICH directory it will edit
+  2. If it is C:\JeffLocal\dashboard\ → STOP, ask Saeed first
+  3. If uncertain → STOP, ask Saeed first
+
+This rule was added 2026-05-29 after a production breach caused by path confusion.
+```
+
+---
+
 ## TASK ASSIGNMENT RULES
 
 - Assign ONE task to ONE agent at a time unless explicitly running parallel mode

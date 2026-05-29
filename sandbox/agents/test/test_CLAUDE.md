@@ -23,6 +23,11 @@ sandbox\backend\            ← Backend Agent owns application code
 sandbox\frontend\src\       ← Frontend Agent
 sandbox\db\migrations\      ← Database Agent
 production\                 ← Read-only for smoke test comparison only
+
+C:\JeffLocal\dashboard\     ← PRODUCTION — tests run AGAINST it (read-only
+                               observation), never modify files in it.
+                               SANDBOX tests target port 5000 (C:\JeffLocal\sandbox\dashboard\)
+                               PRODUCTION is port 8765 (C:\JeffLocal\dashboard\)
 ```
 
 ---

@@ -89,6 +89,33 @@ SPECIALIST AGENTS (Functional Teams)
 
 ---
 
+## PRODUCTION ENVIRONMENT — HARD LOCK (Added 2026-05-29, Saeed directive)
+
+```
+DIRECTORY MAP — ALL AGENTS AND ASSISTANTS MUST KNOW THIS:
+
+  C:\JeffLocal\dashboard\          = PRODUCTION  | port 8765 | watchdog-managed
+  C:\JeffLocal\sandbox\dashboard\  = SANDBOX     | port 5000 | manual launch only
+
+THE RULE:
+  No file under C:\JeffLocal\dashboard\ may be created, edited, or deleted
+  without Saeed's explicit approval in the current session.
+
+  No production service (port 8765, watchdog) may be restarted with changed
+  code without Saeed's explicit approval in the current session.
+
+  "I approved it before" does not count. Approval is per-session, per-change.
+  The git branch name does NOT indicate environment.
+
+CAUSE: On 2026-05-29 the assistant edited production files by assuming the
+"sandbox" git branch name meant the working tree was a sandbox environment.
+It is not. This rule exists to prevent recurrence.
+
+Breach report: docs/reports/breach_report_2026-05-29.md
+```
+
+---
+
 ## Decision Rights & Authority
 
 ### Authority Levels

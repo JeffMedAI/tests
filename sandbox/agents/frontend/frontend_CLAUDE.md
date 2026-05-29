@@ -22,6 +22,11 @@ sandbox\db\               ← Database Agent owns this
 sandbox\tests\e2e\        ← Test Agent owns Playwright tests
 sandbox\voice\            ← Backend Agent owns this
 production\               ← Read-only for comparison only
+
+C:\JeffLocal\dashboard\   ← PRODUCTION — NEVER EDIT without explicit Saeed
+                             approval in the current session. Git branch name
+                             does NOT mean you are in sandbox. Port 8765.
+                             SANDBOX is: C:\JeffLocal\sandbox\dashboard\ (port 5000)
 ```
 
 ---

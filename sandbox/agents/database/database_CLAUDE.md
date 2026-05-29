@@ -23,6 +23,11 @@ sandbox\frontend\           ← Frontend Agent
 sandbox\tests\              ← Test Agent
 production\db\              ← NEVER — read-only for schema comparison only
 Any live tenant DB          ← NEVER operated on by agents
+
+C:\JeffLocal\dashboard\     ← PRODUCTION dashboard — NEVER EDIT without
+                               explicit Saeed approval in the current session.
+                               SANDBOX is: C:\JeffLocal\sandbox\dashboard\ (port 5000)
+                               PRODUCTION is port 8765, watchdog-managed.
 ```
 
 ---

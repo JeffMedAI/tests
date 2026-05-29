@@ -24,6 +24,12 @@ sandbox\tests\            ← Test Agent owns this
 enforce_auth.py           ← Only with Security Agent + human approval
 patient_matcher.py        ← Only with Security Agent + human approval
 production\               ← Read-only for comparison only
+
+C:\JeffLocal\dashboard\   ← PRODUCTION — NEVER EDIT without explicit Saeed
+                             approval in the current session. This is NOT the
+                             sandbox. Port 8765. Watchdog auto-restarts it.
+                             Edits go live immediately without review.
+                             SANDBOX is: C:\JeffLocal\sandbox\dashboard\ (port 5000)
 ```
 
 ---
