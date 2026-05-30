@@ -1,34 +1,19 @@
 {% extends "base.html" %}
 {% block title %}{% if show_requests %}Requests{% else %}Dashboard{% endif %} - JeffLocal{% endblock %}
 
-{% block topbar_search %}
-{% if show_requests %}
-<form class="topbar-search-form" action="/requests" method="get">
-  <input type="hidden" name="filter" value="{{ active_filter|default('open') }}">
-  <input type="hidden" name="request_type" value="{{ active_request_type|default('') }}">
-  <input class="topbar-search" type="search" name="q" value="{{ search_query|default('') }}"
-         placeholder="Search patients, NHS, DOB, call ID…" aria-label="Search requests" autocomplete="off">
-</form>
-{% endif %}
+{% block sidebar_header %}
+<span class="sidebar-hd-title">Analytics</span>
+<button class="sidebar-toggle" id="sidebar-toggle-btn" aria-label="Toggle sidebar" title="Collapse sidebar">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+  <span class="sidebar-alert-badge{% if not urgent_attention.red_flags or urgent_attention.red_flags == 0 %} is-hidden{% endif %}"
+        id="sidebar-alert-badge"
+        aria-label="{{ urgent_attention.red_flags }} critical issue{{ 's' if urgent_attention.red_flags != 1 else '' }}"
+        title="{{ urgent_attention.red_flags }} critical issue{{ 's' if urgent_attention.red_flags != 1 else '' }} — click to expand sidebar"
+  >{{ urgent_attention.red_flags if urgent_attention.red_flags else '' }}</span>
+</button>
 {% endblock %}
 
-{% block content %}
-{% set service_data = services_status|default(none) %}
-
-{# ── ANALYTICS SIDEBAR ────────────────────────────────────────────── #}
-<aside class="analytics-sidebar" id="analytics-sidebar">
-  <div class="sidebar-hd">
-    <span class="sidebar-hd-title">Analytics</span>
-    <button class="sidebar-toggle" id="sidebar-toggle-btn" aria-label="Toggle sidebar" title="Collapse sidebar">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-      <span class="sidebar-alert-badge{% if not urgent_attention.red_flags or urgent_attention.red_flags == 0 %} is-hidden{% endif %}"
-            id="sidebar-alert-badge"
-            aria-label="{{ urgent_attention.red_flags }} critical issue{{ 's' if urgent_attention.red_flags != 1 else '' }}"
-            title="{{ urgent_attention.red_flags }} critical issue{{ 's' if urgent_attention.red_flags != 1 else '' }} — click to expand sidebar"
-      >{{ urgent_attention.red_flags if urgent_attention.red_flags else '' }}</span>
-    </button>
-  </div>
-
+{% block sidebar_content %}
   <div class="sidebar-period">
     <div class="period-tabs">
       <a href="/requests?range=today" class="period-tab {% if active_date_range == 'today' %}active{% endif %}">Today</a>
@@ -38,8 +23,6 @@
   </div>
 
   <div class="sidebar-body">
-
-    {# ── QUICK STATUS ONLY (removed duplicate KPI cards) ── #}
 
     {# ── Queue status ── #}
     {% if queue_status_card is defined %}
@@ -93,7 +76,6 @@
         <span id="staff-workload-refresh-ts" class="sidebar-card-ts"></span>
       </div>
       <div id="staff-workload-list">
-        {# Seeded with server-side data; refreshed by JS every 60s #}
         {% for su in staff_workload_list|default([]) %}
         <div class="staff-workload-row">
           <span class="staff-workload-name" title="{{ su.name }}">{{ su.name }}</span>
@@ -155,6 +137,7 @@
     </div>
     {% endif %}
 
+    {% if show_dashboard_overview %}
     {# ── Live workload ── #}
     <div class="analytics-card" title="Live Workload" data-metric=" · {{ workload_card.incoming }} queued">
       <div class="card-collapsed-icon">⚙️</div>
@@ -178,11 +161,13 @@
       </div>
       {% endif %}
     </div>
-
-    {# Request Mix removed from sidebar (see main dashboard area) #}
+    {% endif %}
 
   </div>{# end sidebar-body #}
-</aside>
+{% endblock %}
+
+{% block content %}
+{% set service_data = services_status|default(none) %}
 
 {# ── MAIN CONTENT ────────────────────────────────────────────────── #}
 <main class="app-main">
@@ -1194,7 +1179,7 @@
         if (event.target.closest('form'))   return;
         if (event.target.closest('button')) return;
         if (event.target.closest('a'))      return;
-        var card = event.target.closest('[data-case-row]');
+        var card = event.target.closest('[data-' + 'case-row]');
         if (!card) return;
         var callId = card.id.replace(/^case-/, '');
         if (!callId) return;
@@ -1575,3 +1560,4 @@
   setInterval(refreshStaffWorkload, 60000); // every 60 seconds
 </script>
 {% endblock %}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   

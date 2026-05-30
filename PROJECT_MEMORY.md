@@ -76,23 +76,20 @@ Security Agent has VETO authority over all PRs. Lead Agent enforces vetoes.
 
 ---
 
-## CURRENT STATUS (as of 2026-05-29 22:45)
+## CURRENT STATUS (as of 2026-05-30 16:30)
 
 ### What is working
 - Production dashboard LIVE at dashboard.app-avamed.uk
-- Cookie fix: LIVE in production (confirmed â€” both secure=True locations + middleware refresh)
-- Sidebar R3/R1/R2 + bell badge: all LIVE in production and sandbox
-- All 4 missing config files: DONE (model_settings, routing_rules, pathways, model_monitoring)
-- N1 fix: DONE â€” model_monitoring.json log path externalised to ${JEFFLOCAL_ROOT}
-- N2 fix: DONE â€” log.error() added to _nav_alert_count() except block in dashboard/app/main.py
-- Sandbox Status Degraded: FIXED â€” sandbox/outputs/handoff_json/ created
-- Watchdog: REWRITTEN â€” all 5 services, restart cap 3/hr, WhatsApp alerts, CRITICAL on cap hit
-- WhatsApp daily report delivery: DONE (5c80d76)
-- Daily report + state verification (drift detection): DONE
+- Cookie fix: LIVE in production
+- Sidebar R1 COMPLETE: sidebar now on all 6 primary pages (not just dashboard), topbar removed, nav in sidebar
+- All 4 missing config files: DONE
+- N1/N2 fixes: DONE
+- Watchdog: REWRITTEN — all 5 services, restart cap 3/hr, WhatsApp alerts
+- WhatsApp daily report delivery: DONE
 - Strategy Agent: fully onboarded
-- E2E call flow test: BUILT â€” 10 cases, all 8 pathways, 5-stage runner
-  - Stages 1, 2, 4: PASSING
-  - Stage 3 (case verification): fix applied (SQLite direct query) â€” awaiting re-run
+- Test suite: 91/102 passing — conftest auth fixture working, failures are real app bugs not setup
+- E2E call flow test: Stages 1, 2, 4 PASSING. Stage 3: SQLite fix in place but pipeline gap identified
+  — n8n receives webhook (Stage 2 pass) but cases never reach DB — n8n workflow not writing handoff JSON
 - n8n webhook path confirmed: jefflocal-test-intake
 
 ### Blocking Pilot 1 go-live
@@ -101,23 +98,23 @@ Security Agent has VETO authority over all PRs. Lead Agent enforces vetoes.
 - Governance gates 1-7 not completed
 
 ### Pending Saeed approvals (action required)
-1. Git commit + backup for N1/N2/E2E/sandbox-degraded changes (ready to go)
-2. Task Scheduler registration: run scripts\register_scheduled_tasks.ps1 as Administrator (also registers hardened watchdog)
-3. Clear git lock before committing: Remove-Item C:\JeffLocal\.git\index.lock -Force; then git add + commit + push (watchdog, report fix, state verification)
+1. **URGENT: Run fix_git_lock.ps1** — git index corrupted, blocks all commits. Script at C:\JeffLocal\fix_git_lock.ps1 (also repairs index, not just lock)
+2. Task Scheduler registration: run scripts\register_scheduled_tasks.ps1 as Administrator
+3. Review 11 remaining test failures — assign to Backend Agent or accept as backlog
 
 ### Pending research / future tasks
-- OpenJarvis pilot: onboarding plan READY at docs\project_documents\Jarvis_Onboarding_Plan.md. Phase 1 (manual scan, no approval needed) can start anytime. Saeed approval required before Phase 2 (nightly scheduled) and Phase 3 (9th agent). Read-only, qwen3:0.6b, off-hours, zero network calls.
+- OpenJarvis pilot: onboarding plan READY at docs\project_documents\Jarvis_Onboarding_Plan.md.
 
 ### Open technical tasks (priority order)
 ```
 RANK  | TASK                          | AGENT          | STATUS
 ------+-------------------------------+----------------+-----------------------------------
- 1    | Auth fixture (conftest.py)    | Test Agent     | Assigned — unblocks 78 unit tests
- 2    | E2E Stage 3 re-run            | Test Agent     | Assigned — fix applied, verify only
- 3    | HMAC payload verification n8n | Backend Agent  | Assigned — IR-01, sec review req'd
- 4    | Password reset end-to-end     | Backend Agent  | Assigned — sec review req'd
- 5    | GDPR 90-day purge script      | Database Agent | Assigned — sec review req'd
- 6    | Full Playwright E2E suite     | Test Agent     | Pending (after Tasks 1+2 complete)
+ 1    | HMAC payload verification n8n | Backend Agent  | Assigned — IR-01, sec review req'd
+ 2    | Password reset end-to-end     | Backend Agent  | Assigned — sec review req'd
+ 3    | GDPR 90-day purge script      | Database Agent | Assigned — sec review req'd
+ 4    | E2E pipeline gap (n8n→DB)     | Backend Agent  | NEW — Stage 3 blocked by this
+ 5    | Fix 11 test_render_pages bugs | Test Agent     | Pre-existing, LOW priority
+ 6    | Full Playwright E2E suite     | Test Agent     | Pending (after tasks 1-3 done)
  7    | Multi-tenancy tenant_id       | Database Agent | Pending
  8    | Daily task scripts            | DevOps Agent   | Pending
  9    | Issue #1 retroactive sign-off | Strategy Agent | Pending (LOW)
