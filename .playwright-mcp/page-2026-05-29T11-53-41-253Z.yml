@@ -1,0 +1,286 @@
+- generic [active] [ref=e1]:
+  - alert "Sandbox environment notice" [ref=e2]:
+    - generic [ref=e3]: ⚠
+    - generic [ref=e4]: SANDBOX — Churchtown Medical Centre — Not for live patient use. Testing and development only.
+    - generic [ref=e5]: ⚠
+  - banner [ref=e6]:
+    - generic [ref=e7]:
+      - generic [ref=e8]: CMC
+      - generic [ref=e9]:
+        - generic [ref=e10]: Churchtown Medical Centre
+        - generic [ref=e11]: Friday, 29 May 2026
+    - navigation "Main navigation" [ref=e12]:
+      - link "Dashboard" [ref=e13] [cursor=pointer]:
+        - /url: /
+      - link "Requests" [ref=e14] [cursor=pointer]:
+        - /url: /requests
+      - link "Patients" [ref=e15] [cursor=pointer]:
+        - /url: /patients
+      - link "Staff" [ref=e16] [cursor=pointer]:
+        - /url: /staff
+      - link "Reports" [ref=e17] [cursor=pointer]:
+        - /url: /reports
+      - link "Settings" [ref=e18] [cursor=pointer]:
+        - /url: /settings
+    - generic [ref=e19]:
+      - button "Import" [ref=e20] [cursor=pointer]
+      - link "Alerts" [ref=e21] [cursor=pointer]:
+        - /url: /alerts
+        - img [ref=e22]
+      - generic [ref=e26]:
+        - link "Saeed 1 Admin" [ref=e27] [cursor=pointer]:
+          - /url: /profile
+          - generic [ref=e28]:
+            - generic [ref=e29]: Saeed 1
+            - generic [ref=e30]: Admin
+          - generic [ref=e31]: S
+        - link "Sign out" [ref=e32] [cursor=pointer]:
+          - /url: /logout
+          - img [ref=e33]
+  - generic [ref=e36]:
+    - complementary [ref=e37]:
+      - generic [ref=e38]:
+        - generic [ref=e39]: Analytics
+        - button "Toggle sidebar" [ref=e40] [cursor=pointer]:
+          - img [ref=e41]
+      - generic [ref=e44]:
+        - link "Today" [ref=e45] [cursor=pointer]:
+          - /url: /requests?range=today
+        - link "Week" [ref=e46] [cursor=pointer]:
+          - /url: /requests?range=week
+        - link "All" [ref=e47] [cursor=pointer]:
+          - /url: /requests?range=all
+      - generic [ref=e48]:
+        - generic "Quick Status" [ref=e49]:
+          - generic [ref=e50]: 📊 Quick Status
+          - generic [ref=e51]:
+            - generic [ref=e52]: Open
+            - generic [ref=e54]: "0"
+          - generic [ref=e55]:
+            - generic [ref=e56]: Overdue
+            - generic [ref=e58]: "0"
+          - generic [ref=e59]:
+            - generic [ref=e60]: Resolved Today
+            - generic [ref=e62]: "0"
+          - generic [ref=e63]:
+            - generic [ref=e64]: Critical
+            - generic [ref=e66]: "0"
+        - generic [ref=e67]:
+          - text: ✓ All Clear
+          - generic [ref=e68]: No critical issues
+        - generic "Staff Workload" [ref=e69]:
+          - generic [ref=e70]: Staff Workload 12:53
+          - generic [ref=e71]:
+            - generic [ref=e72]:
+              - generic "Admin Demo" [ref=e73]
+              - generic [ref=e74]:
+                - generic "Open cases" [ref=e75]: "0"
+                - generic "In progress" [ref=e76]: "0"
+                - generic "Resolved today" [ref=e77]: "0"
+            - generic [ref=e78]:
+              - generic "GP Demo" [ref=e79]
+              - generic [ref=e80]:
+                - generic "Open cases" [ref=e81]: "0"
+                - generic "In progress" [ref=e82]: "0"
+                - generic "Resolved today" [ref=e83]: "0"
+            - generic [ref=e84]:
+              - generic "Jessica Test1" [ref=e85]
+              - generic [ref=e86]:
+                - generic "Open cases" [ref=e87]: "0"
+                - generic "In progress" [ref=e88]: "0"
+                - generic "Resolved today" [ref=e89]: "0"
+            - generic [ref=e90]:
+              - generic "Mary 1" [ref=e91]
+              - generic [ref=e92]:
+                - generic "Open cases" [ref=e93]: "0"
+                - generic "In progress" [ref=e94]: "0"
+                - generic "Resolved today" [ref=e95]: "0"
+            - generic [ref=e96]:
+              - generic "Reception Demo" [ref=e97]
+              - generic [ref=e98]:
+                - generic "Open cases" [ref=e99]: "0"
+                - generic "In progress" [ref=e100]: "0"
+                - generic "Resolved today" [ref=e101]: "0"
+            - generic [ref=e102]:
+              - generic "Saeed 1" [ref=e103]
+              - generic [ref=e104]:
+                - generic "Open cases" [ref=e105]: "21"
+                - generic "In progress" [ref=e106]: "0"
+                - generic "Resolved today" [ref=e107]: "0"
+          - generic [ref=e109]:
+            - text: Open
+            - text: Active
+            - text: Done
+        - generic "Call Analytics" [ref=e113]:
+          - generic [ref=e114]: Call Analytics
+          - generic [ref=e115]:
+            - generic [ref=e116]: Total Calls
+            - generic [ref=e117]: "38"
+          - generic [ref=e118]:
+            - generic [ref=e119]: Dropped
+            - generic [ref=e120]: "3"
+          - generic [ref=e121]:
+            - generic [ref=e122]: Safe to Queue
+            - generic [ref=e123]: "36"
+          - generic [ref=e124]:
+            - generic [ref=e125]: Success Rate
+            - generic [ref=e126]: 94.7%
+          - generic [ref=e127]:
+            - generic [ref=e128]: Avg Response Time
+            - 'generic "Average response time in minutes: 4189" [ref=e129]': 2d 21h
+        - generic "Live Workload" [ref=e130]:
+          - generic [ref=e131]: Live Workload
+          - generic [ref=e132]:
+            - generic [ref=e133]: Incoming Queue
+            - generic [ref=e135]: "0"
+          - generic [ref=e136]:
+            - generic [ref=e137]: Awaiting
+            - generic [ref=e139]: "0"
+          - generic [ref=e140]:
+            - generic [ref=e141]: Processed Today
+            - generic [ref=e143]: "0"
+    - main [ref=e144]:
+      - status [ref=e145]:
+        - strong [ref=e146]: DEMO / TEST DATA MODE
+        - generic [ref=e147]: No real patient data. Google push disabled for test runs.
+      - generic [ref=e148]:
+        - generic [ref=e149]:
+          - generic [ref=e150]:
+            - generic [ref=e151]: JeffLocal Reception Dashboard
+            - heading "📊 Today's Overview" [level=1] [ref=e152]
+            - paragraph [ref=e153]: Check critical issues, workload status, and team performance at a glance.
+          - generic [ref=e154]:
+            - generic [ref=e155]: System Degraded
+            - generic [ref=e157]: Updated 29-05-2026 T 11:53
+            - button "Refresh" [ref=e158] [cursor=pointer]
+        - region "Urgent Attention" [ref=e159]:
+          - generic [ref=e160]:
+            - heading "⚠️ Urgent Attention" [level=2] [ref=e161]
+            - paragraph [ref=e162]: ✓ No critical issues detected
+        - region "Today's Key Metrics" [ref=e163]:
+          - link "Open Cases 0 → View" [ref=e164] [cursor=pointer]:
+            - /url: /requests?filter=open&sort=newest&range=all
+            - generic [ref=e165]: Open Cases
+            - strong [ref=e166]: "0"
+            - generic [ref=e167]: → View
+          - link "Red Flags 0 → View" [ref=e168] [cursor=pointer]:
+            - /url: /requests?filter=urgent_red_flags&sort=newest&range=all
+            - generic [ref=e169]: Red Flags
+            - strong [ref=e170]: "0"
+            - generic [ref=e171]: → View
+          - link "Staff Review 0 → View" [ref=e172] [cursor=pointer]:
+            - /url: /requests?filter=needs_review&sort=newest&range=all
+            - generic [ref=e173]: Staff Review
+            - strong [ref=e174]: "0"
+            - generic [ref=e175]: → View
+          - link "Identity Checks 0 → View" [ref=e176] [cursor=pointer]:
+            - /url: /requests?filter=identity_issues&sort=newest&range=all
+            - generic [ref=e177]: Identity Checks
+            - strong [ref=e178]: "0"
+            - generic [ref=e179]: → View
+          - link "Processed Today 0 → View" [ref=e180] [cursor=pointer]:
+            - /url: /requests?filter=resolved_today&sort=newest&range=all
+            - generic [ref=e181]: Processed Today
+            - strong [ref=e182]: "0"
+            - generic [ref=e183]: → View
+          - generic "System Status" [ref=e184] [cursor=pointer]:
+            - generic [ref=e185]: System Status
+            - generic [ref=e186]:
+              - generic [ref=e187]:
+                - text: Dashboard
+                - strong [ref=e189]: Degraded
+              - generic [ref=e190]:
+                - text: Workflows
+                - strong [ref=e192]: Active
+              - generic [ref=e193]:
+                - text: Voice Agent
+                - strong [ref=e195]: Test Ready
+        - region "Case status distribution" [ref=e196]:
+          - generic [ref=e197]:
+            - heading "Status Distribution" [level=2] [ref=e198]
+            - text: All
+          - generic "Case status breakdown"
+          - generic [ref=e199]:
+            - generic [ref=e200]: Routine open (0)
+            - generic [ref=e201]: Needs review (0)
+            - generic [ref=e202]: Critical (0)
+            - generic [ref=e203]: Resolved today (0)
+        - region "Dashboard insights" [ref=e204]:
+          - generic "Request Mix" [ref=e205]:
+            - generic [ref=e206]:
+              - heading "Request Mix" [level=2] [ref=e207]
+              - generic [ref=e208]: All
+            - paragraph [ref=e209]: No requests in this range.
+          - generic "Staff Workload" [ref=e210]:
+            - generic [ref=e211]:
+              - heading "Staff Workload" [level=2] [ref=e212]
+              - generic [ref=e213]: Team Activity
+            - generic [ref=e214]:
+              - generic [ref=e215]:
+                - text: Resolved
+                - strong [ref=e216]: "0"
+              - generic [ref=e217]:
+                - text: In progress
+                - strong [ref=e218]: "0"
+              - generic [ref=e219]:
+                - text: Alerts ack
+                - strong [ref=e220]: "0"
+            - table [ref=e221]:
+              - rowgroup [ref=e222]:
+                - row "Staff Open Resolved Alerts" [ref=e223]:
+                  - columnheader "Staff" [ref=e224]
+                  - columnheader "Open" [ref=e225]
+                  - columnheader "Resolved" [ref=e226]
+                  - columnheader "Alerts" [ref=e227]
+              - rowgroup [ref=e228]:
+                - row "AAdmin Demo 0 0 0" [ref=e229]:
+                  - cell "AAdmin Demo" [ref=e230]:
+                    - generic [ref=e231]: AAdmin Demo
+                  - cell "0" [ref=e232]
+                  - cell "0" [ref=e233]
+                  - cell "0" [ref=e234]
+                - row "SSaeed 1 0 0 0" [ref=e235]:
+                  - cell "SSaeed 1" [ref=e236]:
+                    - generic [ref=e237]: SSaeed 1
+                  - cell "0" [ref=e238]
+                  - cell "0" [ref=e239]
+                  - cell "0" [ref=e240]
+                - row "GGP Demo 0 0 0" [ref=e241]:
+                  - cell "GGP Demo" [ref=e242]:
+                    - generic [ref=e243]: GGP Demo
+                  - cell "0" [ref=e244]
+                  - cell "0" [ref=e245]
+                  - cell "0" [ref=e246]
+                - row "JJessica Test1 0 0 0" [ref=e247]:
+                  - cell "JJessica Test1" [ref=e248]:
+                    - generic [ref=e249]: JJessica Test1
+                  - cell "0" [ref=e250]
+                  - cell "0" [ref=e251]
+                  - cell "0" [ref=e252]
+                - row "MMary 1 0 0 0" [ref=e253]:
+                  - cell "MMary 1" [ref=e254]:
+                    - generic [ref=e255]: MMary 1
+                  - cell "0" [ref=e256]
+                  - cell "0" [ref=e257]
+                  - cell "0" [ref=e258]
+          - generic "Live Workload" [ref=e259]:
+            - generic [ref=e260]:
+              - heading "Live Workload" [level=2] [ref=e261]
+              - generic [ref=e262]: Idle
+            - generic [ref=e263]:
+              - term [ref=e264]: Status
+              - definition [ref=e265]: Idle
+              - term [ref=e266]: Incoming Queue
+              - definition [ref=e267]: "0"
+              - term [ref=e268]: Awaiting Processing
+              - definition [ref=e269]: "0"
+              - term [ref=e270]: Active Processing
+              - definition [ref=e271]: Not tracked
+              - term [ref=e272]: Processed Today
+              - definition [ref=e273]: "0"
+              - term [ref=e274]: Failed
+              - definition [ref=e275]: "0"
+              - term [ref=e276]: Failed Safety Queue
+              - definition [ref=e277]: "0"
+              - term [ref=e278]: Last checked
+              - definition [ref=e279]: 29-05-2026 T 11:53

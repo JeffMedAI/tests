@@ -1,0 +1,5 @@
+{
+    "enable_google_sheet_push": true,
+    "environment": "sandbox",
+    "demo_mode": true
+}

@@ -1,0 +1,158 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]: JL
+      - generic [ref=e5]:
+        - generic [ref=e6]: JeffLocal
+        - generic [ref=e7]: Friday, 29 May 2026
+    - navigation "Main navigation" [ref=e8]:
+      - link "Dashboard" [ref=e9] [cursor=pointer]:
+        - /url: /
+      - link "Requests" [ref=e10] [cursor=pointer]:
+        - /url: /requests
+      - link "Patients" [ref=e11] [cursor=pointer]:
+        - /url: /patients
+      - link "Staff" [ref=e12] [cursor=pointer]:
+        - /url: /staff
+      - link "Reports" [ref=e13] [cursor=pointer]:
+        - /url: /reports
+      - link "Settings" [ref=e14] [cursor=pointer]:
+        - /url: /settings
+    - generic [ref=e15]:
+      - button "Import" [ref=e16] [cursor=pointer]
+      - link "Alerts" [ref=e17] [cursor=pointer]:
+        - /url: /alerts
+        - img [ref=e18]
+      - generic [ref=e22]:
+        - link "Saeed Admin" [ref=e23] [cursor=pointer]:
+          - /url: /profile
+          - generic [ref=e24]:
+            - generic [ref=e25]: Saeed
+            - generic [ref=e26]: Admin
+          - generic [ref=e27]: S
+        - link "Sign out" [ref=e28] [cursor=pointer]:
+          - /url: /logout
+          - img [ref=e29]
+  - generic [ref=e33]:
+    - generic [ref=e34]:
+      - generic [ref=e35]:
+        - link "Back to Requests" [ref=e36] [cursor=pointer]:
+          - /url: /requests?filter=all&sort=newest&range=today&page_size=20
+          - img [ref=e37]
+          - text: Back to Requests
+        - generic [ref=e39]:
+          - generic [ref=e40]: 🚨 Emergency
+          - generic [ref=e41]: RED FLAG
+          - generic [ref=e42]: Appointment
+        - generic [ref=e43]: OPEN
+      - heading "GEOFFREY MYNNE" [level=1] [ref=e44]
+      - generic [ref=e45]:
+        - generic [ref=e46]: DOB
+        - generic [ref=e47]: 21/02/1941 · 85
+        - generic [ref=e48]: Phone
+        - generic [ref=e49]: 0711 100 2005
+        - generic [ref=e50]: Received
+        - generic [ref=e51]: 12-05-2026 T 09:00
+        - generic [ref=e52]: Call age
+        - generic [ref=e53]: 17d ago
+        - generic [ref=e54]: Duration
+        - generic [ref=e55]: 246s
+      - generic [ref=e56]:
+        - link "Call" [ref=e57] [cursor=pointer]:
+          - /url: tel:07111002005
+          - img [ref=e58]
+          - text: Call
+        - button "Copy Identifiers" [ref=e60] [cursor=pointer]
+        - button "Copy Record Note" [ref=e61] [cursor=pointer]
+        - button "Copy Staff Task" [ref=e62] [cursor=pointer]
+      - button "Start Review" [ref=e65] [cursor=pointer]
+    - navigation "Case detail sections" [ref=e66]:
+      - button "Action Needed" [ref=e67] [cursor=pointer]
+      - button "Conversation" [ref=e68] [cursor=pointer]
+      - button "Triage" [ref=e69] [cursor=pointer]
+      - button "Audit" [ref=e70] [cursor=pointer]
+    - generic [ref=e71]: 🚨 Emergency red-flag case — immediate staff review required
+    - generic [ref=e72]: 🪪 Identity review required before processing
+    - generic [ref=e74]:
+      - generic [ref=e75]:
+        - generic [ref=e76]:
+          - generic [ref=e77]: AI Summary
+          - paragraph [ref=e78]: Possible emergency red-flag symptoms identified from caller report. Caller requires immediate urgent safety handling.
+        - generic [ref=e79]:
+          - generic [ref=e80]: ⚠ Red Flag Warning
+          - paragraph [ref=e81]: Staff review required
+        - generic [ref=e82]:
+          - generic [ref=e83]: Staff Task & Suggested Actions
+          - paragraph [ref=e84]: POSSIBLE EMERGENCY - chest pain, sweating, breathlessness
+          - paragraph [ref=e85]: "Caller reported: chest pain, sweating, breathlessness. Priority: 999 Emergency. Safe to queue: false. Transcript/pathway indicates urgent care or 999/A&E advice was given. Callback: 07111002005. Patient verification: no_match. No matching patient found in lookup."
+        - generic [ref=e86]:
+          - generic [ref=e87]: EMIS Workflow Steps
+          - list [ref=e88]:
+            - listitem [ref=e89]: Find patient on EMIS
+            - listitem [ref=e90]: Check appointment availability or redirect protocol
+            - listitem [ref=e91]: Book or redirect as appropriate
+        - generic [ref=e92]:
+          - generic [ref=e93]:
+            - text: Patient Record Note
+            - generic [ref=e94]: Review before pasting into patient record
+          - paragraph [ref=e95]: "Patient: GEOFFREY MYNNE. The caller requested Possible emergency red-flag symptoms identified from caller report. Caller requires immediate urgent safety handling.. Relevant transcript context: Jeff: Tell me what is happening. Caller: I have chest pain, I feel sweaty and I am struggling to breathe. Jeff: This could be an emergency. Please call nine nine nine now or go to A and E. Can I confirm your name and date of birth for the practice note? Cal.... Callback number provided: 07111002005. Identity verification was no_match. Red-flag symptoms were identified from the transcript. The request was assessed as 999 Emergency and not safe to queue. Action: Staff review required Urgent/red-flag case: follow local urgent escalation protocol. Do not rely on copied note alone."
+          - button "Copy to clipboard" [ref=e96] [cursor=pointer]
+        - group [ref=e97]:
+          - generic "Locked JeffLocal fields" [ref=e98] [cursor=pointer]
+      - generic [ref=e99]:
+        - generic [ref=e100]:
+          - generic [ref=e101]: Identifiers
+          - generic [ref=e102]:
+            - generic [ref=e103]: EMIS
+            - generic [ref=e104]: n/a
+            - button "Copy" [disabled] [ref=e105]
+          - generic [ref=e106]:
+            - generic [ref=e107]: NHS
+            - generic [ref=e108]: n/a
+            - button "Copy" [disabled] [ref=e109]
+          - generic [ref=e110]:
+            - generic [ref=e111]: Callback
+            - generic [ref=e112]: 0711 100 2005
+            - button "Copy" [ref=e113] [cursor=pointer]
+        - generic [ref=e114]:
+          - generic [ref=e115]: Safety & Status
+          - generic [ref=e116]:
+            - generic [ref=e117]: 999 Emergency
+            - generic [ref=e118]: Red Flag
+            - generic [ref=e119]: Not Safe To Queue
+            - generic [ref=e120]: Review Required
+            - generic [ref=e121]: "ID: No Match"
+        - generic [ref=e122]:
+          - generic [ref=e123]: Staff Workflow
+          - generic [ref=e124]:
+            - generic [ref=e125]:
+              - generic [ref=e126]:
+                - text: Status
+                - strong [ref=e127]: Urgent Review
+              - generic [ref=e128]:
+                - text: Assigned
+                - strong [ref=e129]: Saeed
+            - generic [ref=e130]:
+              - text: Outcome note
+              - textbox "Outcome note" [ref=e131]: Processed according to JeffLocal workflow.
+            - generic [ref=e132]:
+              - checkbox "I confirm staff review is complete and this request is ready to resolve." [ref=e133]
+              - text: I confirm staff review is complete and this request is ready to resolve.
+            - paragraph [ref=e134]: Outcome notes required before resolving a red-flag case.
+            - paragraph [ref=e135]: Outcome notes required before resolving an identity issue.
+            - generic [ref=e136]:
+              - button "✓ Mark as Resolved" [ref=e137] [cursor=pointer]
+              - button "Save progress" [ref=e138] [cursor=pointer]
+              - link "Back to Requests" [ref=e139] [cursor=pointer]:
+                - /url: /requests?filter=all&sort=newest&range=today&page_size=20
+            - group [ref=e140]:
+              - generic "Advanced staff fields" [ref=e141]
+              - option "New"
+              - option "Needs Review"
+              - option "Urgent Review" [selected]
+              - option "In Progress"
+              - option "Waiting for Patient"
+              - option "Waiting for GP"
+              - option "Resolved"
+              - option "Escalated"
+              - option "Unable to Complete"

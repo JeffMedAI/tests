@@ -1,0 +1,320 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]: JL
+      - generic [ref=e5]:
+        - generic [ref=e6]: JeffLocal
+        - generic [ref=e7]: Friday, 29 May 2026
+    - navigation "Main navigation" [ref=e8]:
+      - link "Dashboard" [ref=e9] [cursor=pointer]:
+        - /url: /
+      - link "Requests" [ref=e10] [cursor=pointer]:
+        - /url: /requests
+      - link "Patients" [ref=e11] [cursor=pointer]:
+        - /url: /patients
+      - link "Staff" [ref=e12] [cursor=pointer]:
+        - /url: /staff
+      - link "Reports" [ref=e13] [cursor=pointer]:
+        - /url: /reports
+      - link "Settings" [ref=e14] [cursor=pointer]:
+        - /url: /settings
+    - generic [ref=e15]:
+      - link "Alerts" [ref=e16] [cursor=pointer]:
+        - /url: /alerts
+        - img [ref=e17]
+      - generic [ref=e21]:
+        - link "Saeed Admin" [ref=e22] [cursor=pointer]:
+          - /url: /profile
+          - generic [ref=e23]:
+            - generic [ref=e24]: Saeed
+            - generic [ref=e25]: Admin
+          - generic [ref=e26]: S
+        - link "Sign out" [ref=e27] [cursor=pointer]:
+          - /url: /logout
+          - img [ref=e28]
+  - generic [ref=e32]:
+    - generic [ref=e33]:
+      - generic [ref=e34]:
+        - generic [ref=e35]: Identity and lookup
+        - heading "Patients" [level=1] [ref=e36]
+        - paragraph [ref=e37]: Lookup identity status, verified records, and candidate matches from local handoff data.
+      - generic [ref=e38]:
+        - generic [ref=e39]: Local lookup
+        - link "Identity Checks" [ref=e40] [cursor=pointer]:
+          - /url: /requests?filter=identity_issues&range=all
+    - generic [ref=e42]:
+      - generic [ref=e43]:
+        - text: Patient lookup
+        - textbox "Patient lookup" [ref=e44]:
+          - /placeholder: Name, DOB, postcode, EMIS, NHS, verification status
+      - button "Search" [ref=e45] [cursor=pointer]
+    - generic [ref=e46]:
+      - generic [ref=e47]:
+        - generic [ref=e48]:
+          - heading "Match Status" [level=2] [ref=e49]
+          - generic [ref=e50]: Current worklist
+        - paragraph [ref=e51]: Search results show matched, possible match, weak match, no match, and insufficient-data cases.
+      - generic [ref=e52]:
+        - generic [ref=e53]:
+          - heading "Candidate Matches" [level=2] [ref=e54]
+          - generic [ref=e55]: Review aid
+        - paragraph [ref=e56]: Possible candidate details remain read-only and require staff identity review before processing.
+      - generic [ref=e57]:
+        - generic [ref=e58]:
+          - heading "Verification History" [level=2] [ref=e59]
+          - generic [ref=e60]: Placeholder
+        - paragraph [ref=e61]: Verification activity will be shown here as the local audit trail expands.
+    - table [ref=e63]:
+      - rowgroup [ref=e64]:
+        - row "Call ID Patient DOB Postcode Verification EMIS NHS Top Candidate" [ref=e65]:
+          - columnheader "Call ID" [ref=e66]
+          - columnheader "Patient" [ref=e67]
+          - columnheader "DOB" [ref=e68]
+          - columnheader "Postcode" [ref=e69]
+          - columnheader "Verification" [ref=e70]
+          - columnheader "EMIS" [ref=e71]
+          - columnheader "NHS" [ref=e72]
+          - columnheader "Top Candidate" [ref=e73]
+      - rowgroup [ref=e74]:
+        - row "RX-LIVELOOKUP20-20260521145402-20-NO-NHS-PHILLIP-DOHERTY Phillip DOHERTY 13/02/1985 n/a matched 482 620 948 2600 Phillip DOHERTY" [ref=e75]:
+          - cell "RX-LIVELOOKUP20-20260521145402-20-NO-NHS-PHILLIP-DOHERTY" [ref=e76]:
+            - link "RX-LIVELOOKUP20-20260521145402-20-NO-NHS-PHILLIP-DOHERTY" [ref=e77] [cursor=pointer]:
+              - /url: /case/RX-LIVELOOKUP20-20260521145402-20-NO-NHS-PHILLIP-DOHERTY
+          - cell "Phillip DOHERTY" [ref=e78]
+          - cell "13/02/1985" [ref=e79]
+          - cell "n/a" [ref=e80]
+          - cell "matched" [ref=e81]
+          - cell "482" [ref=e82]
+          - cell "620 948 2600" [ref=e83]
+          - cell "Phillip DOHERTY" [ref=e84]
+        - row "RX-LIVELOOKUP20-20260521145402-13-WRONG-DOB-MICHAEL-CLARKE MICHAEL CLARKE 28/05/1950 n/a needs_review n/a n/a Michael CLARKE" [ref=e85]:
+          - cell "RX-LIVELOOKUP20-20260521145402-13-WRONG-DOB-MICHAEL-CLARKE" [ref=e86]:
+            - link "RX-LIVELOOKUP20-20260521145402-13-WRONG-DOB-MICHAEL-CLARKE" [ref=e87] [cursor=pointer]:
+              - /url: /case/RX-LIVELOOKUP20-20260521145402-13-WRONG-DOB-MICHAEL-CLARKE
+          - cell "MICHAEL CLARKE" [ref=e88]
+          - cell "28/05/1950" [ref=e89]
+          - cell "n/a" [ref=e90]
+          - cell "needs_review" [ref=e91]
+          - cell "n/a" [ref=e92]
+          - cell "n/a" [ref=e93]
+          - cell "Michael CLARKE" [ref=e94]
+        - row "RX-LIVELOOKUP20-20260521145402-03-REFERRAL-KEVIN-BRADBURY Kevin BRADBURY 03/06/1982 n/a matched 237 620 925 5116 Kevin BRADBURY" [ref=e95]:
+          - cell "RX-LIVELOOKUP20-20260521145402-03-REFERRAL-KEVIN-BRADBURY" [ref=e96]:
+            - link "RX-LIVELOOKUP20-20260521145402-03-REFERRAL-KEVIN-BRADBURY" [ref=e97] [cursor=pointer]:
+              - /url: /case/RX-LIVELOOKUP20-20260521145402-03-REFERRAL-KEVIN-BRADBURY
+          - cell "Kevin BRADBURY" [ref=e98]
+          - cell "03/06/1982" [ref=e99]
+          - cell "n/a" [ref=e100]
+          - cell "matched" [ref=e101]
+          - cell "237" [ref=e102]
+          - cell "620 925 5116" [ref=e103]
+          - cell "Kevin BRADBURY" [ref=e104]
+        - row "RX-LIVELOOKUP20-20260521145402-02-SICKNOTE-ELIZABETH Elizabeth BOUMNIJEL 19/06/1949 n/a matched 231 452 864 7400 Elizabeth BOUMNIJEL" [ref=e105]:
+          - cell "RX-LIVELOOKUP20-20260521145402-02-SICKNOTE-ELIZABETH" [ref=e106]:
+            - link "RX-LIVELOOKUP20-20260521145402-02-SICKNOTE-ELIZABETH" [ref=e107] [cursor=pointer]:
+              - /url: /case/RX-LIVELOOKUP20-20260521145402-02-SICKNOTE-ELIZABETH
+          - cell "Elizabeth BOUMNIJEL" [ref=e108]
+          - cell "19/06/1949" [ref=e109]
+          - cell "n/a" [ref=e110]
+          - cell "matched" [ref=e111]
+          - cell "231" [ref=e112]
+          - cell "452 864 7400" [ref=e113]
+          - cell "Elizabeth BOUMNIJEL" [ref=e114]
+        - row "RX-LIVELOOKUP20-20260521145402-01-REPEAT-ABDEL Abdel BOUMNIJEL 18/12/1952 n/a matched 230 626 283 3153 Abdel BOUMNIJEL" [ref=e115]:
+          - cell "RX-LIVELOOKUP20-20260521145402-01-REPEAT-ABDEL" [ref=e116]:
+            - link "RX-LIVELOOKUP20-20260521145402-01-REPEAT-ABDEL" [ref=e117] [cursor=pointer]:
+              - /url: /case/RX-LIVELOOKUP20-20260521145402-01-REPEAT-ABDEL
+          - cell "Abdel BOUMNIJEL" [ref=e118]
+          - cell "18/12/1952" [ref=e119]
+          - cell "n/a" [ref=e120]
+          - cell "matched" [ref=e121]
+          - cell "230" [ref=e122]
+          - cell "626 283 3153" [ref=e123]
+          - cell "Abdel BOUMNIJEL" [ref=e124]
+        - row "N8NTEST-001-PRESCRIPTION JASON MORREY 10/01/1970 PR9 7LT no_match n/a n/a n/a" [ref=e125]:
+          - cell "N8NTEST-001-PRESCRIPTION" [ref=e126]:
+            - link "N8NTEST-001-PRESCRIPTION" [ref=e127] [cursor=pointer]:
+              - /url: /case/N8NTEST-001-PRESCRIPTION
+          - cell "JASON MORREY" [ref=e128]
+          - cell "10/01/1970" [ref=e129]
+          - cell "PR9 7LT" [ref=e130]
+          - cell "no_match" [ref=e131]
+          - cell "n/a" [ref=e132]
+          - cell "n/a" [ref=e133]
+          - cell "n/a" [ref=e134]
+        - row "N8NTEST-002-SICKNOTE MATHEW MORREY 15/09/1978 PR9 7LT no_match n/a n/a n/a" [ref=e135]:
+          - cell "N8NTEST-002-SICKNOTE" [ref=e136]:
+            - link "N8NTEST-002-SICKNOTE" [ref=e137] [cursor=pointer]:
+              - /url: /case/N8NTEST-002-SICKNOTE
+          - cell "MATHEW MORREY" [ref=e138]
+          - cell "15/09/1978" [ref=e139]
+          - cell "PR9 7LT" [ref=e140]
+          - cell "no_match" [ref=e141]
+          - cell "n/a" [ref=e142]
+          - cell "n/a" [ref=e143]
+          - cell "n/a" [ref=e144]
+        - row "N8NTEST-003-REFERRAL PETER MORREY 15/09/1978 PR9 7LT no_match n/a n/a n/a" [ref=e145]:
+          - cell "N8NTEST-003-REFERRAL" [ref=e146]:
+            - link "N8NTEST-003-REFERRAL" [ref=e147] [cursor=pointer]:
+              - /url: /case/N8NTEST-003-REFERRAL
+          - cell "PETER MORREY" [ref=e148]
+          - cell "15/09/1978" [ref=e149]
+          - cell "PR9 7LT" [ref=e150]
+          - cell "no_match" [ref=e151]
+          - cell "n/a" [ref=e152]
+          - cell "n/a" [ref=e153]
+          - cell "n/a" [ref=e154]
+        - row "N8NTEST-004-IDENTITY JAYSON MORREY 10/01/1970 PR9 7LT no_match n/a n/a n/a" [ref=e155]:
+          - cell "N8NTEST-004-IDENTITY" [ref=e156]:
+            - link "N8NTEST-004-IDENTITY" [ref=e157] [cursor=pointer]:
+              - /url: /case/N8NTEST-004-IDENTITY
+          - cell "JAYSON MORREY" [ref=e158]
+          - cell "10/01/1970" [ref=e159]
+          - cell "PR9 7LT" [ref=e160]
+          - cell "no_match" [ref=e161]
+          - cell "n/a" [ref=e162]
+          - cell "n/a" [ref=e163]
+          - cell "n/a" [ref=e164]
+        - row "N8NTEST-005-REDFLAG GEOFFREY MYNNE 21/02/1941 PR9 7LT no_match n/a n/a n/a" [ref=e165]:
+          - cell "N8NTEST-005-REDFLAG" [ref=e166]:
+            - link "N8NTEST-005-REDFLAG" [ref=e167] [cursor=pointer]:
+              - /url: /case/N8NTEST-005-REDFLAG
+          - cell "GEOFFREY MYNNE" [ref=e168]
+          - cell "21/02/1941" [ref=e169]
+          - cell "PR9 7LT" [ref=e170]
+          - cell "no_match" [ref=e171]
+          - cell "n/a" [ref=e172]
+          - cell "n/a" [ref=e173]
+          - cell "n/a" [ref=e174]
+        - row "RAWMOCK-001-REPEAT-EXACT JASON MORREY 10/01/1970 PR9 7LT no_match n/a n/a n/a" [ref=e175]:
+          - cell "RAWMOCK-001-REPEAT-EXACT" [ref=e176]:
+            - link "RAWMOCK-001-REPEAT-EXACT" [ref=e177] [cursor=pointer]:
+              - /url: /case/RAWMOCK-001-REPEAT-EXACT
+          - cell "JASON MORREY" [ref=e178]
+          - cell "10/01/1970" [ref=e179]
+          - cell "PR9 7LT" [ref=e180]
+          - cell "no_match" [ref=e181]
+          - cell "n/a" [ref=e182]
+          - cell "n/a" [ref=e183]
+          - cell "n/a" [ref=e184]
+        - row "RAWMOCK-002-CALLBACK-NOT-CONFIRMED MARCUS MORREY 12/10/1972 PR9 7LT no_match n/a n/a n/a" [ref=e185]:
+          - cell "RAWMOCK-002-CALLBACK-NOT-CONFIRMED" [ref=e186]:
+            - link "RAWMOCK-002-CALLBACK-NOT-CONFIRMED" [ref=e187] [cursor=pointer]:
+              - /url: /case/RAWMOCK-002-CALLBACK-NOT-CONFIRMED
+          - cell "MARCUS MORREY" [ref=e188]
+          - cell "12/10/1972" [ref=e189]
+          - cell "PR9 7LT" [ref=e190]
+          - cell "no_match" [ref=e191]
+          - cell "n/a" [ref=e192]
+          - cell "n/a" [ref=e193]
+          - cell "n/a" [ref=e194]
+        - row "RAWMOCK-003-SICKNOTE MATHEW MORREY 15/09/1978 PR9 7LT no_match n/a n/a n/a" [ref=e195]:
+          - cell "RAWMOCK-003-SICKNOTE" [ref=e196]:
+            - link "RAWMOCK-003-SICKNOTE" [ref=e197] [cursor=pointer]:
+              - /url: /case/RAWMOCK-003-SICKNOTE
+          - cell "MATHEW MORREY" [ref=e198]
+          - cell "15/09/1978" [ref=e199]
+          - cell "PR9 7LT" [ref=e200]
+          - cell "no_match" [ref=e201]
+          - cell "n/a" [ref=e202]
+          - cell "n/a" [ref=e203]
+          - cell "n/a" [ref=e204]
+        - row "RAWMOCK-004-REFERRAL-CHASE PETER MORREY 15/09/1978 PR9 7LT no_match n/a n/a n/a" [ref=e205]:
+          - cell "RAWMOCK-004-REFERRAL-CHASE" [ref=e206]:
+            - link "RAWMOCK-004-REFERRAL-CHASE" [ref=e207] [cursor=pointer]:
+              - /url: /case/RAWMOCK-004-REFERRAL-CHASE
+          - cell "PETER MORREY" [ref=e208]
+          - cell "15/09/1978" [ref=e209]
+          - cell "PR9 7LT" [ref=e210]
+          - cell "no_match" [ref=e211]
+          - cell "n/a" [ref=e212]
+          - cell "n/a" [ref=e213]
+          - cell "n/a" [ref=e214]
+        - row "RAWMOCK-005-TEST-RESULT BARBARA MYNNE 28/01/1945 PR9 7LT no_match n/a n/a n/a" [ref=e215]:
+          - cell "RAWMOCK-005-TEST-RESULT" [ref=e216]:
+            - link "RAWMOCK-005-TEST-RESULT" [ref=e217] [cursor=pointer]:
+              - /url: /case/RAWMOCK-005-TEST-RESULT
+          - cell "BARBARA MYNNE" [ref=e218]
+          - cell "28/01/1945" [ref=e219]
+          - cell "PR9 7LT" [ref=e220]
+          - cell "no_match" [ref=e221]
+          - cell "n/a" [ref=e222]
+          - cell "n/a" [ref=e223]
+          - cell "n/a" [ref=e224]
+        - row "RAWMOCK-006-URGENT-REDFLAG GEOFFREY MYNNE 21/02/1941 PR9 7LT no_match n/a n/a n/a" [ref=e225]:
+          - cell "RAWMOCK-006-URGENT-REDFLAG" [ref=e226]:
+            - link "RAWMOCK-006-URGENT-REDFLAG" [ref=e227] [cursor=pointer]:
+              - /url: /case/RAWMOCK-006-URGENT-REDFLAG
+          - cell "GEOFFREY MYNNE" [ref=e228]
+          - cell "21/02/1941" [ref=e229]
+          - cell "PR9 7LT" [ref=e230]
+          - cell "no_match" [ref=e231]
+          - cell "n/a" [ref=e232]
+          - cell "n/a" [ref=e233]
+          - cell "n/a" [ref=e234]
+        - row "RAWMOCK-007-ADMIN-ADDRESS CHERYL SHEPHERD 26/11/1961 PR9 7LT no_match n/a n/a n/a" [ref=e235]:
+          - cell "RAWMOCK-007-ADMIN-ADDRESS" [ref=e236]:
+            - link "RAWMOCK-007-ADMIN-ADDRESS" [ref=e237] [cursor=pointer]:
+              - /url: /case/RAWMOCK-007-ADMIN-ADDRESS
+          - cell "CHERYL SHEPHERD" [ref=e238]
+          - cell "26/11/1961" [ref=e239]
+          - cell "PR9 7LT" [ref=e240]
+          - cell "no_match" [ref=e241]
+          - cell "n/a" [ref=e242]
+          - cell "n/a" [ref=e243]
+          - cell "n/a" [ref=e244]
+        - row "RAWMOCK-008-THIRD-PARTY-POSSIBLE JAYSON MORREY 10/01/1970 PR9 7LT no_match n/a n/a n/a" [ref=e245]:
+          - cell "RAWMOCK-008-THIRD-PARTY-POSSIBLE" [ref=e246]:
+            - link "RAWMOCK-008-THIRD-PARTY-POSSIBLE" [ref=e247] [cursor=pointer]:
+              - /url: /case/RAWMOCK-008-THIRD-PARTY-POSSIBLE
+          - cell "JAYSON MORREY" [ref=e248]
+          - cell "10/01/1970" [ref=e249]
+          - cell "PR9 7LT" [ref=e250]
+          - cell "no_match" [ref=e251]
+          - cell "n/a" [ref=e252]
+          - cell "n/a" [ref=e253]
+          - cell "n/a" [ref=e254]
+        - row "RAWMOCK-009-INSUFFICIENT-ID MR MORREY n/a PR9 7LT insufficient_data n/a n/a n/a" [ref=e255]:
+          - cell "RAWMOCK-009-INSUFFICIENT-ID" [ref=e256]:
+            - link "RAWMOCK-009-INSUFFICIENT-ID" [ref=e257] [cursor=pointer]:
+              - /url: /case/RAWMOCK-009-INSUFFICIENT-ID
+          - cell "MR MORREY" [ref=e258]
+          - cell "n/a" [ref=e259]
+          - cell "PR9 7LT" [ref=e260]
+          - cell "insufficient_data" [ref=e261]
+          - cell "n/a" [ref=e262]
+          - cell "n/a" [ref=e263]
+          - cell "n/a" [ref=e264]
+        - row "RAWMOCK-010-UNKNOWN-REQUEST JOHN MURRAY 16/11/1947 PR9 7LT no_match n/a n/a n/a" [ref=e265]:
+          - cell "RAWMOCK-010-UNKNOWN-REQUEST" [ref=e266]:
+            - link "RAWMOCK-010-UNKNOWN-REQUEST" [ref=e267] [cursor=pointer]:
+              - /url: /case/RAWMOCK-010-UNKNOWN-REQUEST
+          - cell "JOHN MURRAY" [ref=e268]
+          - cell "16/11/1947" [ref=e269]
+          - cell "PR9 7LT" [ref=e270]
+          - cell "no_match" [ref=e271]
+          - cell "n/a" [ref=e272]
+          - cell "n/a" [ref=e273]
+          - cell "n/a" [ref=e274]
+        - row "RAWMOCK-011-NO-MATCH OLIVER TESTPERSON 04/04/1980 PR9 7LT no_match n/a n/a n/a" [ref=e275]:
+          - cell "RAWMOCK-011-NO-MATCH" [ref=e276]:
+            - link "RAWMOCK-011-NO-MATCH" [ref=e277] [cursor=pointer]:
+              - /url: /case/RAWMOCK-011-NO-MATCH
+          - cell "OLIVER TESTPERSON" [ref=e278]
+          - cell "04/04/1980" [ref=e279]
+          - cell "PR9 7LT" [ref=e280]
+          - cell "no_match" [ref=e281]
+          - cell "n/a" [ref=e282]
+          - cell "n/a" [ref=e283]
+          - cell "n/a" [ref=e284]
+        - row "RAWMOCK-012-MESSY-MULTI-INTENT Marcus Mosey 11/03/1967 PR9 7LT matched 1521 4729356187 Marcus Mosey" [ref=e285]:
+          - cell "RAWMOCK-012-MESSY-MULTI-INTENT" [ref=e286]:
+            - link "RAWMOCK-012-MESSY-MULTI-INTENT" [ref=e287] [cursor=pointer]:
+              - /url: /case/RAWMOCK-012-MESSY-MULTI-INTENT
+          - cell "Marcus Mosey" [ref=e288]
+          - cell "11/03/1967" [ref=e289]
+          - cell "PR9 7LT" [ref=e290]
+          - cell "matched" [ref=e291]
+          - cell "1521" [ref=e292]
+          - cell "4729356187" [ref=e293]
+          - cell "Marcus Mosey" [ref=e294]

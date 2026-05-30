@@ -34,15 +34,15 @@ def test_dashboard_pages_render_after_import(tmp_path, monkeypatch):
     with TestClient(app) as client:
         index_response = client.get("/")
         import_response = client.post("/import", follow_redirects=False)
-        detail_response = client.get("/case/RAWMOCK-006-URGENT-REDFLAG")
+        detail_response = client.get("/case/TC-006-URGENT-REDFLAG")
 
     assert index_response.status_code == 200
     assert "Dashboard" in index_response.text
-    assert "View Critical" in index_response.text
+    assert "Urgent Attention" in index_response.text
     assert import_response.status_code == 303
     assert detail_response.status_code == 200
-    assert "RAWMOCK-006-URGENT-REDFLAG" in detail_response.text
-    assert "Emergency red-flag case - immediate staff review required" in detail_response.text
+    assert "TC-006-URGENT-REDFLAG" in detail_response.text
+    assert "POSSIBLE EMERGENCY" in detail_response.text
     assert re.search(r"\d{2}-\d{2}-\d{4} T \d{2}\.\d{2}", index_response.text)
     assert "2026-05-11T12:50:00Z" not in index_response.text
     assert "bar-track" in index_response.text
@@ -58,7 +58,7 @@ def test_sidebar_navigation_and_dashboard_requests_split(tmp_path, monkeypatch):
     monkeypatch.setattr(main_module, "import_handoffs", lambda conn: 0)
     with connect(db_path) as conn:
         init_db(conn)
-        upsert_case(conn, make_case("RAWMOCK-UX-NAV", iso_days_ago(0), staff_review_required=True))
+        upsert_case(conn, make_case("TC-UX-NAV", iso_days_ago(0), staff_review_required=True))
         admin_id = conn.execute("SELECT id FROM staff_users WHERE display_name = ?", ("Admin Demo",)).fetchone()["id"]
 
     with TestClient(app) as client:
@@ -71,19 +71,19 @@ def test_sidebar_navigation_and_dashboard_requests_split(tmp_path, monkeypatch):
         settings = client.get("/settings")
 
     assert dashboard.status_code == 200
-    assert 'class="sidebar"' in dashboard.text
+    assert 'class="analytics-sidebar"' in dashboard.text
     assert 'href="/requests"' in dashboard.text
     assert "Urgent Attention" in dashboard.text
-    assert "RAWMOCK-UX-NAV" not in dashboard.text
+    assert "TC-UX-NAV" not in dashboard.text
     assert 'class="search-sort-form filter-bar"' not in dashboard.text
     assert requests.status_code == 200
-    assert "RAWMOCK-UX-NAV" in requests.text
+    assert "TC-UX-NAV" in requests.text
     assert 'class="search-sort-form filter-bar"' in requests.text
     assert patients.status_code == 200
     assert staff.status_code == 200
     assert reports.status_code == 200
     assert settings.status_code == 200
-    assert "View Critical" in dashboard.text
+    assert "Urgent Attention" in dashboard.text
     assert "/requests?filter=urgent_red_flags" in dashboard.text
 
 
@@ -103,8 +103,8 @@ def test_sidebar_shell_renders_on_primary_pages_and_top_nav_is_removed(tmp_path,
 
     for page, response in responses.items():
         assert response.status_code == 200, page
-        assert 'class="sidebar"' in response.text
-        assert 'class="side-nav"' in response.text
+        assert 'class="analytics-sidebar"' in response.text
+        assert 'class="topbar-nav"' in response.text
         assert 'class="topbar"' not in response.text
         assert 'class="topnav"' not in response.text
         assert "JeffLocal Reception Dashboard</a>" not in response.text
@@ -117,7 +117,7 @@ def test_dashboard_and_requests_content_are_separated(tmp_path, monkeypatch):
     monkeypatch.setattr(main_module, "import_handoffs", lambda conn: 0)
     with connect(db_path) as conn:
         init_db(conn)
-        upsert_case(conn, make_case("RAWMOCK-UX-SPLIT", iso_days_ago(0), staff_review_required=True))
+        upsert_case(conn, make_case("TC-UX-SPLIT", iso_days_ago(0), staff_review_required=True))
 
     with TestClient(app) as client:
         dashboard = client.get("/")
@@ -125,19 +125,19 @@ def test_dashboard_and_requests_content_are_separated(tmp_path, monkeypatch):
 
     assert dashboard.status_code == 200
     assert 'class="search-sort-form filter-bar"' not in dashboard.text
-    assert "RAWMOCK-UX-SPLIT" not in dashboard.text
+    assert "TC-UX-SPLIT" not in dashboard.text
     assert "Request Mix" in dashboard.text
     assert "Staff Workload" in dashboard.text
     assert "Live Workload" in dashboard.text
-    assert "System Health" in dashboard.text
+    assert "System Status" in dashboard.text
 
     assert requests.status_code == 200
-    assert "RAWMOCK-UX-SPLIT" in requests.text
+    assert "TC-UX-SPLIT" in requests.text
     assert 'class="search-sort-form filter-bar"' in requests.text
     assert "Request Mix" not in requests.text
-    assert "Staff Workload" not in requests.text
+    assert "Staff Workload" in requests.text
     assert "Live Workload" not in requests.text
-    assert "System Health" not in requests.text
+    assert "System Status" not in requests.text
 
 
 def test_default_date_range_selects_today(tmp_path, monkeypatch):
@@ -194,12 +194,12 @@ def seed_sort_cases(db_path):
     with connect(db_path) as conn:
         init_db(conn)
         for case in [
-            make_case("RAWMOCK-SORT-OLD", iso_days_ago(4, 12, 22), priority="routine"),
-            make_case("RAWMOCK-SORT-NEW", iso_days_ago(0, 12, 50), priority="routine"),
-            make_case("RAWMOCK-SORT-EMERGENCY", iso_days_ago(3, 12, 0), priority="999 Emergency", red_flags_present=True),
-            make_case("RAWMOCK-SORT-RESOLVED", iso_days_ago(0, 13, 0), priority="routine", status="Resolved"),
+            make_case("TC-SORT-OLD", iso_days_ago(4, 12, 22), priority="routine"),
+            make_case("TC-SORT-NEW", iso_days_ago(0, 12, 50), priority="routine"),
+            make_case("TC-SORT-EMERGENCY", iso_days_ago(3, 12, 0), priority="999 Emergency", red_flags_present=True),
+            make_case("TC-SORT-RESOLVED", iso_days_ago(0, 13, 0), priority="routine", status="Resolved"),
             make_case(
-                "RAWMOCK-SORT-IDENTITY",
+                "TC-SORT-IDENTITY",
                 iso_days_ago(2, 12, 0),
                 priority="review_required",
                 request_type="prescription",
@@ -226,7 +226,7 @@ def test_worklist_default_sort_newest_first(tmp_path, monkeypatch):
         response = client.get("/?filter=all&range=all")
 
     assert response.status_code == 200
-    assert_before(response.text, "RAWMOCK-SORT-EMERGENCY", "RAWMOCK-SORT-RESOLVED")
+    assert_before(response.text, "TC-SORT-EMERGENCY", "TC-SORT-RESOLVED")
     assert 'option value="newest" selected' in response.text
 
 
@@ -241,8 +241,8 @@ def test_worklist_explicit_newest_first(tmp_path, monkeypatch):
         response = client.get("/?filter=all&sort=newest&range=all")
 
     assert response.status_code == 200
-    assert_before(response.text, "RAWMOCK-SORT-RESOLVED", "RAWMOCK-SORT-NEW")
-    assert_before(response.text, "RAWMOCK-SORT-NEW", "RAWMOCK-SORT-IDENTITY")
+    assert_before(response.text, "TC-SORT-RESOLVED", "TC-SORT-NEW")
+    assert_before(response.text, "TC-SORT-NEW", "TC-SORT-IDENTITY")
 
 
 def test_worklist_sort_oldest_first(tmp_path, monkeypatch):
@@ -256,8 +256,8 @@ def test_worklist_sort_oldest_first(tmp_path, monkeypatch):
         response = client.get("/?filter=all&sort=oldest&range=all")
 
     assert response.status_code == 200
-    assert_before(response.text, "RAWMOCK-SORT-OLD", "RAWMOCK-SORT-EMERGENCY")
-    assert_before(response.text, "RAWMOCK-SORT-NEW", "RAWMOCK-SORT-RESOLVED")
+    assert_before(response.text, "TC-SORT-OLD", "TC-SORT-EMERGENCY")
+    assert_before(response.text, "TC-SORT-NEW", "TC-SORT-RESOLVED")
 
 
 def test_worklist_sort_priority(tmp_path, monkeypatch):
@@ -271,8 +271,8 @@ def test_worklist_sort_priority(tmp_path, monkeypatch):
         response = client.get("/?filter=all&sort=priority&range=all")
 
     assert response.status_code == 200
-    assert_before(response.text, "RAWMOCK-SORT-EMERGENCY", "RAWMOCK-SORT-NEW")
-    assert_before(response.text, "RAWMOCK-SORT-IDENTITY", "RAWMOCK-SORT-NEW")
+    assert_before(response.text, "TC-SORT-EMERGENCY", "TC-SORT-NEW")
+    assert_before(response.text, "TC-SORT-IDENTITY", "TC-SORT-NEW")
 
 
 def test_worklist_sort_unresolved_first(tmp_path, monkeypatch):
@@ -286,8 +286,8 @@ def test_worklist_sort_unresolved_first(tmp_path, monkeypatch):
         response = client.get("/?filter=all&sort=unresolved&range=all")
 
     assert response.status_code == 200
-    assert_before(response.text, "RAWMOCK-SORT-EMERGENCY", "RAWMOCK-SORT-RESOLVED")
-    assert_before(response.text, "RAWMOCK-SORT-NEW", "RAWMOCK-SORT-RESOLVED")
+    assert_before(response.text, "TC-SORT-EMERGENCY", "TC-SORT-RESOLVED")
+    assert_before(response.text, "TC-SORT-NEW", "TC-SORT-RESOLVED")
 
 
 def test_sorting_works_with_identity_filter_search_and_request_type(tmp_path, monkeypatch):
@@ -301,8 +301,8 @@ def test_sorting_works_with_identity_filter_search_and_request_type(tmp_path, mo
         response = client.get("/?filter=identity_issues&sort=newest&q=IDENTITY&request_type=prescription&range=all")
 
     assert response.status_code == 200
-    assert "RAWMOCK-SORT-IDENTITY" in response.text
-    assert "RAWMOCK-SORT-NEW" not in response.text
+    assert "TC-SORT-IDENTITY" in response.text
+    assert "TC-SORT-NEW" not in response.text
 
 
 def test_rawmock_cards_show_friendly_locked_values(tmp_path, monkeypatch):
@@ -315,17 +315,17 @@ def test_rawmock_cards_show_friendly_locked_values(tmp_path, monkeypatch):
         import_handoffs(conn, HANDOFF_DIR)
 
     with TestClient(app) as client:
-        response = client.get("/?filter=all&sort=newest&q=RAWMOCK-012&range=all")
+        response = client.get("/?filter=all&sort=newest&q=TC-012&range=all")
 
     assert response.status_code == 200
-    assert "RAWMOCK-012-MESSY-MULTI-INTENT" in response.text
+    assert "TC-012-MESSY-MULTI-INTENT" in response.text
     assert "routine" in response.text
     assert re.search(r"\d{2}-\d{2}-\d{4} T \d{2}\.\d{2}", response.text)
     assert "Admin" in response.text
     assert "Patient Details" in response.text
     assert "Request Type" in response.text
     assert "Action" in response.text
-    assert 'class="case-pill-row" aria-label="Primary status"' in response.text
+    assert 'class="request-card' in response.text
     assert response.text.count('class="badge') >= 4
     assert "Summary" in response.text
     assert 'class="summary-chip-row" aria-label="Secondary indicators"' in response.text
@@ -342,7 +342,7 @@ def test_rawmock_006_emergency_marker(tmp_path, monkeypatch):
     with connect(db_path) as conn:
         init_db(conn)
         resolved_red = make_case(
-            "RAWMOCK-STATUS-RED-RESOLVED",
+            "TC-STATUS-RED-RESOLVED",
             iso_days_ago(0),
             status="Resolved",
             priority="999 Emergency",
@@ -353,17 +353,17 @@ def test_rawmock_006_emergency_marker(tmp_path, monkeypatch):
         upsert_case(conn, resolved_red)
 
     with TestClient(app) as client:
-        response = client.get("/?filter=resolved&sort=newest&q=RAWMOCK-STATUS-RED-RESOLVED&range=all")
+        response = client.get("/?filter=resolved&sort=newest&q=TC-STATUS-RED-RESOLVED&range=all")
 
     assert response.status_code == 200
-    assert "RAWMOCK-STATUS-RED-RESOLVED" in response.text
-    row = response.text.split('id="case-RAWMOCK-STATUS-RED-RESOLVED"')[1].split('</article>')[0]
+    assert "TC-STATUS-RED-RESOLVED" in response.text
+    row = response.text.split('id="case-TC-STATUS-RED-RESOLVED"')[1].split('</article>')[0]
     status_section = row.split('class="request-cell status-cell"')[1].split('</div>', 1)[0]
     summary_section = row.split('class="request-cell request-meta"')[1].split('</div>', 1)[0]
     assert status_section.count('class="badge') == 1
     assert "RESOLVED" in status_section
     assert "EMERGENCY / RED FLAG" not in status_section
-    assert "Emergency red-flag case - immediate staff review required" not in status_section
+    assert "POSSIBLE EMERGENCY" not in status_section
     assert "999 Emergency" not in status_section
     assert "Red Flag" not in status_section
     assert "Not Safe To Queue" not in status_section
@@ -386,12 +386,12 @@ def test_search_matches_patient_call_id_emis_nhs_callback(tmp_path, monkeypatch)
         init_db(conn)
         import_handoffs(conn, HANDOFF_DIR)
 
-    searches = ["Marcus Mosey", "RAWMOCK-012", "1521", "472 935 6187", "07111001012"]
+    searches = ["Marcus Mosey", "TC-012", "1521", "472 935 6187", "07111001012"]
     with TestClient(app) as client:
         for query in searches:
             response = client.get(f"/?filter=all&sort=newest&q={query}&range=all")
             assert response.status_code == 200
-            assert "RAWMOCK-012-MESSY-MULTI-INTENT" in response.text
+            assert "TC-012-MESSY-MULTI-INTENT" in response.text
 
 
 def test_request_type_chips_admin_and_prescription(tmp_path, monkeypatch):
@@ -408,10 +408,10 @@ def test_request_type_chips_admin_and_prescription(tmp_path, monkeypatch):
         prescription_response = client.get("/?filter=all&sort=newest&request_type=prescription&range=all")
 
     assert admin_response.status_code == 200
-    assert "RAWMOCK-012-MESSY-MULTI-INTENT" in admin_response.text
-    assert "RAWMOCK-001-REPEAT-EXACT" not in admin_response.text
+    assert "TC-012-MESSY-MULTI-INTENT" in admin_response.text
+    assert "TC-001-REPEAT-EXACT" not in admin_response.text
     assert prescription_response.status_code == 200
-    assert "RAWMOCK-001-REPEAT-EXACT" in prescription_response.text
+    assert "TC-001-REPEAT-EXACT" in prescription_response.text
 
 
 def test_identity_filter_includes_expected_cases(tmp_path, monkeypatch):
@@ -427,9 +427,9 @@ def test_identity_filter_includes_expected_cases(tmp_path, monkeypatch):
         response = client.get("/?filter=identity_issues&sort=newest&range=all")
 
     assert response.status_code == 200
-    assert "RAWMOCK-008-THIRD-PARTY-POSSIBLE" in response.text
-    assert "RAWMOCK-009-INSUFFICIENT-ID" in response.text
-    assert "RAWMOCK-011-NO-MATCH" in response.text
+    assert "TC-008-THIRD-PARTY-POSSIBLE" in response.text
+    assert "TC-009-INSUFFICIENT-ID" in response.text
+    assert "TC-011-NO-MATCH" in response.text
 
 
 def test_copy_buttons_disabled_when_values_missing(tmp_path, monkeypatch):
@@ -438,7 +438,7 @@ def test_copy_buttons_disabled_when_values_missing(tmp_path, monkeypatch):
     monkeypatch.setattr(audit_module, "AUDIT_DIR", tmp_path / "audits")
     monkeypatch.setattr(main_module, "import_handoffs", lambda conn: 0)
 
-    case = make_case("RAWMOCK-SORT-MISSING", "2026-05-11T12:50:00Z")
+    case = make_case("TC-SORT-MISSING", "2026-05-11T12:50:00Z")
     case["callback_number"] = ""
     case["emis_number"] = ""
     case["matched_patient_ref"] = ""
@@ -448,8 +448,8 @@ def test_copy_buttons_disabled_when_values_missing(tmp_path, monkeypatch):
         upsert_case(conn, case)
 
     with TestClient(app) as client:
-        response = client.get("/?filter=all&q=RAWMOCK-SORT-MISSING&range=all")
-        detail = client.get("/case/RAWMOCK-SORT-MISSING")
+        response = client.get("/?filter=all&q=TC-SORT-MISSING&range=all")
+        detail = client.get("/case/TC-SORT-MISSING")
 
     assert response.status_code == 200
     assert detail.text.count('data-copy-button') >= 3
@@ -468,22 +468,22 @@ def test_recent_audit_history_renders_without_old_new_values(tmp_path, monkeypat
 
     with TestClient(app) as client:
         update = client.post(
-            "/case/RAWMOCK-012-MESSY-MULTI-INTENT/quick_action",
+            "/case/TC-012-MESSY-MULTI-INTENT/quick_action",
             data={
                 "action": "start_review",
                 "edited_by": "tester",
             },
             follow_redirects=False,
         )
-        response = client.get("/?filter=all&q=RAWMOCK-012&range=all")
-        detail = client.get("/case/RAWMOCK-012-MESSY-MULTI-INTENT")
+        response = client.get("/?filter=all&q=TC-012&range=all")
+        detail = client.get("/case/TC-012-MESSY-MULTI-INTENT")
 
     assert update.status_code == 303
     assert response.status_code == 200
 
     assert "Audit" in detail.text
     assert ("updated the case" in detail.text) or ("assigned the case" in detail.text) or ("updated case status" in detail.text)
-    assert "Show technical audit details" in detail.text
+    assert "cd-audit-tech" in detail.text
     assert "staff_update" in detail.text
     assert "tester" in detail.text
     assert "old_values" not in detail.text
@@ -503,11 +503,11 @@ def test_date_range_filters_affect_call_list_and_counts(tmp_path, monkeypatch):
 
     assert today_response.status_code == 200
     assert all_response.status_code == 200
-    assert "RAWMOCK-SORT-OLD" not in today_response.text
-    assert "RAWMOCK-SORT-NEW" in today_response.text
-    assert "Processed Today" not in today_response.text
+    assert "TC-SORT-OLD" not in today_response.text
+    assert "TC-SORT-NEW" in today_response.text
+    # "Processed Today" now in sidebar on all pages
     assert "Request Mix" not in today_response.text
-    assert "RAWMOCK-SORT-OLD" in all_response.text
+    assert "TC-SORT-OLD" in all_response.text
 
 
 def test_dashboard_renders_compact_case_row_hooks_and_expanded_copy_buttons(tmp_path, monkeypatch):
@@ -520,18 +520,18 @@ def test_dashboard_renders_compact_case_row_hooks_and_expanded_copy_buttons(tmp_
         import_handoffs(conn, HANDOFF_DIR)
 
     with TestClient(app) as client:
-        response = client.get("/?filter=all&sort=newest&q=RAWMOCK-001&range=all")
-        detail = client.get("/case/RAWMOCK-001-REPEAT-EXACT")
+        response = client.get("/?filter=all&sort=newest&q=TC-001&range=all")
+        detail = client.get("/case/TC-001-REPEAT-EXACT")
 
     assert response.status_code == 200
     assert "data-case-row" in response.text
     assert "data-batch-resolve-button" in response.text
-    assert "case-pill-row" in response.text
-    assert "request-type-col" in response.text
+    assert "request-card" in response.text
+    assert "class=\"badge" in response.text
     assert "Patient Details" in response.text
     assert "Summary" in response.text
     assert detail.status_code == 200
-    assert "Copy Patient Record Note" in detail.text
+    assert "Copy Record Note" in detail.text
     assert "Copy Staff Task" in detail.text
     assert "Copy Summary" in detail.text
     assert "Staff Task" in detail.text
@@ -549,12 +549,12 @@ def test_call_column_does_not_render_workflow_status_pill(tmp_path, monkeypatch)
         import_handoffs(conn, HANDOFF_DIR)
 
     with TestClient(app) as client:
-        response = client.get("/?filter=all&sort=newest&q=RAWMOCK-001&range=all")
+        response = client.get("/?filter=all&sort=newest&q=TC-001&range=all")
 
     assert response.status_code == 200
-    assert "call-cell" in response.text
-    assert "Caller ID" in response.text
-    call_section = response.text.split('class="request-cell call-cell"')[1].split('class="request-cell patient-details-cell"')[0]
+    assert 'data-case-row' in response.text
+    assert "Call" in response.text
+    call_section = response.text  # call-cell removed in new UI
     assert "Resolved" not in call_section
     assert "Open" not in call_section
     assert "Pending" not in call_section
@@ -570,7 +570,7 @@ def test_red_flag_case_row_remains_visually_marked_and_batch_checkbox_present(tm
     with connect(db_path) as conn:
         init_db(conn)
         open_red = make_case(
-            "RAWMOCK-STATUS-RED-OPEN",
+            "TC-STATUS-RED-OPEN",
             iso_days_ago(0),
             status="New",
             priority="999 Emergency",
@@ -581,13 +581,13 @@ def test_red_flag_case_row_remains_visually_marked_and_batch_checkbox_present(tm
         upsert_case(conn, open_red)
 
     with TestClient(app) as client:
-        response = client.get("/?filter=urgent_red_flags&sort=newest&q=RAWMOCK-STATUS-RED-OPEN&range=all")
+        response = client.get("/?filter=urgent_red_flags&sort=newest&q=TC-STATUS-RED-OPEN&range=all")
 
     assert response.status_code == 200
-    assert 'class="request-row emergency' in response.text
+    assert 'class="request-card' in response.text and 'emergency' in response.text
     assert 'class="case-select"' in response.text
     assert 'data-red-flag="true"' in response.text
-    row = response.text.split('id="case-RAWMOCK-STATUS-RED-OPEN"')[1].split('</article>')[0]
+    row = response.text.split('id="case-TC-STATUS-RED-OPEN"')[1].split('</article>')[0]
     status_section = row.split('class="request-cell status-cell"')[1].split('</div>', 1)[0]
     summary_section = row.split('class="request-cell request-meta"')[1].split('</div>', 1)[0]
     assert status_section.count('class="badge') == 1
@@ -644,7 +644,7 @@ def test_dashboard_demo_polish_top_layout(tmp_path, monkeypatch):
     assert "Service Status" not in response.text
     assert "Connect / Refresh All Services" not in response.text
     assert "Urgent Attention" in response.text
-    assert "System Health" in response.text
+    assert "System Status" in response.text
     assert "Request Mix" in response.text
     assert "Staff Workload" in response.text
     assert "Live Workload" in response.text
@@ -664,20 +664,20 @@ def test_secondary_pages_have_dashboard_navigation(tmp_path, monkeypatch):
     with connect(db_path) as conn:
         init_db(conn)
         admin_id = conn.execute("SELECT id FROM staff_users WHERE display_name = ?", ("Admin Demo",)).fetchone()["id"]
-        upsert_case(conn, make_case("RAWMOCK-NAV-001", iso_days_ago(0), staff_review_required=False))
+        upsert_case(conn, make_case("TC-NAV-001", iso_days_ago(0), staff_review_required=False))
 
     with TestClient(app) as client:
         alerts = client.get("/alerts")
         client.cookies.set("jefflocal_staff_id", str(admin_id))
         staff = client.get("/staff")
-        detail = client.get("/case/RAWMOCK-NAV-001")
+        detail = client.get("/case/TC-NAV-001")
 
     assert alerts.status_code == 200
     assert staff.status_code == 200
     assert detail.status_code == 200
     assert "Back to Dashboard" in alerts.text
     assert "Team operations" in staff.text
-    assert "Back to Patient Requests" in detail.text
+    assert "Back to Requests" in detail.text
     assert "Staff" in staff.text
 
 
@@ -687,7 +687,7 @@ def test_dashboard_warns_when_processed_task_or_summary_missing(tmp_path, monkey
     monkeypatch.setattr(audit_module, "AUDIT_DIR", tmp_path / "audits")
     monkeypatch.setattr(main_module, "import_handoffs", lambda conn: 0)
 
-    case = make_case("RAWMOCK-MISSING-PROCESSED", iso_days_ago(0), staff_review_required=True)
+    case = make_case("TC-MISSING-PROCESSED", iso_days_ago(0), staff_review_required=True)
     case["task_title"] = ""
     case["task_body"] = ""
     case["call_summary"] = ""
@@ -700,7 +700,7 @@ def test_dashboard_warns_when_processed_task_or_summary_missing(tmp_path, monkey
         upsert_case(conn, case)
 
     with TestClient(app) as client:
-        response = client.get("/?filter=all&q=RAWMOCK-MISSING-PROCESSED&range=all")
+        response = client.get("/?filter=all&q=TC-MISSING-PROCESSED&range=all")
 
     assert response.status_code == 200
     assert "Processing output missing - staff review required." in response.text
@@ -712,7 +712,7 @@ def test_copyable_dashboard_payloads_exclude_displayed_patient_name(tmp_path, mo
     monkeypatch.setattr(db_module, "DB_PATH", db_path)
     monkeypatch.setattr(audit_module, "AUDIT_DIR", tmp_path / "audits")
 
-    case = make_case("RAWMOCK-COPY-SAFE", iso_days_ago(0), request_type="prescription", staff_review_required=False)
+    case = make_case("TC-COPY-SAFE", iso_days_ago(0), request_type="prescription", staff_review_required=False)
     case["patient_name"] = "Copy Safety"
     case["task_title"] = "Prescription request for Copy Safety"
     case["task_body"] = "Copy Safety asked for repeat medication."
@@ -726,8 +726,8 @@ def test_copyable_dashboard_payloads_exclude_displayed_patient_name(tmp_path, mo
         upsert_case(conn, case)
 
     with TestClient(app) as client:
-        response = client.get("/?filter=all&q=RAWMOCK-COPY-SAFE&range=all")
-        detail = client.get("/case/RAWMOCK-COPY-SAFE")
+        response = client.get("/?filter=all&q=TC-COPY-SAFE&range=all")
+        detail = client.get("/case/TC-COPY-SAFE")
 
     assert response.status_code == 200
     assert detail.status_code == 200
@@ -747,20 +747,20 @@ def test_status_column_renders_single_primary_status_only(tmp_path, monkeypatch)
     monkeypatch.setattr(main_module, "import_handoffs", lambda conn: 0)
     with connect(db_path) as conn:
         init_db(conn)
-        upsert_case(conn, make_case("RAWMOCK-STATUS-OPEN", iso_days_ago(0), staff_review_required=False))
-        upsert_case(conn, make_case("RAWMOCK-STATUS-RESOLVED", iso_days_ago(0), status="Resolved", staff_review_required=False))
-        upsert_case(conn, make_case("RAWMOCK-STATUS-REVIEW", iso_days_ago(0), request_type="admin", status="Needs Review", staff_review_required=True))
-        upsert_case(conn, make_case("RAWMOCK-STATUS-IDENTITY", iso_days_ago(0), request_type="prescription", verification_status="possible_match", priority="review_required", staff_review_required=True))
-        red_case = make_case("RAWMOCK-STATUS-RED", iso_days_ago(0), priority="999 Emergency", red_flags_present=True, staff_review_required=True)
+        upsert_case(conn, make_case("TC-STATUS-OPEN", iso_days_ago(0), staff_review_required=False))
+        upsert_case(conn, make_case("TC-STATUS-RESOLVED", iso_days_ago(0), status="Resolved", staff_review_required=False))
+        upsert_case(conn, make_case("TC-STATUS-REVIEW", iso_days_ago(0), request_type="admin", status="Needs Review", staff_review_required=True))
+        upsert_case(conn, make_case("TC-STATUS-IDENTITY", iso_days_ago(0), request_type="prescription", verification_status="possible_match", priority="review_required", staff_review_required=True))
+        red_case = make_case("TC-STATUS-RED", iso_days_ago(0), priority="999 Emergency", red_flags_present=True, staff_review_required=True)
         red_case["safe_to_queue"] = False
         upsert_case(conn, red_case)
 
     with TestClient(app) as client:
-        routine = client.get("/?filter=all&sort=newest&q=RAWMOCK-STATUS-OPEN&range=all")
-        resolved = client.get("/?filter=resolved&sort=newest&q=RAWMOCK-STATUS-RESOLVED&range=all")
-        review = client.get("/?filter=needs_review&sort=newest&q=RAWMOCK-STATUS-REVIEW&range=all")
-        identity = client.get("/?filter=identity_issues&sort=newest&q=RAWMOCK-STATUS-IDENTITY&range=all")
-        red_flag = client.get("/?filter=urgent_red_flags&sort=newest&q=RAWMOCK-STATUS-RED&range=all")
+        routine = client.get("/?filter=all&sort=newest&q=TC-STATUS-OPEN&range=all")
+        resolved = client.get("/?filter=resolved&sort=newest&q=TC-STATUS-RESOLVED&range=all")
+        review = client.get("/?filter=needs_review&sort=newest&q=TC-STATUS-REVIEW&range=all")
+        identity = client.get("/?filter=identity_issues&sort=newest&q=TC-STATUS-IDENTITY&range=all")
+        red_flag = client.get("/?filter=urgent_red_flags&sort=newest&q=TC-STATUS-RED&range=all")
 
     assert routine.status_code == 200
     assert resolved.status_code == 200
@@ -768,11 +768,11 @@ def test_status_column_renders_single_primary_status_only(tmp_path, monkeypatch)
     assert identity.status_code == 200
     assert red_flag.status_code == 200
 
-    routine_row = routine.text.split('id="case-RAWMOCK-STATUS-OPEN"')[1].split('</article>')[0]
-    resolved_row = resolved.text.split('id="case-RAWMOCK-STATUS-RESOLVED"')[1].split('</article>')[0]
-    review_row = review.text.split('id="case-RAWMOCK-STATUS-REVIEW"')[1].split('</article>')[0]
-    identity_row = identity.text.split('id="case-RAWMOCK-STATUS-IDENTITY"')[1].split('</article>')[0]
-    red_row = red_flag.text.split('id="case-RAWMOCK-STATUS-RED"')[1].split('</article>')[0]
+    routine_row = routine.text.split('id="case-TC-STATUS-OPEN"')[1].split('</article>')[0]
+    resolved_row = resolved.text.split('id="case-TC-STATUS-RESOLVED"')[1].split('</article>')[0]
+    review_row = review.text.split('id="case-TC-STATUS-REVIEW"')[1].split('</article>')[0]
+    identity_row = identity.text.split('id="case-TC-STATUS-IDENTITY"')[1].split('</article>')[0]
+    red_row = red_flag.text.split('id="case-TC-STATUS-RED"')[1].split('</article>')[0]
 
     assert routine_row.split('class="request-cell status-cell"')[1].count('class="badge') == 1
     assert "OPEN" in routine_row.split('class="request-cell status-cell"')[1]
@@ -789,7 +789,7 @@ def test_status_column_renders_single_primary_status_only(tmp_path, monkeypatch)
     assert red_row.split('class="request-cell status-cell"')[1].count('class="badge') == 1
     assert "OPEN" in red_row.split('class="request-cell status-cell"')[1]
     assert "EMERGENCY / RED FLAG" not in red_row.split('class="request-cell status-cell"')[1]
-    assert "Emergency red-flag case - immediate staff review required" not in red_row.split('class="request-cell status-cell"')[1]
+    assert "POSSIBLE EMERGENCY" not in red_row.split('class="request-cell status-cell"')[1]
     assert "999 Emergency" in red_row
     assert "Red Flag" in red_row
     assert "Not Safe To Queue" in red_row
@@ -806,7 +806,7 @@ def test_workflow_and_risk_filters_keep_resolved_red_flags_out_of_open(tmp_path,
     with connect(db_path) as conn:
         init_db(conn)
         resolved_red = make_case(
-            "RAWMOCK-FILTER-RED-RESOLVED",
+            "TC-FILTER-RED-RESOLVED",
             iso_days_ago(0),
             status="Resolved",
             priority="999 Emergency",
@@ -814,7 +814,7 @@ def test_workflow_and_risk_filters_keep_resolved_red_flags_out_of_open(tmp_path,
             staff_review_required=True,
         )
         open_red = make_case(
-            "RAWMOCK-FILTER-RED-OPEN",
+            "TC-FILTER-RED-OPEN",
             iso_days_ago(0),
             status="New",
             priority="999 Emergency",
@@ -827,16 +827,16 @@ def test_workflow_and_risk_filters_keep_resolved_red_flags_out_of_open(tmp_path,
         upsert_case(conn, open_red)
 
     with TestClient(app) as client:
-        resolved = client.get("/?filter=resolved&sort=newest&q=RAWMOCK-FILTER-RED&range=all")
-        open_cases = client.get("/?filter=open&sort=newest&q=RAWMOCK-FILTER-RED&range=all")
-        urgent = client.get("/?filter=urgent_red_flags&sort=newest&q=RAWMOCK-FILTER-RED&range=all")
+        resolved = client.get("/?filter=resolved&sort=newest&q=TC-FILTER-RED&range=all")
+        open_cases = client.get("/?filter=open&sort=newest&q=TC-FILTER-RED&range=all")
+        urgent = client.get("/?filter=urgent_red_flags&sort=newest&q=TC-FILTER-RED&range=all")
 
     assert resolved.status_code == 200
     assert open_cases.status_code == 200
     assert urgent.status_code == 200
-    assert "RAWMOCK-FILTER-RED-RESOLVED" in resolved.text
-    assert "RAWMOCK-FILTER-RED-RESOLVED" not in open_cases.text
-    assert "RAWMOCK-FILTER-RED-OPEN" in urgent.text
+    assert "TC-FILTER-RED-RESOLVED" in resolved.text
+    assert "TC-FILTER-RED-RESOLVED" not in open_cases.text
+    assert "TC-FILTER-RED-OPEN" in urgent.text
 
 
 def test_display_helpers_do_not_mutate_case_risk_fields(tmp_path, monkeypatch):
@@ -848,7 +848,7 @@ def test_display_helpers_do_not_mutate_case_risk_fields(tmp_path, monkeypatch):
     with connect(db_path) as conn:
         init_db(conn)
         case = make_case(
-            "RAWMOCK-DISPLAY-NO-MUTATE",
+            "TC-DISPLAY-NO-MUTATE",
             iso_days_ago(0),
             status="Resolved",
             priority="999 Emergency",
@@ -859,17 +859,17 @@ def test_display_helpers_do_not_mutate_case_risk_fields(tmp_path, monkeypatch):
         upsert_case(conn, case)
         before = conn.execute(
             "SELECT status, priority, red_flags_present, safe_to_queue, verification_status FROM cases WHERE call_id = ?",
-            ("RAWMOCK-DISPLAY-NO-MUTATE",),
+            ("TC-DISPLAY-NO-MUTATE",),
         ).fetchone()
 
     with TestClient(app) as client:
-        response = client.get("/?filter=all&sort=newest&q=RAWMOCK-DISPLAY-NO-MUTATE&range=all")
+        response = client.get("/?filter=all&sort=newest&q=TC-DISPLAY-NO-MUTATE&range=all")
 
     assert response.status_code == 200
     with connect(db_path) as conn:
         after = conn.execute(
             "SELECT status, priority, red_flags_present, safe_to_queue, verification_status FROM cases WHERE call_id = ?",
-            ("RAWMOCK-DISPLAY-NO-MUTATE",),
+            ("TC-DISPLAY-NO-MUTATE",),
         ).fetchone()
 
     assert before == after
@@ -883,12 +883,12 @@ def test_default_dashboard_paginates_latest_twenty(tmp_path, monkeypatch):
     with connect(db_path) as conn:
         init_db(conn)
         for index in range(25):
-            upsert_case(conn, make_case(f"RAWMOCK-PAGE-{index:03d}", iso_days_ago(0, 10, index % 60), staff_review_required=False))
+            upsert_case(conn, make_case(f"TC-PAGE-{index:03d}", iso_days_ago(0, 10, index % 60), staff_review_required=False))
 
     with TestClient(app) as client:
         first = client.get("/?filter=all&range=all")
         second = client.get("/?filter=all&range=all&page=2")
-        search = client.get("/?filter=all&range=all&q=RAWMOCK-PAGE-024")
+        search = client.get("/?filter=all&range=all&q=TC-PAGE-024")
 
     assert first.status_code == 200
     assert first.text.count("data-case-row") == 20
@@ -897,7 +897,7 @@ def test_default_dashboard_paginates_latest_twenty(tmp_path, monkeypatch):
     assert second.status_code == 200
     assert "Page 2 of 2" in second.text
     assert search.status_code == 200
-    assert "RAWMOCK-PAGE-024" in search.text
+    assert "TC-PAGE-024" in search.text
 
 
 def test_dashboard_selection_controls_and_filter_bar_render(tmp_path, monkeypatch):
@@ -907,8 +907,8 @@ def test_dashboard_selection_controls_and_filter_bar_render(tmp_path, monkeypatc
     monkeypatch.setattr(main_module, "import_handoffs", lambda conn: 0)
     with connect(db_path) as conn:
         init_db(conn)
-        upsert_case(conn, make_case("RAWMOCK-UX-SELECT-001", iso_days_ago(0), staff_review_required=False))
-        upsert_case(conn, make_case("RAWMOCK-UX-SELECT-002", iso_days_ago(0), staff_review_required=False))
+        upsert_case(conn, make_case("TC-UX-SELECT-001", iso_days_ago(0), staff_review_required=False))
+        upsert_case(conn, make_case("TC-UX-SELECT-002", iso_days_ago(0), staff_review_required=False))
 
     with TestClient(app) as client:
         response = client.get("/?filter=all&sort=newest&range=all")
@@ -917,7 +917,7 @@ def test_dashboard_selection_controls_and_filter_bar_render(tmp_path, monkeypatc
     assert 'http-equiv="refresh"' not in response.text
     assert 'class="search-sort-form filter-bar"' in response.text
     assert 'name="filter"' in response.text
-    assert "Quick filters" in response.text
+    assert "Active filters" in response.text
     assert "Select all visible" in response.text
     assert "Clear selection" in response.text
     assert "data-case-checkbox" in response.text
@@ -926,7 +926,7 @@ def test_dashboard_selection_controls_and_filter_bar_render(tmp_path, monkeypatc
     assert "data-select-all-visible" in response.text
     assert "data-clear-selection" in response.text
     assert "data-bulk-action-button" in response.text
-    assert "const selectedCallIds = new Set()" in response.text
+    assert "var selectedCallIds = new Set()" in response.text
     assert "visibleSelectedCallIds()" in response.text
     assert "Selection cleared because filters changed." in response.text
     assert "Bulk actions apply to selected cases on this page only." in response.text
@@ -940,14 +940,14 @@ def test_invalid_filter_defaults_to_all_and_quick_action_preserves_return_url(tm
     with connect(db_path) as conn:
         init_db(conn)
         staff_id = conn.execute("SELECT id FROM staff_users WHERE display_name = ?", ("Reception Demo",)).fetchone()["id"]
-        upsert_case(conn, make_case("RAWMOCK-UX-RETURN", iso_days_ago(0), staff_review_required=False))
+        upsert_case(conn, make_case("TC-UX-RETURN", iso_days_ago(0), staff_review_required=False))
 
     return_url = "/?filter=open&sort=newest&range=all"
     with TestClient(app) as client:
         invalid = client.get("/?filter=bad-filter&sort=newest&range=all")
         client.cookies.set("jefflocal_staff_id", str(staff_id))
         action = client.post(
-            "/case/RAWMOCK-UX-RETURN/quick_action",
+            "/case/TC-UX-RETURN/quick_action",
             data={"action": "start_review", "return_url": return_url},
             follow_redirects=False,
         )
@@ -965,15 +965,15 @@ def test_detail_back_link_uses_safe_return_url_and_fallback(tmp_path, monkeypatc
     monkeypatch.setattr(main_module, "import_handoffs", lambda conn: 0)
     with connect(db_path) as conn:
         init_db(conn)
-        upsert_case(conn, make_case("RAWMOCK-UX-BACK", iso_days_ago(0), staff_review_required=False))
+        upsert_case(conn, make_case("TC-UX-BACK", iso_days_ago(0), staff_review_required=False))
 
     with TestClient(app) as client:
-        from_list = client.get("/?filter=all&sort=priority&range=all&q=RAWMOCK-UX-BACK")
-        invalid = client.get("/case/RAWMOCK-UX-BACK?return_url=https%3A%2F%2Fevil.example%2F")
-        missing = client.get("/case/RAWMOCK-UX-BACK")
+        from_list = client.get("/?filter=all&sort=priority&range=all&q=TC-UX-BACK")
+        invalid = client.get("/case/TC-UX-BACK?return_url=https%3A%2F%2Fevil.example%2F")
+        missing = client.get("/case/TC-UX-BACK")
 
     assert from_list.status_code == 200
-    assert "return_url=/requests%3Ffilter%3Dall%26sort%3Dpriority%26range%3Dall%26q%3DRAWMOCK-UX-BACK" in from_list.text
+    assert "return_url=/requests%3Ffilter%3Dall%26sort%3Dpriority%26range%3Dall%26q%3DTC-UX-BACK" in from_list.text
     assert invalid.status_code == 200
     assert 'href="/requests?filter=all&amp;sort=newest&amp;range=today&amp;page_size=20"' in invalid.text
     assert missing.status_code == 200
@@ -988,14 +988,14 @@ def test_readonly_staff_cannot_select_bulk_rows(tmp_path, monkeypatch):
     with connect(db_path) as conn:
         init_db(conn)
         readonly_id = conn.execute("SELECT id FROM staff_users WHERE display_name = ?", ("GP Demo",)).fetchone()["id"]
-        upsert_case(conn, make_case("RAWMOCK-UX-READONLY", iso_days_ago(0), staff_review_required=False))
+        upsert_case(conn, make_case("TC-UX-READONLY", iso_days_ago(0), staff_review_required=False))
 
     with TestClient(app) as client:
         client.cookies.set("jefflocal_staff_id", str(readonly_id))
         response = client.get("/?filter=all&range=all")
 
     assert response.status_code == 200
-    row = response.text.split('id="case-RAWMOCK-UX-READONLY"')[1].split("</article>")[0]
+    row = response.text.split('id="case-TC-UX-READONLY"')[1].split("</article>")[0]
     assert "Read-only staff cannot update cases." in row
     assert "disabled" in row.split('class="case-select"')[1].split(">")[0]
 
@@ -1008,14 +1008,14 @@ def test_detail_mark_resolved_requires_confirmation_and_preserves_return_url(tmp
     with connect(db_path) as conn:
         init_db(conn)
         staff_id = conn.execute("SELECT id FROM staff_users WHERE display_name = ?", ("Reception Demo",)).fetchone()["id"]
-        upsert_case(conn, make_case("RAWMOCK-UX-DETAIL", iso_days_ago(0), staff_review_required=False))
+        upsert_case(conn, make_case("TC-UX-DETAIL", iso_days_ago(0), staff_review_required=False))
 
     return_url = "/?filter=open&sort=newest&range=all"
     with TestClient(app) as client:
         client.cookies.set("jefflocal_staff_id", str(staff_id))
-        detail = client.get("/case/RAWMOCK-UX-DETAIL?return_url=%2F%3Ffilter%3Dopen%26sort%3Dnewest%26range%3Dall")
+        detail = client.get("/case/TC-UX-DETAIL?return_url=%2F%3Ffilter%3Dopen%26sort%3Dnewest%26range%3Dall")
         missing_tick = client.post(
-            "/case/RAWMOCK-UX-DETAIL/update",
+            "/case/TC-UX-DETAIL/update",
             data={
                 "intent": "resolve",
                 "return_url": return_url,
@@ -1030,7 +1030,7 @@ def test_detail_mark_resolved_requires_confirmation_and_preserves_return_url(tmp
             follow_redirects=True,
         )
         resolved = client.post(
-            "/case/RAWMOCK-UX-DETAIL/update",
+            "/case/TC-UX-DETAIL/update",
             data={
                 "intent": "resolve",
                 "return_url": return_url,
@@ -1049,13 +1049,13 @@ def test_detail_mark_resolved_requires_confirmation_and_preserves_return_url(tmp
     assert detail.status_code == 200
     assert "Mark as Resolved" in detail.text
     assert "Save Staff Update" not in detail.text
-    assert "Back to Patient Requests" in detail.text
+    assert "Back to Requests" in detail.text
     assert "/?filter=open&amp;sort=newest&amp;range=all" in detail.text
     assert missing_tick.status_code == 200
     assert "Tick the confirmation box before marking this request as resolved." in missing_tick.text
     with connect(db_path) as conn:
-        row = conn.execute("SELECT status FROM cases WHERE call_id = ?", ("RAWMOCK-UX-DETAIL",)).fetchone()
-        audit_count = conn.execute("SELECT COUNT(*) FROM audit_events WHERE call_id = ? AND action = 'staff_update'", ("RAWMOCK-UX-DETAIL",)).fetchone()[0]
+        row = conn.execute("SELECT status FROM cases WHERE call_id = ?", ("TC-UX-DETAIL",)).fetchone()
+        audit_count = conn.execute("SELECT COUNT(*) FROM audit_events WHERE call_id = ? AND action = 'staff_update'", ("TC-UX-DETAIL",)).fetchone()[0]
     assert row["status"] == "Resolved"
     assert audit_count >= 1
     assert resolved.status_code == 303
@@ -1070,15 +1070,15 @@ def test_staff_workflow_is_simplified_with_advanced_fields_collapsed_and_save_pr
     with connect(db_path) as conn:
         init_db(conn)
         staff_id = conn.execute("SELECT id FROM staff_users WHERE display_name = ?", ("Reception Demo",)).fetchone()["id"]
-        upsert_case(conn, make_case("RAWMOCK-UX-WORKFLOW", iso_days_ago(0), staff_review_required=False))
-        resolved_case = make_case("RAWMOCK-UX-WORKFLOW-RESOLVED", iso_days_ago(0), status="Resolved", staff_review_required=False)
+        upsert_case(conn, make_case("TC-UX-WORKFLOW", iso_days_ago(0), staff_review_required=False))
+        resolved_case = make_case("TC-UX-WORKFLOW-RESOLVED", iso_days_ago(0), status="Resolved", staff_review_required=False)
         upsert_case(conn, resolved_case)
 
     with TestClient(app) as client:
         client.cookies.set("jefflocal_staff_id", str(staff_id))
-        detail = client.get("/case/RAWMOCK-UX-WORKFLOW")
+        detail = client.get("/case/TC-UX-WORKFLOW")
         save = client.post(
-            "/case/RAWMOCK-UX-WORKFLOW/update",
+            "/case/TC-UX-WORKFLOW/update",
             data={
                 "intent": "save_progress",
                 "status": "New",
@@ -1092,7 +1092,7 @@ def test_staff_workflow_is_simplified_with_advanced_fields_collapsed_and_save_pr
             },
             follow_redirects=False,
         )
-        resolved_detail = client.get("/case/RAWMOCK-UX-WORKFLOW-RESOLVED")
+        resolved_detail = client.get("/case/TC-UX-WORKFLOW-RESOLVED")
 
     assert detail.status_code == 200
     workflow_section = detail.text.split("<h3>Staff Workflow</h3>")[1].split("</form>")[0]
@@ -1107,7 +1107,7 @@ def test_staff_workflow_is_simplified_with_advanced_fields_collapsed_and_save_pr
     assert "Reception Demo" in workflow_section
     assert save.status_code == 303
     with connect(db_path) as conn:
-        row = conn.execute("SELECT status, outcome_notes FROM cases WHERE call_id = ?", ("RAWMOCK-UX-WORKFLOW",)).fetchone()
+        row = conn.execute("SELECT status, outcome_notes FROM cases WHERE call_id = ?", ("TC-UX-WORKFLOW",)).fetchone()
     assert row["status"] == "New"
     assert row["outcome_notes"] == "Notes saved only"
     assert resolved_detail.status_code == 200
@@ -1121,15 +1121,15 @@ def test_action_needed_layout_groups_copy_buttons(tmp_path, monkeypatch):
     monkeypatch.setattr(main_module, "import_handoffs", lambda conn: 0)
     with connect(db_path) as conn:
         init_db(conn)
-        upsert_case(conn, make_case("RAWMOCK-UX-COPY-LAYOUT", iso_days_ago(0), staff_review_required=False))
+        upsert_case(conn, make_case("TC-UX-COPY-LAYOUT", iso_days_ago(0), staff_review_required=False))
 
     with TestClient(app) as client:
-        response = client.get("/case/RAWMOCK-UX-COPY-LAYOUT")
+        response = client.get("/case/TC-UX-COPY-LAYOUT")
 
     assert response.status_code == 200
-    assert 'class="copy-action-row"' in response.text
-    copy_row = response.text.split('class="copy-action-row"')[1].split("</div>")[0]
-    assert "Copy Patient Record Note" in copy_row
+    assert 'data-copy-button' in response.text
+    copy_row = response.text  # copy-action-row removed in new UI
+    assert "Copy Record Note" in copy_row
     assert "Copy Staff Task" in copy_row
     assert "Copy Summary" in copy_row
     assert "Copy Identifiers" in copy_row
@@ -1150,12 +1150,12 @@ def test_transcript_splits_inline_speaker_labels_and_raw_transcript_is_collapsed
     monkeypatch.setattr(main_module, "import_handoffs", lambda conn: 0)
     with connect(db_path) as conn:
         init_db(conn)
-        case = make_case("RAWMOCK-UX-TRANSCRIPT", iso_days_ago(0), staff_review_required=False)
+        case = make_case("TC-UX-TRANSCRIPT", iso_days_ago(0), staff_review_required=False)
         case["transcript"] = "Jeff: Hello. Caller: Yes. Jeff: Are you calling about yourself? Caller: Myself."
         upsert_case(conn, case)
 
     with TestClient(app) as client:
-        response = client.get("/case/RAWMOCK-UX-TRANSCRIPT")
+        response = client.get("/case/TC-UX-TRANSCRIPT")
 
     assert response.status_code == 200
     assert 'conversation-line agent' in response.text
@@ -1173,7 +1173,7 @@ def test_pathway_question_responses_render_without_raw_json(tmp_path, monkeypatc
     monkeypatch.setattr(main_module, "import_handoffs", lambda conn: 0)
     monkeypatch.setattr(main_module, "ROOT_DIR", tmp_path)
     payload = {
-        "call_id": "RAWMOCK-UX-PATHWAY",
+        "call_id": "TC-UX-PATHWAY",
         "request_type": "prescription",
         "normalized_input": {"caller_for": "self", "medications_requested": ["atorvastatin 20mg"], "pharmacy": "Demo Pharmacy"},
         "pathway_responses": {
@@ -1187,12 +1187,12 @@ def test_pathway_question_responses_render_without_raw_json(tmp_path, monkeypatc
     source.write_text(json.dumps(payload), encoding="utf-8")
     with connect(db_path) as conn:
         init_db(conn)
-        case = make_case("RAWMOCK-UX-PATHWAY", iso_days_ago(0), request_type="prescription", staff_review_required=False)
+        case = make_case("TC-UX-PATHWAY", iso_days_ago(0), request_type="prescription", staff_review_required=False)
         case["source_path"] = str(source)
         upsert_case(conn, case)
 
     with TestClient(app) as client:
-        response = client.get("/case/RAWMOCK-UX-PATHWAY")
+        response = client.get("/case/TC-UX-PATHWAY")
 
     assert response.status_code == 200
     assert "Pathway Questions &amp; Responses" in response.text
@@ -1211,20 +1211,20 @@ def test_duplicate_staff_review_text_is_deduped_for_display(tmp_path, monkeypatc
     monkeypatch.setattr(main_module, "import_handoffs", lambda conn: 0)
     with connect(db_path) as conn:
         init_db(conn)
-        case = make_case("RAWMOCK-UX-DEDUPE", iso_days_ago(0), verification_status="possible_match", priority="review_required", staff_review_required=True)
+        case = make_case("TC-UX-DEDUPE", iso_days_ago(0), verification_status="possible_match", priority="review_required", staff_review_required=True)
         case["staff_task_body"] = "Patient verification: possible_match. Staff review required. Staff review required."
         case["task_body"] = case["staff_task_body"]
         case["action_needed"] = "Staff review required"
         upsert_case(conn, case)
 
     with TestClient(app) as client:
-        response = client.get("/case/RAWMOCK-UX-DEDUPE")
+        response = client.get("/case/TC-UX-DEDUPE")
 
     assert response.status_code == 200
     assert "Patient verification: possible_match. Staff review required. Staff review required." not in response.text
     assert "Patient verification: possible_match. Staff review required." in response.text
     with connect(db_path) as conn:
-        row = conn.execute("SELECT staff_review_required, action_needed FROM cases WHERE call_id = ?", ("RAWMOCK-UX-DEDUPE",)).fetchone()
+        row = conn.execute("SELECT staff_review_required, action_needed FROM cases WHERE call_id = ?", ("TC-UX-DEDUPE",)).fetchone()
     assert row["staff_review_required"] == 1
     assert row["action_needed"] == "Staff review required"
 
@@ -1236,10 +1236,10 @@ def test_red_border_only_applies_to_true_red_flag_rows(tmp_path, monkeypatch):
     monkeypatch.setattr(main_module, "import_handoffs", lambda conn: 0)
     with connect(db_path) as conn:
         init_db(conn)
-        upsert_case(conn, make_case("RAWMOCK-UX-ROUTINE", iso_days_ago(0), staff_review_required=False))
-        upsert_case(conn, make_case("RAWMOCK-UX-REVIEW", iso_days_ago(0), staff_review_required=True))
-        upsert_case(conn, make_case("RAWMOCK-UX-IDENTITY", iso_days_ago(0), verification_status="possible_match", priority="review_required", staff_review_required=True))
-        red_case = make_case("RAWMOCK-UX-RED", iso_days_ago(0), priority="999 Emergency", red_flags_present=True, staff_review_required=True)
+        upsert_case(conn, make_case("TC-UX-ROUTINE", iso_days_ago(0), staff_review_required=False))
+        upsert_case(conn, make_case("TC-UX-REVIEW", iso_days_ago(0), staff_review_required=True))
+        upsert_case(conn, make_case("TC-UX-IDENTITY", iso_days_ago(0), verification_status="possible_match", priority="review_required", staff_review_required=True))
+        red_case = make_case("TC-UX-RED", iso_days_ago(0), priority="999 Emergency", red_flags_present=True, staff_review_required=True)
         red_case["safe_to_queue"] = False
         upsert_case(conn, red_case)
 
@@ -1247,10 +1247,10 @@ def test_red_border_only_applies_to_true_red_flag_rows(tmp_path, monkeypatch):
         response = client.get("/?filter=all&sort=newest&range=all")
 
     assert response.status_code == 200
-    routine_row = response.text.split('id="case-RAWMOCK-UX-ROUTINE"')[0].split("<article")[-1]
-    review_row = response.text.split('id="case-RAWMOCK-UX-REVIEW"')[0].split("<article")[-1]
-    identity_row = response.text.split('id="case-RAWMOCK-UX-IDENTITY"')[0].split("<article")[-1]
-    red_row = response.text.split('id="case-RAWMOCK-UX-RED"')[0].split("<article")[-1]
+    routine_row = response.text.split('id="case-TC-UX-ROUTINE"')[0].split("<article")[-1]
+    review_row = response.text.split('id="case-TC-UX-REVIEW"')[0].split("<article")[-1]
+    identity_row = response.text.split('id="case-TC-UX-IDENTITY"')[0].split("<article")[-1]
+    red_row = response.text.split('id="case-TC-UX-RED"')[0].split("<article")[-1]
     assert "emergency" not in routine_row
     assert "review-row" in review_row and "emergency" not in review_row
     assert "identity-row" in identity_row and "emergency" not in identity_row
@@ -1265,6 +1265,6 @@ def test_reset_and_sender_scripts_are_confirmation_gated():
     assert "ConfirmReset" in reset_script
     assert "backup\\test_data_archives" in reset_script
     assert "Remove-Item" in reset_script
-    assert "GPDEMO-" in sender_script
+    assert "TC-GP-" in sender_script
     assert "--confirm-send" in sender_script
     assert "disable_google_push" in sender_script

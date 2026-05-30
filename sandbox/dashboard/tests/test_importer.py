@@ -24,7 +24,7 @@ def test_importer_reads_rawmock_and_upserts_without_duplicates(tmp_path):
         first_count = import_handoffs(conn, HANDOFF_DIR)
         second_count = import_handoffs(conn, HANDOFF_DIR)
         case_count = conn.execute(
-            "SELECT COUNT(*) FROM cases WHERE call_id LIKE 'RAWMOCK-%'"
+            "SELECT COUNT(*) FROM cases WHERE call_id LIKE 'TC-%'"
         ).fetchone()[0]
 
     assert first_count >= 12
@@ -36,7 +36,7 @@ def test_importer_supports_pattern_filtered_rawmock_import(tmp_path):
     db_path = tmp_path / "dashboard.sqlite"
     with connect(db_path) as conn:
         init_db(conn)
-        count = import_handoffs(conn, HANDOFF_DIR, pattern="RAWMOCK*_handoff.json")
+        count = import_handoffs(conn, HANDOFF_DIR, pattern="TC-*_handoff.json")
         case_count = conn.execute("SELECT COUNT(*) FROM cases").fetchone()[0]
 
     assert count == 12
@@ -61,17 +61,17 @@ def test_filters_return_expected_rawmock_cases(tmp_path):
             for row in conn.execute(f"SELECT call_id FROM cases WHERE {where}", params).fetchall()
         }
 
-    assert "RAWMOCK-006-URGENT-REDFLAG" in urgent_ids
-    assert "RAWMOCK-008-THIRD-PARTY-POSSIBLE" in identity_ids
-    assert "RAWMOCK-009-INSUFFICIENT-ID" in identity_ids
-    assert "RAWMOCK-011-NO-MATCH" in identity_ids
+    assert "TC-006-URGENT-REDFLAG" in urgent_ids
+    assert "TC-008-THIRD-PARTY-POSSIBLE" in identity_ids
+    assert "TC-009-INSUFFICIENT-ID" in identity_ids
+    assert "TC-011-NO-MATCH" in identity_ids
 
 
 def test_reimport_updates_locked_fields_and_preserves_staff_fields(tmp_path):
     db_path = tmp_path / "dashboard.sqlite"
     handoff_dir = tmp_path / "handoffs"
     handoff_dir.mkdir()
-    source = HANDOFF_DIR / "RAWMOCK-012-MESSY-MULTI-INTENT_handoff.json"
+    source = HANDOFF_DIR / "TC-012-MESSY-MULTI-INTENT_handoff.json"
     target = handoff_dir / source.name
     shutil.copyfile(source, target)
 
@@ -92,7 +92,7 @@ def test_reimport_updates_locked_fields_and_preserves_staff_fields(tmp_path):
                 "2026-05-11T13:00:00+00:00",
                 "tester",
                 "Staff edited action needed",
-                "RAWMOCK-012-MESSY-MULTI-INTENT",
+                "TC-012-MESSY-MULTI-INTENT",
             ),
         )
         conn.commit()
@@ -116,7 +116,7 @@ def test_reimport_updates_locked_fields_and_preserves_staff_fields(tmp_path):
                    staff_action, action_needed, source_file_mtime
             FROM cases WHERE call_id = ?
             """,
-            ("RAWMOCK-012-MESSY-MULTI-INTENT",),
+            ("TC-012-MESSY-MULTI-INTENT",),
         ).fetchone()
 
     assert row["priority"] == "review_required"
@@ -143,13 +143,13 @@ def test_rawmock_locked_fields_match_current_handoffs(tmp_path):
                 """
                 SELECT call_id, request_type, priority, safe_to_queue,
                        staff_review_required, red_flags_present, verification_status
-                FROM cases WHERE call_id LIKE 'RAWMOCK-%'
+                FROM cases WHERE call_id LIKE 'TC-%'
                 """
             ).fetchall()
         }
 
     assert len(rows) == 12
-    for path in HANDOFF_DIR.glob("RAWMOCK*_handoff.json"):
+    for path in HANDOFF_DIR.glob("TC-*_handoff.json"):
         data = json.loads(path.read_text(encoding="utf-8-sig"))
         row = rows[data["call_id"]]
         assert row["request_type"] == data["request_type"]
@@ -185,7 +185,7 @@ def test_timestamp_display_formatter():
 def test_gp_demo_payload_processing_stores_informative_task_and_summary():
     case = map_handoff_to_case(
         {
-            "call_id": "GPDEMO-20260513-120000-001-PRESCRIPTION",
+            "call_id": "TC-GP-20260513-120000-001-PRESCRIPTION",
             "timestamp_utc": "2026-05-13T12:00:00Z",
             "request_type": "prescription",
             "verification_status": "matched",
@@ -216,7 +216,7 @@ def test_gp_demo_payload_processing_stores_informative_task_and_summary():
 def test_gp_demo_red_flag_task_includes_urgent_footer():
     case = map_handoff_to_case(
         {
-            "call_id": "GPDEMO-20260513-120000-005-REDFLAG",
+            "call_id": "TC-GP-20260513-120000-005-REDFLAG",
             "timestamp_utc": "2026-05-13T12:00:00Z",
             "request_type": "appointment_redirect",
             "verification_status": "matched",
@@ -239,7 +239,7 @@ def test_gp_demo_red_flag_task_includes_urgent_footer():
 def test_identity_issue_summary_mentions_review_required():
     case = map_handoff_to_case(
         {
-            "call_id": "GPDEMO-20260513-120000-004-IDENTITY",
+            "call_id": "TC-GP-20260513-120000-004-IDENTITY",
             "timestamp_utc": "2026-05-13T12:00:00Z",
             "request_type": "admin",
             "verification_status": "possible_match",
@@ -259,7 +259,7 @@ def test_identity_issue_summary_mentions_review_required():
 def test_patient_record_note_identifier_order_and_name_fallback():
     emis_case = map_handoff_to_case(
         {
-            "call_id": "GPDEMO-EMIS",
+            "call_id": "TC-GP-EMIS",
             "timestamp_utc": "2026-05-13T12:00:00Z",
             "request_type": "prescription",
             "matched_emis_number": "E123",
@@ -274,7 +274,7 @@ def test_patient_record_note_identifier_order_and_name_fallback():
     )
     nhs_case = map_handoff_to_case(
         {
-            "call_id": "GPDEMO-NHS",
+            "call_id": "TC-GP-NHS",
             "timestamp_utc": "2026-05-13T12:00:00Z",
             "request_type": "prescription",
             "matched_nhs_number": "9990001111",
@@ -288,7 +288,7 @@ def test_patient_record_note_identifier_order_and_name_fallback():
     )
     name_case = map_handoff_to_case(
         {
-            "call_id": "GPDEMO-NAME",
+            "call_id": "TC-GP-NAME",
             "timestamp_utc": "2026-05-13T12:00:00Z",
             "request_type": "prescription",
             "patient_name": "Demo Name",
@@ -311,7 +311,7 @@ def test_patient_record_note_identifier_order_and_name_fallback():
 def test_missing_processing_output_uses_safe_fallback_for_dashboard_warning():
     case = map_handoff_to_case(
         {
-            "call_id": "GPDEMO-20260513-120000-999-MISSING",
+            "call_id": "TC-GP-20260513-120000-999-MISSING",
             "timestamp_utc": "2026-05-13T12:00:00Z",
             "request_type": "admin",
             "verification_status": "matched",

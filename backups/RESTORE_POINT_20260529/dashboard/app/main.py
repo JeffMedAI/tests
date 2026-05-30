@@ -4,6 +4,7 @@ import asyncio
 import json
 import hashlib
 import http.client
+import logging
 import re
 import subprocess
 import sys
@@ -72,6 +73,8 @@ LOCAL_SERVICE_URLS = {
     "voice_agent": "local webhook/test intake",
 }
 
+log = logging.getLogger(__name__)
+
 app = FastAPI(title="JeffLocal Staff Dashboard")
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
@@ -85,6 +88,7 @@ def _nav_alert_count() -> int:
                 "SELECT COUNT(*) FROM alert_events WHERE acknowledged_at IS NULL"
             ).fetchone()[0]
     except Exception:
+        log.error("_nav_alert_count: failed to query alert_events", exc_info=True)
         return 0
 
 

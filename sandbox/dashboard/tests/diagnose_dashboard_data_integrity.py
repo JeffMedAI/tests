@@ -54,7 +54,7 @@ def main() -> int:
         rows = {
             row["call_id"]: row
             for row in conn.execute(
-                "SELECT call_id, request_type, priority, safe_to_queue, staff_review_required, red_flags_present, verification_status FROM cases WHERE call_id LIKE 'RAWMOCK-%'"
+                "SELECT call_id, request_type, priority, safe_to_queue, staff_review_required, red_flags_present, verification_status FROM cases WHERE call_id LIKE 'TC-%'"
             ).fetchall()
         }
 

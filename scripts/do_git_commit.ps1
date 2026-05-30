@@ -11,7 +11,7 @@ if (Test-Path $lockFile) {
 }
 
 # Configure git identity
-git config user.email "5256863@gmail.com"
+git config user.email "215987900+Avamedio@users.noreply.github.com"
 git config user.name "Saeed"
 
 # Stage everything

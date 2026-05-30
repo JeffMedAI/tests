@@ -1,0 +1,794 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]: JL
+      - generic [ref=e5]:
+        - generic [ref=e6]: JeffLocal
+        - generic [ref=e7]: Friday, 29 May 2026
+    - navigation "Main navigation" [ref=e8]:
+      - link "Dashboard" [ref=e9] [cursor=pointer]:
+        - /url: /
+      - link "Requests" [ref=e10] [cursor=pointer]:
+        - /url: /requests
+      - link "Patients" [ref=e11] [cursor=pointer]:
+        - /url: /patients
+      - link "Staff" [ref=e12] [cursor=pointer]:
+        - /url: /staff
+      - link "Reports" [ref=e13] [cursor=pointer]:
+        - /url: /reports
+      - link "Settings" [ref=e14] [cursor=pointer]:
+        - /url: /settings
+    - searchbox "Search requests" [ref=e17]
+    - generic [ref=e18]:
+      - button "Import" [ref=e19] [cursor=pointer]
+      - link "Alerts" [ref=e20] [cursor=pointer]:
+        - /url: /alerts
+        - img [ref=e21]
+      - generic [ref=e25]:
+        - link "Saeed Admin" [ref=e26] [cursor=pointer]:
+          - /url: /profile
+          - generic [ref=e27]:
+            - generic [ref=e28]: Saeed
+            - generic [ref=e29]: Admin
+          - generic [ref=e30]: S
+        - link "Sign out" [ref=e31] [cursor=pointer]:
+          - /url: /logout
+          - img [ref=e32]
+  - generic [ref=e35]:
+    - complementary [ref=e36]:
+      - generic [ref=e37]:
+        - generic [ref=e38]: Analytics
+        - button "Collapse sidebar" [ref=e39] [cursor=pointer]:
+          - img
+          - generic "2 critical issues": "2"
+      - generic [ref=e42]:
+        - link "Today" [ref=e43] [cursor=pointer]:
+          - /url: /requests?range=today
+        - link "Week" [ref=e44] [cursor=pointer]:
+          - /url: /requests?range=week
+        - link "All" [ref=e45] [cursor=pointer]:
+          - /url: /requests?range=all
+      - generic [ref=e46]:
+        - generic "Quick Status" [ref=e47]:
+          - generic [ref=e48]: 📊 Quick Status
+          - generic [ref=e49]:
+            - generic [ref=e50]: Open
+            - generic [ref=e52]: "22"
+          - generic [ref=e53]:
+            - generic [ref=e54]: Overdue
+            - generic [ref=e56]: "22"
+          - generic [ref=e57]:
+            - generic [ref=e58]: Resolved Today
+            - generic [ref=e60]: "0"
+          - generic [ref=e61]:
+            - generic [ref=e62]: Critical
+            - generic [ref=e64]: "2"
+        - link "⚠️ Critical Issues 2 Needs immediate attention 2" [ref=e65] [cursor=pointer]:
+          - /url: /requests?filter=urgent_red_flags&sort=newest&range=all
+          - generic [ref=e66]: ⚠️
+          - generic [ref=e67]:
+            - generic [ref=e68]: Critical Issues
+            - generic [ref=e69]: "2"
+            - generic [ref=e70]: Needs immediate attention
+          - generic [ref=e71]: "2"
+        - generic "Staff Workload" [ref=e72]:
+          - generic [ref=e73]: 👥 Staff Workload
+          - generic [ref=e74]:
+            - generic [ref=e75]:
+              - generic "Admin Demo" [ref=e76]
+              - generic [ref=e77]:
+                - generic "Open cases" [ref=e78]: "0"
+                - generic "In progress" [ref=e79]: "0"
+                - generic "Resolved today" [ref=e80]: "0"
+            - generic [ref=e81]:
+              - generic "GP Demo" [ref=e82]
+              - generic [ref=e83]:
+                - generic "Open cases" [ref=e84]: "0"
+                - generic "In progress" [ref=e85]: "0"
+                - generic "Resolved today" [ref=e86]: "0"
+            - generic [ref=e87]:
+              - generic "Reception Demo" [ref=e88]
+              - generic [ref=e89]:
+                - generic "Open cases" [ref=e90]: "0"
+                - generic "In progress" [ref=e91]: "0"
+                - generic "Resolved today" [ref=e92]: "0"
+            - generic [ref=e93]:
+              - generic "Saeed" [ref=e94]
+              - generic [ref=e95]:
+                - generic "Open cases" [ref=e96]: "0"
+                - generic "In progress" [ref=e97]: "0"
+                - generic "Resolved today" [ref=e98]: "0"
+          - generic [ref=e100]:
+            - text: Open
+            - text: Active
+            - text: Done
+        - generic "Call Analytics" [ref=e104]:
+          - generic [ref=e105]: 📞 Call Analytics
+          - generic [ref=e106]:
+            - generic [ref=e107]: Total Calls
+            - generic [ref=e108]: "22"
+          - generic [ref=e109]:
+            - generic [ref=e110]: Dropped
+            - generic [ref=e111]: "0"
+          - generic [ref=e112]:
+            - generic [ref=e113]: Safe to Queue
+            - generic [ref=e114]: "20"
+          - generic [ref=e115]:
+            - generic [ref=e116]: Success Rate
+            - generic [ref=e117]: 90.9%
+        - generic "Live Workload" [ref=e118]:
+          - generic [ref=e119]: ⚙️ Live Workload
+          - generic [ref=e120]:
+            - generic [ref=e121]: Incoming Queue
+            - generic [ref=e123]: "1"
+          - generic [ref=e124]:
+            - generic [ref=e125]: Awaiting
+            - generic [ref=e127]: "0"
+          - generic [ref=e128]:
+            - generic [ref=e129]: Processed Today
+            - generic [ref=e131]: "0"
+          - generic [ref=e132]:
+            - generic [ref=e133]: Failed
+            - generic [ref=e135]: "1"
+    - main [ref=e136]:
+      - status [ref=e137]:
+        - strong [ref=e138]: DEMO / TEST DATA MODE
+        - generic [ref=e139]: No real patient data. Google push disabled for test runs.
+      - generic [ref=e140]:
+        - generic [ref=e141]:
+          - generic [ref=e142]:
+            - link "All" [ref=e143] [cursor=pointer]:
+              - /url: /requests?filter=all&sort=newest&range=all
+            - link "Urgent Red Flags 2" [ref=e144] [cursor=pointer]:
+              - /url: /requests?filter=urgent_red_flags&sort=newest&range=all
+              - text: Urgent Red Flags
+              - generic [ref=e145]: "2"
+            - link "Needs Review 20" [ref=e146] [cursor=pointer]:
+              - /url: /requests?filter=needs_review&sort=newest&range=all
+              - text: Needs Review
+              - generic [ref=e147]: "20"
+            - link "Identity Issues 17" [ref=e148] [cursor=pointer]:
+              - /url: /requests?filter=identity_issues&sort=newest&range=all
+              - text: Identity Issues
+              - generic [ref=e149]: "17"
+            - link "Open 22" [ref=e150] [cursor=pointer]:
+              - /url: /requests?filter=open&sort=newest&range=all
+              - text: Open
+              - generic [ref=e151]: "22"
+            - link "Resolved" [ref=e152] [cursor=pointer]:
+              - /url: /requests?filter=resolved&sort=newest&range=all
+            - link "Resolved Today 0" [ref=e153] [cursor=pointer]:
+              - /url: /requests?filter=resolved_today&sort=newest&range=all
+              - text: Resolved Today
+              - generic [ref=e154]: "0"
+            - button "Filters ▾" [ref=e155] [cursor=pointer]:
+              - img [ref=e156]
+              - generic [ref=e157]: Filters
+              - generic [ref=e158]: ▾
+          - generic:
+            - generic:
+              - generic: "Type:"
+              - link "All Types":
+                - /url: /requests?filter=open&sort=newest&range=all
+              - link "Prescription":
+                - /url: /requests?filter=open&sort=newest&range=all&request_type=prescription
+              - link "Sick Note":
+                - /url: /requests?filter=open&sort=newest&range=all&request_type=sick_note
+              - link "Referral":
+                - /url: /requests?filter=open&sort=newest&range=all&request_type=referral
+              - link "Test Result":
+                - /url: /requests?filter=open&sort=newest&range=all&request_type=test_result
+              - link "Appointment":
+                - /url: /requests?filter=open&sort=newest&range=all&request_type=appointment_redirect
+              - link "Admin":
+                - /url: /requests?filter=open&sort=newest&range=all&request_type=admin
+              - link "Unknown":
+                - /url: /requests?filter=open&sort=newest&range=all&request_type=unknown
+            - generic:
+              - generic:
+                - text: Search
+                - textbox "Search":
+                  - /placeholder: Patient, DOB, NHS, call ID, postcode…
+              - generic:
+                - text: Sort by
+                - combobox "Sort by":
+                  - option "Newest first" [selected]
+                  - option "Oldest first"
+                  - option "Priority"
+                  - option "Unresolved first"
+              - generic:
+                - text: Date range
+                - combobox "Date range":
+                  - option "Today"
+                  - option "Last 7 days"
+                  - option "Last 30 days"
+                  - option "All" [selected]
+              - generic:
+                - text: Per page
+                - combobox "Per page":
+                  - option "20" [selected]
+                  - option "50"
+                  - option "100"
+              - button "Apply"
+              - link "Reset":
+                - /url: /requests?filter=all&sort=newest&range=all&page_size=20
+          - generic [ref=e159]:
+            - generic "Active filters" [ref=e160]:
+              - generic [ref=e161]: Open
+              - generic [ref=e162]: All
+              - link "Clear filters" [ref=e163] [cursor=pointer]:
+                - /url: /requests?filter=all&sort=newest&range=all&page_size=20
+            - generic [ref=e164]: Showing 1–20 of 22
+        - generic [ref=e165]:
+          - generic [ref=e166]:
+            - strong [ref=e167]: 0 selected
+            - paragraph [ref=e168]: Selection cleared because filters changed.
+          - generic [ref=e169]:
+            - button "Select all visible" [ref=e170] [cursor=pointer]
+            - button "Clear selection" [disabled] [ref=e171]
+          - generic [ref=e172]:
+            - button "Assign to me" [disabled] [ref=e173]
+            - button "Start review" [disabled] [ref=e174]
+            - button "Resolve eligible only" [disabled] [ref=e175]
+        - generic [ref=e176]:
+          - generic "Patient requests" [ref=e177]:
+            - article [ref=e178] [cursor=pointer]:
+              - generic "Select N8NTEST-005-REDFLAG for bulk actions" [ref=e179]:
+                - checkbox "Select N8NTEST-005-REDFLAG for bulk actions" [ref=e180]
+              - generic [ref=e181]:
+                - generic [ref=e182]:
+                  - generic [ref=e183]:
+                    - generic [ref=e184]: Appointment
+                    - generic [ref=e185]: 999 Emergency
+                    - generic [ref=e186]: Red Flag
+                    - generic [ref=e187]: Not Safe To Queue
+                  - generic [ref=e188]: GEOFFREY MYNNE
+                  - generic [ref=e189]:
+                    - generic [ref=e190]: DOB 21/02/1941 · 85
+                    - generic [ref=e191]: NHS n/a
+                    - generic [ref=e192]: 📱 0711 100 2005
+                - generic [ref=e193]:
+                  - generic [ref=e194]: 09:00
+                  - generic [ref=e195]: 17d ago
+              - paragraph [ref=e196]: Possible emergency red-flag symptoms identified from caller report. Caller requires immediate urgent safety handling.
+              - generic [ref=e197]:
+                - generic [ref=e198]:
+                  - generic [ref=e199]: OPEN
+                  - generic [ref=e200]: Unassigned
+                  - generic [ref=e201]: N8NTEST-005-REDFLAG
+                - generic [ref=e202]:
+                  - button "Start Review" [ref=e204]
+                  - link "View" [ref=e205]:
+                    - /url: /case/N8NTEST-005-REDFLAG?return_url=/requests%3Fsearch%3DGeoffrey
+            - article [ref=e206] [cursor=pointer]:
+              - generic "Select RAWMOCK-006-URGENT-REDFLAG for bulk actions" [ref=e207]:
+                - checkbox "Select RAWMOCK-006-URGENT-REDFLAG for bulk actions" [ref=e208]
+              - generic [ref=e209]:
+                - generic [ref=e210]:
+                  - generic [ref=e211]:
+                    - generic [ref=e212]: Appointment
+                    - generic [ref=e213]: 999 Emergency
+                    - generic [ref=e214]: Red Flag
+                    - generic [ref=e215]: Not Safe To Queue
+                  - generic [ref=e216]: GEOFFREY MYNNE
+                  - generic [ref=e217]:
+                    - generic [ref=e218]: DOB 21/02/1941 · 85
+                    - generic [ref=e219]: NHS n/a
+                    - generic [ref=e220]: 📱 0711 100 1006
+                - generic [ref=e221]:
+                  - generic [ref=e222]: 12:00
+                  - generic [ref=e223]: 17d ago
+              - paragraph [ref=e224]: Possible emergency red-flag symptoms identified from caller report. Caller requires immediate urgent safety handling.
+              - generic [ref=e225]:
+                - generic [ref=e226]:
+                  - generic [ref=e227]: OPEN
+                  - generic [ref=e228]: Unassigned
+                  - generic [ref=e229]: RAWMOCK-006-URGENT-REDFLAG
+                - generic [ref=e230]:
+                  - button "Start Review" [ref=e232]
+                  - link "View" [ref=e233]:
+                    - /url: /case/RAWMOCK-006-URGENT-REDFLAG?return_url=/requests%3Fsearch%3DGeoffrey
+            - article [ref=e234] [cursor=pointer]:
+              - generic "Select RX-LIVELOOKUP20-20260521145402-20-NO-NHS-PHILLIP-DOHERTY for bulk actions" [ref=e235]:
+                - checkbox "Select RX-LIVELOOKUP20-20260521145402-20-NO-NHS-PHILLIP-DOHERTY for bulk actions" [ref=e236]
+              - generic [ref=e237]:
+                - generic [ref=e238]:
+                  - generic [ref=e239]:
+                    - generic [ref=e240]: Admin
+                    - generic [ref=e241]: routine
+                    - generic [ref=e242]: Safe To Queue
+                  - generic [ref=e243]: Phillip DOHERTY
+                  - generic [ref=e244]:
+                    - generic [ref=e245]: DOB 13/02/1985 · 41
+                    - generic [ref=e246]: NHS 620 948 2600
+                    - generic [ref=e247]: EMIS 482
+                    - generic [ref=e248]: 📱 0711 100 0482
+                - generic [ref=e249]:
+                  - generic [ref=e250]: 14:54
+                  - generic [ref=e251]: 7d ago
+              - paragraph [ref=e252]: Admin requested for EMIS 482 / NHS 620 948 2600; Copy of letter from records, callback provided.
+              - generic [ref=e253]:
+                - generic [ref=e254]:
+                  - generic [ref=e255]: OPEN
+                  - generic [ref=e256]: Unassigned
+                  - generic [ref=e257]: RX-LIVELOOKUP20-20260521145402-20-NO-NHS-PHILLIP-DOHERTY
+                - generic [ref=e258]:
+                  - button "Resolve" [ref=e260]
+                  - link "View" [ref=e261]:
+                    - /url: /case/RX-LIVELOOKUP20-20260521145402-20-NO-NHS-PHILLIP-DOHERTY?return_url=/requests%3Fsearch%3DGeoffrey
+            - article [ref=e262] [cursor=pointer]:
+              - generic "Select RX-LIVELOOKUP20-20260521145402-13-WRONG-DOB-MICHAEL-CLARKE for bulk actions" [ref=e263]:
+                - checkbox "Select RX-LIVELOOKUP20-20260521145402-13-WRONG-DOB-MICHAEL-CLARKE for bulk actions" [ref=e264]
+              - generic [ref=e265]:
+                - generic [ref=e266]:
+                  - generic [ref=e267]:
+                    - generic [ref=e268]: Prescription
+                    - generic [ref=e269]: review required
+                    - 'generic "Identity Check · Verification: needs_review" [ref=e270]': "ID: Needs Review"
+                  - generic [ref=e271]: MICHAEL CLARKE
+                  - generic [ref=e272]:
+                    - generic [ref=e273]: DOB 28/05/1950 · 76
+                    - generic [ref=e274]: NHS n/a
+                    - generic [ref=e275]: 📱 0711 100 0351
+                - generic [ref=e276]:
+                  - generic [ref=e277]: 14:54
+                  - generic [ref=e278]: 7d ago
+              - paragraph [ref=e279]: Prescription for possible match EMIS 351 / NHS 452 864 6552; lansoprazole 15mg, staff identity review required.
+              - generic [ref=e280]:
+                - generic [ref=e281]:
+                  - generic [ref=e282]: OPEN
+                  - generic [ref=e283]: Unassigned
+                  - generic [ref=e284]: RX-LIVELOOKUP20-20260521145402-13-WRONG-DOB-MICHAEL-CLARKE
+                - generic [ref=e285]:
+                  - button "Start Review" [ref=e287]
+                  - link "View" [ref=e288]:
+                    - /url: /case/RX-LIVELOOKUP20-20260521145402-13-WRONG-DOB-MICHAEL-CLARKE?return_url=/requests%3Fsearch%3DGeoffrey
+            - article [ref=e289] [cursor=pointer]:
+              - generic "Select RX-LIVELOOKUP20-20260521145402-03-REFERRAL-KEVIN-BRADBURY for bulk actions" [ref=e290]:
+                - checkbox "Select RX-LIVELOOKUP20-20260521145402-03-REFERRAL-KEVIN-BRADBURY for bulk actions" [ref=e291]
+              - generic [ref=e292]:
+                - generic [ref=e293]:
+                  - generic [ref=e294]:
+                    - generic [ref=e295]: Referral
+                    - generic [ref=e296]: routine
+                    - generic [ref=e297]: Review Required
+                    - generic [ref=e298]: Safe To Queue
+                  - generic [ref=e299]: Kevin BRADBURY
+                  - generic [ref=e300]:
+                    - generic [ref=e301]: DOB 03/06/1982 · 43
+                    - generic [ref=e302]: NHS 620 925 5116
+                    - generic [ref=e303]: EMIS 237
+                    - generic [ref=e304]: 📱 0711 100 0237
+                - generic [ref=e305]:
+                  - generic [ref=e306]: 14:54
+                  - generic [ref=e307]: 7d ago
+              - paragraph [ref=e308]: Referral requested for EMIS 237 / NHS 620 925 5116; Unknown, callback provided.
+              - generic [ref=e309]:
+                - generic [ref=e310]:
+                  - generic [ref=e311]: OPEN
+                  - generic [ref=e312]: Unassigned
+                  - generic [ref=e313]: RX-LIVELOOKUP20-20260521145402-03-REFERRAL-KEVIN-BRADBURY
+                - generic [ref=e314]:
+                  - button "Start Review" [ref=e316]
+                  - link "View" [ref=e317]:
+                    - /url: /case/RX-LIVELOOKUP20-20260521145402-03-REFERRAL-KEVIN-BRADBURY?return_url=/requests%3Fsearch%3DGeoffrey
+            - article [ref=e318] [cursor=pointer]:
+              - generic "Select RX-LIVELOOKUP20-20260521145402-02-SICKNOTE-ELIZABETH for bulk actions" [ref=e319]:
+                - checkbox "Select RX-LIVELOOKUP20-20260521145402-02-SICKNOTE-ELIZABETH for bulk actions" [ref=e320]
+              - generic [ref=e321]:
+                - generic [ref=e322]:
+                  - generic [ref=e323]:
+                    - generic [ref=e324]: Sick Note
+                    - generic [ref=e325]: routine
+                    - generic [ref=e326]: Review Required
+                    - generic [ref=e327]: Safe To Queue
+                  - generic [ref=e328]: Elizabeth BOUMNIJEL
+                  - generic [ref=e329]:
+                    - generic [ref=e330]: DOB 19/06/1949 · 76
+                    - generic [ref=e331]: NHS 452 864 7400
+                    - generic [ref=e332]: EMIS 231
+                    - generic [ref=e333]: 📱 0711 100 0231
+                - generic [ref=e334]:
+                  - generic [ref=e335]: 14:54
+                  - generic [ref=e336]: 7d ago
+              - paragraph [ref=e337]: Sick note requested for EMIS 231 / NHS 452 864 7400; Work, callback provided.
+              - generic [ref=e338]:
+                - generic [ref=e339]:
+                  - generic [ref=e340]: OPEN
+                  - generic [ref=e341]: Unassigned
+                  - generic [ref=e342]: RX-LIVELOOKUP20-20260521145402-02-SICKNOTE-ELIZABETH
+                - generic [ref=e343]:
+                  - button "Start Review" [ref=e345]
+                  - link "View" [ref=e346]:
+                    - /url: /case/RX-LIVELOOKUP20-20260521145402-02-SICKNOTE-ELIZABETH?return_url=/requests%3Fsearch%3DGeoffrey
+            - article [ref=e347] [cursor=pointer]:
+              - generic "Select RX-LIVELOOKUP20-20260521145402-01-REPEAT-ABDEL for bulk actions" [ref=e348]:
+                - checkbox "Select RX-LIVELOOKUP20-20260521145402-01-REPEAT-ABDEL for bulk actions" [ref=e349]
+              - generic [ref=e350]:
+                - generic [ref=e351]:
+                  - generic [ref=e352]:
+                    - generic [ref=e353]: Prescription
+                    - generic [ref=e354]: routine
+                    - generic [ref=e355]: Safe To Queue
+                  - generic [ref=e356]: Abdel BOUMNIJEL
+                  - generic [ref=e357]:
+                    - generic [ref=e358]: DOB 18/12/1952 · 73
+                    - generic [ref=e359]: NHS 626 283 3153
+                    - generic [ref=e360]: EMIS 230
+                    - generic [ref=e361]: 📱 0711 100 0230
+                - generic [ref=e362]:
+                  - generic [ref=e363]: 14:54
+                  - generic [ref=e364]: 7d ago
+              - paragraph [ref=e365]: Prescription requested for EMIS 230 / NHS 626 283 3153; atorvastatin 20mg, callback provided.
+              - generic [ref=e366]:
+                - generic [ref=e367]:
+                  - generic [ref=e368]: OPEN
+                  - generic [ref=e369]: Unassigned
+                  - generic [ref=e370]: RX-LIVELOOKUP20-20260521145402-01-REPEAT-ABDEL
+                - generic [ref=e371]:
+                  - button "Resolve" [ref=e373]
+                  - link "View" [ref=e374]:
+                    - /url: /case/RX-LIVELOOKUP20-20260521145402-01-REPEAT-ABDEL?return_url=/requests%3Fsearch%3DGeoffrey
+            - article [ref=e375] [cursor=pointer]:
+              - generic "Select N8NTEST-001-PRESCRIPTION for bulk actions" [ref=e376]:
+                - checkbox "Select N8NTEST-001-PRESCRIPTION for bulk actions" [ref=e377]
+              - generic [ref=e378]:
+                - generic [ref=e379]:
+                  - generic [ref=e380]:
+                    - generic [ref=e381]: Prescription
+                    - generic [ref=e382]: review required
+                    - 'generic "Identity Check · Verification: no_match" [ref=e383]': "ID: No Match"
+                  - generic [ref=e384]: JASON MORREY
+                  - generic [ref=e385]:
+                    - generic [ref=e386]: DOB 10/01/1970 · 56
+                    - generic [ref=e387]: NHS n/a
+                    - generic [ref=e388]: 📱 0711 100 2001
+                - generic [ref=e389]:
+                  - generic [ref=e390]: 09:00
+                  - generic [ref=e391]: 17d ago
+              - paragraph [ref=e392]: Prescription for Unknown patient; atorvastatin 20mg, No matching patient found in lookup..
+              - generic [ref=e393]:
+                - generic [ref=e394]:
+                  - generic [ref=e395]: OPEN
+                  - generic [ref=e396]: Unassigned
+                  - generic [ref=e397]: N8NTEST-001-PRESCRIPTION
+                - generic [ref=e398]:
+                  - button "Start Review" [ref=e400]
+                  - link "View" [ref=e401]:
+                    - /url: /case/N8NTEST-001-PRESCRIPTION?return_url=/requests%3Fsearch%3DGeoffrey
+            - article [ref=e402] [cursor=pointer]:
+              - generic "Select N8NTEST-002-SICKNOTE for bulk actions" [ref=e403]:
+                - checkbox "Select N8NTEST-002-SICKNOTE for bulk actions" [ref=e404]
+              - generic [ref=e405]:
+                - generic [ref=e406]:
+                  - generic [ref=e407]:
+                    - generic [ref=e408]: Sick Note
+                    - generic [ref=e409]: review required
+                    - 'generic "Identity Check · Verification: no_match" [ref=e410]': "ID: No Match"
+                  - generic [ref=e411]: MATHEW MORREY
+                  - generic [ref=e412]:
+                    - generic [ref=e413]: DOB 15/09/1978 · 47
+                    - generic [ref=e414]: NHS n/a
+                    - generic [ref=e415]: 📱 0711 100 2002
+                - generic [ref=e416]:
+                  - generic [ref=e417]: 09:00
+                  - generic [ref=e418]: 17d ago
+              - paragraph [ref=e419]: Sick note for Unknown patient; work, No matching patient found in lookup..
+              - generic [ref=e420]:
+                - generic [ref=e421]:
+                  - generic [ref=e422]: OPEN
+                  - generic [ref=e423]: Unassigned
+                  - generic [ref=e424]: N8NTEST-002-SICKNOTE
+                - generic [ref=e425]:
+                  - button "Start Review" [ref=e427]
+                  - link "View" [ref=e428]:
+                    - /url: /case/N8NTEST-002-SICKNOTE?return_url=/requests%3Fsearch%3DGeoffrey
+            - article [ref=e429] [cursor=pointer]:
+              - generic "Select N8NTEST-003-REFERRAL for bulk actions" [ref=e430]:
+                - checkbox "Select N8NTEST-003-REFERRAL for bulk actions" [ref=e431]
+              - generic [ref=e432]:
+                - generic [ref=e433]:
+                  - generic [ref=e434]:
+                    - generic [ref=e435]: Referral
+                    - generic [ref=e436]: review required
+                    - 'generic "Identity Check · Verification: no_match" [ref=e437]': "ID: No Match"
+                  - generic [ref=e438]: PETER MORREY
+                  - generic [ref=e439]:
+                    - generic [ref=e440]: DOB 15/09/1978 · 47
+                    - generic [ref=e441]: NHS n/a
+                    - generic [ref=e442]: 📱 0711 100 2003
+                - generic [ref=e443]:
+                  - generic [ref=e444]: 09:00
+                  - generic [ref=e445]: 17d ago
+              - paragraph [ref=e446]: Referral for Unknown patient; Southport Hospital, No matching patient found in lookup..
+              - generic [ref=e447]:
+                - generic [ref=e448]:
+                  - generic [ref=e449]: OPEN
+                  - generic [ref=e450]: Unassigned
+                  - generic [ref=e451]: N8NTEST-003-REFERRAL
+                - generic [ref=e452]:
+                  - button "Start Review" [ref=e454]
+                  - link "View" [ref=e455]:
+                    - /url: /case/N8NTEST-003-REFERRAL?return_url=/requests%3Fsearch%3DGeoffrey
+            - article [ref=e456] [cursor=pointer]:
+              - generic "Select N8NTEST-004-IDENTITY for bulk actions" [ref=e457]:
+                - checkbox "Select N8NTEST-004-IDENTITY for bulk actions" [ref=e458]
+              - generic [ref=e459]:
+                - generic [ref=e460]:
+                  - generic [ref=e461]:
+                    - generic [ref=e462]: Prescription
+                    - generic [ref=e463]: review required
+                    - 'generic "Identity Check · Verification: no_match" [ref=e464]': "ID: No Match"
+                  - generic [ref=e465]: JAYSON MORREY
+                  - generic [ref=e466]:
+                    - generic [ref=e467]: DOB 10/01/1970 · 56
+                    - generic [ref=e468]: NHS n/a
+                    - generic [ref=e469]: 📱 0711 100 2004
+                - generic [ref=e470]:
+                  - generic [ref=e471]: 09:00
+                  - generic [ref=e472]: 17d ago
+              - paragraph [ref=e473]: Prescription for Unknown patient; atorvastatin 20mg, No matching patient found in lookup..
+              - generic [ref=e474]:
+                - generic [ref=e475]:
+                  - generic [ref=e476]: OPEN
+                  - generic [ref=e477]: Unassigned
+                  - generic [ref=e478]: N8NTEST-004-IDENTITY
+                - generic [ref=e479]:
+                  - button "Start Review" [ref=e481]
+                  - link "View" [ref=e482]:
+                    - /url: /case/N8NTEST-004-IDENTITY?return_url=/requests%3Fsearch%3DGeoffrey
+            - article [ref=e483] [cursor=pointer]:
+              - generic "Select RAWMOCK-001-REPEAT-EXACT for bulk actions" [ref=e484]:
+                - checkbox "Select RAWMOCK-001-REPEAT-EXACT for bulk actions" [ref=e485]
+              - generic [ref=e486]:
+                - generic [ref=e487]:
+                  - generic [ref=e488]:
+                    - generic [ref=e489]: Prescription
+                    - generic [ref=e490]: review required
+                    - 'generic "Identity Check · Verification: no_match" [ref=e491]': "ID: No Match"
+                  - generic [ref=e492]: JASON MORREY
+                  - generic [ref=e493]:
+                    - generic [ref=e494]: DOB 10/01/1970 · 56
+                    - generic [ref=e495]: NHS n/a
+                    - generic [ref=e496]: 📱 0711 100 1001
+                - generic [ref=e497]:
+                  - generic [ref=e498]: 12:00
+                  - generic [ref=e499]: 17d ago
+              - paragraph [ref=e500]: Prescription for Unknown patient; atorvastatin 20mg, No matching patient found in lookup..
+              - generic [ref=e501]:
+                - generic [ref=e502]:
+                  - generic [ref=e503]: OPEN
+                  - generic [ref=e504]: Unassigned
+                  - generic [ref=e505]: RAWMOCK-001-REPEAT-EXACT
+                - generic [ref=e506]:
+                  - button "Start Review" [ref=e508]
+                  - link "View" [ref=e509]:
+                    - /url: /case/RAWMOCK-001-REPEAT-EXACT?return_url=/requests%3Fsearch%3DGeoffrey
+            - article [ref=e510] [cursor=pointer]:
+              - generic "Select RAWMOCK-002-CALLBACK-NOT-CONFIRMED for bulk actions" [ref=e511]:
+                - checkbox "Select RAWMOCK-002-CALLBACK-NOT-CONFIRMED for bulk actions" [ref=e512]
+              - generic [ref=e513]:
+                - generic [ref=e514]:
+                  - generic [ref=e515]:
+                    - generic [ref=e516]: Prescription
+                    - generic [ref=e517]: review required
+                    - 'generic "Identity Check · Verification: no_match" [ref=e518]': "ID: No Match"
+                  - generic [ref=e519]: MARCUS MORREY
+                  - generic [ref=e520]:
+                    - generic [ref=e521]: DOB 12/10/1972 · 53
+                    - generic [ref=e522]: NHS n/a
+                    - generic [ref=e523]: 📱 n/a
+                - generic [ref=e524]:
+                  - generic [ref=e525]: 12:00
+                  - generic [ref=e526]: 17d ago
+              - paragraph [ref=e527]: Prescription for Unknown patient; ramipril 5mg, callback missing.
+              - generic [ref=e528]:
+                - generic [ref=e529]:
+                  - generic [ref=e530]: OPEN
+                  - generic [ref=e531]: Unassigned
+                  - generic [ref=e532]: RAWMOCK-002-CALLBACK-NOT-CONFIRMED
+                - generic [ref=e533]:
+                  - button "Start Review" [ref=e535]
+                  - link "View" [ref=e536]:
+                    - /url: /case/RAWMOCK-002-CALLBACK-NOT-CONFIRMED?return_url=/requests%3Fsearch%3DGeoffrey
+            - article [ref=e537] [cursor=pointer]:
+              - generic "Select RAWMOCK-003-SICKNOTE for bulk actions" [ref=e538]:
+                - checkbox "Select RAWMOCK-003-SICKNOTE for bulk actions" [ref=e539]
+              - generic [ref=e540]:
+                - generic [ref=e541]:
+                  - generic [ref=e542]:
+                    - generic [ref=e543]: Sick Note
+                    - generic [ref=e544]: review required
+                    - 'generic "Identity Check · Verification: no_match" [ref=e545]': "ID: No Match"
+                  - generic [ref=e546]: MATHEW MORREY
+                  - generic [ref=e547]:
+                    - generic [ref=e548]: DOB 15/09/1978 · 47
+                    - generic [ref=e549]: NHS n/a
+                    - generic [ref=e550]: 📱 0711 100 1003
+                - generic [ref=e551]:
+                  - generic [ref=e552]: 12:00
+                  - generic [ref=e553]: 17d ago
+              - paragraph [ref=e554]: Sick note for Unknown patient; work, No matching patient found in lookup..
+              - generic [ref=e555]:
+                - generic [ref=e556]:
+                  - generic [ref=e557]: OPEN
+                  - generic [ref=e558]: Unassigned
+                  - generic [ref=e559]: RAWMOCK-003-SICKNOTE
+                - generic [ref=e560]:
+                  - button "Start Review" [ref=e562]
+                  - link "View" [ref=e563]:
+                    - /url: /case/RAWMOCK-003-SICKNOTE?return_url=/requests%3Fsearch%3DGeoffrey
+            - article [ref=e564] [cursor=pointer]:
+              - generic "Select RAWMOCK-004-REFERRAL-CHASE for bulk actions" [ref=e565]:
+                - checkbox "Select RAWMOCK-004-REFERRAL-CHASE for bulk actions" [ref=e566]
+              - generic [ref=e567]:
+                - generic [ref=e568]:
+                  - generic [ref=e569]:
+                    - generic [ref=e570]: Referral
+                    - generic [ref=e571]: review required
+                    - 'generic "Identity Check · Verification: no_match" [ref=e572]': "ID: No Match"
+                  - generic [ref=e573]: PETER MORREY
+                  - generic [ref=e574]:
+                    - generic [ref=e575]: DOB 15/09/1978 · 47
+                    - generic [ref=e576]: NHS n/a
+                    - generic [ref=e577]: 📱 0711 100 1004
+                - generic [ref=e578]:
+                  - generic [ref=e579]: 12:00
+                  - generic [ref=e580]: 17d ago
+              - paragraph [ref=e581]: Referral for Unknown patient; Southport Hospital, No matching patient found in lookup..
+              - generic [ref=e582]:
+                - generic [ref=e583]:
+                  - generic [ref=e584]: OPEN
+                  - generic [ref=e585]: Unassigned
+                  - generic [ref=e586]: RAWMOCK-004-REFERRAL-CHASE
+                - generic [ref=e587]:
+                  - button "Start Review" [ref=e589]
+                  - link "View" [ref=e590]:
+                    - /url: /case/RAWMOCK-004-REFERRAL-CHASE?return_url=/requests%3Fsearch%3DGeoffrey
+            - article [ref=e591] [cursor=pointer]:
+              - generic "Select RAWMOCK-005-TEST-RESULT for bulk actions" [ref=e592]:
+                - checkbox "Select RAWMOCK-005-TEST-RESULT for bulk actions" [ref=e593]
+              - generic [ref=e594]:
+                - generic [ref=e595]:
+                  - generic [ref=e596]:
+                    - generic [ref=e597]: Test Result
+                    - generic [ref=e598]: review required
+                    - 'generic "Identity Check · Verification: no_match" [ref=e599]': "ID: No Match"
+                  - generic [ref=e600]: BARBARA MYNNE
+                  - generic [ref=e601]:
+                    - generic [ref=e602]: DOB 28/01/1945 · 81
+                    - generic [ref=e603]: NHS n/a
+                    - generic [ref=e604]: 📱 0711 100 1005
+                - generic [ref=e605]:
+                  - generic [ref=e606]: 12:00
+                  - generic [ref=e607]: 17d ago
+              - paragraph [ref=e608]: Test result for Unknown patient; blood test, No matching patient found in lookup..
+              - generic [ref=e609]:
+                - generic [ref=e610]:
+                  - generic [ref=e611]: OPEN
+                  - generic [ref=e612]: Unassigned
+                  - generic [ref=e613]: RAWMOCK-005-TEST-RESULT
+                - generic [ref=e614]:
+                  - button "Start Review" [ref=e616]
+                  - link "View" [ref=e617]:
+                    - /url: /case/RAWMOCK-005-TEST-RESULT?return_url=/requests%3Fsearch%3DGeoffrey
+            - article [ref=e618] [cursor=pointer]:
+              - generic "Select RAWMOCK-007-ADMIN-ADDRESS for bulk actions" [ref=e619]:
+                - checkbox "Select RAWMOCK-007-ADMIN-ADDRESS for bulk actions" [ref=e620]
+              - generic [ref=e621]:
+                - generic [ref=e622]:
+                  - generic [ref=e623]:
+                    - generic [ref=e624]: Admin
+                    - generic [ref=e625]: review required
+                    - 'generic "Identity Check · Verification: no_match" [ref=e626]': "ID: No Match"
+                  - generic [ref=e627]: CHERYL SHEPHERD
+                  - generic [ref=e628]:
+                    - generic [ref=e629]: DOB 26/11/1961 · 64
+                    - generic [ref=e630]: NHS n/a
+                    - generic [ref=e631]: 📱 0711 100 1007
+                - generic [ref=e632]:
+                  - generic [ref=e633]: 12:00
+                  - generic [ref=e634]: 17d ago
+              - paragraph [ref=e635]: Admin for Unknown patient; address and contact update, No matching patient found in lookup..
+              - generic [ref=e636]:
+                - generic [ref=e637]:
+                  - generic [ref=e638]: OPEN
+                  - generic [ref=e639]: Unassigned
+                  - generic [ref=e640]: RAWMOCK-007-ADMIN-ADDRESS
+                - generic [ref=e641]:
+                  - button "Start Review" [ref=e643]
+                  - link "View" [ref=e644]:
+                    - /url: /case/RAWMOCK-007-ADMIN-ADDRESS?return_url=/requests%3Fsearch%3DGeoffrey
+            - article [ref=e645] [cursor=pointer]:
+              - generic "Select RAWMOCK-008-THIRD-PARTY-POSSIBLE for bulk actions" [ref=e646]:
+                - checkbox "Select RAWMOCK-008-THIRD-PARTY-POSSIBLE for bulk actions" [ref=e647]
+              - generic [ref=e648]:
+                - generic [ref=e649]:
+                  - generic [ref=e650]:
+                    - generic [ref=e651]: Prescription
+                    - generic [ref=e652]: review required
+                    - 'generic "Identity Check · Verification: no_match" [ref=e653]': "ID: No Match"
+                  - generic [ref=e654]: JAYSON MORREY
+                  - generic [ref=e655]:
+                    - generic [ref=e656]: DOB 10/01/1970 · 56
+                    - generic [ref=e657]: NHS n/a
+                    - generic [ref=e658]: 📱 0711 100 1008
+                - generic [ref=e659]:
+                  - generic [ref=e660]: 12:00
+                  - generic [ref=e661]: 17d ago
+              - paragraph [ref=e662]: Prescription for Unknown patient; atorvastatin 20mg, No matching patient found in lookup..
+              - generic [ref=e663]:
+                - generic [ref=e664]:
+                  - generic [ref=e665]: OPEN
+                  - generic [ref=e666]: Unassigned
+                  - generic [ref=e667]: RAWMOCK-008-THIRD-PARTY-POSSIBLE
+                - generic [ref=e668]:
+                  - button "Start Review" [ref=e670]
+                  - link "View" [ref=e671]:
+                    - /url: /case/RAWMOCK-008-THIRD-PARTY-POSSIBLE?return_url=/requests%3Fsearch%3DGeoffrey
+            - article [ref=e672] [cursor=pointer]:
+              - generic "Select RAWMOCK-009-INSUFFICIENT-ID for bulk actions" [ref=e673]:
+                - checkbox "Select RAWMOCK-009-INSUFFICIENT-ID for bulk actions" [ref=e674]
+              - generic [ref=e675]:
+                - generic [ref=e676]:
+                  - generic [ref=e677]:
+                    - generic [ref=e678]: Admin
+                    - generic [ref=e679]: review required
+                    - 'generic "Identity Check · Verification: insufficient_data" [ref=e680]': "ID: Insufficient Data"
+                  - generic [ref=e681]: MR MORREY
+                  - generic [ref=e682]:
+                    - generic [ref=e683]: DOB n/a
+                    - generic [ref=e684]: NHS n/a
+                    - generic [ref=e685]: 📱 0711 100 1009
+                - generic [ref=e686]:
+                  - generic [ref=e687]: 12:00
+                  - generic [ref=e688]: 17d ago
+              - paragraph [ref=e689]: Admin for Unknown patient; forms query with insufficient identity, DOB missing.
+              - generic [ref=e690]:
+                - generic [ref=e691]:
+                  - generic [ref=e692]: OPEN
+                  - generic [ref=e693]: Unassigned
+                  - generic [ref=e694]: RAWMOCK-009-INSUFFICIENT-ID
+                - generic [ref=e695]:
+                  - button "Start Review" [ref=e697]
+                  - link "View" [ref=e698]:
+                    - /url: /case/RAWMOCK-009-INSUFFICIENT-ID?return_url=/requests%3Fsearch%3DGeoffrey
+            - article [ref=e699] [cursor=pointer]:
+              - generic "Select RAWMOCK-010-UNKNOWN-REQUEST for bulk actions" [ref=e700]:
+                - checkbox "Select RAWMOCK-010-UNKNOWN-REQUEST for bulk actions" [ref=e701]
+              - generic [ref=e702]:
+                - generic [ref=e703]:
+                  - generic [ref=e704]:
+                    - generic [ref=e705]: Admin
+                    - generic [ref=e706]: review required
+                    - 'generic "Identity Check · Verification: no_match" [ref=e707]': "ID: No Match"
+                  - generic [ref=e708]: JOHN MURRAY
+                  - generic [ref=e709]:
+                    - generic [ref=e710]: DOB 16/11/1947 · 78
+                    - generic [ref=e711]: NHS n/a
+                    - generic [ref=e712]: 📱 0711 100 1010
+                - generic [ref=e713]:
+                  - generic [ref=e714]: 12:00
+                  - generic [ref=e715]: 17d ago
+              - paragraph [ref=e716]: Admin for Unknown patient; unclear request, No matching patient found in lookup..
+              - generic [ref=e717]:
+                - generic [ref=e718]:
+                  - generic [ref=e719]: OPEN
+                  - generic [ref=e720]: Unassigned
+                  - generic [ref=e721]: RAWMOCK-010-UNKNOWN-REQUEST
+                - generic [ref=e722]:
+                  - button "Start Review" [ref=e724]
+                  - link "View" [ref=e725]:
+                    - /url: /case/RAWMOCK-010-UNKNOWN-REQUEST?return_url=/requests%3Fsearch%3DGeoffrey
+            - navigation "Pagination" [ref=e726]:
+              - generic [ref=e727]: Showing 1–20 of 22
+              - generic [ref=e728]: Page 1 of 2
+              - generic [ref=e729]:
+                - link "Previous":
+                  - /url: /requests?filter=open&sort=newest&range=all&page=1&page_size=20
+                - link "Next" [ref=e730] [cursor=pointer]:
+                  - /url: /requests?filter=open&sort=newest&range=all&page=2&page_size=20
+          - generic "Case detail panel":
+            - generic [ref=e731]:
+              - img [ref=e732]
+              - paragraph [ref=e735]: Select a request to view details

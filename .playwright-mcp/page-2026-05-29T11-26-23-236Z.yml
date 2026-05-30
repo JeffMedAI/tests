@@ -1,0 +1,132 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]: JL
+      - generic [ref=e5]:
+        - generic [ref=e6]: JeffLocal
+        - generic [ref=e7]: Friday, 29 May 2026
+    - navigation "Main navigation" [ref=e8]:
+      - link "Dashboard" [ref=e9] [cursor=pointer]:
+        - /url: /
+      - link "Requests" [ref=e10] [cursor=pointer]:
+        - /url: /requests
+      - link "Patients" [ref=e11] [cursor=pointer]:
+        - /url: /patients
+      - link "Staff" [ref=e12] [cursor=pointer]:
+        - /url: /staff
+      - link "Reports" [ref=e13] [cursor=pointer]:
+        - /url: /reports
+      - link "Settings" [ref=e14] [cursor=pointer]:
+        - /url: /settings
+    - generic [ref=e15]:
+      - link "Alerts" [ref=e16] [cursor=pointer]:
+        - /url: /alerts
+        - img [ref=e17]
+      - generic [ref=e21]:
+        - link "Saeed Admin" [ref=e22] [cursor=pointer]:
+          - /url: /profile
+          - generic [ref=e23]:
+            - generic [ref=e24]: Saeed
+            - generic [ref=e25]: Admin
+          - generic [ref=e26]: S
+        - link "Sign out" [ref=e27] [cursor=pointer]:
+          - /url: /logout
+          - img [ref=e28]
+  - generic [ref=e32]:
+    - generic [ref=e33]:
+      - generic [ref=e34]:
+        - generic [ref=e35]: System Configuration
+        - heading "Settings" [level=1] [ref=e36]
+        - paragraph [ref=e37]: Local configuration overview. Edit config files directly on the server to change values.
+      - generic [ref=e39]: Read-only view
+    - generic [ref=e41]: Configuration Files
+    - generic [ref=e42]:
+      - generic [ref=e43]:
+        - generic [ref=e44]: 🤖
+        - generic [ref=e45]:
+          - generic [ref=e46]: Model settings
+          - generic [ref=e47]: Ollama model name, temperature, and inference parameters.
+          - generic [ref=e48]: C:\JeffLocal\config\model_settings.json
+        - generic [ref=e49]: ✓ Found
+      - generic [ref=e50]:
+        - generic [ref=e51]: 🔀
+        - generic [ref=e52]:
+          - generic [ref=e53]: Routing rules
+          - generic [ref=e54]: Pathway routing logic and staff assignment rules.
+          - generic [ref=e55]: C:\JeffLocal\config\routing_rules.json
+        - generic [ref=e56]: ✓ Found
+      - generic [ref=e57]:
+        - generic [ref=e58]: ☁️
+        - generic [ref=e59]:
+          - generic [ref=e60]: Google push/webhook
+          - generic [ref=e61]: Google Sheets push toggle, n8n webhook URL, and API keys.
+          - generic [ref=e62]: C:\JeffLocal\config\app_settings.json
+        - generic [ref=e63]: ✓ Found
+      - generic [ref=e64]:
+        - generic [ref=e65]: 🗺️
+        - generic [ref=e66]:
+          - generic [ref=e67]: Pathway configuration
+          - generic [ref=e68]: Active pathways, per-pathway steps, and EMIS workflow mapping.
+          - generic [ref=e69]: C:\JeffLocal\config\pathways.json
+        - generic [ref=e70]: ✓ Found
+      - generic [ref=e71]:
+        - generic [ref=e72]: 📡
+        - generic [ref=e73]:
+          - generic [ref=e74]: Monitoring thresholds
+          - generic [ref=e75]: Confidence floor, red-flag keywords, and alert escalation rules.
+          - generic [ref=e76]: C:\JeffLocal\config\model_monitoring.json
+        - generic [ref=e77]: ✓ Found
+    - generic [ref=e78]: System Diagnostics
+    - generic [ref=e80]:
+      - generic [ref=e81]:
+        - img [ref=e83]
+        - generic [ref=e85]: Database file
+        - generic [ref=e86]: Found
+      - generic [ref=e87]:
+        - img [ref=e89]
+        - generic [ref=e91]: Database writable
+        - generic [ref=e92]: "Yes"
+      - generic [ref=e93]:
+        - img [ref=e95]
+        - generic [ref=e97]: Last import
+        - generic [ref=e98]: Never
+      - generic [ref=e99]:
+        - img [ref=e101]
+        - generic [ref=e103]: Total cases
+        - generic [ref=e104]: "22"
+      - generic [ref=e105]:
+        - img [ref=e107]
+        - generic [ref=e109]: Open cases
+        - generic [ref=e110]: "22"
+      - generic [ref=e111]:
+        - img [ref=e113]
+        - generic [ref=e115]: Resolved today
+        - generic [ref=e116]: "0"
+      - generic [ref=e117]:
+        - img [ref=e119]
+        - generic [ref=e121]: Unacknowledged alerts
+        - generic [ref=e122]: "0"
+      - generic [ref=e123]:
+        - img [ref=e125]
+        - generic [ref=e127]: Active staff
+        - generic [ref=e128]: "4"
+    - generic [ref=e129]: Connected Services
+    - generic [ref=e130]:
+      - generic [ref=e131]:
+        - generic [ref=e132]: 🖥️
+        - generic [ref=e133]:
+          - generic [ref=e134]: Dashboard
+          - generic [ref=e135]: http://localhost:8765
+        - generic [ref=e136]: Running
+      - generic [ref=e138]:
+        - generic [ref=e139]: 🔗
+        - generic [ref=e140]:
+          - generic [ref=e141]: n8n Workflows
+          - generic [ref=e142]: http://localhost:5678
+        - generic [ref=e143]: Running
+      - generic [ref=e145]:
+        - generic [ref=e146]: 🤖
+        - generic [ref=e147]:
+          - generic [ref=e148]: Ollama AI
+          - generic [ref=e149]: http://localhost:11434
+        - generic [ref=e150]: Running

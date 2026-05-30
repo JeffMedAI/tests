@@ -34,5 +34,4 @@
     "on_hard_failure": "deadletter_and_alert",
     "on_red_flag_keyword": "immediate_staff_alert"
   },
-  "monitoring_log_dir": "C:\\JeffLocal\\logs\\model_monitoring"
-}
+  "monitoring_log_dir": "${JEFFLOCAL_ROOT}\\logs\\model_monitoring

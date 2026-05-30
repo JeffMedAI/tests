@@ -1,0 +1,53 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]: JL
+      - generic [ref=e5]:
+        - generic [ref=e6]: JeffLocal
+        - generic [ref=e7]: Friday, 29 May 2026
+    - navigation "Main navigation" [ref=e8]:
+      - link "Dashboard" [ref=e9] [cursor=pointer]:
+        - /url: /
+      - link "Requests" [ref=e10] [cursor=pointer]:
+        - /url: /requests
+      - link "Patients" [ref=e11] [cursor=pointer]:
+        - /url: /patients
+      - link "Staff" [ref=e12] [cursor=pointer]:
+        - /url: /staff
+      - link "Reports" [ref=e13] [cursor=pointer]:
+        - /url: /reports
+      - link "Settings" [ref=e14] [cursor=pointer]:
+        - /url: /settings
+    - generic [ref=e15]:
+      - link "Alerts" [ref=e16] [cursor=pointer]:
+        - /url: /alerts
+        - img [ref=e17]
+      - generic [ref=e21]:
+        - link "Saeed Admin" [ref=e22] [cursor=pointer]:
+          - /url: /profile
+          - generic [ref=e23]:
+            - generic [ref=e24]: Saeed
+            - generic [ref=e25]: Admin
+          - generic [ref=e26]: S
+        - link "Sign out" [ref=e27] [cursor=pointer]:
+          - /url: /logout
+          - img [ref=e28]
+  - generic [ref=e32]:
+    - generic [ref=e34]:
+      - link "Back to Dashboard" [ref=e35] [cursor=pointer]:
+        - /url: /
+      - heading "Local Alert Log" [level=1] [ref=e36]
+      - paragraph [ref=e37]: Read-only local alert events recorded from n8n workflows.
+    - generic [ref=e38]:
+      - generic [ref=e39]:
+        - text: Severity
+        - combobox "Severity" [ref=e40]:
+          - option "All" [selected]
+          - option "Critical"
+          - option "Warning"
+          - option "Info"
+      - generic [ref=e41]:
+        - text: Limit
+        - spinbutton "Limit" [ref=e42]: "50"
+      - button "Apply" [ref=e43] [cursor=pointer]
+    - paragraph [ref=e44]: No local alerts found for this filter.

@@ -1,0 +1,21 @@
+- generic [ref=e9]:
+  - generic [ref=e10]:
+    - generic [ref=e11]: JL
+    - generic [ref=e12]:
+      - generic [ref=e13]: JeffLocal
+      - generic [ref=e14]: Churchtown Medical Centre
+  - heading "Staff sign in" [level=1] [ref=e15]
+  - paragraph [ref=e16]: Enter your username and password or PIN to access the dashboard.
+  - generic [ref=e17]:
+    - button "Password" [ref=e18] [cursor=pointer]
+    - button "PIN" [ref=e19] [cursor=pointer]
+  - generic [ref=e21]:
+    - generic [ref=e22]:
+      - generic [ref=e23]: Username
+      - textbox "Username" [active] [ref=e24]: wronguser
+    - generic [ref=e25]:
+      - generic [ref=e26]: Password
+      - textbox "Password" [ref=e27]
+    - button "Sign in" [ref=e28] [cursor=pointer]
+  - link "Forgot password or PIN?" [ref=e30] [cursor=pointer]:
+    - /url: /forgot

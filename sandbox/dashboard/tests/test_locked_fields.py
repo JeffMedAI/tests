@@ -28,12 +28,12 @@ def test_locked_fields_cannot_be_updated_and_staff_fields_can(tmp_path, monkeypa
         import_handoffs(conn, HANDOFF_DIR)
         before = conn.execute(
             "SELECT priority, verification_status, safe_to_queue FROM cases WHERE call_id = ?",
-            ("RAWMOCK-001-REPEAT-EXACT",),
+            ("TC-001-REPEAT-EXACT",),
         ).fetchone()
 
     with TestClient(app) as client:
         response = client.post(
-            "/case/RAWMOCK-001-REPEAT-EXACT/update",
+            "/case/TC-001-REPEAT-EXACT/update",
             data={
                 "status": "In Progress",
                 "assigned_to": "Test Staff",
@@ -57,7 +57,7 @@ def test_locked_fields_cannot_be_updated_and_staff_fields_can(tmp_path, monkeypa
                    action_needed, outcome_notes, staff_action, last_edited_by
             FROM cases WHERE call_id = ?
             """,
-            ("RAWMOCK-001-REPEAT-EXACT",),
+            ("TC-001-REPEAT-EXACT",),
         ).fetchone()
         audit_count = conn.execute("SELECT COUNT(*) FROM audit_events").fetchone()[0]
 
@@ -84,7 +84,7 @@ def test_resolved_case_gets_resolved_at_and_turnaround(tmp_path, monkeypatch):
 
     with TestClient(app) as client:
         response = client.post(
-            "/case/RAWMOCK-001-REPEAT-EXACT/update",
+            "/case/TC-001-REPEAT-EXACT/update",
             data={
                 "status": "New",
                 "assigned_to": "Test Staff",
@@ -102,7 +102,7 @@ def test_resolved_case_gets_resolved_at_and_turnaround(tmp_path, monkeypatch):
     with connect(db_path) as conn:
         row = conn.execute(
             "SELECT status, resolved_at, resolved_by, turnaround_minutes FROM cases WHERE call_id = ?",
-            ("RAWMOCK-001-REPEAT-EXACT",),
+            ("TC-001-REPEAT-EXACT",),
         ).fetchone()
 
     assert row["status"] == "Resolved"
@@ -122,7 +122,7 @@ def test_red_flag_case_cannot_resolve_without_outcome_notes(tmp_path, monkeypatc
 
     with TestClient(app) as client:
         response = client.post(
-            "/case/RAWMOCK-006-URGENT-REDFLAG/quick_action",
+            "/case/TC-006-URGENT-REDFLAG/quick_action",
             data={
                 "action": "resolve",
                 "resolved_by": "tester",
@@ -145,7 +145,7 @@ def test_identity_issue_cannot_resolve_without_outcome_notes(tmp_path, monkeypat
 
     with TestClient(app) as client:
         no_match_response = client.post(
-            "/case/RAWMOCK-011-NO-MATCH/quick_action",
+            "/case/TC-011-NO-MATCH/quick_action",
             data={
                 "action": "resolve",
                 "resolved_by": "tester",
@@ -153,7 +153,7 @@ def test_identity_issue_cannot_resolve_without_outcome_notes(tmp_path, monkeypat
             follow_redirects=False,
         )
         insufficient_response = client.post(
-            "/case/RAWMOCK-009-INSUFFICIENT-ID/quick_action",
+            "/case/TC-009-INSUFFICIENT-ID/quick_action",
             data={
                 "action": "resolve",
                 "resolved_by": "tester",
@@ -181,12 +181,12 @@ def test_quick_actions_update_only_editable_fields(tmp_path, monkeypatch):
                    staff_review_required, task_title, task_body
             FROM cases WHERE call_id = ?
             """,
-            ("RAWMOCK-012-MESSY-MULTI-INTENT",),
+            ("TC-012-MESSY-MULTI-INTENT",),
         ).fetchone()
 
     with TestClient(app) as client:
         start_response = client.post(
-            "/case/RAWMOCK-012-MESSY-MULTI-INTENT/quick_action",
+            "/case/TC-012-MESSY-MULTI-INTENT/quick_action",
             data={
                 "action": "start_review",
                 "assigned_to": "Reception A",
@@ -197,7 +197,7 @@ def test_quick_actions_update_only_editable_fields(tmp_path, monkeypatch):
             follow_redirects=False,
         )
         flag_response = client.post(
-            "/case/RAWMOCK-012-MESSY-MULTI-INTENT/quick_action",
+            "/case/TC-012-MESSY-MULTI-INTENT/quick_action",
             data={
                 "action": "flag_issue",
                 "edited_by": "tester",
@@ -216,7 +216,7 @@ def test_quick_actions_update_only_editable_fields(tmp_path, monkeypatch):
                    action_needed, last_edited_by
             FROM cases WHERE call_id = ?
             """,
-            ("RAWMOCK-012-MESSY-MULTI-INTENT",),
+            ("TC-012-MESSY-MULTI-INTENT",),
         ).fetchone()
 
     for field in [
