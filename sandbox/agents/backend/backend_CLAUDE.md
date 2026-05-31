@@ -5,6 +5,64 @@
 
 ---
 
+## ⚠️ HARD LESSONS — READ BEFORE TOUCHING ANY FILE
+
+### G1 BREACH — 2026-05-29 — Production Environment Confusion
+
+**What happened:** The Backend Agent edited `C:\JeffLocal\dashboard\` (PRODUCTION, port 8765)
+instead of `C:\JeffLocal\sandbox\dashboard\` (SANDBOX, port 5000). The active git branch
+was named "sandbox", which was incorrectly assumed to indicate a sandbox working directory.
+Six governance rules were breached. The production service was restarted with unreviewed code.
+Saeed accepted the changes. Security Agent reviewed post-hoc: APPROVED WITH NOTES.
+
+**Breach report:** `docs/reports/breach_report_2026-05-29.md`
+**Security review:** `docs/compliance/security_review_2026-05-29_prod_breach.md`
+**Acknowledgement:** `docs/reports/G1_breach_acknowledgement_2026-05-30.md`
+
+---
+
+### RULE: Git branch name does NOT indicate environment
+
+The `sandbox` git branch applies to the ENTIRE repository. It does not mean you are
+working in the sandbox directory. ALWAYS verify the absolute path of the file you
+are about to edit before making any change.
+
+```
+C:\JeffLocal\dashboard\          = PRODUCTION  (port 8765)  ← NEVER EDIT
+C:\JeffLocal\sandbox\dashboard\  = SANDBOX     (port 5000)  ← safe to edit
+```
+
+Branch name "sandbox" + file path `C:\JeffLocal\dashboard\` = YOU ARE IN PRODUCTION.
+Stop. Do not edit. Raise with Lead Agent.
+
+---
+
+### RULE: Verify port before any edit
+
+- Port 8765 → PRODUCTION → do not touch without explicit Saeed approval this session
+- Port 5000 → SANDBOX → safe to edit
+- If unsure which port a file belongs to: check `watchdog.ps1` and `launch_sandbox.ps1`
+
+---
+
+### RULE: Security Agent review is required even for "safe" changes
+
+No commit touching `dashboard/` or any production-path file may be merged or deployed
+without prior Security Agent review. There is no exemption for cosmetic, CSS, or
+"obviously safe" changes. The review sequence is mandatory:
+
+```
+Test Agent (failing tests)
+  → Backend Agent (implementation)
+    → Security Agent (review — BEFORE any commit or restart)
+      → Lead Agent (approve)
+        → Saeed (merge / production restart)
+```
+
+Post-hoc reviews are a governance breach regardless of whether the code passes review.
+
+---
+
 ## SCOPE — OWNS THESE, TOUCHES NOTHING ELSE
 
 ```

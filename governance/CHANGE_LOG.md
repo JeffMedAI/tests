@@ -1,7 +1,82 @@
 # CHANGE_LOG — JeffLocal Sprint 1 Audit Trail
 **Purpose:** Official record of all approvals, deployments, and decisions  
 **Status:** ACTIVE  
-**Last Updated:** 2026-05-23
+**Last Updated:** 2026-05-30
+
+---
+
+## SECURITY_REVIEW_20260530_WATCHDOG_WHATSAPP — Watchdog, WhatsApp Sender, Strategy Daily Steps 5+11
+
+**Date:** 2026-05-30  
+**Status:** ✅ COMPLETE — All items APPROVED WITH NOTES  
+**Reviewer:** Security Agent  
+**Document:** `docs\compliance\security_review_2026-05-30_watchdog_whatsapp.md`
+
+**Items reviewed:**
+1. `scripts\service_control\watchdog.ps1` — Hardened service watchdog (boot-time, elevated privileges)
+2. `scripts\daily\send_whatsapp.py` — Daily report / alert WhatsApp sender
+3. `scripts\daily\strategy_daily.ps1` Steps 5 (STATE VERIFICATION) and 11 (WhatsApp send)
+
+**Verdicts:** All three APPROVED WITH NOTES. No vetoes.
+
+**Key findings:**
+- No patient data exposure, no credential exposure, no injection risks found
+- Temp file leak in watchdog `Send-Alert` — files written to `%TEMP%` and never deleted (low severity)
+- Script name mismatch: strategy_daily.ps1 Step 11 calls `send_whatsapp_report.py` but actual script is `send_whatsapp.py` — causing silent WhatsApp failures from daily script
+- Forward-risk flag: when real patient data is introduced, the WhatsApp pipeline must be re-reviewed; session logs and PROJECT_MEMORY must have a data classification policy
+- pywhatkit dependency is legitimate (no known CVEs); uses local browser automation, not a cloud relay
+
+**Actions required before live patient data:**
+- [ ] Data classification policy for session logs and PROJECT_MEMORY
+- [ ] WhatsApp pipeline re-reviewed against that policy
+- [ ] Leak test: patient data cannot flow dashboard → session log → report → WhatsApp
+- [ ] Pin pywhatkit version
+
+---
+
+## GOVERNANCE_20260530_G1_BREACH_ACKNOWLEDGEMENT — G1 Breach Formally Acknowledged
+
+**Date:** 2026-05-30
+**Status:** ✅ CLOSED
+**Type:** Governance / Compliance
+**Actioned by:** Lead Agent
+**Acknowledged by:** Lead Agent (2026-05-30)
+
+**Summary:**
+Formal closure of the G1 governance breach that occurred on 2026-05-29, when the Backend
+Agent edited production files (`C:\JeffLocal\dashboard\`, port 8765) instead of the sandbox
+(`C:\JeffLocal\sandbox\dashboard\`, port 5000), incorrectly assuming the "sandbox" git branch
+name indicated a sandbox working directory. Six governance rules were breached. Saeed accepted
+the changes. Security Agent post-hoc review: APPROVED WITH NOTES.
+
+**Actions taken this session:**
+
+1. **backend_CLAUDE.md updated** — HARD LESSONS section added at top:
+   - G1 incident documented
+   - Rule: git branch name ≠ environment — always verify absolute path
+   - Rule: verify port (8765 = production, 5000 = sandbox) before any edit
+   - Rule: Security Agent review mandatory before any commit touching dashboard/, no exemptions
+
+2. **GOVERNANCE_FRAMEWORK.md updated** — Breach Record section added:
+   - BREACH-G1 entry documenting all 6 rules breached, root cause, resolution, process improvements
+
+3. **G1_breach_acknowledgement_2026-05-30.md written** — Lead Agent formal acknowledgement:
+   - All 6 breached rules confirmed
+   - Saeed's acceptance noted
+   - Security review noted as post-hoc but APPROVED WITH NOTES
+   - Process improvements confirmed in place
+   - Status: CLOSED
+
+**Rules breached (G1–G6):**
+- G1: Production deployment without approval (Authority Matrix)
+- G2: Configuration change without approval chain (Authority Matrix)
+- G3: Security review bypassed (Security Agent mandate)
+- G4: Production files modified directly (backend_CLAUDE.md NEVER TOUCHES)
+- G5: TDD workflow not followed (backend_CLAUDE.md)
+- G6: Brainstorm step skipped (backend_CLAUDE.md)
+
+**Risk Level:** Process risk HIGH (already mitigated); code risk LOW (Security Agent approved)
+**Rollback:** N/A — Saeed accepted changes, code confirmed safe by Security Agent
 
 ---
 

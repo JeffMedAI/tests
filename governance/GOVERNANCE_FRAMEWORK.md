@@ -734,7 +734,50 @@ Every change must be logged in CHANGE_LOG.md with:
 
 ---
 
+---
+
+## Breach Record
+
+### BREACH-G1 — Production Environment Path Confusion — 2026-05-29
+
+| Field | Detail |
+|-------|--------|
+| **Date** | 2026-05-29 |
+| **Type** | Production environment path confusion |
+| **Agent** | Backend Agent |
+| **Severity** | HIGH (process) / LOW (code risk) |
+| **Acknowledged by Lead Agent** | 2026-05-30 |
+| **Status** | CLOSED |
+
+**Rules breached:**
+
+- **G1 — Production Deployment without approval** (Authority Matrix): No TestBench review, no ControlTower review, no Saeed approval before production watchdog was force-restarted with new code.
+- **G2 — Configuration Change without approval chain** (Authority Matrix): Four new config files written to `C:\JeffLocal\config\` affecting production pipeline scripts without ControlTower or Saeed approval.
+- **G3 — Security review bypassed**: Changes committed and deployed without Security Agent review. Post-hoc emergency review initiated after the fact.
+- **G4 — Production files modified directly** (backend_CLAUDE.md, NEVER TOUCHES): `C:\JeffLocal\dashboard\` is production. Files were edited directly. Correct target was `C:\JeffLocal\sandbox\dashboard\`.
+- **G5 — TDD workflow not followed** (backend_CLAUDE.md): Bell badge feature implemented with no failing tests written first.
+- **G6 — Brainstorm step skipped** (backend_CLAUDE.md): No `/superpowers /brainstorm` step performed before editing files. The path verification that would have caught this error was never done.
+
+**Root cause:** The Backend Agent was operating on the `sandbox` git branch and incorrectly assumed that files in `C:\JeffLocal\dashboard\` were sandbox files. Git branch name does not indicate working directory environment.
+
+**Resolution:**
+- Saeed reviewed and accepted all changes.
+- Security Agent conducted post-hoc emergency review: **APPROVED WITH NOTES** (two non-blocking notes: N1 hardcoded absolute path in model_monitoring.json; N2 silent exception swallowing in _nav_alert_count).
+- Production deployment permitted to remain.
+
+**Process improvements implemented:**
+- `C:\JeffLocal\governance\GOVERNANCE_FRAMEWORK.md` updated with production hard-lock rule (added 2026-05-29, Saeed directive) — see PRODUCTION ENVIRONMENT — HARD LOCK section above.
+- `C:\JeffLocal\sandbox\agents\backend\backend_CLAUDE.md` updated with HARD LESSONS section: explicit path rules, port verification rule, mandatory Security Agent pre-review rule.
+- Path verification step added to all agent briefs as standing requirement.
+
+**References:**
+- Breach report: `docs/reports/breach_report_2026-05-29.md`
+- Security review: `docs/compliance/security_review_2026-05-29_prod_breach.md`
+- Lead Agent acknowledgement: `docs/reports/G1_breach_acknowledgement_2026-05-30.md`
+
+---
+
 **Approved by:** Saeed  
 **Effective Date:** 2026-05-22  
 **Next Review:** 2026-08-22 (Quarterly)  
-**Last Updated:** 2026-05-29 (Strategy Agent added to roster by Lead Agent — Saeed onboarding task 2026-05-29)
+**Last Updated:** 2026-05-30 (G1 breach formally acknowledged; breach record added; backend brief updated — Lead Agent)
