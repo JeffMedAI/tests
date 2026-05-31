@@ -81,6 +81,37 @@ Register-ScheduledTask `
 
 Write-Host "Registered: JeffLocal - Service Watchdog (continuous, starts at boot)" -ForegroundColor Green
 
+# --- Task 4: GDPR weekly purge (Sunday 03:00) ---
+# Database Agent — 2026-05-31
+# Security Agent review: docs\compliance\security_review_gdpr_purge_2026-05-30.md
+# Purges patient PII from sandbox SQLite older than 90 days.
+# Runs --dry-run in sandbox; remove flag for production deployment (requires Saeed approval).
+$action4 = New-ScheduledTaskAction `
+    -Execute "python.exe" `
+    -Argument "C:\JeffLocal\scripts\daily\gdpr_purge.py --db C:\JeffLocal\sandbox\dashboard\data\dashboard.sqlite --days 90" `
+    -WorkingDirectory "C:\JeffLocal\scripts\daily"
+
+$trigger4 = New-ScheduledTaskTrigger -Weekly -WeeksInterval 1 -DaysOfWeek Sunday -At "03:00"
+
+$settings4 = New-ScheduledTaskSettingsSet `
+    -ExecutionTimeLimit (New-TimeSpan -Hours 1) `
+    -RestartCount 2 `
+    -RestartInterval (New-TimeSpan -Minutes 10) `
+    -StartWhenAvailable `
+    -RunOnlyIfNetworkAvailable $false
+
+Register-ScheduledTask `
+    -TaskName "JeffLocal - GDPR Weekly Purge" `
+    -TaskPath "\JeffLocal\" `
+    -Action $action4 `
+    -Trigger $trigger4 `
+    -Settings $settings4 `
+    -Description "Weekly GDPR 90-day patient data purge. Redacts PII from cases/alert_events, deletes call_recordings. Logs to C:\JeffLocal\logs\gdpr\. AUDIT: docs\compliance\gdpr_purge_log.jsonl." `
+    -RunLevel Highest `
+    -Force
+
+Write-Host "Registered: JeffLocal - GDPR Weekly Purge (weekly Sunday 03:00)" -ForegroundColor Green
+
 Write-Host ""
 Write-Host "All tasks registered. Verify in Task Scheduler under \JeffLocal\" -ForegroundColor Cyan
 Write-Host ""

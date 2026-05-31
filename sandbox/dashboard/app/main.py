@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import asyncio
-import json
 import hashlib
+import hmac
 import http.client
+import json
+import logging
+import os
 import re
 import subprocess
 import sys
@@ -13,7 +16,7 @@ from typing import Any
 from urllib.parse import quote, urlencode, urlsplit
 from uuid import uuid4
 
-from fastapi import Body, FastAPI, Form, HTTPException, Query, Request
+from fastapi import Body, Depends, FastAPI, Form, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -50,6 +53,8 @@ from .models import (
     utc_now_iso,
 )
 
+
+_log = logging.getLogger(__name__)
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 ROOT_DIR = BASE_DIR.parent
@@ -198,23 +203,37 @@ def forgot_page(request: Request):
 
 @app.post("/forgot")
 async def forgot_post(request: Request, username: str = Form(""), reset_type: str = Form("password")):
+    """Generate a password/PIN reset link.
+
+    Security notes:
+    - No user enumeration: the same success message is shown regardless of
+      whether the username exists, is inactive, or is rate-limited.
+    - The reset link is only rendered when a valid, active user is found AND
+      the rate limit has not been exceeded.
+    - Rate limiting (3 requests/hr per user) is enforced in create_reset_token.
+    """
     username = username.strip().lower()
     reset_link = None
-    error = ""
-    success = ""
+    # Generic success message — identical for all outcomes (no user enumeration)
+    success = (
+        "If that username is registered, a reset link has been generated below. "
+        "Share it securely with the user (e.g. via WhatsApp or in person)."
+    )
     with connect() as conn:
         conn.row_factory = __import__("sqlite3").Row
         user = lookup_user_by_username(conn, username)
-        if user:
-            token = create_reset_token(conn, user["id"], reset_type)
-            base = str(request.base_url).rstrip("/")
-            reset_link = f"{base}/reset?token={token}&type={reset_type}"
-            write_audit_event(conn, "__auth__", "reset_requested", username, [], {}, {"type": reset_type})
-            success = f"Reset link generated for '{username}'. Share it securely."
-        else:
-            error = "Username not found."
+        if user and user.get("active"):
+            try:
+                token = create_reset_token(conn, user["id"], reset_type)
+                base = str(request.base_url).rstrip("/")
+                reset_link = f"{base}/reset?token={token}&type={reset_type}"
+                write_audit_event(conn, "__auth__", "reset_requested", username, [], {}, {"type": reset_type})
+            except ValueError:
+                # rate_limit_exceeded — show no link but keep generic success
+                # message so the rate-limit state is not revealed to the caller
+                pass
     return templates.TemplateResponse(request, "forgot.html", {
-        "mode": "request", "error": error, "success": success, "reset_link": reset_link,
+        "mode": "request", "error": "", "success": success, "reset_link": reset_link,
     })
 
 
@@ -3503,8 +3522,85 @@ def n8ntest_dashboard_cases(call_ids: list[str] | None = None) -> list[dict[str,
     return cases
 
 
+# ── HMAC verification ─────────────────────────────────────────────────────────
+
+
+def verify_hmac_signature(
+    payload_bytes: bytes,
+    signature_header: str,
+    secret: bytes,
+) -> bool:
+    """
+    Verify an HMAC-SHA256 webhook signature in constant time.
+
+    The caller (Jeff / n8n) must include the header:
+        X-Hub-Signature-256: sha256=<hex-digest>
+
+    The digest is computed over the raw request body using the shared secret.
+    Comparison uses ``hmac.compare_digest`` to prevent timing attacks.
+
+    Args:
+        payload_bytes:    Raw request body bytes (must be read before JSON parsing).
+        signature_header: Value of the X-Hub-Signature-256 header (e.g. "sha256=abc123").
+        secret:           Shared secret as bytes.  Must not be empty — callers are
+                          responsible for checking that the secret is configured before
+                          calling this function.
+
+    Returns:
+        True  — signature present, well-formed, and matches.
+        False — header missing, malformed (no "sha256=" prefix), or digest mismatch.
+
+    Security notes:
+        - Constant-time comparison via hmac.compare_digest; safe against timing attacks.
+        - Payload bytes are never logged.
+        - Algorithm is HMAC-SHA256 (suitable for webhook authentication per OWASP).
+    """
+    if not signature_header.startswith("sha256="):
+        return False
+    expected = "sha256=" + hmac.new(secret, payload_bytes, hashlib.sha256).hexdigest()
+    return hmac.compare_digest(expected, signature_header)
+
+
+async def verify_webhook_hmac(request: Request) -> None:
+    """
+    FastAPI dependency: enforce HMAC-SHA256 signature on the raw request body.
+
+    Reads the secret from the ``JEFF_WEBHOOK_SECRET`` environment variable.
+    If the variable is absent or empty, verification is skipped — this allows
+    local sandbox runs without a configured secret, but Saeed MUST set the
+    variable before any live traffic reaches this endpoint.
+
+    Raises:
+        HTTPException(401): if the secret is set and the signature is absent,
+                            malformed, or does not match.  The response detail
+                            contains no secret material and no payload content.
+    """
+    secret = os.environ.get("JEFF_WEBHOOK_SECRET", "").encode()
+    if not secret:
+        _log.warning(
+            "HMAC verification SKIPPED — JEFF_WEBHOOK_SECRET not set. "
+            "Set this env var before accepting live traffic."
+        )
+        return
+    sig_header = request.headers.get("X-Hub-Signature-256", "")
+    body = await request.body()
+    if not verify_hmac_signature(body, sig_header, secret):
+        _log.warning(
+            "Webhook HMAC verification FAILED — path=%s method=%s "
+            "sig_header_present=%s",
+            request.url.path,
+            request.method,
+            bool(sig_header),
+        )
+        raise HTTPException(status_code=401, detail="Invalid or missing webhook signature")
+
+
 @app.post("/api/n8n/test-intake-batch")
-def api_n8n_test_intake_batch(payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
+async def api_n8n_test_intake_batch(
+    request: Request,
+    payload: dict[str, Any] = Body(...),
+    _hmac_verified: None = Depends(verify_webhook_hmac),
+) -> dict[str, Any]:
     """SANDBOX / TEST ONLY — bypasses n8n entirely.
     All real calls must route through n8n webhook: POST /webhook/jefflocal-test-intake (port 5678).
     This endpoint is guarded by test_mode=true and N8NTEST-/GPDEMO- prefix requirements.
@@ -4199,6 +4295,92 @@ def quick_action(
         updates: dict[str, Any] = {
             "last_updated": now,
             "last_edited_at": now,
+            "last_edited_by": edited_by.strip() or resolved_by.strip() or selected_staff_name,
+        }
+
+        if action == "start_review":
+            updates["status"] = "In Progress"
+            updates["resolved_at"] = ""
+            updates["resolved_by"] = ""
+            updates["turnaround_minutes"] = None
+            if assigned_to.strip() or selected_staff_name:
+                updates["assigned_to"] = assigned_to.strip() or selected_staff_name
+            updates["action_needed"] = case.get("action_needed") or DEFAULT_ACTION_NEEDED
+        elif action == "resolve":
+            resolved_name = resolved_by.strip() or selected_staff_name
+            protected_case = bool(case["red_flags_present"] or case["priority"] == "999 Emergency" or case["verification_status"] in IDENTITY_REVIEW_STATUSES)
+            effective_outcome = outcome_notes.strip() or case["outcome_notes"] or ("" if protected_case else DEFAULT_OUTCOME_NOTES)
+            if (case["red_flags_present"] or case["priority"] == "999 Emergency") and not effective_outcome:
+                raise HTTPException(status_code=400, detail="Outcome notes are required before resolving a red-flag case.")
+            if case["verification_status"] in IDENTITY_REVIEW_STATUSES and not effective_outcome:
+                raise HTTPException(status_code=400, detail="Outcome notes are required before resolving an identity issue.")
+            if not resolved_name:
+                raise HTTPException(status_code=400, detail="Resolved By is required before resolving a case")
+            updates.update(
+                {
+                    "status": "Resolved",
+                    "outcome_notes": effective_outcome,
+                    "resolved_by": resolved_name,
+                    "resolved_at": case["resolved_at"] or now,
+                    "turnaround_minutes": calculate_turnaround_minutes(case["timestamp"], case["resolved_at"] or now),
+                }
+            )
+        elif action == "reopen":
+            updates.update(
+                {
+                    "status": "Needs Review",
+                    "resolved_at": "",
+                    "resolved_by": "",
+                    "turnaround_minutes": None,
+                }
+            )
+        elif action == "escalate":
+            updates.update(
+                {
+                    "status": "Escalated",
+                    "action_needed": "Escalated for staff review",
+                    "resolved_at": "",
+                    "resolved_by": "",
+                    "turnaround_minutes": None,
+                }
+            )
+        elif action == "flag_issue":
+            updates.update(
+                {
+                    "status": "Needs Review",
+                    "action_needed": "Issue flagged by staff",
+                    "resolved_at": "",
+                    "resolved_by": "",
+                    "turnaround_minutes": None,
+                }
+            )
+        else:
+            raise HTTPException(status_code=400, detail="Unsupported quick action")
+
+        update_staff_fields(conn, call_id, updates, updates.get("last_edited_by", ""))
+        if action == "reopen":
+            write_audit_event(
+                conn,
+                call_id=call_id,
+                action="case_reopened",
+                edited_by=updates.get("last_edited_by", ""),
+                changed_fields=["status", "resolved_at", "resolved_by", "turnaround_minutes"],
+                old_values={
+                    "status": case.get("status"),
+                    "resolved_at": case.get("resolved_at"),
+                    "resolved_by": case.get("resolved_by"),
+                },
+                new_values={"status": "Needs Review", "resolved_at": "", "resolved_by": ""},
+            )
+
+    notice = ""
+    if action == "resolve":
+        notice = "case_resolved"
+    elif action == "reopen":
+        notice = "case_reopened"
+    elif action == "start_review":
+        notice = "review_started"
+    return RedirectResponse(return_url_with_notice(safe_return_url, notice), status_code=303)
             "last_edited_by": edited_by.strip() or resolved_by.strip() or selected_staff_name,
         }
 

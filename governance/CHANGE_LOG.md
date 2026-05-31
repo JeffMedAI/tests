@@ -1,7 +1,204 @@
 # CHANGE_LOG — JeffLocal Sprint 1 Audit Trail
 **Purpose:** Official record of all approvals, deployments, and decisions  
 **Status:** ACTIVE  
-**Last Updated:** 2026-05-30
+**Last Updated:** 2026-05-31
+
+---
+
+## STRATEGY_20260531_DOCS_REVIEW — Documentation Review, Archive & Registry Update
+
+**Date:** 2026-05-31
+**Status:** ✅ COMPLETE
+**Agent:** Strategy Agent
+**Type:** Documentation / Housekeeping
+
+**Work done:**
+1. Full audit of all docs\ subdirectories, governance\, and root-level .md files
+2. DOCUMENT_REGISTRY.md updated — all new documents added, archived docs indexed,
+   status fields updated to reflect completed work through 2026-05-30
+3. Archive created at docs\archive\ — 12 files copied (stale approvals, resolved
+   issue docs, superseded state reports, pre-restructure governance status doc)
+4. CHANGE_LOG.md updated with comprehensive 2026-05-30 session entries (this entry
+   and all entries below marked with date 2026-05-30 or 2026-05-31)
+5. Prompt review memo prepared for Lead Agent (stale task references in lead_CLAUDE.md)
+
+**Note on originals:** Archive copies confirmed at docs\archive\. Original files
+at root cannot be deleted via Strategy Agent (filesystem permissions). DevOps Agent
+or Saeed should run: `git rm` on the 11 archived root/governance files to complete
+the move. See docs\reports\docs_health_2026-05-30.md for the full list.
+
+---
+
+## FEAT_20260530_PHASE1_ASSIGNMENTS — Phase 1 Agent Task Assignments Issued
+
+**Date:** 2026-05-30
+**Status:** ✅ ISSUED — assignments active
+**Agent:** Lead Agent
+**Document:** `docs\reports\phase1_assignments_2026-05-30.md`
+
+**Tasks assigned with full acceptance criteria:**
+1. HMAC payload verification for n8n webhook (Backend Agent) — IR-01, security-critical
+2. Password reset end-to-end (Backend Agent) — security review required
+3. GDPR 90-day purge script (Database Agent) — security review required
+4. E2E pipeline gap investigation: n8n → DB (Backend Agent) — blocks Stage 3
+5. Fix 11 test_render_pages failures (Test Agent) — LOW priority, pre-existing
+6. Full Playwright E2E suite (Test Agent) — after tasks 1–3 done
+7. Multi-tenancy tenant_id on all SQLite tables (Database Agent)
+8. Daily task scripts registration (DevOps Agent)
+
+---
+
+## FIX_20260530_N1_ENV_VAR — N1 Environment Variable Fix Verified Complete
+
+**Date:** 2026-05-30
+**Status:** ✅ VERIFIED COMPLETE
+**Agent:** Backend Agent / Lead Agent
+**Document:** `docs\reports\N1_verification_2026-05-30.md`
+
+**Issue:** N1 — FLASK_SECRET_KEY env var missing from production .env
+**Resolution:** Fix applied and verified. FLASK_SECRET_KEY now set correctly.
+**Security note:** N2 (insecure default secret key) resolved at same time.
+**Verified by:** Lead Agent post-implementation check
+
+---
+
+## FEAT_20260530_E2E_TEST_SUITE — E2E Call Flow Test Suite Built
+
+**Date:** 2026-05-29–2026-05-30
+**Status:** ✅ Stages 1, 2, 4 PASSING — Stage 3 BLOCKED (pipeline gap)
+**Agent:** Test Agent
+**Files:**
+- `tests\test_e2e_callflow.py` — 4-stage E2E call flow test
+- `tests\run_e2e_stage3.ps1` — Stage 3 re-run helper script
+
+**What it tests:**
+- Stage 1: Jeff voice agent posts webhook to n8n (PASS)
+- Stage 2: n8n receives and forwards to Flask /api/ingest (PASS)
+- Stage 3: Case appears in SQLite dashboard.sqlite (BLOCKED — pipeline gap)
+- Stage 4: Dashboard API returns case (PASS)
+
+**Root cause of Stage 3 block:** n8n workflow receives webhook but does not write
+handoff JSON / import to DB. n8n workflow requires investigation (Backend Agent
+task #4 in phase1_assignments). Not a test code issue.
+
+**Full test suite baseline:** 91/102 passing. 11 pre-existing failures in
+test_render_pages (not caused by auth fixture — conftest working correctly).
+
+---
+
+## FEAT_20260529_WATCHDOG_REWRITE — Watchdog Hardened (All 5 Services)
+
+**Date:** 2026-05-29
+**Status:** ✅ LIVE
+**Agent:** DevOps Agent / Backend Agent
+**File:** `scripts\service_control\watchdog.ps1`
+**Security review:** `docs\compliance\security_review_2026-05-30_watchdog_whatsapp.md` — APPROVED WITH NOTES
+
+**What changed:**
+- Watchdog now monitors all 5 services (dashboard, n8n, Ollama, queue, watchdog-self)
+- Restart cap: 3 restarts per hour per service (prevents restart loops)
+- WhatsApp alert on service failure
+- Elevated privileges at boot via Task Scheduler
+- Minor: temp file in Send-Alert not cleaned up (low severity, documented)
+
+---
+
+## FIX_20260529_WHATSAPP_SCRIPT_NAME — WhatsApp Daily Report Script Name Mismatch Fixed
+
+**Date:** 2026-05-30
+**Status:** ✅ FIXED
+**Agent:** Strategy Agent / DevOps Agent
+**File:** `scripts\daily\strategy_daily.ps1`
+**Security review:** `docs\compliance\security_review_2026-05-30_watchdog_whatsapp.md`
+
+**Issue:** strategy_daily.ps1 Step 11 called `send_whatsapp_report.py` but actual
+script is `send_whatsapp.py` — causing silent WhatsApp failures from the daily script.
+**Fix:** Step 11 updated to call correct script name `send_whatsapp.py`.
+**Result:** WhatsApp daily report delivery now wired up correctly.
+
+---
+
+## FEAT_20260529_STATE_VERIFICATION — State Verification Added to Daily Script
+
+**Date:** 2026-05-29
+**Status:** ✅ LIVE
+**Agent:** Strategy Agent
+**File:** `scripts\daily\strategy_daily.ps1`
+
+**What changed:** Daily script now includes a state verification step that
+cross-checks PROJECT_MEMORY.md pending/blocked items against session log activity
+from the last 24h. Drift is reported in the daily briefing. No drift detected
+as of 2026-05-31.
+
+---
+
+## FEAT_20260529_CONFIG_FILES — 4 Missing Pipeline Config Files Created
+
+**Date:** 2026-05-29
+**Status:** ✅ COMPLETE
+**Agent:** Backend Agent / DevOps Agent
+**Audit:** `docs\reports\config_audit_2026-05-29.md`
+
+**Files created:**
+1. `config\pipeline.json` — n8n webhook paths, retry logic, timeout settings
+2. `config\models.json` — Ollama model config per tenant (gemma4:e2b, fallback)
+3. `config\notifications.json` — WhatsApp/email alert thresholds and recipients
+4. `config\security.json` — CORS, rate limiting, session config
+
+These were identified as missing during the 2026-05-29 config audit.
+
+---
+
+## FEAT_20260529_SIDEBAR_R1_R2_R3 — Sidebar Refactor R1/R2/R3 LIVE
+
+**Date:** 2026-05-29
+**Status:** ✅ LIVE in sandbox dashboard
+**Agent:** Frontend Agent
+**Files:** `sandbox\dashboard\static\dashboard.css`, `sandbox\dashboard\templates\base.html`
+
+**R1 — Icon-only collapsed sidebar:**
+- Sidebar now present on all 6 primary pages (was dashboard-only)
+- Topbar removed, navigation moved to sidebar
+- Collapsed state: icon-only with tooltips
+- CSS transition on expand/collapse
+
+**R2 — Critical alert bell badge:**
+- Badge on sidebar toggle button shows unread critical count when sidebar is collapsed
+- Badge disappears when sidebar is expanded or critical_count === 0
+- Playwright test added for badge behaviour
+
+**R3 — Unified card CSS:**
+- All inline styles removed from sidebar cards and dashboard cards
+- Replaced with CSS custom property system
+- Consistent card appearance across all pages
+
+**Note:** These changes are in sandbox. Production promotion requires Saeed approval.
+
+---
+
+## FEAT_20260529_STRATEGY_AGENT — Strategy Agent Fully Onboarded
+
+**Date:** 2026-05-29
+**Status:** ✅ COMPLETE
+**Agent:** Lead Agent
+**Files:**
+- `sandbox\agents\strategy\strategy_CLAUDE.md` — Agent brief
+- `sandbox\agents\strategy\LEAD_AGENT_TASK_ONBOARD_STRATEGY_AGENT.md` — Onboarding task
+- `scripts\daily\strategy_daily.ps1` — Daily report script
+- `governance\GOVERNANCE_FRAMEWORK.md` — Updated with Strategy Agent entry
+
+**What was set up:**
+- Strategy Agent briefing written and approved by Saeed
+- Daily report script (strategy_daily.ps1) created with 11-step pipeline:
+  git log, session log read, report generation, PROJECT_MEMORY update,
+  state verification, WhatsApp summary dispatch
+- GOVERNANCE_FRAMEWORK.md updated: 8th agent added
+- DOCUMENT_REGISTRY.md created as master document index
+- All 5 business/strategy documents created (Business Doc, Onboarding Guide,
+  Staff Training Guide, Marketing Strategy, Marketing Content Pack)
+
+**Pending:** Task Scheduler registration (Saeed must run
+scripts\register_scheduled_tasks.ps1 as Administrator)
 
 ---
 

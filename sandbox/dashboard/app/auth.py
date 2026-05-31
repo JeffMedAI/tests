@@ -16,7 +16,8 @@ TOKEN_BYTES = 32
 PBKDF2_ITERATIONS = 100_000
 PASSWORD_SALT = b"jefflocal_salt_v1"
 PIN_SALT = b"jefflocal_pin_salt_v1"
-RESET_TOKEN_EXPIRY_MINUTES = 30
+RESET_TOKEN_EXPIRY_MINUTES = 60        # 1-hour window per task spec
+RESET_RATE_LIMIT_PER_HOUR = 3          # max reset requests per user per hour
 
 
 def _utc_now() -> str:
@@ -63,6 +64,13 @@ def verify_pin(pin: str, stored_hash: str) -> bool:
 
 def generate_token() -> str:
     return secrets.token_urlsafe(TOKEN_BYTES)
+
+
+def _hash_reset_token(token: str) -> str:
+    """SHA-256 hash of a plaintext reset token — this is what is stored in the DB.
+    The plaintext token travels only in the reset URL; it is never persisted.
+    """
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
 # ── Session management ─────────────────────────────────────────────────────────
@@ -194,24 +202,54 @@ def clear_failed_attempts(conn: sqlite3.Connection, user_id: int) -> None:
 # ── Password / PIN reset ───────────────────────────────────────────────────────
 
 def create_reset_token(conn: sqlite3.Connection, user_id: int, token_type: str = "password") -> str:
-    token = generate_token()
+    """Generate a cryptographically random reset token.
+
+    Security model:
+    - The plaintext token (returned) is placed in the reset URL only.
+    - Only the SHA-256 hash of the token is stored in the database.
+    - If the database is ever read by an attacker, the plaintext tokens
+      cannot be recovered and therefore cannot be used.
+
+    Raises ValueError("rate_limit_exceeded") if the user has already made
+    RESET_RATE_LIMIT_PER_HOUR requests in the last hour.
+    """
+    one_hour_ago = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
+    recent_count = conn.execute(
+        "SELECT COUNT(*) FROM auth_reset_tokens "
+        "WHERE user_id=? AND token_type=? AND created_at >= ?",
+        (user_id, token_type, one_hour_ago),
+    ).fetchone()[0]
+    if recent_count >= RESET_RATE_LIMIT_PER_HOUR:
+        raise ValueError("rate_limit_exceeded")
+
+    token = generate_token()                   # plaintext — returned to caller
+    token_hash = _hash_reset_token(token)      # hash — stored in DB
     now = _utc_now()
     expires = _utc_expires(RESET_TOKEN_EXPIRY_MINUTES)
     conn.execute(
         "INSERT INTO auth_reset_tokens (user_id, token, token_type, created_at, expires_at, used) "
         "VALUES (?, ?, ?, ?, ?, 0)",
-        (user_id, token, token_type, now, expires),
+        (user_id, token_hash, token_type, now, expires),
     )
     conn.commit()
-    return token
+    return token   # plaintext — NEVER stored, only returned here
 
 
 def consume_reset_token(conn: sqlite3.Connection, token: str, token_type: str) -> Optional[int]:
-    """Return user_id if token is valid, unused, and not expired. Marks it used."""
+    """Return user_id if token is valid, unused, and not expired. Marks it used.
+
+    Security: the incoming plaintext token is hashed before the DB lookup so
+    that (a) the DB never contains plaintext tokens and (b) the comparison is
+    performed by the database engine on the hash, which is a fixed-length
+    deterministic value — there is no timing side-channel on the hash itself.
+    The secrets.compare_digest call in _verify_hash guards password/PIN paths;
+    for reset tokens the SHA-256 pre-image is the security barrier.
+    """
+    token_hash = _hash_reset_token(token)
     row = conn.execute(
         "SELECT id, user_id, expires_at, used FROM auth_reset_tokens "
         "WHERE token=? AND token_type=?",
-        (token, token_type),
+        (token_hash, token_type),
     ).fetchone()
     if row is None:
         return None
@@ -224,6 +262,7 @@ def consume_reset_token(conn: sqlite3.Connection, token: str, token_type: str) -
             return None
     except Exception:
         return None
+    # Mark single-use: token cannot be replayed after this point
     conn.execute("UPDATE auth_reset_tokens SET used=1 WHERE id=?", (rid,))
     conn.commit()
     return user_id

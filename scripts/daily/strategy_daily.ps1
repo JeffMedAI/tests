@@ -309,7 +309,7 @@ Write-Host "Done. Report: $ReportPath" -ForegroundColor Green
 
 # ── 11. Send report via WhatsApp ──────────────────────────────────────────────
 Write-Log "Sending report via WhatsApp..."
-$PythonScript = "$RepoRoot\scripts\daily\send_whatsapp_report.py"
+$PythonScript = "$RepoRoot\scripts\daily\send_whatsapp.py"
 if (Test-Path $PythonScript) {
     try {
         $result = python $PythonScript $ReportPath 2>&1

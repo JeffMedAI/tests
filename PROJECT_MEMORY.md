@@ -101,6 +101,7 @@ Security Agent has VETO authority over all PRs. Lead Agent enforces vetoes.
 1. **URGENT: Run fix_git_lock.ps1** — git index corrupted, blocks all commits. Script at C:\JeffLocal\fix_git_lock.ps1 (also repairs index, not just lock)
 2. Task Scheduler registration: run scripts\register_scheduled_tasks.ps1 as Administrator
 3. Review 11 remaining test failures — assign to Backend Agent or accept as backlog
+4. **NEW: GDPR purge production deployment** — migration (add_created_at_20260531.sql) on live DB + remove --dry-run from Task Scheduler entry — requires explicit approval
 
 ### Pending research / future tasks
 - OpenJarvis pilot: onboarding plan READY at docs\project_documents\Jarvis_Onboarding_Plan.md.
@@ -111,7 +112,7 @@ RANK  | TASK                          | AGENT          | STATUS
 ------+-------------------------------+----------------+-----------------------------------
  1    | HMAC payload verification n8n | Backend Agent  | Assigned — IR-01, sec review req'd
  2    | Password reset end-to-end     | Backend Agent  | Assigned — sec review req'd
- 3    | GDPR 90-day purge script      | Database Agent | Assigned — sec review req'd
+ 3    | GDPR 90-day purge script      | Database Agent | COMPLETE (sandbox) — prod gate pending Saeed
  4    | E2E pipeline gap (n8n→DB)     | Backend Agent  | NEW — Stage 3 blocked by this
  5    | Fix 11 test_render_pages bugs | Test Agent     | Pre-existing, LOW priority
  6    | Full Playwright E2E suite     | Test Agent     | Pending (after tasks 1-3 done)

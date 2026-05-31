@@ -778,3 +778,87 @@ def test_bulk_actions_assign_review_and_resolve_skips_unsafe(tmp_path, monkeypat
     data = resolve.json()
     assert len(data["updated"]) == 1
     assert {item["reason"] for item in data["skipped"]} >= {"requires_individual_review", "red_flag"}
+
+
+# ── HMAC verification tests (IR-01) ──────────────────────────────────────────
+
+import hashlib
+import hmac
+import json
+import os
+
+
+def _hmac_header(secret: str, body: bytes) -> str:
+    """Compute X-Hub-Signature-256 value for a given body."""
+    return "sha256=" + hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
+
+
+def test_hmac_missing_header_returns_401_when_secret_set(tmp_path, monkeypatch):
+    """Missing X-Hub-Signature-256 → 401 when WEBHOOK_HMAC_SECRET is configured."""
+    client_context, _ = make_client(tmp_path, monkeypatch)
+    monkeypatch.setenv("WEBHOOK_HMAC_SECRET", "test-secret-abc123")
+    with client_context as client:
+        response = client.post("/api/n8n/test-intake-batch", json=n8ntest_payload())
+    assert response.status_code == 401
+    assert "X-Hub-Signature-256" in response.json()["detail"]
+
+
+def test_hmac_wrong_secret_returns_401(tmp_path, monkeypatch):
+    """Correct header format but wrong secret value → 401."""
+    client_context, _ = make_client(tmp_path, monkeypatch)
+    monkeypatch.setenv("WEBHOOK_HMAC_SECRET", "correct-secret")
+    body = json.dumps(n8ntest_payload()).encode()
+    bad_sig = _hmac_header("wrong-secret", body)
+    with client_context as client:
+        response = client.post(
+            "/api/n8n/test-intake-batch",
+            content=body,
+            headers={"Content-Type": "application/json", "X-Hub-Signature-256": bad_sig},
+        )
+    assert response.status_code == 401
+    assert "Invalid" in response.json()["detail"]
+
+
+def test_hmac_tampered_body_returns_401(tmp_path, monkeypatch):
+    """Valid HMAC header for original body, but body is then modified → 401."""
+    client_context, _ = make_client(tmp_path, monkeypatch)
+    secret = "tamper-test-secret"
+    monkeypatch.setenv("WEBHOOK_HMAC_SECRET", secret)
+    original_body = json.dumps(n8ntest_payload()).encode()
+    valid_sig = _hmac_header(secret, original_body)
+    # Tamper: append a space — signature no longer matches
+    tampered_body = original_body + b" "
+    with client_context as client:
+        response = client.post(
+            "/api/n8n/test-intake-batch",
+            content=tampered_body,
+            headers={"Content-Type": "application/json", "X-Hub-Signature-256": valid_sig},
+        )
+    assert response.status_code == 401
+
+
+def test_hmac_valid_signature_passes(tmp_path, monkeypatch):
+    """Correct HMAC header → request proceeds (not a 401)."""
+    client_context, _ = make_client(tmp_path, monkeypatch)
+    secret = "valid-test-secret"
+    monkeypatch.setenv("WEBHOOK_HMAC_SECRET", secret)
+    body = json.dumps(n8ntest_payload()).encode()
+    sig = _hmac_header(secret, body)
+    with client_context as client:
+        response = client.post(
+            "/api/n8n/test-intake-batch",
+            content=body,
+            headers={"Content-Type": "application/json", "X-Hub-Signature-256": sig},
+        )
+    # 401 must NOT be returned — any other status is acceptable here
+    assert response.status_code != 401
+
+
+def test_hmac_skipped_when_secret_not_set(tmp_path, monkeypatch):
+    """When WEBHOOK_HMAC_SECRET is not set, HMAC check is skipped — existing tests unaffected."""
+    client_context, _ = make_client(tmp_path, monkeypatch)
+    monkeypatch.delenv("WEBHOOK_HMAC_SECRET", raising=False)
+    with client_context as client:
+        response = client.post("/api/n8n/test-intake-batch", json=n8ntest_payload())
+    # Must not be a 401 (HMAC not enforced)
+    assert response.status_code != 401

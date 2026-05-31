@@ -1,0 +1,534 @@
+test_T1_dry_run_no_changes (__main__.TestGDPRPurge) ... 2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] GDPR Purge run started | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] dry_run=True | trigger=scheduled | retention=90 days | cutoff=2026-03-02 13:00:17
+2026-05-31T13:00:17Z [INFO] Database: /sessions/festive-nice-ramanujan/tmp/tmprzm0vvtl/test.sqlite
+2026-05-31T13:00:17Z [INFO] DRY RUN MODE — no data will be modified
+2026-05-31T13:00:17Z [INFO] Pre-purge counts: cases=1 | call_recordings=1 | alert_events=0
+2026-05-31T13:00:17Z [INFO] DRY RUN complete. Nothing was modified.
+2026-05-31T13:00:17Z [INFO] Audit entry written: /sessions/festive-nice-ramanujan/tmp/tmprzm0vvtl/gdpr_purge_log.jsonl
+2026-05-31T13:00:17Z [INFO] Run complete | status=dry_run_ok | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] ============================================================
+ok
+test_T2_89_day_record_not_purged (__main__.TestGDPRPurge) ... 2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] GDPR Purge run started | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] GDPR Purge run started | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] dry_run=False | trigger=scheduled | retention=90 days | cutoff=2026-03-02 13:00:17
+2026-05-31T13:00:17Z [INFO] dry_run=False | trigger=scheduled | retention=90 days | cutoff=2026-03-02 13:00:17
+2026-05-31T13:00:17Z [INFO] Database: /sessions/festive-nice-ramanujan/tmp/tmpwx826t17/test.sqlite
+2026-05-31T13:00:17Z [INFO] Database: /sessions/festive-nice-ramanujan/tmp/tmpwx826t17/test.sqlite
+2026-05-31T13:00:17Z [INFO] Pre-purge counts: cases=0 | call_recordings=0 | alert_events=0
+2026-05-31T13:00:17Z [INFO] Pre-purge counts: cases=0 | call_recordings=0 | alert_events=0
+2026-05-31T13:00:17Z [INFO] call_recordings deleted: 0
+2026-05-31T13:00:17Z [INFO] call_recordings deleted: 0
+2026-05-31T13:00:17Z [INFO] cases redacted: 0
+2026-05-31T13:00:17Z [INFO] cases redacted: 0
+2026-05-31T13:00:17Z [INFO] alert_events redacted: 0
+2026-05-31T13:00:17Z [INFO] alert_events redacted: 0
+2026-05-31T13:00:17Z [INFO] Transaction committed successfully.
+2026-05-31T13:00:17Z [INFO] Transaction committed successfully.
+2026-05-31T13:00:17Z [INFO] Running VACUUM...
+2026-05-31T13:00:17Z [INFO] Running VACUUM...
+2026-05-31T13:00:17Z [INFO] VACUUM complete.
+2026-05-31T13:00:17Z [INFO] VACUUM complete.
+2026-05-31T13:00:17Z [INFO] Audit entry written: /sessions/festive-nice-ramanujan/tmp/tmpwx826t17/gdpr_purge_log.jsonl
+2026-05-31T13:00:17Z [INFO] Audit entry written: /sessions/festive-nice-ramanujan/tmp/tmpwx826t17/gdpr_purge_log.jsonl
+2026-05-31T13:00:17Z [INFO] Run complete | status=success | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] Run complete | status=success | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] ============================================================
+ok
+test_T3_91_day_record_is_purged (__main__.TestGDPRPurge) ... 2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] GDPR Purge run started | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] GDPR Purge run started | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] GDPR Purge run started | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] dry_run=False | trigger=scheduled | retention=90 days | cutoff=2026-03-02 13:00:17
+2026-05-31T13:00:17Z [INFO] dry_run=False | trigger=scheduled | retention=90 days | cutoff=2026-03-02 13:00:17
+2026-05-31T13:00:17Z [INFO] dry_run=False | trigger=scheduled | retention=90 days | cutoff=2026-03-02 13:00:17
+2026-05-31T13:00:17Z [INFO] Database: /sessions/festive-nice-ramanujan/tmp/tmp46fm9i79/test.sqlite
+2026-05-31T13:00:17Z [INFO] Database: /sessions/festive-nice-ramanujan/tmp/tmp46fm9i79/test.sqlite
+2026-05-31T13:00:17Z [INFO] Database: /sessions/festive-nice-ramanujan/tmp/tmp46fm9i79/test.sqlite
+2026-05-31T13:00:17Z [INFO] Pre-purge counts: cases=1 | call_recordings=1 | alert_events=1
+2026-05-31T13:00:17Z [INFO] Pre-purge counts: cases=1 | call_recordings=1 | alert_events=1
+2026-05-31T13:00:17Z [INFO] Pre-purge counts: cases=1 | call_recordings=1 | alert_events=1
+2026-05-31T13:00:17Z [INFO] call_recordings deleted: 1
+2026-05-31T13:00:17Z [INFO] call_recordings deleted: 1
+2026-05-31T13:00:17Z [INFO] call_recordings deleted: 1
+2026-05-31T13:00:17Z [INFO] cases redacted: 1
+2026-05-31T13:00:17Z [INFO] cases redacted: 1
+2026-05-31T13:00:17Z [INFO] cases redacted: 1
+2026-05-31T13:00:17Z [INFO] alert_events redacted: 1
+2026-05-31T13:00:17Z [INFO] alert_events redacted: 1
+2026-05-31T13:00:17Z [INFO] alert_events redacted: 1
+2026-05-31T13:00:17Z [INFO] Transaction committed successfully.
+2026-05-31T13:00:17Z [INFO] Transaction committed successfully.
+2026-05-31T13:00:17Z [INFO] Transaction committed successfully.
+2026-05-31T13:00:17Z [INFO] Running VACUUM...
+2026-05-31T13:00:17Z [INFO] Running VACUUM...
+2026-05-31T13:00:17Z [INFO] Running VACUUM...
+2026-05-31T13:00:17Z [INFO] VACUUM complete.
+2026-05-31T13:00:17Z [INFO] VACUUM complete.
+2026-05-31T13:00:17Z [INFO] VACUUM complete.
+2026-05-31T13:00:17Z [INFO] Audit entry written: /sessions/festive-nice-ramanujan/tmp/tmp46fm9i79/gdpr_purge_log.jsonl
+2026-05-31T13:00:17Z [INFO] Audit entry written: /sessions/festive-nice-ramanujan/tmp/tmp46fm9i79/gdpr_purge_log.jsonl
+2026-05-31T13:00:17Z [INFO] Audit entry written: /sessions/festive-nice-ramanujan/tmp/tmp46fm9i79/gdpr_purge_log.jsonl
+2026-05-31T13:00:17Z [INFO] Run complete | status=success | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] Run complete | status=success | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] Run complete | status=success | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] ============================================================
+ok
+test_T4_transaction_rollback_on_error (__main__.TestGDPRPurge) ... 2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] GDPR Purge run started | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] GDPR Purge run started | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] GDPR Purge run started | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] GDPR Purge run started | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] dry_run=False | trigger=scheduled | retention=90 days | cutoff=2026-03-02 13:00:17
+2026-05-31T13:00:17Z [INFO] dry_run=False | trigger=scheduled | retention=90 days | cutoff=2026-03-02 13:00:17
+2026-05-31T13:00:17Z [INFO] dry_run=False | trigger=scheduled | retention=90 days | cutoff=2026-03-02 13:00:17
+2026-05-31T13:00:17Z [INFO] dry_run=False | trigger=scheduled | retention=90 days | cutoff=2026-03-02 13:00:17
+2026-05-31T13:00:17Z [INFO] Database: /sessions/festive-nice-ramanujan/tmp/tmp8ua2y7zk/test.sqlite
+2026-05-31T13:00:17Z [INFO] Database: /sessions/festive-nice-ramanujan/tmp/tmp8ua2y7zk/test.sqlite
+2026-05-31T13:00:17Z [INFO] Database: /sessions/festive-nice-ramanujan/tmp/tmp8ua2y7zk/test.sqlite
+2026-05-31T13:00:17Z [INFO] Database: /sessions/festive-nice-ramanujan/tmp/tmp8ua2y7zk/test.sqlite
+2026-05-31T13:00:17Z [INFO] Pre-purge counts: cases=1 | call_recordings=1 | alert_events=0
+2026-05-31T13:00:17Z [INFO] Pre-purge counts: cases=1 | call_recordings=1 | alert_events=0
+2026-05-31T13:00:17Z [INFO] Pre-purge counts: cases=1 | call_recordings=1 | alert_events=0
+2026-05-31T13:00:17Z [INFO] Pre-purge counts: cases=1 | call_recordings=1 | alert_events=0
+2026-05-31T13:00:17Z [INFO] call_recordings deleted: 1
+2026-05-31T13:00:17Z [INFO] call_recordings deleted: 1
+2026-05-31T13:00:17Z [INFO] call_recordings deleted: 1
+2026-05-31T13:00:17Z [INFO] call_recordings deleted: 1
+2026-05-31T13:00:17Z [INFO] cases redacted: 1
+2026-05-31T13:00:17Z [INFO] cases redacted: 1
+2026-05-31T13:00:17Z [INFO] cases redacted: 1
+2026-05-31T13:00:17Z [INFO] cases redacted: 1
+2026-05-31T13:00:17Z [ERROR] Transaction ROLLED BACK due to error: Simulated DB error mid-purge
+2026-05-31T13:00:17Z [ERROR] Transaction ROLLED BACK due to error: Simulated DB error mid-purge
+2026-05-31T13:00:17Z [ERROR] Transaction ROLLED BACK due to error: Simulated DB error mid-purge
+2026-05-31T13:00:17Z [ERROR] Transaction ROLLED BACK due to error: Simulated DB error mid-purge
+2026-05-31T13:00:17Z [ERROR] Database error: Simulated DB error mid-purge
+2026-05-31T13:00:17Z [ERROR] Database error: Simulated DB error mid-purge
+2026-05-31T13:00:17Z [ERROR] Database error: Simulated DB error mid-purge
+2026-05-31T13:00:17Z [ERROR] Database error: Simulated DB error mid-purge
+2026-05-31T13:00:17Z [INFO] Audit entry written: /sessions/festive-nice-ramanujan/tmp/tmp8ua2y7zk/gdpr_purge_log.jsonl
+2026-05-31T13:00:17Z [INFO] Audit entry written: /sessions/festive-nice-ramanujan/tmp/tmp8ua2y7zk/gdpr_purge_log.jsonl
+2026-05-31T13:00:17Z [INFO] Audit entry written: /sessions/festive-nice-ramanujan/tmp/tmp8ua2y7zk/gdpr_purge_log.jsonl
+2026-05-31T13:00:17Z [INFO] Audit entry written: /sessions/festive-nice-ramanujan/tmp/tmp8ua2y7zk/gdpr_purge_log.jsonl
+2026-05-31T13:00:17Z [INFO] Run complete | status=error | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] Run complete | status=error | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] Run complete | status=error | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] Run complete | status=error | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] ============================================================
+ok
+test_T5_audit_log_no_pii (__main__.TestGDPRPurge) ... 2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] GDPR Purge run started | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] GDPR Purge run started | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] GDPR Purge run started | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] GDPR Purge run started | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] GDPR Purge run started | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] dry_run=False | trigger=scheduled | retention=90 days | cutoff=2026-03-02 13:00:17
+2026-05-31T13:00:17Z [INFO] dry_run=False | trigger=scheduled | retention=90 days | cutoff=2026-03-02 13:00:17
+2026-05-31T13:00:17Z [INFO] dry_run=False | trigger=scheduled | retention=90 days | cutoff=2026-03-02 13:00:17
+2026-05-31T13:00:17Z [INFO] dry_run=False | trigger=scheduled | retention=90 days | cutoff=2026-03-02 13:00:17
+2026-05-31T13:00:17Z [INFO] dry_run=False | trigger=scheduled | retention=90 days | cutoff=2026-03-02 13:00:17
+2026-05-31T13:00:17Z [INFO] Database: /sessions/festive-nice-ramanujan/tmp/tmpg3074fh1/test.sqlite
+2026-05-31T13:00:17Z [INFO] Database: /sessions/festive-nice-ramanujan/tmp/tmpg3074fh1/test.sqlite
+2026-05-31T13:00:17Z [INFO] Database: /sessions/festive-nice-ramanujan/tmp/tmpg3074fh1/test.sqlite
+2026-05-31T13:00:17Z [INFO] Database: /sessions/festive-nice-ramanujan/tmp/tmpg3074fh1/test.sqlite
+2026-05-31T13:00:17Z [INFO] Database: /sessions/festive-nice-ramanujan/tmp/tmpg3074fh1/test.sqlite
+2026-05-31T13:00:17Z [INFO] Pre-purge counts: cases=1 | call_recordings=0 | alert_events=0
+2026-05-31T13:00:17Z [INFO] Pre-purge counts: cases=1 | call_recordings=0 | alert_events=0
+2026-05-31T13:00:17Z [INFO] Pre-purge counts: cases=1 | call_recordings=0 | alert_events=0
+2026-05-31T13:00:17Z [INFO] Pre-purge counts: cases=1 | call_recordings=0 | alert_events=0
+2026-05-31T13:00:17Z [INFO] Pre-purge counts: cases=1 | call_recordings=0 | alert_events=0
+2026-05-31T13:00:17Z [INFO] call_recordings deleted: 0
+2026-05-31T13:00:17Z [INFO] call_recordings deleted: 0
+2026-05-31T13:00:17Z [INFO] call_recordings deleted: 0
+2026-05-31T13:00:17Z [INFO] call_recordings deleted: 0
+2026-05-31T13:00:17Z [INFO] call_recordings deleted: 0
+2026-05-31T13:00:17Z [INFO] cases redacted: 1
+2026-05-31T13:00:17Z [INFO] cases redacted: 1
+2026-05-31T13:00:17Z [INFO] cases redacted: 1
+2026-05-31T13:00:17Z [INFO] cases redacted: 1
+2026-05-31T13:00:17Z [INFO] cases redacted: 1
+2026-05-31T13:00:17Z [INFO] alert_events redacted: 0
+2026-05-31T13:00:17Z [INFO] alert_events redacted: 0
+2026-05-31T13:00:17Z [INFO] alert_events redacted: 0
+2026-05-31T13:00:17Z [INFO] alert_events redacted: 0
+2026-05-31T13:00:17Z [INFO] alert_events redacted: 0
+2026-05-31T13:00:17Z [INFO] Transaction committed successfully.
+2026-05-31T13:00:17Z [INFO] Transaction committed successfully.
+2026-05-31T13:00:17Z [INFO] Transaction committed successfully.
+2026-05-31T13:00:17Z [INFO] Transaction committed successfully.
+2026-05-31T13:00:17Z [INFO] Transaction committed successfully.
+2026-05-31T13:00:17Z [INFO] Running VACUUM...
+2026-05-31T13:00:17Z [INFO] Running VACUUM...
+2026-05-31T13:00:17Z [INFO] Running VACUUM...
+2026-05-31T13:00:17Z [INFO] Running VACUUM...
+2026-05-31T13:00:17Z [INFO] Running VACUUM...
+2026-05-31T13:00:17Z [INFO] VACUUM complete.
+2026-05-31T13:00:17Z [INFO] VACUUM complete.
+2026-05-31T13:00:17Z [INFO] VACUUM complete.
+2026-05-31T13:00:17Z [INFO] VACUUM complete.
+2026-05-31T13:00:17Z [INFO] VACUUM complete.
+2026-05-31T13:00:17Z [INFO] Audit entry written: /sessions/festive-nice-ramanujan/tmp/tmpg3074fh1/gdpr_purge_log.jsonl
+2026-05-31T13:00:17Z [INFO] Audit entry written: /sessions/festive-nice-ramanujan/tmp/tmpg3074fh1/gdpr_purge_log.jsonl
+2026-05-31T13:00:17Z [INFO] Audit entry written: /sessions/festive-nice-ramanujan/tmp/tmpg3074fh1/gdpr_purge_log.jsonl
+2026-05-31T13:00:17Z [INFO] Audit entry written: /sessions/festive-nice-ramanujan/tmp/tmpg3074fh1/gdpr_purge_log.jsonl
+2026-05-31T13:00:17Z [INFO] Audit entry written: /sessions/festive-nice-ramanujan/tmp/tmpg3074fh1/gdpr_purge_log.jsonl
+2026-05-31T13:00:17Z [INFO] Run complete | status=success | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] Run complete | status=success | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] Run complete | status=success | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] Run complete | status=success | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] Run complete | status=success | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] ============================================================
+ok
+test_T6_days_minimum_floor_rejected (__main__.TestGDPRPurge) ... 2026-05-31T13:00:17Z [ERROR] REJECTED: --days 0 is below the minimum allowed retention period of 30 days. UK GDPR does not permit retention periods shorter than 30 days for this system.
+2026-05-31T13:00:17Z [ERROR] REJECTED: --days 0 is below the minimum allowed retention period of 30 days. UK GDPR does not permit retention periods shorter than 30 days for this system.
+2026-05-31T13:00:17Z [ERROR] REJECTED: --days 0 is below the minimum allowed retention period of 30 days. UK GDPR does not permit retention periods shorter than 30 days for this system.
+2026-05-31T13:00:17Z [ERROR] REJECTED: --days 0 is below the minimum allowed retention period of 30 days. UK GDPR does not permit retention periods shorter than 30 days for this system.
+2026-05-31T13:00:17Z [ERROR] REJECTED: --days 0 is below the minimum allowed retention period of 30 days. UK GDPR does not permit retention periods shorter than 30 days for this system.
+2026-05-31T13:00:17Z [ERROR] REJECTED: --days 0 is below the minimum allowed retention period of 30 days. UK GDPR does not permit retention periods shorter than 30 days for this system.
+2026-05-31T13:00:17Z [ERROR] REJECTED: --days 1 is below the minimum allowed retention period of 30 days. UK GDPR does not permit retention periods shorter than 30 days for this system.
+2026-05-31T13:00:17Z [ERROR] REJECTED: --days 1 is below the minimum allowed retention period of 30 days. UK GDPR does not permit retention periods shorter than 30 days for this system.
+2026-05-31T13:00:17Z [ERROR] REJECTED: --days 1 is below the minimum allowed retention period of 30 days. UK GDPR does not permit retention periods shorter than 30 days for this system.
+2026-05-31T13:00:17Z [ERROR] REJECTED: --days 1 is below the minimum allowed retention period of 30 days. UK GDPR does not permit retention periods shorter than 30 days for this system.
+2026-05-31T13:00:17Z [ERROR] REJECTED: --days 1 is below the minimum allowed retention period of 30 days. UK GDPR does not permit retention periods shorter than 30 days for this system.
+2026-05-31T13:00:17Z [ERROR] REJECTED: --days 1 is below the minimum allowed retention period of 30 days. UK GDPR does not permit retention periods shorter than 30 days for this system.
+2026-05-31T13:00:17Z [ERROR] REJECTED: --days 1 is below the minimum allowed retention period of 30 days. UK GDPR does not permit retention periods shorter than 30 days for this system.
+2026-05-31T13:00:17Z [ERROR] REJECTED: --days 15 is below the minimum allowed retention period of 30 days. UK GDPR does not permit retention periods shorter than 30 days for this system.
+2026-05-31T13:00:17Z [ERROR] REJECTED: --days 15 is below the minimum allowed retention period of 30 days. UK GDPR does not permit retention periods shorter than 30 days for this system.
+2026-05-31T13:00:17Z [ERROR] REJECTED: --days 15 is below the minimum allowed retention period of 30 days. UK GDPR does not permit retention periods shorter than 30 days for this system.
+2026-05-31T13:00:17Z [ERROR] REJECTED: --days 15 is below the minimum allowed retention period of 30 days. UK GDPR does not permit retention periods shorter than 30 days for this system.
+2026-05-31T13:00:17Z [ERROR] REJECTED: --days 15 is below the minimum allowed retention period of 30 days. UK GDPR does not permit retention periods shorter than 30 days for this system.
+2026-05-31T13:00:17Z [ERROR] REJECTED: --days 15 is below the minimum allowed retention period of 30 days. UK GDPR does not permit retention periods shorter than 30 days for this system.
+2026-05-31T13:00:17Z [ERROR] REJECTED: --days 15 is below the minimum allowed retention period of 30 days. UK GDPR does not permit retention periods shorter than 30 days for this system.
+2026-05-31T13:00:17Z [ERROR] REJECTED: --days 15 is below the minimum allowed retention period of 30 days. UK GDPR does not permit retention periods shorter than 30 days for this system.
+2026-05-31T13:00:17Z [ERROR] REJECTED: --days 29 is below the minimum allowed retention period of 30 days. UK GDPR does not permit retention periods shorter than 30 days for this system.
+2026-05-31T13:00:17Z [ERROR] REJECTED: --days 29 is below the minimum allowed retention period of 30 days. UK GDPR does not permit retention periods shorter than 30 days for this system.
+2026-05-31T13:00:17Z [ERROR] REJECTED: --days 29 is below the minimum allowed retention period of 30 days. UK GDPR does not permit retention periods shorter than 30 days for this system.
+2026-05-31T13:00:17Z [ERROR] REJECTED: --days 29 is below the minimum allowed retention period of 30 days. UK GDPR does not permit retention periods shorter than 30 days for this system.
+2026-05-31T13:00:17Z [ERROR] REJECTED: --days 29 is below the minimum allowed retention period of 30 days. UK GDPR does not permit retention periods shorter than 30 days for this system.
+2026-05-31T13:00:17Z [ERROR] REJECTED: --days 29 is below the minimum allowed retention period of 30 days. UK GDPR does not permit retention periods shorter than 30 days for this system.
+2026-05-31T13:00:17Z [ERROR] REJECTED: --days 29 is below the minimum allowed retention period of 30 days. UK GDPR does not permit retention periods shorter than 30 days for this system.
+2026-05-31T13:00:17Z [ERROR] REJECTED: --days 29 is below the minimum allowed retention period of 30 days. UK GDPR does not permit retention periods shorter than 30 days for this system.
+2026-05-31T13:00:17Z [ERROR] REJECTED: --days 29 is below the minimum allowed retention period of 30 days. UK GDPR does not permit retention periods shorter than 30 days for this system.
+ok
+test_T7_idempotent_second_run (__main__.TestGDPRPurge) ... 2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] GDPR Purge run started | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] GDPR Purge run started | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] GDPR Purge run started | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] GDPR Purge run started | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] GDPR Purge run started | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] GDPR Purge run started | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] GDPR Purge run started | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] GDPR Purge run started | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] GDPR Purge run started | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] GDPR Purge run started | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] dry_run=False | trigger=scheduled | retention=90 days | cutoff=2026-03-02 13:00:17
+2026-05-31T13:00:17Z [INFO] dry_run=False | trigger=scheduled | retention=90 days | cutoff=2026-03-02 13:00:17
+2026-05-31T13:00:17Z [INFO] dry_run=False | trigger=scheduled | retention=90 days | cutoff=2026-03-02 13:00:17
+2026-05-31T13:00:17Z [INFO] dry_run=False | trigger=scheduled | retention=90 days | cutoff=2026-03-02 13:00:17
+2026-05-31T13:00:17Z [INFO] dry_run=False | trigger=scheduled | retention=90 days | cutoff=2026-03-02 13:00:17
+2026-05-31T13:00:17Z [INFO] dry_run=False | trigger=scheduled | retention=90 days | cutoff=2026-03-02 13:00:17
+2026-05-31T13:00:17Z [INFO] dry_run=False | trigger=scheduled | retention=90 days | cutoff=2026-03-02 13:00:17
+2026-05-31T13:00:17Z [INFO] dry_run=False | trigger=scheduled | retention=90 days | cutoff=2026-03-02 13:00:17
+2026-05-31T13:00:17Z [INFO] dry_run=False | trigger=scheduled | retention=90 days | cutoff=2026-03-02 13:00:17
+2026-05-31T13:00:17Z [INFO] dry_run=False | trigger=scheduled | retention=90 days | cutoff=2026-03-02 13:00:17
+2026-05-31T13:00:17Z [INFO] Database: /sessions/festive-nice-ramanujan/tmp/tmpinclvp5z/test.sqlite
+2026-05-31T13:00:17Z [INFO] Database: /sessions/festive-nice-ramanujan/tmp/tmpinclvp5z/test.sqlite
+2026-05-31T13:00:17Z [INFO] Database: /sessions/festive-nice-ramanujan/tmp/tmpinclvp5z/test.sqlite
+2026-05-31T13:00:17Z [INFO] Database: /sessions/festive-nice-ramanujan/tmp/tmpinclvp5z/test.sqlite
+2026-05-31T13:00:17Z [INFO] Database: /sessions/festive-nice-ramanujan/tmp/tmpinclvp5z/test.sqlite
+2026-05-31T13:00:17Z [INFO] Database: /sessions/festive-nice-ramanujan/tmp/tmpinclvp5z/test.sqlite
+2026-05-31T13:00:17Z [INFO] Database: /sessions/festive-nice-ramanujan/tmp/tmpinclvp5z/test.sqlite
+2026-05-31T13:00:17Z [INFO] Database: /sessions/festive-nice-ramanujan/tmp/tmpinclvp5z/test.sqlite
+2026-05-31T13:00:17Z [INFO] Database: /sessions/festive-nice-ramanujan/tmp/tmpinclvp5z/test.sqlite
+2026-05-31T13:00:17Z [INFO] Database: /sessions/festive-nice-ramanujan/tmp/tmpinclvp5z/test.sqlite
+2026-05-31T13:00:17Z [INFO] Pre-purge counts: cases=1 | call_recordings=0 | alert_events=0
+2026-05-31T13:00:17Z [INFO] Pre-purge counts: cases=1 | call_recordings=0 | alert_events=0
+2026-05-31T13:00:17Z [INFO] Pre-purge counts: cases=1 | call_recordings=0 | alert_events=0
+2026-05-31T13:00:17Z [INFO] Pre-purge counts: cases=1 | call_recordings=0 | alert_events=0
+2026-05-31T13:00:17Z [INFO] Pre-purge counts: cases=1 | call_recordings=0 | alert_events=0
+2026-05-31T13:00:17Z [INFO] Pre-purge counts: cases=1 | call_recordings=0 | alert_events=0
+2026-05-31T13:00:17Z [INFO] Pre-purge counts: cases=1 | call_recordings=0 | alert_events=0
+2026-05-31T13:00:17Z [INFO] Pre-purge counts: cases=1 | call_recordings=0 | alert_events=0
+2026-05-31T13:00:17Z [INFO] Pre-purge counts: cases=1 | call_recordings=0 | alert_events=0
+2026-05-31T13:00:17Z [INFO] Pre-purge counts: cases=1 | call_recordings=0 | alert_events=0
+2026-05-31T13:00:17Z [INFO] call_recordings deleted: 0
+2026-05-31T13:00:17Z [INFO] call_recordings deleted: 0
+2026-05-31T13:00:17Z [INFO] call_recordings deleted: 0
+2026-05-31T13:00:17Z [INFO] call_recordings deleted: 0
+2026-05-31T13:00:17Z [INFO] call_recordings deleted: 0
+2026-05-31T13:00:17Z [INFO] call_recordings deleted: 0
+2026-05-31T13:00:17Z [INFO] call_recordings deleted: 0
+2026-05-31T13:00:17Z [INFO] call_recordings deleted: 0
+2026-05-31T13:00:17Z [INFO] call_recordings deleted: 0
+2026-05-31T13:00:17Z [INFO] call_recordings deleted: 0
+2026-05-31T13:00:17Z [INFO] cases redacted: 1
+2026-05-31T13:00:17Z [INFO] cases redacted: 1
+2026-05-31T13:00:17Z [INFO] cases redacted: 1
+2026-05-31T13:00:17Z [INFO] cases redacted: 1
+2026-05-31T13:00:17Z [INFO] cases redacted: 1
+2026-05-31T13:00:17Z [INFO] cases redacted: 1
+2026-05-31T13:00:17Z [INFO] cases redacted: 1
+2026-05-31T13:00:17Z [INFO] cases redacted: 1
+2026-05-31T13:00:17Z [INFO] cases redacted: 1
+2026-05-31T13:00:17Z [INFO] cases redacted: 1
+2026-05-31T13:00:17Z [INFO] alert_events redacted: 0
+2026-05-31T13:00:17Z [INFO] alert_events redacted: 0
+2026-05-31T13:00:17Z [INFO] alert_events redacted: 0
+2026-05-31T13:00:17Z [INFO] alert_events redacted: 0
+2026-05-31T13:00:17Z [INFO] alert_events redacted: 0
+2026-05-31T13:00:17Z [INFO] alert_events redacted: 0
+2026-05-31T13:00:17Z [INFO] alert_events redacted: 0
+2026-05-31T13:00:17Z [INFO] alert_events redacted: 0
+2026-05-31T13:00:17Z [INFO] alert_events redacted: 0
+2026-05-31T13:00:17Z [INFO] alert_events redacted: 0
+2026-05-31T13:00:17Z [INFO] Transaction committed successfully.
+2026-05-31T13:00:17Z [INFO] Transaction committed successfully.
+2026-05-31T13:00:17Z [INFO] Transaction committed successfully.
+2026-05-31T13:00:17Z [INFO] Transaction committed successfully.
+2026-05-31T13:00:17Z [INFO] Transaction committed successfully.
+2026-05-31T13:00:17Z [INFO] Transaction committed successfully.
+2026-05-31T13:00:17Z [INFO] Transaction committed successfully.
+2026-05-31T13:00:17Z [INFO] Transaction committed successfully.
+2026-05-31T13:00:17Z [INFO] Transaction committed successfully.
+2026-05-31T13:00:17Z [INFO] Transaction committed successfully.
+2026-05-31T13:00:17Z [INFO] Running VACUUM...
+2026-05-31T13:00:17Z [INFO] Running VACUUM...
+2026-05-31T13:00:17Z [INFO] Running VACUUM...
+2026-05-31T13:00:17Z [INFO] Running VACUUM...
+2026-05-31T13:00:17Z [INFO] Running VACUUM...
+2026-05-31T13:00:17Z [INFO] Running VACUUM...
+2026-05-31T13:00:17Z [INFO] Running VACUUM...
+2026-05-31T13:00:17Z [INFO] Running VACUUM...
+2026-05-31T13:00:17Z [INFO] Running VACUUM...
+2026-05-31T13:00:17Z [INFO] Running VACUUM...
+2026-05-31T13:00:17Z [INFO] VACUUM complete.
+2026-05-31T13:00:17Z [INFO] VACUUM complete.
+2026-05-31T13:00:17Z [INFO] VACUUM complete.
+2026-05-31T13:00:17Z [INFO] VACUUM complete.
+2026-05-31T13:00:17Z [INFO] VACUUM complete.
+2026-05-31T13:00:17Z [INFO] VACUUM complete.
+2026-05-31T13:00:17Z [INFO] VACUUM complete.
+2026-05-31T13:00:17Z [INFO] VACUUM complete.
+2026-05-31T13:00:17Z [INFO] VACUUM complete.
+2026-05-31T13:00:17Z [INFO] VACUUM complete.
+2026-05-31T13:00:17Z [INFO] Audit entry written: /sessions/festive-nice-ramanujan/tmp/tmpinclvp5z/gdpr_purge_log.jsonl
+2026-05-31T13:00:17Z [INFO] Audit entry written: /sessions/festive-nice-ramanujan/tmp/tmpinclvp5z/gdpr_purge_log.jsonl
+2026-05-31T13:00:17Z [INFO] Audit entry written: /sessions/festive-nice-ramanujan/tmp/tmpinclvp5z/gdpr_purge_log.jsonl
+2026-05-31T13:00:17Z [INFO] Audit entry written: /sessions/festive-nice-ramanujan/tmp/tmpinclvp5z/gdpr_purge_log.jsonl
+2026-05-31T13:00:17Z [INFO] Audit entry written: /sessions/festive-nice-ramanujan/tmp/tmpinclvp5z/gdpr_purge_log.jsonl
+2026-05-31T13:00:17Z [INFO] Audit entry written: /sessions/festive-nice-ramanujan/tmp/tmpinclvp5z/gdpr_purge_log.jsonl
+2026-05-31T13:00:17Z [INFO] Audit entry written: /sessions/festive-nice-ramanujan/tmp/tmpinclvp5z/gdpr_purge_log.jsonl
+2026-05-31T13:00:17Z [INFO] Audit entry written: /sessions/festive-nice-ramanujan/tmp/tmpinclvp5z/gdpr_purge_log.jsonl
+2026-05-31T13:00:17Z [INFO] Audit entry written: /sessions/festive-nice-ramanujan/tmp/tmpinclvp5z/gdpr_purge_log.jsonl
+2026-05-31T13:00:17Z [INFO] Audit entry written: /sessions/festive-nice-ramanujan/tmp/tmpinclvp5z/gdpr_purge_log.jsonl
+2026-05-31T13:00:17Z [INFO] Run complete | status=success | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] Run complete | status=success | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] Run complete | status=success | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] Run complete | status=success | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] Run complete | status=success | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] Run complete | status=success | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] Run complete | status=success | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] Run complete | status=success | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] Run complete | status=success | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] Run complete | status=success | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] GDPR Purge run started | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] GDPR Purge run started | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] GDPR Purge run started | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] GDPR Purge run started | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] GDPR Purge run started | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] GDPR Purge run started | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] GDPR Purge run started | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] GDPR Purge run started | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] GDPR Purge run started | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] GDPR Purge run started | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] GDPR Purge run started | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] dry_run=False | trigger=scheduled | retention=90 days | cutoff=2026-03-02 13:00:17
+2026-05-31T13:00:17Z [INFO] dry_run=False | trigger=scheduled | retention=90 days | cutoff=2026-03-02 13:00:17
+2026-05-31T13:00:17Z [INFO] dry_run=False | trigger=scheduled | retention=90 days | cutoff=2026-03-02 13:00:17
+2026-05-31T13:00:17Z [INFO] dry_run=False | trigger=scheduled | retention=90 days | cutoff=2026-03-02 13:00:17
+2026-05-31T13:00:17Z [INFO] dry_run=False | trigger=scheduled | retention=90 days | cutoff=2026-03-02 13:00:17
+2026-05-31T13:00:17Z [INFO] dry_run=False | trigger=scheduled | retention=90 days | cutoff=2026-03-02 13:00:17
+2026-05-31T13:00:17Z [INFO] dry_run=False | trigger=scheduled | retention=90 days | cutoff=2026-03-02 13:00:17
+2026-05-31T13:00:17Z [INFO] dry_run=False | trigger=scheduled | retention=90 days | cutoff=2026-03-02 13:00:17
+2026-05-31T13:00:17Z [INFO] dry_run=False | trigger=scheduled | retention=90 days | cutoff=2026-03-02 13:00:17
+2026-05-31T13:00:17Z [INFO] dry_run=False | trigger=scheduled | retention=90 days | cutoff=2026-03-02 13:00:17
+2026-05-31T13:00:17Z [INFO] dry_run=False | trigger=scheduled | retention=90 days | cutoff=2026-03-02 13:00:17
+2026-05-31T13:00:17Z [INFO] Database: /sessions/festive-nice-ramanujan/tmp/tmpinclvp5z/test.sqlite
+2026-05-31T13:00:17Z [INFO] Database: /sessions/festive-nice-ramanujan/tmp/tmpinclvp5z/test.sqlite
+2026-05-31T13:00:17Z [INFO] Database: /sessions/festive-nice-ramanujan/tmp/tmpinclvp5z/test.sqlite
+2026-05-31T13:00:17Z [INFO] Database: /sessions/festive-nice-ramanujan/tmp/tmpinclvp5z/test.sqlite
+2026-05-31T13:00:17Z [INFO] Database: /sessions/festive-nice-ramanujan/tmp/tmpinclvp5z/test.sqlite
+2026-05-31T13:00:17Z [INFO] Database: /sessions/festive-nice-ramanujan/tmp/tmpinclvp5z/test.sqlite
+2026-05-31T13:00:17Z [INFO] Database: /sessions/festive-nice-ramanujan/tmp/tmpinclvp5z/test.sqlite
+2026-05-31T13:00:17Z [INFO] Database: /sessions/festive-nice-ramanujan/tmp/tmpinclvp5z/test.sqlite
+2026-05-31T13:00:17Z [INFO] Database: /sessions/festive-nice-ramanujan/tmp/tmpinclvp5z/test.sqlite
+2026-05-31T13:00:17Z [INFO] Database: /sessions/festive-nice-ramanujan/tmp/tmpinclvp5z/test.sqlite
+2026-05-31T13:00:17Z [INFO] Database: /sessions/festive-nice-ramanujan/tmp/tmpinclvp5z/test.sqlite
+2026-05-31T13:00:17Z [INFO] Pre-purge counts: cases=0 | call_recordings=0 | alert_events=0
+2026-05-31T13:00:17Z [INFO] Pre-purge counts: cases=0 | call_recordings=0 | alert_events=0
+2026-05-31T13:00:17Z [INFO] Pre-purge counts: cases=0 | call_recordings=0 | alert_events=0
+2026-05-31T13:00:17Z [INFO] Pre-purge counts: cases=0 | call_recordings=0 | alert_events=0
+2026-05-31T13:00:17Z [INFO] Pre-purge counts: cases=0 | call_recordings=0 | alert_events=0
+2026-05-31T13:00:17Z [INFO] Pre-purge counts: cases=0 | call_recordings=0 | alert_events=0
+2026-05-31T13:00:17Z [INFO] Pre-purge counts: cases=0 | call_recordings=0 | alert_events=0
+2026-05-31T13:00:17Z [INFO] Pre-purge counts: cases=0 | call_recordings=0 | alert_events=0
+2026-05-31T13:00:17Z [INFO] Pre-purge counts: cases=0 | call_recordings=0 | alert_events=0
+2026-05-31T13:00:17Z [INFO] Pre-purge counts: cases=0 | call_recordings=0 | alert_events=0
+2026-05-31T13:00:17Z [INFO] Pre-purge counts: cases=0 | call_recordings=0 | alert_events=0
+2026-05-31T13:00:17Z [INFO] call_recordings deleted: 0
+2026-05-31T13:00:17Z [INFO] call_recordings deleted: 0
+2026-05-31T13:00:17Z [INFO] call_recordings deleted: 0
+2026-05-31T13:00:17Z [INFO] call_recordings deleted: 0
+2026-05-31T13:00:17Z [INFO] call_recordings deleted: 0
+2026-05-31T13:00:17Z [INFO] call_recordings deleted: 0
+2026-05-31T13:00:17Z [INFO] call_recordings deleted: 0
+2026-05-31T13:00:17Z [INFO] call_recordings deleted: 0
+2026-05-31T13:00:17Z [INFO] call_recordings deleted: 0
+2026-05-31T13:00:17Z [INFO] call_recordings deleted: 0
+2026-05-31T13:00:17Z [INFO] call_recordings deleted: 0
+2026-05-31T13:00:17Z [INFO] cases redacted: 0
+2026-05-31T13:00:17Z [INFO] cases redacted: 0
+2026-05-31T13:00:17Z [INFO] cases redacted: 0
+2026-05-31T13:00:17Z [INFO] cases redacted: 0
+2026-05-31T13:00:17Z [INFO] cases redacted: 0
+2026-05-31T13:00:17Z [INFO] cases redacted: 0
+2026-05-31T13:00:17Z [INFO] cases redacted: 0
+2026-05-31T13:00:17Z [INFO] cases redacted: 0
+2026-05-31T13:00:17Z [INFO] cases redacted: 0
+2026-05-31T13:00:17Z [INFO] cases redacted: 0
+2026-05-31T13:00:17Z [INFO] cases redacted: 0
+2026-05-31T13:00:17Z [INFO] alert_events redacted: 0
+2026-05-31T13:00:17Z [INFO] alert_events redacted: 0
+2026-05-31T13:00:17Z [INFO] alert_events redacted: 0
+2026-05-31T13:00:17Z [INFO] alert_events redacted: 0
+2026-05-31T13:00:17Z [INFO] alert_events redacted: 0
+2026-05-31T13:00:17Z [INFO] alert_events redacted: 0
+2026-05-31T13:00:17Z [INFO] alert_events redacted: 0
+2026-05-31T13:00:17Z [INFO] alert_events redacted: 0
+2026-05-31T13:00:17Z [INFO] alert_events redacted: 0
+2026-05-31T13:00:17Z [INFO] alert_events redacted: 0
+2026-05-31T13:00:17Z [INFO] alert_events redacted: 0
+2026-05-31T13:00:17Z [INFO] Transaction committed successfully.
+2026-05-31T13:00:17Z [INFO] Transaction committed successfully.
+2026-05-31T13:00:17Z [INFO] Transaction committed successfully.
+2026-05-31T13:00:17Z [INFO] Transaction committed successfully.
+2026-05-31T13:00:17Z [INFO] Transaction committed successfully.
+2026-05-31T13:00:17Z [INFO] Transaction committed successfully.
+2026-05-31T13:00:17Z [INFO] Transaction committed successfully.
+2026-05-31T13:00:17Z [INFO] Transaction committed successfully.
+2026-05-31T13:00:17Z [INFO] Transaction committed successfully.
+2026-05-31T13:00:17Z [INFO] Transaction committed successfully.
+2026-05-31T13:00:17Z [INFO] Transaction committed successfully.
+2026-05-31T13:00:17Z [INFO] Running VACUUM...
+2026-05-31T13:00:17Z [INFO] Running VACUUM...
+2026-05-31T13:00:17Z [INFO] Running VACUUM...
+2026-05-31T13:00:17Z [INFO] Running VACUUM...
+2026-05-31T13:00:17Z [INFO] Running VACUUM...
+2026-05-31T13:00:17Z [INFO] Running VACUUM...
+2026-05-31T13:00:17Z [INFO] Running VACUUM...
+2026-05-31T13:00:17Z [INFO] Running VACUUM...
+2026-05-31T13:00:17Z [INFO] Running VACUUM...
+2026-05-31T13:00:17Z [INFO] Running VACUUM...
+2026-05-31T13:00:17Z [INFO] Running VACUUM...
+2026-05-31T13:00:17Z [INFO] VACUUM complete.
+2026-05-31T13:00:17Z [INFO] VACUUM complete.
+2026-05-31T13:00:17Z [INFO] VACUUM complete.
+2026-05-31T13:00:17Z [INFO] VACUUM complete.
+2026-05-31T13:00:17Z [INFO] VACUUM complete.
+2026-05-31T13:00:17Z [INFO] VACUUM complete.
+2026-05-31T13:00:17Z [INFO] VACUUM complete.
+2026-05-31T13:00:17Z [INFO] VACUUM complete.
+2026-05-31T13:00:17Z [INFO] VACUUM complete.
+2026-05-31T13:00:17Z [INFO] VACUUM complete.
+2026-05-31T13:00:17Z [INFO] VACUUM complete.
+2026-05-31T13:00:17Z [INFO] Audit entry written: /sessions/festive-nice-ramanujan/tmp/tmpinclvp5z/gdpr_purge_log.jsonl
+2026-05-31T13:00:17Z [INFO] Audit entry written: /sessions/festive-nice-ramanujan/tmp/tmpinclvp5z/gdpr_purge_log.jsonl
+2026-05-31T13:00:17Z [INFO] Audit entry written: /sessions/festive-nice-ramanujan/tmp/tmpinclvp5z/gdpr_purge_log.jsonl
+2026-05-31T13:00:17Z [INFO] Audit entry written: /sessions/festive-nice-ramanujan/tmp/tmpinclvp5z/gdpr_purge_log.jsonl
+2026-05-31T13:00:17Z [INFO] Audit entry written: /sessions/festive-nice-ramanujan/tmp/tmpinclvp5z/gdpr_purge_log.jsonl
+2026-05-31T13:00:17Z [INFO] Audit entry written: /sessions/festive-nice-ramanujan/tmp/tmpinclvp5z/gdpr_purge_log.jsonl
+2026-05-31T13:00:17Z [INFO] Audit entry written: /sessions/festive-nice-ramanujan/tmp/tmpinclvp5z/gdpr_purge_log.jsonl
+2026-05-31T13:00:17Z [INFO] Audit entry written: /sessions/festive-nice-ramanujan/tmp/tmpinclvp5z/gdpr_purge_log.jsonl
+2026-05-31T13:00:17Z [INFO] Audit entry written: /sessions/festive-nice-ramanujan/tmp/tmpinclvp5z/gdpr_purge_log.jsonl
+2026-05-31T13:00:17Z [INFO] Audit entry written: /sessions/festive-nice-ramanujan/tmp/tmpinclvp5z/gdpr_purge_log.jsonl
+2026-05-31T13:00:17Z [INFO] Audit entry written: /sessions/festive-nice-ramanujan/tmp/tmpinclvp5z/gdpr_purge_log.jsonl
+2026-05-31T13:00:17Z [INFO] Run complete | status=success | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] Run complete | status=success | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] Run complete | status=success | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] Run complete | status=success | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] Run complete | status=success | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] Run complete | status=success | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] Run complete | status=success | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] Run complete | status=success | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] Run complete | status=success | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] Run complete | status=success | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] Run complete | status=success | run_id=PURGE-20260531-130017
+2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] ============================================================
+2026-05-31T13:00:17Z [INFO] ============================================================
+ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.118s
+
+OK
