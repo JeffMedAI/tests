@@ -2,8 +2,8 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$QueueJsonPath,
 
-    [string]$MonitoringConfigPath = "C:\JeffLocal\config\model_monitoring.json",
-    [string]$MonitoringBasePath = "C:\JeffLocal\logs\model_monitoring"
+    [string]$MonitoringConfigPath = "",
+    [string]$MonitoringBasePath = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -12,6 +12,27 @@ function Ensure-Dir {
     param([string]$Path)
     if (-not (Test-Path -LiteralPath $Path)) {
         New-Item -ItemType Directory -Path $Path | Out-Null
+    }
+}
+
+function Expand-EnvVars {
+    param([string]$Value)
+    # Expands ${VAR_NAME} style variables using the current environment
+    return [regex]::Replace($Value, '\$\{([^}]+)\}', {
+        param($m)
+        $varName = $m.Groups[1].Value
+        $envVal = [System.Environment]::GetEnvironmentVariable($varName)
+        if ($null -ne $envVal -and $envVal -ne "") { $envVal } else { $m.Value }
+    })
+}
+
+# Resolve config path: use parameter if provided, else env var, else default
+if ([string]::IsNullOrWhiteSpace($MonitoringConfigPath)) {
+    $jefflocalRoot = [System.Environment]::GetEnvironmentVariable("JEFFLOCAL_ROOT")
+    if ($jefflocalRoot) {
+        $MonitoringConfigPath = Join-Path $jefflocalRoot "config\model_monitoring.json"
+    } else {
+        $MonitoringConfigPath = "C:\JeffLocal\config\model_monitoring.json"
     }
 }
 
@@ -38,6 +59,16 @@ if (-not (Test-Path -LiteralPath $MonitoringConfigPath)) {
 
 $config = Get-Content -LiteralPath $MonitoringConfigPath -Raw | ConvertFrom-Json
 $queue = Get-Content -LiteralPath $QueueJsonPath -Raw | ConvertFrom-Json
+
+# Resolve MonitoringBasePath: prefer explicit param, then config's monitoring_log_dir (with env var expansion), then fallback
+if ([string]::IsNullOrWhiteSpace($MonitoringBasePath)) {
+    if (-not [string]::IsNullOrWhiteSpace($config.monitoring_log_dir)) {
+        $MonitoringBasePath = Expand-EnvVars $config.monitoring_log_dir
+    } else {
+        $jefflocalRoot = [System.Environment]::GetEnvironmentVariable("JEFFLOCAL_ROOT")
+        $MonitoringBasePath = if ($jefflocalRoot) { Join-Path $jefflocalRoot "logs\model_monitoring" } else { "C:\JeffLocal\logs\model_monitoring" }
+    }
+}
 
 $issues = @()
 $totalScore = 0
