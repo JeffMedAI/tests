@@ -170,7 +170,148 @@ a:hover { text-decoration: underline; }
 h1, h2, h3, h4 { line-height: 1.25; }
 
 /* ══════════════════════════════════════════════════════════════════════
-   TOP BAR
+   MAIN TOPBAR — R1: nav moved here from sidebar
+   ══════════════════════════════════════════════════════════════════════ */
+
+:root { --main-topbar-h: 52px; }
+
+.main-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 150;
+  height: var(--main-topbar-h);
+  background: var(--accent);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 0 16px;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0,0,80,.15);
+}
+
+.main-topbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  margin-right: 20px;
+  text-decoration: none;
+}
+.main-topbar-logo {
+  width: 30px;
+  height: 30px;
+  background: rgba(255,255,255,.2);
+  border-radius: 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 12px;
+  letter-spacing: -0.5px;
+  flex-shrink: 0;
+}
+.main-topbar-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.main-topbar-nav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: 1;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.main-topbar-nav::-webkit-scrollbar { display: none; }
+
+.main-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255,255,255,.75);
+  text-decoration: none;
+  white-space: nowrap;
+  min-height: 36px;
+  transition: background .12s, color .12s;
+}
+.main-nav-link:hover { background: rgba(255,255,255,.12); color: #fff; text-decoration: none; }
+.main-nav-link.active { background: rgba(255,255,255,.2); color: #fff; font-weight: 600; }
+.main-nav-link svg { flex-shrink: 0; opacity: .8; }
+.main-nav-link.active svg { opacity: 1; }
+
+.main-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  margin-left: 12px;
+}
+
+.main-topbar-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.25);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.main-topbar-username {
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255,255,255,.85);
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Override topbar-icon-btn and topbar-signout-btn inside main-topbar */
+.main-topbar .topbar-icon-btn {
+  width: 36px;
+  height: 36px;
+  color: rgba(255,255,255,.8);
+}
+.main-topbar .topbar-icon-btn:hover { background: rgba(255,255,255,.12); color: #fff; }
+.main-topbar .topbar-user-link { padding: 4px 6px; border-radius: 8px; gap: 6px; }
+.main-topbar .topbar-user-link:hover { background: rgba(255,255,255,.12); }
+.main-topbar .topbar-signout-btn { color: rgba(255,255,255,.7); }
+.main-topbar .topbar-signout-btn:hover { background: rgba(255,0,0,.2); color: #fff; }
+.main-topbar .topbar-import-btn {
+  height: 32px;
+  font-size: 12px;
+  background: rgba(255,255,255,.15);
+  border-color: rgba(255,255,255,.3);
+  color: #fff;
+}
+.main-topbar .topbar-import-btn:hover { background: rgba(255,255,255,.25); color: #fff; }
+
+/* App body now sits below main-topbar */
+.app-body {
+  height: calc(100dvh - var(--main-topbar-h));
+}
+
+@media (max-width: 599px) {
+  .main-topbar-name { display: none; }
+  .main-topbar-username { display: none; }
+  .main-nav-link span { display: none; } /* icon-only on mobile */
+  .main-nav-link { padding: 6px 8px; min-height: 44px; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   TOP BAR (legacy — kept for reference, no longer in template)
    ══════════════════════════════════════════════════════════════════════ */
 
 .topbar {
@@ -301,7 +442,7 @@ h1, h2, h3, h4 { line-height: 1.25; }
 .topbar-divider { width: 1px; height: 28px; background: var(--line); margin: 0 4px; }
 
 .topbar-import-btn {
-  height: 44px; /* C3: 44px touch target */
+  height: 36px; /* sidebar-appropriate height; mobile touch handled by parent padding */
   padding: 0 12px;
   border-radius: 7px;
   border: 1px solid var(--line, #e5e7eb);
@@ -382,7 +523,7 @@ h1, h2, h3, h4 { line-height: 1.25; }
   display: flex;
   flex: 1;
   overflow: hidden;
-  height: calc(100vh - var(--topbar-h));
+  /* height set dynamically by main-topbar rule above */
 }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -2383,6 +2524,133 @@ button:disabled { background: var(--gray-200); color: var(--gray-500); border-co
   border: 1px solid var(--line);
 }
 .cd-audit-summary strong { color: var(--ink-muted); font-weight: 600; }
+
+/* ── Dashboard header — clean single row ───────────────────────── */
+.dash-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px 10px;
+  flex-shrink: 0;
+}
+.dash-header-left { display: flex; flex-direction: column; gap: 3px; }
+.dash-header h1 { font-size: var(--text-xl); font-weight: 700; color: var(--ink); line-height: 1.2; }
+.dash-header-meta { font-size: var(--text-xs); color: var(--ink-subtle); display: flex; align-items: center; gap: 5px; }
+.dash-refresh-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background .12s, color .12s;
+  min-height: 36px;
+}
+.dash-refresh-btn:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+/* ── Urgent banner — inline alert, replaces full urgent-panel section */
+.urgent-banner {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 20px 8px;
+  padding: 10px 14px;
+  background: var(--danger-bg);
+  border: 1px solid var(--danger-line);
+  border-left: 4px solid var(--danger);
+  border-radius: 8px;
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+}
+.urgent-banner svg { color: var(--danger); flex-shrink: 0; }
+.urgent-banner-text { color: var(--danger); font-weight: 600; }
+.urgent-banner a { color: var(--danger); font-weight: 500; text-decoration: underline; }
+.urgent-banner a:hover { color: var(--accent); }
+.urgent-banner-action { margin-left: auto; font-weight: 700 !important; }
+.urgent-banner-ack {
+  padding: 3px 10px;
+  border: 1px solid var(--danger-line);
+  border-radius: 5px;
+  background: transparent;
+  color: var(--danger);
+  font-size: var(--text-xs);
+  cursor: pointer;
+  transition: background .12s;
+}
+.urgent-banner-ack:hover { background: var(--danger); color: #fff; }
+
+/* ── Request Mix — donut chart ──────────────────────────────────── */
+.chart-container {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 10px 0 12px;
+}
+.donut-chart {
+  width: 100px;
+  height: 100px;
+  flex-shrink: 0;
+}
+.donut-segment {
+  transition: stroke-width .2s;
+}
+.donut-segment:hover { stroke-width: 22; }
+.donut-total-num {
+  font-size: 18px;
+  font-weight: 700;
+  fill: var(--ink);
+}
+.donut-total-label {
+  font-size: 8px;
+  fill: var(--ink-subtle);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.chart-legend {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.chart-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  text-decoration: none;
+  color: var(--ink-muted);
+  font-size: var(--text-xs);
+  padding: 2px 4px;
+  border-radius: 5px;
+  transition: background .12s;
+}
+.chart-legend-item:hover { background: var(--gray-100); color: var(--ink); text-decoration: none; }
+.chart-legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.chart-legend-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chart-legend-count { font-weight: 600; color: var(--ink); margin-left: auto; flex-shrink: 0; }
+
+.bar-chart-rows { display: flex; flex-direction: column; gap: 5px; }
+.bar-row {
+  display: grid;
+  grid-template-columns: 90px 1fr 30px;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  color: var(--ink-muted);
+  font-size: var(--text-xs);
+  padding: 2px 0;
+}
+.bar-row:hover { color: var(--ink); text-decoration: none; }
+.bar-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bar-track { background: var(--gray-100); border-radius: 99px; height: 7px; overflow: hidden; }
+.bar-fill { display: block; height: 100%; border-radius: 99px; background: var(--accent); transition: width .4s ease; }
+.bar-count { text-align: right; font-weight: 600; color: var(--ink); font-size: var(--text-xs); }
 
 /* ── H4: Hamburger toggle — visible on mobile only ────────────────── */
 .mobile-menu-btn {

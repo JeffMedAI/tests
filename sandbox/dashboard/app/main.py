@@ -1573,15 +1573,15 @@ def get_summary_cards(conn, date_range: str) -> list[dict[str, Any]]:
 
 def get_request_type_breakdown(conn, date_range: str) -> list[dict[str, Any]]:
     range_where, range_params = range_clause(date_range)
-    active_sql, active_params = active_case_clause()
+    # Count ALL cases in the date range (including resolved) — shows full request volume
     rows = conn.execute(
         f"""
         SELECT COALESCE(request_type, 'unknown') AS request_type, COUNT(*) AS count
         FROM cases
-        WHERE ({range_where}) AND ({active_sql})
+        WHERE ({range_where})
         GROUP BY COALESCE(request_type, 'unknown')
         """,
-        (*range_params, *active_params),
+        range_params,
     ).fetchall()
     counts = {row["request_type"] or "unknown": row["count"] for row in rows}
     max_count = max(counts.values(), default=0)
@@ -2410,12 +2410,12 @@ def api_staff_workload() -> dict[str, Any]:
             assigned = s["display_name"] or s["username"] or ""
             # Open (unresolved, assigned to this staff member)
             open_count = conn.execute(
-                "SELECT COUNT(*) FROM cases WHERE assigned_to=? AND status NOT IN ('resolved','cancelled','closed')",
+                "SELECT COUNT(*) FROM cases WHERE assigned_to=? AND status NOT IN ('Resolved','Unable to Complete','Cancelled','Closed')",
                 (assigned,),
             ).fetchone()[0]
             # In-progress
             inprogress = conn.execute(
-                "SELECT COUNT(*) FROM cases WHERE assigned_to=? AND status='in_progress'",
+                "SELECT COUNT(*) FROM cases WHERE assigned_to=? AND status='In Progress'",
                 (assigned,),
             ).fetchone()[0]
             # Resolved today
@@ -2434,8 +2434,8 @@ def api_staff_workload() -> dict[str, Any]:
         # Team totals
         totals = conn.execute(
             """SELECT
-                SUM(CASE WHEN status NOT IN ('resolved','cancelled','closed') THEN 1 ELSE 0 END) AS open,
-                SUM(CASE WHEN status='in_progress' THEN 1 ELSE 0 END) AS in_progress,
+                SUM(CASE WHEN status NOT IN ('Resolved','Unable to Complete','Cancelled','Closed') THEN 1 ELSE 0 END) AS open,
+                SUM(CASE WHEN status='In Progress' THEN 1 ELSE 0 END) AS in_progress,
                 SUM(CASE WHEN resolved_at LIKE ? THEN 1 ELSE 0 END) AS resolved_today
             FROM cases""",
             (f"{today}%",),
@@ -3717,11 +3717,11 @@ def index(
         for sw in staff_workload_rows:
             _name = sw["display_name"] or sw["username"] or "Unknown"
             _open = conn.execute(
-                "SELECT COUNT(*) FROM cases WHERE assigned_to=? AND status NOT IN ('resolved','cancelled','closed')",
+                "SELECT COUNT(*) FROM cases WHERE assigned_to=? AND status NOT IN ('Resolved','Unable to Complete','Cancelled','Closed')",
                 (_name,),
             ).fetchone()[0]
             _prog = conn.execute(
-                "SELECT COUNT(*) FROM cases WHERE assigned_to=? AND status='in_progress'", (_name,)
+                "SELECT COUNT(*) FROM cases WHERE assigned_to=? AND status='In Progress'", (_name,)
             ).fetchone()[0]
             _done = conn.execute(
                 "SELECT COUNT(*) FROM cases WHERE resolved_by=? AND resolved_at LIKE ?",

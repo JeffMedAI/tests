@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}{{ practice_name | default('JeffLocal') }} Staff Dashboard{% endblock %}</title>
-  <link rel="stylesheet" href="{{ url_for('static', path='/dashboard.css') }}?v=5">
+  <link rel="stylesheet" href="{{ url_for('static', path='/dashboard.css') }}?v=6">
   {% block head %}{% endblock %}
 </head>
 <body>
@@ -21,68 +21,83 @@
   </div>
   {% endif %}
 
+  {# ── MAIN TOPBAR NAV (R1: moved from sidebar) ────────────────────── #}
+  <header class="main-topbar" role="banner">
+    <div class="main-topbar-brand">
+      <span class="main-topbar-logo">{{ (practice_short_code | default('JL'))[:2] }}</span>
+      <span class="main-topbar-name">{{ practice_name | default('JeffLocal') }}</span>
+    </div>
+    <nav class="main-topbar-nav" aria-label="Main navigation">
+      <a href="/"         class="main-nav-link {% if active_nav|default('dashboard') == 'dashboard' %}active{% endif %}">
+        <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </a>
+      <a href="/requests" class="main-nav-link {% if active_nav|default('') == 'requests' %}active{% endif %}">
+        <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        Requests
+      </a>
+      <a href="/patients" class="main-nav-link {% if active_nav|default('') == 'patients' %}active{% endif %}">
+        <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        Patients
+      </a>
+      <a href="/staff"    class="main-nav-link {% if active_nav|default('') == 'staff' %}active{% endif %}">
+        <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Staff
+      </a>
+      <a href="/reports"  class="main-nav-link {% if active_nav|default('') == 'reports' %}active{% endif %}">
+        <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        Reports
+      </a>
+      <a href="/settings" class="main-nav-link {% if active_nav|default('') == 'settings' %}active{% endif %}">
+        <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M19.07 19.07l-1.41-1.41M4.93 19.07l1.41-1.41M12 2v2M12 20v2M2 12h2M20 12h2"/></svg>
+        Settings
+      </a>
+    </nav>
+    <div class="main-topbar-actions">
+      {% if active_nav in ['dashboard', 'requests'] %}
+      <button id="topbar-import-btn" class="topbar-import-btn" type="button" title="Pull new handoff files into the dashboard">Import</button>
+      {% endif %}
+      <a href="/alerts" class="topbar-icon-btn" title="View Alerts" aria-label="Alerts">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      </a>
+      <a href="/profile" class="topbar-user-link" title="Your profile">
+        <div class="main-topbar-avatar" aria-hidden="true">
+          {%- if current_staff is defined and current_staff and current_staff.display_name -%}
+            {{ current_staff.display_name[0]|upper }}
+          {%- else -%}U{%- endif -%}
+        </div>
+        <span class="main-topbar-username">
+          {%- if current_staff is defined and current_staff and not current_staff.demo_fallback -%}
+            {{ current_staff.display_name }}
+          {%- else -%}demo_user{%- endif -%}
+        </span>
+      </a>
+      <a href="/logout" class="topbar-signout-btn" title="Sign out" aria-label="Sign out">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      </a>
+    </div>
+  </header>
+
   {# ── APP BODY (sidebar + main) ─────────────────────────────────── #}
   <div class="app-body">
 
-    {# ── SIDEBAR SHELL (always present on authenticated pages) ─────── #}
+    {# ── SIDEBAR — analytics only (nav moved to main-topbar) ────────── #}
     <aside class="analytics-sidebar" id="analytics-sidebar">
       <div class="sidebar-hd">
         {% block sidebar_header %}
-        <span class="sidebar-hd-title">{{ practice_name | default('JeffLocal') }}</span>
-        <button class="sidebar-toggle" id="sidebar-toggle-btn" aria-label="Toggle sidebar" title="Collapse sidebar">
+        <span class="sidebar-hd-title">
+          <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><rect x="18" y="3" width="4" height="18"/><rect x="10" y="8" width="4" height="13"/><rect x="2" y="13" width="4" height="8"/></svg>
+          Analytics
+        </span>
+        <button class="sidebar-toggle" id="sidebar-toggle-btn" aria-label="Toggle analytics sidebar" title="Collapse analytics">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
         </button>
         {% endblock %}
       </div>
 
-      <nav class="topbar-nav" aria-label="Main navigation">
-        <a href="/"         class="topbar-nav-link {% if active_nav|default('dashboard') == 'dashboard' %}active{% endif %}">Dashboard</a>
-        <a href="/requests" class="topbar-nav-link {% if active_nav|default('') == 'requests' %}active{% endif %}">Requests</a>
-        <a href="/patients" class="topbar-nav-link {% if active_nav|default('') == 'patients' %}active{% endif %}">Patients</a>
-        <a href="/staff"    class="topbar-nav-link {% if active_nav|default('') == 'staff' %}active{% endif %}">Staff</a>
-        <a href="/reports"  class="topbar-nav-link {% if active_nav|default('') == 'reports' %}active{% endif %}">Reports</a>
-        <a href="/settings" class="topbar-nav-link {% if active_nav|default('') == 'settings' %}active{% endif %}">Settings</a>
-      </nav>
-
       {# ── Per-page analytics content injected here ───────────────── #}
       {% block sidebar_content %}{% endblock %}
 
-      <div class="sidebar-footer">
-        {% if active_nav in ['dashboard', 'requests'] %}
-        <button id="topbar-import-btn" class="topbar-import-btn" type="button" title="Pull new handoff files into the dashboard">Import</button>
-        {% endif %}
-        <a href="/alerts" class="topbar-icon-btn" title="View Alerts" aria-label="Alerts">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-        </a>
-        <div class="topbar-user" id="topbar-user-menu-wrap">
-          <a href="/profile" class="topbar-user-link" title="Your profile">
-            <div class="topbar-user-info">
-              <span class="topbar-user-name">
-                {%- if current_staff is defined and current_staff and not current_staff.demo_fallback -%}
-                  {{ current_staff.display_name }}
-                {%- else -%}
-                  demo_user
-                {%- endif -%}
-              </span>
-              <span class="topbar-user-role">
-                {%- if current_staff is defined and current_staff -%}
-                  {{ current_staff.role|title }}
-                {%- else -%}
-                  Staff
-                {%- endif -%}
-              </span>
-            </div>
-            <div class="avatar" aria-hidden="true">
-              {%- if current_staff is defined and current_staff and current_staff.display_name -%}
-                {{ current_staff.display_name[0]|upper }}
-              {%- else -%}U{%- endif -%}
-            </div>
-          </a>
-          <a href="/logout" class="topbar-signout-btn" title="Sign out">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-          </a>
-        </div>
-      </div>
     </aside>
 
     {# ── MAIN CONTENT ─────────────────────────────────────────────── #}

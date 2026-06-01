@@ -185,45 +185,35 @@
   {% if show_dashboard_overview %}
   <div class="dashboard-scroll">
 
-    <section class="page-head">
-      <div>
-        <span class="page-kicker">JeffLocal Reception Dashboard</span>
-        <h1><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:6px"><rect x="18" y="3" width="4" height="18"/><rect x="10" y="8" width="4" height="13"/><rect x="2" y="13" width="4" height="8"/></svg>Today's Overview</h1>
-        <p class="muted">Check critical issues, workload status, and team performance at a glance.</p>
+    {# ── Clean dashboard header — title + system status + refresh ── #}
+    <section class="dash-header">
+      <div class="dash-header-left">
+        <h1>Today's Overview</h1>
+        <span class="dash-header-meta">
+          <i class="health-dot {{ system_health.dashboard.state }}"></i>
+          System {{ system_health.dashboard.label }} &nbsp;·&nbsp; Updated {{ page_updated_at|display_ts }}
+        </span>
       </div>
-      <div class="header-actions">
-        <span class="status-pill"><i class="health-dot {{ system_health.dashboard.state }}"></i>System {{ system_health.dashboard.label }}</span>
-        <span class="header-meta">Updated {{ page_updated_at|display_ts }}</span>
-        <button type="button" data-refresh-services-button>Refresh</button>
-      </div>
+      <button type="button" class="dash-refresh-btn" data-refresh-services-button aria-label="Refresh dashboard">
+        <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+        Refresh
+      </button>
     </section>
 
-    <section class="urgent-panel" aria-label="Urgent Attention">
-      <div>
-        <h2>
-          <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:5px"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-          Urgent Attention
-        </h2>
-        {% if urgent_attention.latest %}
-          <p>{{ urgent_attention.latest.alert_type }}: {{ urgent_attention.latest.message }}</p>
-        {% else %}
-          <p><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px"><polyline points="20 6 9 17 4 12"/></svg>No critical issues detected</p>
-        {% endif %}
-      </div>
-      {% if urgent_attention.red_flags > 0 or urgent_attention.staff_review > 0 or urgent_attention.identity_checks > 0 %}
-      <div class="urgent-counts" aria-live="polite" aria-atomic="true">
-        {% if urgent_attention.red_flags > 0 %}<a href="{{ filter_links[1].url }}"><span><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Critical Issues</span><strong>{{ urgent_attention.red_flags }}</strong></a>{% endif %}
-        {% if urgent_attention.staff_review > 0 %}<a href="{{ filter_links[2].url }}"><span><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>Cases Needing Review</span><strong>{{ urgent_attention.staff_review }}</strong></a>{% endif %}
-        {% if urgent_attention.identity_checks > 0 %}<a href="{{ filter_links[3].url }}"><span><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>Identity Issues</span><strong>{{ urgent_attention.identity_checks }}</strong></a>{% endif %}
-      </div>
-      <div class="urgent-actions">
-        <a class="button-link danger-link" href="{{ filter_links[1].url }}">→ View Issues</a>
-        {% if urgent_attention.latest %}
-          <button type="button" id="urgent-ack-button" data-alert-id="{{ urgent_attention.latest.alert_id }}">Acknowledge</button>
-        {% endif %}
-      </div>
+    {# ── Urgent alert banner — only shown when there are urgent items ── #}
+    {% if urgent_attention.red_flags > 0 or urgent_attention.staff_review > 0 or urgent_attention.identity_checks > 0 %}
+    <section class="urgent-banner" aria-live="polite" role="alert">
+      <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      <span class="urgent-banner-text">Urgent attention required —</span>
+      {% if urgent_attention.red_flags > 0 %}<a href="{{ filter_links[1].url }}"><strong>{{ urgent_attention.red_flags }}</strong> red flag{{ 's' if urgent_attention.red_flags != 1 }}</a>{% endif %}
+      {% if urgent_attention.staff_review > 0 %}<a href="{{ filter_links[2].url }}"><strong>{{ urgent_attention.staff_review }}</strong> needing review</a>{% endif %}
+      {% if urgent_attention.identity_checks > 0 %}<a href="{{ filter_links[3].url }}"><strong>{{ urgent_attention.identity_checks }}</strong> identity issue{{ 's' if urgent_attention.identity_checks != 1 }}</a>{% endif %}
+      <a class="urgent-banner-action" href="{{ filter_links[1].url }}">View all →</a>
+      {% if urgent_attention.latest %}
+        <button type="button" id="urgent-ack-button" data-alert-id="{{ urgent_attention.latest.alert_id }}" class="urgent-banner-ack">Acknowledge</button>
       {% endif %}
     </section>
+    {% endif %}
 
     <section class="kpi-grid" aria-label="Today's Key Metrics" aria-live="polite" aria-atomic="false">
       {% for card in kpi_cards %}
@@ -269,20 +259,67 @@
     </section>
 
     <section class="insight-grid three-up" aria-label="Dashboard insights">
-      <div class="panel compact-panel request-mix-card" aria-label="Request Mix">
+      <div class="panel compact-panel request-mix-card" aria-label="Request Mix by type">
         <div class="section-head">
           <h2>Request Mix</h2>
           <span class="muted">{{ active_date_range_label }}</span>
         </div>
-        {% for item in visible_request_mix %}
-          <a class="bar-row" href="{{ item.url }}">
+        {% if visible_request_mix %}
+        {# Interactive SVG donut chart #}
+        {% set total_requests = visible_request_mix | sum(attribute='count') %}
+        {% set chart_colors = ['#005EB8','#00A9CE','#009639','#768692','#E8871E','#AE2573','#006747','#003D82'] %}
+        <div class="chart-container" aria-label="Request type breakdown chart">
+          <svg class="donut-chart" viewBox="0 0 120 120" role="img" aria-label="Request mix donut chart">
+            <title>Request type breakdown: {{ total_requests }} total</title>
+            {% set ns = namespace(offset=25) %}
+            {% for item in visible_request_mix %}
+              {% if total_requests > 0 %}
+                {% set pct = (item.count / total_requests * 100) | round(1) %}
+                {% set stroke_pct = (item.count / total_requests * 100) %}
+                <circle class="donut-segment"
+                  cx="60" cy="60" r="40"
+                  fill="none"
+                  stroke="{{ chart_colors[loop.index0 % chart_colors|length] }}"
+                  stroke-width="18"
+                  stroke-dasharray="{{ stroke_pct }} {{ 100 - stroke_pct }}"
+                  stroke-dashoffset="{{ -ns.offset + 100 }}"
+                  transform="rotate(-90 60 60)">
+                  <title>{{ item.label }}: {{ item.count }} ({{ pct }}%)</title>
+                </circle>
+                {% set ns.offset = ns.offset + stroke_pct %}
+              {% endif %}
+            {% endfor %}
+            <text x="60" y="56" text-anchor="middle" class="donut-total-num">{{ total_requests }}</text>
+            <text x="60" y="68" text-anchor="middle" class="donut-total-label">total</text>
+          </svg>
+          <div class="chart-legend">
+            {% for item in visible_request_mix %}
+            <a class="chart-legend-item" href="{{ item.url }}" title="{{ item.label }}: {{ item.count }}">
+              <span class="chart-legend-dot" style="background:{{ chart_colors[loop.index0 % chart_colors|length] }}"></span>
+              <span class="chart-legend-label">{{ item.label }}</span>
+              <span class="chart-legend-count">{{ item.count }}</span>
+            </a>
+            {% endfor %}
+          </div>
+        </div>
+        {# Horizontal bar chart below #}
+        <div class="bar-chart-rows" role="list">
+          {% for item in visible_request_mix %}
+          <a class="bar-row" href="{{ item.url }}" role="listitem" aria-label="{{ item.label }}: {{ item.count }} cases">
             <span class="bar-label">{{ item.label }}</span>
+            <span class="bar-track">
+              <span class="bar-fill" style="width:{{ item.width }}%; background:{{ chart_colors[loop.index0 % chart_colors|length] }}"></span>
+            </span>
             <span class="bar-count">{{ item.count }}</span>
-            <span class="bar-track"><span class="bar-fill" style="width:{{ item.width }}%"></span></span>
           </a>
+          {% endfor %}
+        </div>
         {% else %}
-          <p class="muted">No requests in this range.</p>
-        {% endfor %}
+          <div class="empty-state" style="padding:24px">
+            <p class="empty-state-title">No requests yet</p>
+            <p class="empty-state-body">Cases will appear here once calls are processed.</p>
+          </div>
+        {% endif %}
       </div>
 
       <div class="panel compact-panel" aria-label="Staff Workload">
