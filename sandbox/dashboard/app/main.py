@@ -3699,7 +3699,11 @@ def index(
         summary_cards = get_summary_cards(conn, date_range)
         kpi_cards = get_kpi_cards(conn, date_range)
         request_type_breakdown = get_request_type_breakdown(conn, date_range)
-        visible_request_mix = [item for item in request_type_breakdown if item["count"] > 0][:5]
+        # Sort by count descending so top types always appear; show up to 8
+        visible_request_mix = sorted(
+            [item for item in request_type_breakdown if item["count"] > 0],
+            key=lambda x: x["count"], reverse=True
+        )[:8]
         current_staff = current_staff_from_request(request, conn)
         staff_users = get_staff_users(conn)
         show_demo_banner = demo_data_present(conn)

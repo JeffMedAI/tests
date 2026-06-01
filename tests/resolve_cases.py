@@ -6,7 +6,7 @@ Uses form POSTs to quick_action and update endpoints — same as the browser UI.
 import sys, json, urllib.request, urllib.error, http.cookiejar, urllib.parse
 
 BASE = "http://localhost:5000"
-BATCH = "20260601-135250"
+BATCH = "20260601-160724"
 
 CASES = [
     ("01-PRESCRIPTION",      "Prescription request processed. Checked patient record — repeat prescription authorised by GP. Sent to Boots Lord Street pharmacy via EMIS. Patient advised by callback that prescription will be ready within 2 working days."),
@@ -70,3 +70,4 @@ for suffix, outcome in CASES:
         resolved += 1
 
 print(f"\nResolved {resolved}/{len(CASES)} cases.")
+
