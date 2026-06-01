@@ -631,6 +631,42 @@ Agent Hiring/Role Change        Saeed (with input from current team) —
 
 ---
 
+## Agent Communication Protocols
+
+### Rule: Verify Recipient Before Sending Any External Message (Added 2026-06-01)
+
+**Trigger:** INC-2026-06-01-WHATSAPP — Internal briefing sent to wrong WhatsApp group due to
+coordinate-based chat selection.
+
+**Rule (mandatory for all agents):**
+
+Before sending any message via an external channel (WhatsApp, email, SMS, Slack, etc.),
+an agent MUST verify the recipient identity using the following steps:
+
+```
+1. LOCATE the recipient by searching for their name, number, or email address
+   (do NOT select by visual position, coordinate, or assumed list order)
+
+2. VERIFY the recipient display — read the chat header / To: field / recipient label
+   and confirm it shows the expected name or address
+
+3. SEND only after confirmed — if the display does not match the expected recipient,
+   ABORT the send, log an error, and escalate to Saeed
+
+4. NEVER rely on coordinates, visual list positions, or prior-session screenshots
+   to navigate to a recipient — UI state changes between sessions
+```
+
+**WhatsApp-specific rule:**
+- Use pywhatkit.sendwhatmsg_instantly (navigates by phone number URL — inherently safe), OR
+- Use WhatsApp Web search field → type name/number → select result → verify header → send
+- See: `scripts/daily/send_whatsapp.py` for the reference implementation
+
+**Incident reference:** `docs/reports/INCIDENT_whatsapp_wrong_recipient_2026-06-01.md`  
+**Security review:** `docs/compliance/security_review_whatsapp_incident_2026-06-01.md`
+
+---
+
 ## Communication & Escalation
 
 ### Communication Channels

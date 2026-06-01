@@ -36,7 +36,5 @@
   "tests/test_api_endpoints.py::test_api_alert_logging_does_not_alter_locked_case_fields": true,
   "tests/test_api_endpoints.py::test_api_red_flags_sorts_newer_n8ntest_before_older_rawmock": true,
   "tests/test_api_endpoints.py::test_staff_identity_populates_quick_action_fields": true,
-  "tests/test_api_endpoints.py::test_recording_attachment_existing_call_no_overwrite_and_audit": true,
-  "tests/test_hmac_verification.py::test_integration_no_secret_set_skips_verification": true,
-  "tests/test_hmac_verification.py::test_integration_valid_hmac_accepted": true
+  "tests/test_api_endpoints.py::test_recording_attachment_existing_call_no_overwrite_and_audit": true
 }

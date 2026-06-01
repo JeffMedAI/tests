@@ -1,6 +1,6 @@
 ﻿# PROJECT MEMORY â€” JeffLocal
 # READ THIS FIRST at every session start, before doing anything else.
-# Last updated: 2026-05-31 (auto-updated 07:00)
+# Last updated: 2026-06-01 (auto-updated 07:00)
 # Maintained by: Claude (update at end of every session)
 
 ---
@@ -160,7 +160,7 @@ C:\JeffLocal\backups\RESTORE_POINT_20260529\        â† Latest restore point
 ```
 Repo:    https://github.com/JeffMedAI/tests
 Branch:  sandbox
-Latest:  61ab404 phase1: sidebar refactor, test suite fixes, E2E run script
+Latest:  f9c4c86 feat: GDPR 90-day automated purge script with audit log 2026-05-30
 Tag:     RESTORE_20260529
 Author:  215987900+Avamedio@users.noreply.github.com
 ```
@@ -213,21 +213,29 @@ Monitoring:     Watchdog (restarts dashboard if down), checks every 5 min
 
 ## KNOWN PROCESS RULES (hard lessons)
 
-1. Production breach 2026-05-29 â€” git branch name does NOT indicate environment.
+1. Production breach 2026-05-29 — git branch name does NOT indicate environment.
    Always verify path before editing. Production = port 8765, C:\JeffLocal\dashboard\.
    Sandbox = port 5000, C:\JeffLocal\sandbox\dashboard\.
 
 2. All cookie-setting calls must include secure=True (Cloudflare handles HTTPS externally).
 
-3. Agents do not self-authorise production changes. "I thought it was safe" is not
-   sufficient. Saeed's "approved" in the chat is required.
+3. Agents do not self-authorise production changes. “I thought it was safe” is not
+   sufficient. Saeed's “approved” in the chat is required.
 
 4. Approvals do not carry over between sessions. Re-confirm every session.
 
 5. Security Agent must review ALL PRs, even one-line changes.
 
+6. WhatsApp incident 2026-06-01 — NEVER use coordinate-based navigation to select a
+   WhatsApp chat recipient. Chat list order changes between sessions. ALWAYS use
+   search-by-name/number, verify the chat header shows the correct recipient, THEN send.
+   If header does not match: ABORT. Script: scripts\daily\send_whatsapp.py.
+   Rule also in: sandbox\agents\backend\backend_CLAUDE.md (W1 INCIDENT section)
+   and governance\GOVERNANCE_FRAMEWORK.md (Agent Communication Protocols).
+
 ---
 *Update this file at the end of every session. It is the single source of truth
 for project state and the first thing to read when starting fresh.*
+
 
 

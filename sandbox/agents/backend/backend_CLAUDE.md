@@ -7,6 +7,44 @@
 
 ## ⚠️ HARD LESSONS — READ BEFORE TOUCHING ANY FILE
 
+### W1 INCIDENT — 2026-06-01 — WhatsApp Wrong Recipient (Dispatch)
+
+**What happened:** Dispatch sent internal project briefing messages to a personal
+WhatsApp group ("Pics!") instead of "Saeed Alam (You)" because it clicked a chat
+by screen coordinate. The chat list had reordered since the prior session, so the
+coordinate pointed to the wrong chat. Messages were deleted by Saeed within minutes.
+No patient data was involved. Classified as Internal Process Failure.
+
+**Incident report:** `docs/reports/INCIDENT_whatsapp_wrong_recipient_2026-06-01.md`  
+**Security review:** `docs/compliance/security_review_whatsapp_incident_2026-06-01.md`
+
+---
+
+### RULE: When sending WhatsApp messages via WhatsApp Web automation
+
+```
+✅ ALWAYS use the search function to locate the correct chat by name or number
+✅ ALWAYS verify the chat header shows the expected recipient name before sending
+✅ Use pywhatkit.sendwhatmsg_instantly — it navigates by phone number URL (safe)
+
+✗ NEVER click a chat by screen coordinate or visual position in the chat list
+✗ NEVER rely on a prior session's screenshot for coordinate positions
+✗ NEVER send without confirming the correct recipient is displayed
+```
+
+If using browser/computer-use automation (not pywhatkit):
+1. Click the WhatsApp Web search field
+2. Type the phone number or name
+3. Select the matching result
+4. READ the chat header — confirm it shows the expected name
+5. Only then type and send
+
+If the header does not match: ABORT. Log an error. Do NOT send.
+
+The script implementing this is at: `scripts/daily/send_whatsapp.py`
+
+---
+
 ### G1 BREACH — 2026-05-29 — Production Environment Confusion
 
 **What happened:** The Backend Agent edited `C:\JeffLocal\dashboard\` (PRODUCTION, port 8765)

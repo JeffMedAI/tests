@@ -1,7 +1,35 @@
 # CHANGE_LOG — JeffLocal Sprint 1 Audit Trail
 **Purpose:** Official record of all approvals, deployments, and decisions  
 **Status:** ACTIVE  
-**Last Updated:** 2026-05-31
+**Last Updated:** 2026-06-01
+
+---
+
+## INC_20260601_WHATSAPP_WRONG_RECIPIENT — WhatsApp Misdirected Message Incident
+
+**Date:** 2026-06-01  
+**Status:** ✅ CLOSED — Corrective actions applied  
+**Agent:** Dispatch (Claude)  
+**Type:** Incident / Internal Process Failure  
+**Classification:** Internal Process Failure — NOT a data breach (no personal data involved)
+
+**What happened:**
+Daily briefing messages were sent to personal WhatsApp group "Pics!" instead of
+"Saeed Alam (You)" (saved messages). Root cause: coordinate-based chat selection
+in a session where the chat list had reordered from the prior session. Messages
+contained internal project status only — no patient data, no credentials.
+Saeed deleted the messages within ~2–3 minutes of discovery.
+
+**Corrective actions applied:**
+1. `scripts/daily/send_whatsapp.py` — updated with search-verified navigation and abort-on-mismatch
+2. `sandbox/agents/backend/backend_CLAUDE.md` — hard rule added (W1 INCIDENT section)
+3. `governance/GOVERNANCE_FRAMEWORK.md` — new "Agent Communication Protocols" section
+4. Incident report written: `docs/reports/INCIDENT_whatsapp_wrong_recipient_2026-06-01.md`
+5. Security review written: `docs/compliance/security_review_whatsapp_incident_2026-06-01.md`
+6. PROJECT_MEMORY.md updated with prohibited coordinate navigation rule
+
+**Security verdict:** CONTAINED — no notification obligations  
+**GDPR assessment:** Not a personal data breach — no personal data was disclosed
 
 ---
 
