@@ -158,6 +158,29 @@ def stage_preflight(args: argparse.Namespace) -> bool:
 
 
 # ── Stage 2: Inject calls ─────────────────────────────────────────────────────
+def _direct_intake(args: argparse.Namespace, calls: list[dict]) -> dict:
+    """POST calls to dashboard test-intake-batch in chunks of 5 (endpoint limit).
+    Returns merged summary. Used when n8n is not configured to write handoff JSON."""
+    url = f"{args.dashboard_url}/api/n8n/test-intake-batch"
+    results: dict = {"ok": True, "dashboard_imported": 0, "batches": []}
+    for i in range(0, len(calls), 5):
+        chunk = calls[i:i + 5]
+        payload = {
+            "test_mode": True,
+            "batch_id": f"{chunk[0]['call_id'][:12]}-chunk{i // 5}",
+            "disable_google_push": True,
+            "refresh_artifacts": i == 0,
+            "calls": chunk,
+        }
+        status, body = http_post(url, payload, timeout=args.timeout)
+        if status not in (200, 201):
+            results["ok"] = False
+        if isinstance(body, dict):
+            results["dashboard_imported"] += body.get("dashboard_imported", 0)
+            results["batches"].append({"chunk": i // 5, "status": status, "imported": body.get("dashboard_imported", 0)})
+    return results
+
+
 def stage_inject(args: argparse.Namespace, run_ts: str) -> tuple[bool, list[str]]:
     print(hdr("Stage 2 — Inject 10 test calls"))
 
@@ -180,7 +203,17 @@ def stage_inject(args: argparse.Namespace, run_ts: str) -> tuple[bool, list[str]
         print(warn(f"Webhook rejected batch — aborting stages 3-4. Response: {body}"))
         return False, call_ids
 
-    print(f"\n  Waiting {args.wait_seconds}s for pipeline to process ...")
+    # n8n is not configured to write handoff JSON, so drive the pipeline directly.
+    # This mirrors what n8n's workflow should eventually do automatically.
+    print(f"\n  Driving pipeline via dashboard direct-intake ({len(call_ids)} calls, chunks of 5) ...")
+    intake = _direct_intake(args, batch["calls"])
+    record(2, "Dashboard direct-intake pipeline succeeded", intake["ok"],
+           f"imported={intake['dashboard_imported']} batches={len(intake['batches'])}")
+
+    if not intake["ok"]:
+        print(warn("Direct-intake had failures — Stage 3 results may be incomplete"))
+
+    print(f"\n  Waiting {args.wait_seconds}s for pipeline to complete ...")
     time.sleep(args.wait_seconds)
 
     return True, call_ids
@@ -214,8 +247,9 @@ def stage_verify(args: argparse.Namespace, call_ids: list[str], calls: list[dict
     time.sleep(3)
     all_ok = True
 
-    # Find dashboard DB — check standard locations
+    # Find dashboard DB — check production and sandbox locations
     db_candidates = [
+        REPO_ROOT / "sandbox" / "dashboard" / "data" / "dashboard.sqlite",
         REPO_ROOT / "dashboard" / "data" / "dashboard.sqlite",
         REPO_ROOT / "dashboard" / "dashboard.sqlite",
     ]
@@ -400,8 +434,8 @@ def parse_args() -> argparse.Namespace:
     )
     p.add_argument("--webhook-url",    default="http://localhost:5678/webhook/jefflocal-test-intake",
                    help="n8n webhook URL (default: http://localhost:5678/webhook/jefflocal-test-intake)")
-    p.add_argument("--dashboard-url",  default="http://localhost:8765",
-                   help="Dashboard base URL (default: http://localhost:8765)")
+    p.add_argument("--dashboard-url",  default="http://localhost:5000",
+                   help="Dashboard base URL (default: http://localhost:5000 sandbox; use 8765 for production)")
     p.add_argument("--wait-seconds",   type=int, default=30,
                    help="Seconds to wait for pipeline after injection (default: 30)")
     p.add_argument("--timeout",        type=int, default=120,
