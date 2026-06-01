@@ -134,3 +134,134 @@ The Strategy Agent compiles all of these at 07:00 into the daily briefing.
 - SANDBOX path: C:\JeffLocal\sandbox\dashboard\ (port 5000) — safe to edit
 - Git branch "sandbox" does NOT mean sandbox directory — always verify path
 - Saeed's approval is required every session — approvals do not carry over
+
+---
+
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+---
+
+## Architecture Overview
+
+JeffLocal is an on-premises AI patient triage system for UK GP surgeries. Patients call the surgery → a voice AI (Jeff) captures the reason → the system extracts structured data, matches the patient, applies safety rules, and delivers a task to reception staff on a web dashboard. No patient data leaves the building.
+
+**Pipeline stages (roughly in order):**
+1. **Intake** — encrypted/raw transcripts land in `queue/incoming/`
+2. **Processing** (`app/process_queue.ps1`, `app/modules/`) — PowerShell scripts extract, classify, and validate via Ollama/Gemma
+3. **Ollama extraction** (`app/call_ollama.ps1`) — local LLM extracts draft structured fields; deterministic code always overrides LLM output for patient identity fields
+4. **Patient matching** (`app/modules/Jeff.PatientMatch.ps1`) — deterministic fuzzy match against EMIS/NHS reference data
+5. **Handoff JSON** written to `outputs/handoff_json/`; raw Ollama output to `outputs/ollama_raw/`
+6. **Dashboard importer** (`sandbox/dashboard/app/importer.py`) — polls `outputs/handoff_json/`, imports into SQLite
+7. **Dashboard** (`sandbox/dashboard/app/main.py`) — FastAPI + Jinja2 + SQLite serving staff UI on port 5000 (sandbox) / 8765 (production)
+
+**Critical rule:** Ollama may extract and draft. Deterministic JeffLocal code must verify, match, validate, and finalise. LLM output must never override verified EMIS/NHS/patient lookup data.
+
+---
+
+## Two Dashboard Instances
+
+```
+PRODUCTION  = C:\JeffLocal\dashboard\        port 8765   watchdog-managed   LIVE
+SANDBOX     = C:\JeffLocal\sandbox\dashboard\ port 5000   manual start       safe to edit
+```
+
+Both instances share the same `app/` code structure. Edits should always target sandbox first.
+
+---
+
+## Dashboard — Key Files
+
+```
+sandbox/dashboard/
+  app/
+    main.py       FastAPI app: all routes, auth middleware, HMAC webhook endpoint
+    auth.py       Session management, password/PIN hashing, lockout, reset tokens
+    db.py         SQLite connection helper, schema init (dashboard.sqlite)
+    importer.py   Polls handoff_json/, calls Ollama for task text, writes to DB
+    models.py     Field constants, status lists, display formatters
+    audit.py      Writes audit log entries to SQLite
+  data/
+    dashboard.sqlite   Live database (sandbox); do not commit
+  templates/     Jinja2 HTML templates
+  static/        CSS and JS assets
+  tests/         pytest integration tests (httpx TestClient against in-memory DB)
+```
+
+---
+
+## Commands
+
+**Run sandbox dashboard (manual):**
+```powershell
+cd C:\JeffLocal\sandbox\dashboard
+.\run_dashboard.ps1          # creates .venv, installs requirements, starts uvicorn on 5000
+```
+Or directly:
+```powershell
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --host 0.0.0.0 --port 5000
+```
+
+**Run tests (sandbox dashboard):**
+```powershell
+cd C:\JeffLocal\sandbox\dashboard
+.\.venv\Scripts\pytest tests\ -v
+```
+
+**Run a single test file:**
+```powershell
+.\.venv\Scripts\pytest tests\test_render_pages.py -v
+```
+
+**Run a single test by name:**
+```powershell
+.\.venv\Scripts\pytest tests\test_render_pages.py -k "test_home_page" -v
+```
+
+**Install / update dependencies:**
+```powershell
+.\.venv\Scripts\pip install -r requirements.txt
+```
+
+**Run E2E call-flow test:**
+```powershell
+cd C:\JeffLocal\tests
+python run_e2e_callflow_test.py
+```
+
+---
+
+## Test Setup
+
+- All tests live in `sandbox/dashboard/tests/`
+- `conftest.py` applies `bypass_auth` autouse fixture — monkeypatches `_is_public_path` to always return `True`, bypassing the session cookie check for all tests
+- Tests that specifically test auth middleware must override `bypass_auth` locally
+- Tests use httpx `TestClient` with an in-memory SQLite DB (passed via `app.state`)
+
+---
+
+## Processing Pipeline — PowerShell Modules
+
+Core logic in `app/modules/`:
+- `Jeff.PatientMatch.ps1` — deterministic fuzzy patient matching
+- `Jeff.Validation.ps1` — flag/safety rule checks
+- `Jeff.Handoff.ps1` — builds the handoff JSON envelope
+- `Jeff.RequestType.ps1` — classifies request type from extracted fields
+- `Jeff.Emergency.ps1` — emergency/red-flag detection
+- `Jeff.StaffSummary.ps1` — generates human-readable staff summary line
+- `Jeff.Common.ps1` — shared utilities
+
+---
+
+## n8n Integration
+
+n8n receives webhook calls and is expected to write handoff JSON to `outputs/handoff_json/`. Webhook path: `jefflocal-test-intake`. The dashboard importer polls that directory; if n8n is not writing files, cases will not appear on the dashboard (this was the Stage 3 gap as of May 2026).
+
+---
+
+## GDPR / Data Retention
+
+- 90-day automated purge: `scripts/gdpr/` — runs via Windows Task Scheduler
+- Audit log: written by `app/audit.py` to `audits/` table in SQLite
+- No patient data to be committed to git
