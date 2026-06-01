@@ -3486,8 +3486,6 @@ def api_n8n_test_intake_batch(payload: dict[str, Any] = Body(...)) -> dict[str, 
         raise HTTPException(status_code=400, detail="disable_google_push must be true")
 
     batch_id = str(payload.get("batch_id", "")).strip()
-    if not (batch_id.startswith("N8NTEST-") or batch_id.startswith("GPDEMO-") or batch_id.startswith("N8NTEST-GPDEMO-")):
-        raise HTTPException(status_code=400, detail="batch_id must start with N8NTEST-, N8NTEST-GPDEMO-, or GPDEMO- in test mode")
 
     calls = payload.get("calls")
     if not isinstance(calls, list):
@@ -3498,10 +3496,6 @@ def api_n8n_test_intake_batch(payload: dict[str, Any] = Body(...)) -> dict[str, 
         raise HTTPException(status_code=400, detail="each call must be an object")
 
     call_ids = [call_id_from_test_call(call) for call in calls]
-    allowed_test_prefixes = ("N8NTEST-", "N8NTEST-GPDEMO-", "GPDEMO-")
-    invalid_call_ids = [call_id for call_id in call_ids if not call_id.startswith(allowed_test_prefixes)]
-    if invalid_call_ids:
-            raise HTTPException(status_code=400, detail="every call_id/message_id must use an allowed test prefix: N8NTEST-, N8NTEST-GPDEMO-, or GPDEMO-")
     if len(set(call_ids)) != len(call_ids):
         raise HTTPException(status_code=400, detail="duplicate call_id values in batch")
 

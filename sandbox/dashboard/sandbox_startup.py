@@ -42,7 +42,15 @@ print(f"  Practice : {PRACTICE_NAME}")
 print(f"  Mode     : {ENVIRONMENT}")
 print(f"  Port     : {PORT}")
 
-# ── 3. Import app and patch template globals ────────────────────────────
+# ── 3. Override ROOT_DIR so sandbox finds the shared pipeline scripts ───
+#    main.py computes ROOT_DIR as parents[2] of main.py, which resolves to
+#    C:\JeffLocal\sandbox — but the processing pipeline lives at C:\JeffLocal.
+#    Setting JEFFLOCAL_ROOT_DIR overrides the computed path.
+_repo_root = _here.parent.parent  # C:\JeffLocal\sandbox\dashboard -> C:\JeffLocal
+os.environ.setdefault("JEFFLOCAL_ROOT_DIR", str(_repo_root))
+print(f"✓ ROOT_DIR override → {_repo_root}")
+
+# ── 4. Import app and patch template globals ────────────────────────────
 #    We import AFTER setting env vars so any os.environ.get() calls
 #    in main.py at module level will also pick up the correct values.
 sys.path.insert(0, str(_here))

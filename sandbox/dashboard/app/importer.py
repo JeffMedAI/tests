@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sqlite3
 import urllib.request
 import urllib.error
@@ -10,7 +11,7 @@ from typing import Any
 from .models import parse_call_timestamp_sort, utc_now_iso
 
 
-ROOT_DIR = Path(__file__).resolve().parents[2]
+ROOT_DIR = Path(os.environ["JEFFLOCAL_ROOT_DIR"]) if os.environ.get("JEFFLOCAL_ROOT_DIR") else Path(__file__).resolve().parents[2]
 HANDOFF_DIR = ROOT_DIR / "outputs" / "handoff_json"
 OLLAMA_RAW_DIR = ROOT_DIR / "outputs" / "ollama_raw"
 OLLAMA_URL = "http://localhost:11434/api/generate"

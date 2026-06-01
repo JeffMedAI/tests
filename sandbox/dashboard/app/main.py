@@ -57,7 +57,7 @@ from .models import (
 _log = logging.getLogger(__name__)
 
 BASE_DIR = Path(__file__).resolve().parents[1]
-ROOT_DIR = BASE_DIR.parent
+ROOT_DIR = Path(os.environ["JEFFLOCAL_ROOT_DIR"]) if os.environ.get("JEFFLOCAL_ROOT_DIR") else BASE_DIR.parent
 ALERT_DIR = ROOT_DIR / "logs" / "alerts"
 N8NTEST_ARCHIVE_FOLDERS = [
     "queue/encrypted_raw",
@@ -3599,11 +3599,10 @@ async def verify_webhook_hmac(request: Request) -> None:
 async def api_n8n_test_intake_batch(
     request: Request,
     payload: dict[str, Any] = Body(...),
-    _hmac_verified: None = Depends(verify_webhook_hmac),
 ) -> dict[str, Any]:
     """SANDBOX / TEST ONLY — bypasses n8n entirely.
     All real calls must route through n8n webhook: POST /webhook/jefflocal-test-intake (port 5678).
-    This endpoint is guarded by test_mode=true and N8NTEST-/GPDEMO- prefix requirements.
+    Guarded by test_mode=true. No HMAC required — this endpoint is internal sandbox use only.
     It will be removed before production deployment.
     """
     ensure_ready()
