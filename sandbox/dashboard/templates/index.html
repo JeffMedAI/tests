@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{% if show_requests %}Requests{% else %}Dashboard{% endif %} - JeffLocal{% endblock %}
+{% block title %}{% if show_requests %}Requests{% else %}Dashboard{% endif %} — JeffLocal{% endblock %}
 
 {% block sidebar_header %}
 <span class="sidebar-hd-title">Analytics</span>
@@ -27,9 +27,9 @@
     {# ── Queue status ── #}
     {% if queue_status_card is defined %}
     <div class="analytics-card" title="Quick Status" data-metric=" · {{ queue_status_card.open }} open">
-      <div class="card-collapsed-icon" title="Quick Status">📊</div>
+      <div class="card-collapsed-icon" aria-hidden="true" title="Quick Status"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="18" y="3" width="4" height="18"/><rect x="10" y="8" width="4" height="13"/><rect x="2" y="13" width="4" height="8"/></svg></div>
       <div class="card-full-content"></div>
-      <div class="sidebar-section-hd">📊 Quick Status</div>
+      <h3 class="sidebar-section-hd"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><rect x="18" y="3" width="4" height="18"/><rect x="10" y="8" width="4" height="13"/><rect x="2" y="13" width="4" height="8"/></svg>Quick Status</h3>
       <div class="analytics-row">
         <span class="ar-label"><span class="ar-dot blue"></span>Open</span>
         <span class="ar-value">{{ queue_status_card.open }}</span>
@@ -52,7 +52,7 @@
     {# ── Critical Issues alert card ── #}
     {% if urgent_attention.red_flags > 0 %}
     <a class="red-flag-card" title="Critical Issues" href="{{ filter_links[1].url if filter_links|length > 1 else '/requests?filter=urgent_red_flags' }}">
-      <span class="rf-icon">⚠️</span>
+      <span class="rf-icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
       <div class="rf-body">
         <span class="rf-label">Critical Issues</span>
         <span class="rf-value">{{ urgent_attention.red_flags }}</span>
@@ -70,11 +70,11 @@
 
     {# ── Staff Workload (live) ── #}
     <div class="analytics-card" title="Staff Workload" id="staff-workload-card" data-metric=" · {{ staff_workload_list|length }} staff">
-      <div class="card-collapsed-icon">👥</div>
-      <div class="sidebar-section-hd">
-        👥 Staff Workload
+      <div class="card-collapsed-icon" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+      <h3 class="sidebar-section-hd">
+        <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>Staff Workload
         <span id="staff-workload-refresh-ts" class="sidebar-card-ts"></span>
-      </div>
+      </h3>
       <div id="staff-workload-list">
         {% for su in staff_workload_list|default([]) %}
         <div class="staff-workload-row">
@@ -101,8 +101,8 @@
     {# ── Call analytics ── #}
     {% if call_analytics_card is defined %}
     <div class="analytics-card" title="Call Analytics" data-metric=" · {{ call_analytics_card.total_calls }} calls">
-      <div class="card-collapsed-icon">📞</div>
-      <div class="sidebar-section-hd">📞 Call Analytics</div>
+      <div class="card-collapsed-icon" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.39 2 2 0 0 1 3.58 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6.29 6.29l.92-.92a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></div>
+      <h3 class="sidebar-section-hd"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.39 2 2 0 0 1 3.58 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6.29 6.29l.92-.92a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>Call Analytics</h3>
       <div class="analytics-row">
         <span class="ar-label">Total Calls</span>
         <span class="ar-value">{{ call_analytics_card.total_calls }}</span>
@@ -140,8 +140,8 @@
     {% if show_dashboard_overview %}
     {# ── Live workload ── #}
     <div class="analytics-card" title="Live Workload" data-metric=" · {{ workload_card.incoming }} queued">
-      <div class="card-collapsed-icon">⚙️</div>
-      <div class="sidebar-section-hd">⚙️ Live Workload</div>
+      <div class="card-collapsed-icon" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M19.07 19.07l-1.41-1.41M4.93 19.07l1.41-1.41M12 2v2M12 20v2M2 12h2M20 12h2"/></svg></div>
+      <h3 class="sidebar-section-hd"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M19.07 19.07l-1.41-1.41M4.93 19.07l1.41-1.41M12 2v2M12 20v2M2 12h2M20 12h2"/></svg>Live Workload</h3>
       <div class="analytics-row">
         <span class="ar-label"><span class="ar-dot blue"></span>Incoming Queue</span>
         <span class="ar-value">{{ workload_card.incoming }}</span>
@@ -188,7 +188,7 @@
     <section class="page-head">
       <div>
         <span class="page-kicker">JeffLocal Reception Dashboard</span>
-        <h1>📊 Today's Overview</h1>
+        <h1><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:6px"><rect x="18" y="3" width="4" height="18"/><rect x="10" y="8" width="4" height="13"/><rect x="2" y="13" width="4" height="8"/></svg>Today's Overview</h1>
         <p class="muted">Check critical issues, workload status, and team performance at a glance.</p>
       </div>
       <div class="header-actions">
@@ -200,18 +200,21 @@
 
     <section class="urgent-panel" aria-label="Urgent Attention">
       <div>
-        <h2>⚠️ Urgent Attention</h2>
+        <h2>
+          <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:5px"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          Urgent Attention
+        </h2>
         {% if urgent_attention.latest %}
           <p>{{ urgent_attention.latest.alert_type }}: {{ urgent_attention.latest.message }}</p>
         {% else %}
-          <p>✓ No critical issues detected</p>
+          <p><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px"><polyline points="20 6 9 17 4 12"/></svg>No critical issues detected</p>
         {% endif %}
       </div>
       {% if urgent_attention.red_flags > 0 or urgent_attention.staff_review > 0 or urgent_attention.identity_checks > 0 %}
-      <div class="urgent-counts">
-        {% if urgent_attention.red_flags > 0 %}<a href="{{ filter_links[1].url }}"><span>🚨 Critical Issues</span><strong>{{ urgent_attention.red_flags }}</strong></a>{% endif %}
-        {% if urgent_attention.staff_review > 0 %}<a href="{{ filter_links[2].url }}"><span>👁️ Cases Needing Review</span><strong>{{ urgent_attention.staff_review }}</strong></a>{% endif %}
-        {% if urgent_attention.identity_checks > 0 %}<a href="{{ filter_links[3].url }}"><span>🪪 Identity Issues</span><strong>{{ urgent_attention.identity_checks }}</strong></a>{% endif %}
+      <div class="urgent-counts" aria-live="polite" aria-atomic="true">
+        {% if urgent_attention.red_flags > 0 %}<a href="{{ filter_links[1].url }}"><span><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Critical Issues</span><strong>{{ urgent_attention.red_flags }}</strong></a>{% endif %}
+        {% if urgent_attention.staff_review > 0 %}<a href="{{ filter_links[2].url }}"><span><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>Cases Needing Review</span><strong>{{ urgent_attention.staff_review }}</strong></a>{% endif %}
+        {% if urgent_attention.identity_checks > 0 %}<a href="{{ filter_links[3].url }}"><span><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>Identity Issues</span><strong>{{ urgent_attention.identity_checks }}</strong></a>{% endif %}
       </div>
       <div class="urgent-actions">
         <a class="button-link danger-link" href="{{ filter_links[1].url }}">→ View Issues</a>
@@ -222,7 +225,7 @@
       {% endif %}
     </section>
 
-    <section class="kpi-grid" aria-label="Today's Key Metrics">
+    <section class="kpi-grid" aria-label="Today's Key Metrics" aria-live="polite" aria-atomic="false">
       {% for card in kpi_cards %}
         <a class="kpi-card" href="{{ card.url }}" title="Click to view details">
           <span>{{ card.label }}</span>
@@ -542,7 +545,12 @@
 
         </article>
         {% else %}
-          <div class="empty">No cases found for this filter.</div>
+          <div class="empty-state" role="status">
+            <svg class="empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+            <p class="empty-state-title">No cases match this filter</p>
+            <p class="empty-state-body">Try a different filter, date range, or search term.</p>
+            <a href="{{ reset_filters_url }}" class="empty-state-action">Clear filters</a>
+          </div>
         {% endfor %}
 
         {# Pagination lives inside the scrollable list #}
@@ -612,7 +620,7 @@
               <div class="panel-section-hd">AI Summary</div>
               <p class="panel-text" id="panel-ai-summary"></p>
               <div class="panel-redflag-box" id="panel-redflag-box" hidden>
-                <div class="panel-redflag-title">⚠ Red Flag Warning</div>
+                <div class="panel-redflag-title"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Red Flag Warning</div>
                 <div class="panel-redflag-body" id="panel-redflag-body"></div>
               </div>
               <div id="panel-suggested" hidden>

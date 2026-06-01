@@ -4,10 +4,13 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}{{ practice_name | default('JeffLocal') }} Staff Dashboard{% endblock %}</title>
-  <link rel="stylesheet" href="{{ url_for('static', path='/dashboard.css') }}?v=4">
+  <link rel="stylesheet" href="{{ url_for('static', path='/dashboard.css') }}?v=5">
   {% block head %}{% endblock %}
 </head>
 <body>
+
+  {# ── C5: Skip link ───────────────────────────────────────────────── #}
+  <a href="#main-content" class="skip-link">Skip to main content</a>
 
   {# ── SANDBOX BANNER ─────────────────────────────────────────────── #}
   {% if environment == 'sandbox' %}
@@ -83,8 +86,13 @@
     </aside>
 
     {# ── MAIN CONTENT ─────────────────────────────────────────────── #}
-    {% block content %}{% endblock %}
+    <div id="main-content" style="display:contents">{% block content %}{% endblock %}</div>
   </div>
+
+  {# ── H4: Mobile hamburger — opens sidebar on small screens ─────── #}
+  <button class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Open navigation menu" aria-expanded="false" aria-controls="analytics-sidebar">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
 
   {# ── SHARED SCRIPTS ──────────────────────────────────────────────── #}
   <script>
@@ -92,7 +100,8 @@
     (function () {
       var sidebarEl = document.getElementById('analytics-sidebar');
       var toggleBtn = document.getElementById('sidebar-toggle-btn');
-      if (!sidebarEl || !toggleBtn) return;
+      var mobileBtn = document.getElementById('mobile-menu-btn');
+      if (!sidebarEl) return;
 
       var key = 'jefflocal_sidebar_collapsed';
 
@@ -110,6 +119,11 @@
         if (!isMobile()) {
           localStorage.setItem(key, collapsed);
         }
+        // H4: sync mobile hamburger aria-expanded
+        if (mobileBtn) {
+          mobileBtn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+          mobileBtn.setAttribute('aria-label', collapsed ? 'Open navigation menu' : 'Close navigation menu');
+        }
       }
 
       // On load: mobile → always collapsed; desktop/tablet → restore preference
@@ -119,12 +133,20 @@
         setCollapsed(true);
       }
 
-      // Toggle button
-      if (!toggleBtn._sidebarListenerAdded) {
+      // Sidebar internal toggle button
+      if (toggleBtn && !toggleBtn._sidebarListenerAdded) {
         toggleBtn.addEventListener('click', function () {
           setCollapsed(!sidebarEl.classList.contains('is-collapsed'));
         });
         toggleBtn._sidebarListenerAdded = true;
+      }
+
+      // H4: Mobile hamburger button
+      if (mobileBtn && !mobileBtn._sidebarListenerAdded) {
+        mobileBtn.addEventListener('click', function () {
+          setCollapsed(!sidebarEl.classList.contains('is-collapsed'));
+        });
+        mobileBtn._sidebarListenerAdded = true;
       }
 
       // Backdrop tap → collapse sidebar
@@ -215,4 +237,70 @@
         var btn = form.querySelector('button[type="submit"]');
         if (btn && !btn.disabled) {
           var originalText = btn.textContent;
-          bt
+          btn.textContent = 'Loading…';
+          btn.disabled = true;
+          btn.classList.add('btn-loading');
+          setTimeout(function () {
+            btn.textContent = originalText;
+            btn.disabled = false;
+            btn.classList.remove('btn-loading');
+          }, 3000);
+        }
+      }
+    });
+
+    // ── L1: Keyboard shortcuts ───────────────────────────────────────
+    (function () {
+      var SHORTCUTS = [
+        { key: '/', desc: 'Focus search' },
+        { key: 'Escape', desc: 'Close modal / clear focus' },
+        { key: '?', desc: 'Show keyboard shortcuts' },
+      ];
+
+      document.addEventListener('keydown', function (e) {
+        var tag = (document.activeElement || {}).tagName || '';
+        var inInput = ['INPUT', 'TEXTAREA', 'SELECT'].includes(tag);
+
+        // '/' → focus search input
+        if (e.key === '/' && !inInput && !e.ctrlKey && !e.metaKey) {
+          var search = document.querySelector('input[name="q"], input[type="search"]');
+          if (search) { e.preventDefault(); search.focus(); search.select(); }
+        }
+
+        // Escape → close dialogs, clear focus
+        if (e.key === 'Escape') {
+          var modal = document.querySelector('[role="dialog"]:not([hidden])');
+          if (modal) { modal.remove(); return; }
+          if (inInput) { document.activeElement.blur(); }
+        }
+
+        // '?' → show shortcuts help
+        if (e.key === '?' && !inInput) {
+          var existing = document.getElementById('kbd-shortcuts-modal');
+          if (existing) { existing.remove(); return; }
+          var overlay = document.createElement('div');
+          overlay.id = 'kbd-shortcuts-modal';
+          overlay.setAttribute('role', 'dialog');
+          overlay.setAttribute('aria-modal', 'true');
+          overlay.setAttribute('aria-label', 'Keyboard shortcuts');
+          overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9000;display:flex;align-items:center;justify-content:center;';
+          var box = document.createElement('div');
+          box.style.cssText = 'background:#fff;border-radius:12px;padding:24px 28px;max-width:360px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.3);';
+          box.innerHTML = '<h2 style="font-size:16px;font-weight:700;margin-bottom:16px">Keyboard Shortcuts</h2>' +
+            SHORTCUTS.map(function(s) {
+              return '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f0f0f0;font-size:13px">' +
+                '<kbd style="background:#f3f4f6;border:1px solid #d1d5db;border-radius:4px;padding:2px 7px;font-family:monospace;font-size:12px">' + s.key + '</kbd>' +
+                '<span style="color:#6b7280">' + s.desc + '</span></div>';
+            }).join('') +
+            '<button onclick="document.getElementById(\'kbd-shortcuts-modal\').remove()" style="margin-top:16px;padding:8px 20px;background:#005EB8;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;width:100%">Close (Esc)</button>';
+          overlay.appendChild(box);
+          overlay.addEventListener('click', function(ev) { if (ev.target === overlay) overlay.remove(); });
+          document.body.appendChild(overlay);
+          box.querySelector('button').focus();
+        }
+      });
+    })();
+  </script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>
