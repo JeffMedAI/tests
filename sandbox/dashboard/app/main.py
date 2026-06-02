@@ -3086,7 +3086,7 @@ def api_case_action(
 
 
 @app.post("/api/cases/{call_id}/enrich")
-def api_case_enrich(call_id: str, request: Request) -> dict[str, Any]:
+async def api_case_enrich(call_id: str, request: Request) -> dict[str, Any]:
     """Re-run Ollama enrichment on an existing case and update ai_summary."""
     ensure_ready()
     from .importer import ollama_clinical_summary
@@ -3097,10 +3097,11 @@ def api_case_enrich(call_id: str, request: Request) -> dict[str, Any]:
             raise HTTPException(status_code=404, detail="Case not found")
         case = row_to_dict(row)
         transcript = case.get("transcript") or ""
-        summary = ollama_clinical_summary(transcript, case)
-        if not summary:
-            return {"ok": False, "detail": "Ollama unavailable or no transcript"}
-        now = utc_now_iso()
+    summary = await ollama_clinical_summary(transcript, case)
+    if not summary:
+        return {"ok": False, "detail": "Ollama unavailable or no transcript"}
+    now = utc_now_iso()
+    with connect() as conn:
         conn.execute(
             "UPDATE cases SET ai_summary = ?, call_summary = ?, last_updated = ? WHERE call_id = ?",
             (summary, summary, now, call_id),
