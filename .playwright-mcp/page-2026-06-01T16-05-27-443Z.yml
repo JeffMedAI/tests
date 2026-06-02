@@ -1,0 +1,265 @@
+- generic [active] [ref=e1]:
+  - link "Skip to main content" [ref=e2] [cursor=pointer]:
+    - /url: "#main-content"
+  - alert "Sandbox environment notice" [ref=e3]:
+    - generic [ref=e4]: ⚠
+    - generic [ref=e5]: SANDBOX — Churchtown Medical Centre — Not for live patient use. Testing and development only.
+    - generic [ref=e6]: ⚠
+  - banner [ref=e7]:
+    - generic [ref=e8]:
+      - generic [ref=e9]: CM
+      - generic [ref=e10]: Churchtown Medical Centre
+    - navigation "Main navigation" [ref=e11]:
+      - link "Dashboard" [ref=e12] [cursor=pointer]:
+        - /url: /
+        - img [ref=e13]
+        - text: Dashboard
+      - link "Requests" [ref=e18] [cursor=pointer]:
+        - /url: /requests
+        - img [ref=e19]
+        - text: Requests
+      - link "Patients" [ref=e22] [cursor=pointer]:
+        - /url: /patients
+        - img [ref=e23]
+        - text: Patients
+      - link "Staff" [ref=e26] [cursor=pointer]:
+        - /url: /staff
+        - img [ref=e27]
+        - text: Staff
+      - link "Reports" [ref=e31] [cursor=pointer]:
+        - /url: /reports
+        - img [ref=e32]
+        - text: Reports
+      - link "Settings" [ref=e33] [cursor=pointer]:
+        - /url: /settings
+        - img [ref=e34]
+        - text: Settings
+    - generic [ref=e37]:
+      - button "Import" [ref=e38] [cursor=pointer]
+      - link "Alerts" [ref=e39] [cursor=pointer]:
+        - /url: /alerts
+        - img [ref=e40]
+      - link "Saeed 1" [ref=e43] [cursor=pointer]:
+        - /url: /profile
+        - generic [ref=e44]: S
+        - generic [ref=e45]: Saeed 1
+      - link "Sign out" [ref=e46] [cursor=pointer]:
+        - /url: /logout
+        - img [ref=e47]
+  - generic [ref=e50]:
+    - complementary [ref=e51]:
+      - generic [ref=e52]:
+        - generic [ref=e53]: Analytics
+        - button "Toggle sidebar" [ref=e54] [cursor=pointer]:
+          - img [ref=e55]
+      - generic [ref=e58]:
+        - link "Today" [ref=e59] [cursor=pointer]:
+          - /url: /requests?range=today
+        - link "Week" [ref=e60] [cursor=pointer]:
+          - /url: /requests?range=week
+        - link "All" [ref=e61] [cursor=pointer]:
+          - /url: /requests?range=all
+      - generic [ref=e62]:
+        - generic "Quick Status" [ref=e63]:
+          - heading "Quick Status" [level=3] [ref=e64]:
+            - img [ref=e65]
+            - text: Quick Status
+          - generic [ref=e69]:
+            - generic [ref=e70]: Open
+            - generic [ref=e72]: "0"
+          - generic [ref=e73]:
+            - generic [ref=e74]: Overdue
+            - generic [ref=e76]: "0"
+          - generic [ref=e77]:
+            - generic [ref=e78]: Resolved Today
+            - generic [ref=e80]: "20"
+          - generic [ref=e81]:
+            - generic [ref=e82]: Critical
+            - generic [ref=e84]: "0"
+        - generic "All Clear" [ref=e85]:
+          - text: ✓ All Clear
+          - generic [ref=e86]: No critical issues
+        - generic "Staff Workload" [ref=e87]:
+          - heading "Staff Workload" [level=3] [ref=e88]:
+            - img [ref=e89]
+            - text: Staff Workload
+          - generic [ref=e93]:
+            - generic [ref=e94]:
+              - generic "Admin Demo" [ref=e95]
+              - generic [ref=e96]:
+                - generic "Open cases" [ref=e97]: "0"
+                - generic "In progress" [ref=e98]: "0"
+                - generic "Resolved today" [ref=e99]: "0"
+            - generic [ref=e100]:
+              - generic "GP Demo" [ref=e101]
+              - generic [ref=e102]:
+                - generic "Open cases" [ref=e103]: "0"
+                - generic "In progress" [ref=e104]: "0"
+                - generic "Resolved today" [ref=e105]: "0"
+            - generic [ref=e106]:
+              - generic "Jessica Test1" [ref=e107]
+              - generic [ref=e108]:
+                - generic "Open cases" [ref=e109]: "0"
+                - generic "In progress" [ref=e110]: "0"
+                - generic "Resolved today" [ref=e111]: "0"
+            - generic [ref=e112]:
+              - generic "Mary 1" [ref=e113]
+              - generic [ref=e114]:
+                - generic "Open cases" [ref=e115]: "0"
+                - generic "In progress" [ref=e116]: "0"
+                - generic "Resolved today" [ref=e117]: "0"
+            - generic [ref=e118]:
+              - generic "Reception Demo" [ref=e119]
+              - generic [ref=e120]:
+                - generic "Open cases" [ref=e121]: "0"
+                - generic "In progress" [ref=e122]: "0"
+                - generic "Resolved today" [ref=e123]: "0"
+            - generic [ref=e124]:
+              - generic "Saeed 1" [ref=e125]
+              - generic [ref=e126]:
+                - generic "Open cases" [ref=e127]: "0"
+                - generic "In progress" [ref=e128]: "0"
+                - generic "Resolved today" [ref=e129]: "10"
+          - generic [ref=e131]:
+            - text: Open
+            - text: Active
+            - text: Done
+        - generic "Call Analytics" [ref=e135]:
+          - heading "Call Analytics" [level=3] [ref=e136]:
+            - img [ref=e137]
+            - text: Call Analytics
+          - generic [ref=e139]:
+            - generic [ref=e140]: Total Calls
+            - generic [ref=e141]: "58"
+          - generic [ref=e142]:
+            - generic [ref=e143]: Dropped
+            - generic [ref=e144]: "3"
+          - generic [ref=e145]:
+            - generic [ref=e146]: Safe to Queue
+            - generic [ref=e147]: "52"
+          - generic [ref=e148]:
+            - generic [ref=e149]: Success Rate
+            - generic [ref=e150]: 89.7%
+          - generic [ref=e151]:
+            - generic [ref=e152]: Avg Response Time
+            - 'generic "Average response time in minutes: 3089" [ref=e153]': 2d 3h
+    - main [ref=e155]:
+      - status [ref=e156]:
+        - strong [ref=e157]: DEMO / TEST DATA MODE
+        - generic [ref=e158]: No real patient data. Google push disabled for test runs.
+      - generic [ref=e159]:
+        - generic [ref=e160]:
+          - generic [ref=e161]:
+            - link "All" [ref=e162] [cursor=pointer]:
+              - /url: /requests?filter=all&sort=newest&range=today
+            - link "Urgent Red Flags 0" [ref=e163] [cursor=pointer]:
+              - /url: /requests?filter=urgent_red_flags&sort=newest&range=today
+              - text: Urgent Red Flags
+              - generic [ref=e164]: "0"
+            - link "Needs Review 0" [ref=e165] [cursor=pointer]:
+              - /url: /requests?filter=needs_review&sort=newest&range=today
+              - text: Needs Review
+              - generic [ref=e166]: "0"
+            - link "Identity Issues 0" [ref=e167] [cursor=pointer]:
+              - /url: /requests?filter=identity_issues&sort=newest&range=today
+              - text: Identity Issues
+              - generic [ref=e168]: "0"
+            - link "Open 0" [ref=e169] [cursor=pointer]:
+              - /url: /requests?filter=open&sort=newest&range=today
+              - text: Open
+              - generic [ref=e170]: "0"
+            - link "Resolved" [ref=e171] [cursor=pointer]:
+              - /url: /requests?filter=resolved&sort=newest&range=today
+            - link "Resolved Today 20" [ref=e172] [cursor=pointer]:
+              - /url: /requests?filter=resolved_today&sort=newest&range=today
+              - text: Resolved Today
+              - generic [ref=e173]: "20"
+            - button "Filters ▾" [ref=e174] [cursor=pointer]:
+              - img [ref=e175]
+              - generic [ref=e176]: Filters
+              - generic [ref=e177]: ▾
+          - generic:
+            - generic:
+              - generic: "Type:"
+              - link "All Types":
+                - /url: /requests?filter=open&sort=newest&range=today
+              - link "Prescription":
+                - /url: /requests?filter=open&sort=newest&range=today&request_type=prescription
+              - link "Sick Note":
+                - /url: /requests?filter=open&sort=newest&range=today&request_type=sick_note
+              - link "Referral":
+                - /url: /requests?filter=open&sort=newest&range=today&request_type=referral
+              - link "Test Result":
+                - /url: /requests?filter=open&sort=newest&range=today&request_type=test_result
+              - link "Appointment":
+                - /url: /requests?filter=open&sort=newest&range=today&request_type=appointment_redirect
+              - link "Admin":
+                - /url: /requests?filter=open&sort=newest&range=today&request_type=admin
+              - link "Unknown":
+                - /url: /requests?filter=open&sort=newest&range=today&request_type=unknown
+            - generic:
+              - generic:
+                - text: Search
+                - textbox "Search":
+                  - /placeholder: Patient, DOB, NHS, call ID, postcode…
+              - generic:
+                - text: Sort by
+                - combobox "Sort by":
+                  - option "Newest first" [selected]
+                  - option "Oldest first"
+                  - option "Priority"
+                  - option "Unresolved first"
+              - generic:
+                - text: Date range
+                - combobox "Date range":
+                  - option "Today" [selected]
+                  - option "Last 7 days"
+                  - option "Last 30 days"
+                  - option "All"
+              - generic:
+                - text: Per page
+                - combobox "Per page":
+                  - option "20" [selected]
+                  - option "50"
+                  - option "100"
+              - button "Apply"
+              - link "Reset":
+                - /url: /requests?filter=all&sort=newest&range=all&page_size=20
+          - generic [ref=e178]:
+            - generic "Active filters" [ref=e179]:
+              - generic [ref=e180]: Open
+              - generic [ref=e181]: Today
+              - link "Clear filters" [ref=e182] [cursor=pointer]:
+                - /url: /requests?filter=all&sort=newest&range=all&page_size=20
+            - generic [ref=e183]: Showing 0–0 of 0
+        - generic [ref=e184]:
+          - generic [ref=e185]:
+            - strong [ref=e186]: 0 selected
+            - paragraph [ref=e187]: Bulk actions apply to selected cases on this page only.
+          - generic [ref=e188]:
+            - button "Select all visible" [disabled] [ref=e189]
+            - button "Clear selection" [disabled] [ref=e190]
+          - generic [ref=e191]:
+            - button "Assign to me" [disabled] [ref=e192]
+            - button "Start review" [disabled] [ref=e193]
+            - button "Resolve eligible only" [disabled] [ref=e194]
+        - generic [ref=e195]:
+          - generic "Patient requests" [ref=e196]:
+            - status [ref=e197]:
+              - img [ref=e198]
+              - paragraph [ref=e201]: No cases match this filter
+              - paragraph [ref=e202]: Try a different filter, date range, or search term.
+              - link "Clear filters" [ref=e203] [cursor=pointer]:
+                - /url: /requests?filter=all&sort=newest&range=all&page_size=20
+            - navigation "Pagination" [ref=e204]:
+              - generic [ref=e205]: Showing 0–0 of 0
+              - generic [ref=e206]: Page 1 of 1
+              - generic [ref=e207]:
+                - link "Previous":
+                  - /url: /requests?filter=open&sort=newest&range=today&page=1&page_size=20
+                - link "Next":
+                  - /url: /requests?filter=open&sort=newest&range=today&page=1&page_size=20
+          - generic "Case detail panel":
+            - generic [ref=e208]:
+              - img [ref=e209]
+              - paragraph [ref=e212]: Select a request to view details

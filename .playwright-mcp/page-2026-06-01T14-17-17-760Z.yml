@@ -1,0 +1,146 @@
+- generic [active] [ref=e1]:
+  - alert "Sandbox environment notice" [ref=e2]:
+    - generic [ref=e3]: ⚠
+    - generic [ref=e4]: SANDBOX — Churchtown Medical Centre — Not for live patient use. Testing and development only.
+    - generic [ref=e5]: ⚠
+  - generic [ref=e6]:
+    - complementary [ref=e7]:
+      - generic [ref=e8]:
+        - generic [ref=e9]: Churchtown Medical Centre
+        - button "Toggle sidebar" [ref=e10] [cursor=pointer]:
+          - img [ref=e11]
+      - navigation "Main navigation" [ref=e13]:
+        - link "Dashboard" [ref=e14] [cursor=pointer]:
+          - /url: /
+        - link "Requests" [ref=e15] [cursor=pointer]:
+          - /url: /requests
+        - link "Patients" [ref=e16] [cursor=pointer]:
+          - /url: /patients
+        - link "Staff" [ref=e17] [cursor=pointer]:
+          - /url: /staff
+        - link "Reports" [ref=e18] [cursor=pointer]:
+          - /url: /reports
+        - link "Settings" [ref=e19] [cursor=pointer]:
+          - /url: /settings
+      - generic [ref=e20]:
+        - link "Alerts" [ref=e21] [cursor=pointer]:
+          - /url: /alerts
+          - img [ref=e22]
+        - generic [ref=e25]:
+          - link "Saeed 1 Admin" [ref=e26] [cursor=pointer]:
+            - /url: /profile
+            - generic [ref=e27]:
+              - generic [ref=e28]: Saeed 1
+              - generic [ref=e29]: Admin
+            - generic [ref=e30]: S
+          - link "Sign out" [ref=e31] [cursor=pointer]:
+            - /url: /logout
+            - img [ref=e32]
+    - generic [ref=e35]:
+      - generic [ref=e36]:
+        - generic [ref=e37]:
+          - generic [ref=e38]: Team operations
+          - heading "Staff Management" [level=1] [ref=e39]
+          - paragraph [ref=e40]: Manage staff accounts, roles, and credentials.
+        - generic [ref=e41]:
+          - button "+ Add Staff" [ref=e42] [cursor=pointer]
+          - link "Team Metrics" [ref=e43] [cursor=pointer]:
+            - /url: /reports
+      - generic [ref=e44]: Active Staff (6)
+      - generic [ref=e45]:
+        - generic [ref=e46]:
+          - generic [ref=e47]:
+            - generic [ref=e48]: A
+            - generic [ref=e49]:
+              - generic [ref=e50]: Admin Demo
+              - generic [ref=e51]: "@—"
+              - generic [ref=e52]: Admin
+            - generic [ref=e54]: Active
+          - generic [ref=e56]:
+            - generic [ref=e57]: No email
+            - generic [ref=e58]: "Last login: Never"
+          - group [ref=e59]:
+            - generic "Edit" [ref=e60] [cursor=pointer]
+            - option "Admin" [selected]
+            - option "Staff"
+            - option "Readonly"
+        - generic [ref=e61]:
+          - generic [ref=e62]:
+            - generic [ref=e63]: S
+            - generic [ref=e64]:
+              - generic [ref=e65]: Saeed 1
+              - generic [ref=e66]: "@—"
+              - generic [ref=e67]: Admin
+            - generic [ref=e69]: Active
+          - generic [ref=e71]:
+            - generic [ref=e72]: No email
+            - generic [ref=e73]: "Last login: Never"
+          - group [ref=e74]:
+            - generic "Edit" [ref=e75] [cursor=pointer]
+            - option "Admin" [selected]
+            - option "Staff"
+            - option "Readonly"
+        - generic [ref=e76]:
+          - generic [ref=e77]:
+            - generic [ref=e78]: G
+            - generic [ref=e79]:
+              - generic [ref=e80]: GP Demo
+              - generic [ref=e81]: "@—"
+              - generic [ref=e82]: Readonly
+            - generic [ref=e84]: Active
+          - generic [ref=e86]:
+            - generic [ref=e87]: No email
+            - generic [ref=e88]: "Last login: Never"
+          - group [ref=e89]:
+            - generic "Edit" [ref=e90] [cursor=pointer]
+            - option "Admin"
+            - option "Staff"
+            - option "Readonly" [selected]
+        - generic [ref=e91]:
+          - generic [ref=e92]:
+            - generic [ref=e93]: J
+            - generic [ref=e94]:
+              - generic [ref=e95]: Jessica Test1
+              - generic [ref=e96]: "@—"
+              - generic [ref=e97]: Staff
+            - generic [ref=e99]: Active
+          - generic [ref=e101]:
+            - generic [ref=e102]: No email
+            - generic [ref=e103]: "Last login: Never"
+          - group [ref=e104]:
+            - generic "Edit" [ref=e105] [cursor=pointer]
+            - option "Admin"
+            - option "Staff" [selected]
+            - option "Readonly"
+        - generic [ref=e106]:
+          - generic [ref=e107]:
+            - generic [ref=e108]: M
+            - generic [ref=e109]:
+              - generic [ref=e110]: Mary 1
+              - generic [ref=e111]: "@—"
+              - generic [ref=e112]: Staff
+            - generic [ref=e114]: Active
+          - generic [ref=e116]:
+            - generic [ref=e117]: No email
+            - generic [ref=e118]: "Last login: Never"
+          - group [ref=e119]:
+            - generic "Edit" [ref=e120] [cursor=pointer]
+            - option "Admin"
+            - option "Staff" [selected]
+            - option "Readonly"
+        - generic [ref=e121]:
+          - generic [ref=e122]:
+            - generic [ref=e123]: R
+            - generic [ref=e124]:
+              - generic [ref=e125]: Reception Demo
+              - generic [ref=e126]: "@—"
+              - generic [ref=e127]: Staff
+            - generic [ref=e129]: Active
+          - generic [ref=e131]:
+            - generic [ref=e132]: No email
+            - generic [ref=e133]: "Last login: Never"
+          - group [ref=e134]:
+            - generic "Edit" [ref=e135] [cursor=pointer]
+            - option "Admin"
+            - option "Staff" [selected]
+            - option "Readonly"

@@ -1,34 +1,19 @@
 {% extends "base.html" %}
-{% block title %}{% if show_requests %}Requests{% else %}Dashboard{% endif %} - JeffLocal{% endblock %}
+{% block title %}{% if show_requests %}Requests{% else %}Dashboard{% endif %} — JeffLocal{% endblock %}
 
-{% block topbar_search %}
-{% if show_requests %}
-<form class="topbar-search-form" action="/requests" method="get">
-  <input type="hidden" name="filter" value="{{ active_filter|default('open') }}">
-  <input type="hidden" name="request_type" value="{{ active_request_type|default('') }}">
-  <input class="topbar-search" type="search" name="q" value="{{ search_query|default('') }}"
-         placeholder="Search patients, NHS, DOB, call ID…" aria-label="Search requests" autocomplete="off">
-</form>
-{% endif %}
+{% block sidebar_header %}
+<span class="sidebar-hd-title">Analytics</span>
+<button class="sidebar-toggle" id="sidebar-toggle-btn" aria-label="Toggle sidebar" title="Collapse sidebar">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+  <span class="sidebar-alert-badge{% if not urgent_attention.red_flags or urgent_attention.red_flags == 0 %} is-hidden{% endif %}"
+        id="sidebar-alert-badge"
+        aria-label="{{ urgent_attention.red_flags }} critical issue{{ 's' if urgent_attention.red_flags != 1 else '' }}"
+        title="{{ urgent_attention.red_flags }} critical issue{{ 's' if urgent_attention.red_flags != 1 else '' }} — click to expand sidebar"
+  >{{ urgent_attention.red_flags if urgent_attention.red_flags else '' }}</span>
+</button>
 {% endblock %}
 
-{% block content %}
-{% set service_data = services_status|default(none) %}
-
-{# ── ANALYTICS SIDEBAR ────────────────────────────────────────────── #}
-<aside class="analytics-sidebar" id="analytics-sidebar">
-  <div class="sidebar-hd">
-    <span class="sidebar-hd-title">Analytics</span>
-    <button class="sidebar-toggle" id="sidebar-toggle-btn" aria-label="Toggle sidebar" title="Collapse sidebar">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-      <span class="sidebar-alert-badge{% if not urgent_attention.red_flags or urgent_attention.red_flags == 0 %} is-hidden{% endif %}"
-            id="sidebar-alert-badge"
-            aria-label="{{ urgent_attention.red_flags }} critical issue{{ 's' if urgent_attention.red_flags != 1 else '' }}"
-            title="{{ urgent_attention.red_flags }} critical issue{{ 's' if urgent_attention.red_flags != 1 else '' }} — click to expand sidebar"
-      >{{ urgent_attention.red_flags if urgent_attention.red_flags else '' }}</span>
-    </button>
-  </div>
-
+{% block sidebar_content %}
   <div class="sidebar-period">
     <div class="period-tabs">
       <a href="/requests?range=today" class="period-tab {% if active_date_range == 'today' %}active{% endif %}">Today</a>
@@ -39,14 +24,12 @@
 
   <div class="sidebar-body">
 
-    {# ── QUICK STATUS ONLY (removed duplicate KPI cards) ── #}
-
     {# ── Queue status ── #}
     {% if queue_status_card is defined %}
     <div class="analytics-card" title="Quick Status" data-metric=" · {{ queue_status_card.open }} open">
-      <div class="card-collapsed-icon" title="Quick Status">📊</div>
+      <div class="card-collapsed-icon" aria-hidden="true" title="Quick Status"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="18" y="3" width="4" height="18"/><rect x="10" y="8" width="4" height="13"/><rect x="2" y="13" width="4" height="8"/></svg></div>
       <div class="card-full-content"></div>
-      <div class="sidebar-section-hd">📊 Quick Status</div>
+      <h3 class="sidebar-section-hd"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><rect x="18" y="3" width="4" height="18"/><rect x="10" y="8" width="4" height="13"/><rect x="2" y="13" width="4" height="8"/></svg>Quick Status</h3>
       <div class="analytics-row">
         <span class="ar-label"><span class="ar-dot blue"></span>Open</span>
         <span class="ar-value">{{ queue_status_card.open }}</span>
@@ -69,7 +52,7 @@
     {# ── Critical Issues alert card ── #}
     {% if urgent_attention.red_flags > 0 %}
     <a class="red-flag-card" title="Critical Issues" href="{{ filter_links[1].url if filter_links|length > 1 else '/requests?filter=urgent_red_flags' }}">
-      <span class="rf-icon">⚠️</span>
+      <span class="rf-icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
       <div class="rf-body">
         <span class="rf-label">Critical Issues</span>
         <span class="rf-value">{{ urgent_attention.red_flags }}</span>
@@ -87,13 +70,12 @@
 
     {# ── Staff Workload (live) ── #}
     <div class="analytics-card" title="Staff Workload" id="staff-workload-card" data-metric=" · {{ staff_workload_list|length }} staff">
-      <div class="card-collapsed-icon">👥</div>
-      <div class="sidebar-section-hd">
-        👥 Staff Workload
+      <div class="card-collapsed-icon" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+      <h3 class="sidebar-section-hd">
+        <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>Staff Workload
         <span id="staff-workload-refresh-ts" class="sidebar-card-ts"></span>
-      </div>
+      </h3>
       <div id="staff-workload-list">
-        {# Seeded with server-side data; refreshed by JS every 60s #}
         {% for su in staff_workload_list|default([]) %}
         <div class="staff-workload-row">
           <span class="staff-workload-name" title="{{ su.name }}">{{ su.name }}</span>
@@ -119,8 +101,8 @@
     {# ── Call analytics ── #}
     {% if call_analytics_card is defined %}
     <div class="analytics-card" title="Call Analytics" data-metric=" · {{ call_analytics_card.total_calls }} calls">
-      <div class="card-collapsed-icon">📞</div>
-      <div class="sidebar-section-hd">📞 Call Analytics</div>
+      <div class="card-collapsed-icon" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.39 2 2 0 0 1 3.58 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6.29 6.29l.92-.92a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></div>
+      <h3 class="sidebar-section-hd"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.39 2 2 0 0 1 3.58 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6.29 6.29l.92-.92a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>Call Analytics</h3>
       <div class="analytics-row">
         <span class="ar-label">Total Calls</span>
         <span class="ar-value">{{ call_analytics_card.total_calls }}</span>
@@ -155,10 +137,11 @@
     </div>
     {% endif %}
 
+    {% if show_dashboard_overview %}
     {# ── Live workload ── #}
     <div class="analytics-card" title="Live Workload" data-metric=" · {{ workload_card.incoming }} queued">
-      <div class="card-collapsed-icon">⚙️</div>
-      <div class="sidebar-section-hd">⚙️ Live Workload</div>
+      <div class="card-collapsed-icon" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M19.07 19.07l-1.41-1.41M4.93 19.07l1.41-1.41M12 2v2M12 20v2M2 12h2M20 12h2"/></svg></div>
+      <h3 class="sidebar-section-hd"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M19.07 19.07l-1.41-1.41M4.93 19.07l1.41-1.41M12 2v2M12 20v2M2 12h2M20 12h2"/></svg>Live Workload</h3>
       <div class="analytics-row">
         <span class="ar-label"><span class="ar-dot blue"></span>Incoming Queue</span>
         <span class="ar-value">{{ workload_card.incoming }}</span>
@@ -178,11 +161,13 @@
       </div>
       {% endif %}
     </div>
-
-    {# Request Mix removed from sidebar (see main dashboard area) #}
+    {% endif %}
 
   </div>{# end sidebar-body #}
-</aside>
+{% endblock %}
+
+{% block content %}
+{% set service_data = services_status|default(none) %}
 
 {# ── MAIN CONTENT ────────────────────────────────────────────────── #}
 <main class="app-main">
@@ -200,52 +185,45 @@
   {% if show_dashboard_overview %}
   <div class="dashboard-scroll">
 
-    <section class="page-head">
-      <div>
-        <span class="page-kicker">JeffLocal Reception Dashboard</span>
-        <h1>📊 Today's Overview</h1>
-        <p class="muted">Check critical issues, workload status, and team performance at a glance.</p>
+    {# ── Clean dashboard header — title + system status + refresh ── #}
+    <section class="dash-header">
+      <div class="dash-header-left">
+        <h1>Today's Overview</h1>
+        <span class="dash-header-meta">
+          <i class="health-dot {{ system_health.dashboard.state }}"></i>
+          System {{ system_health.dashboard.label }} &nbsp;·&nbsp; Updated {{ page_updated_at|display_ts }}
+        </span>
       </div>
-      <div class="header-actions">
-        <span class="status-pill"><i class="health-dot {{ system_health.dashboard.state }}"></i>System {{ system_health.dashboard.label }}</span>
-        <span class="header-meta">Updated {{ page_updated_at|display_ts }}</span>
-        <button type="button" data-refresh-services-button>Refresh</button>
-      </div>
+      <button type="button" class="dash-refresh-btn" data-refresh-services-button aria-label="Refresh dashboard">
+        <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+        Refresh
+      </button>
     </section>
 
-    <section class="urgent-panel" aria-label="Urgent Attention">
-      <div>
-        <h2>⚠️ Urgent Attention</h2>
-        {% if not urgent_attention.latest and not urgent_attention.red_flags and not urgent_attention.staff_review and not urgent_attention.identity_checks %}
-          <p class="urgent-ok">✓ No critical issues detected</p>
-        {% elif urgent_attention.latest %}
-          <p>{{ urgent_attention.latest.alert_type }}: {{ urgent_attention.latest.message }}</p>
-        {% endif %}
-      </div>
-      {% if urgent_attention.red_flags > 0 or urgent_attention.staff_review > 0 or urgent_attention.identity_checks > 0 %}
-      <div class="urgent-counts">
-        {% if urgent_attention.red_flags > 0 %}<a href="{{ filter_links[1].url }}"><span>🚨 Critical Issues</span><strong>{{ urgent_attention.red_flags }}</strong></a>{% endif %}
-        {% if urgent_attention.staff_review > 0 %}<a href="{{ filter_links[2].url }}"><span>👁️ Cases Needing Review</span><strong>{{ urgent_attention.staff_review }}</strong></a>{% endif %}
-        {% if urgent_attention.identity_checks > 0 %}<a href="{{ filter_links[3].url }}"><span>🪪 Identity Issues</span><strong>{{ urgent_attention.identity_checks }}</strong></a>{% endif %}
-      </div>
-      <div class="urgent-actions">
-        <a class="button-link danger-link" href="{{ filter_links[1].url }}">→ View Issues</a>
-        {% if urgent_attention.latest %}
-          <button type="button" id="urgent-ack-button" data-alert-id="{{ urgent_attention.latest.alert_id }}">Acknowledge</button>
-        {% endif %}
-      </div>
+    {# ── Urgent alert banner — only shown when there are urgent items ── #}
+    {% if urgent_attention.red_flags > 0 or urgent_attention.staff_review > 0 or urgent_attention.identity_checks > 0 %}
+    <section class="urgent-banner" aria-live="polite" role="alert">
+      <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      <span class="urgent-banner-text">Urgent attention required —</span>
+      {% if urgent_attention.red_flags > 0 %}<a href="{{ filter_links[1].url }}"><strong>{{ urgent_attention.red_flags }}</strong> red flag{{ 's' if urgent_attention.red_flags != 1 }}</a>{% endif %}
+      {% if urgent_attention.staff_review > 0 %}<a href="{{ filter_links[2].url }}"><strong>{{ urgent_attention.staff_review }}</strong> needing review</a>{% endif %}
+      {% if urgent_attention.identity_checks > 0 %}<a href="{{ filter_links[3].url }}"><strong>{{ urgent_attention.identity_checks }}</strong> identity issue{{ 's' if urgent_attention.identity_checks != 1 }}</a>{% endif %}
+      <a class="urgent-banner-action" href="{{ filter_links[1].url }}">View all →</a>
+      {% if urgent_attention.latest %}
+        <button type="button" id="urgent-ack-button" data-alert-id="{{ urgent_attention.latest.alert_id }}" class="urgent-banner-ack">Acknowledge</button>
       {% endif %}
     </section>
+    {% endif %}
 
-    <section class="kpi-grid" aria-label="Today's Key Metrics">
+    <section class="kpi-grid" aria-label="Today's Key Metrics" aria-live="polite" aria-atomic="false">
       {% for card in kpi_cards %}
         <a class="kpi-card" href="{{ card.url }}" title="Click to view details">
           <span>{{ card.label }}</span>
           <strong>{{ card.value if card.value is not none else "n/a" }}</strong>
-          <small>→ View</small>
+          <small style="opacity: 0.6; font-size: 0.75em;">→ View</small>
         </a>
       {% endfor %}
-      <div class="kpi-card system-health-card" aria-label="System Status">
+      <div class="kpi-card system-health-card" aria-label="System Status" style="opacity: 0.9;">
         <span>System Status</span>
         <div class="health-list">
           <div data-service-key="dashboard"><i class="health-dot {{ system_health.dashboard.state }}"></i>Dashboard <strong>{{ system_health.dashboard.label }}</strong></div>
@@ -281,20 +259,67 @@
     </section>
 
     <section class="insight-grid three-up" aria-label="Dashboard insights">
-      <div class="panel compact-panel request-mix-card" aria-label="Request Mix">
+      <div class="panel compact-panel request-mix-card" aria-label="Request Mix by type">
         <div class="section-head">
           <h2>Request Mix</h2>
           <span class="muted">{{ active_date_range_label }}</span>
         </div>
-        {% for item in visible_request_mix %}
-          <a class="bar-row" href="{{ item.url }}">
+        {% if visible_request_mix %}
+        {# Interactive SVG donut chart #}
+        {% set total_requests = visible_request_mix | sum(attribute='count') %}
+        {% set chart_colors = ['#005EB8','#00A9CE','#009639','#768692','#E8871E','#AE2573','#006747','#003D82'] %}
+        <div class="chart-container" aria-label="Request type breakdown chart">
+          <svg class="donut-chart" viewBox="0 0 120 120" role="img" aria-label="Request mix donut chart">
+            <title>Request type breakdown: {{ total_requests }} total</title>
+            {% set ns = namespace(offset=25) %}
+            {% for item in visible_request_mix %}
+              {% if total_requests > 0 %}
+                {% set pct = (item.count / total_requests * 100) | round(1) %}
+                {% set stroke_pct = (item.count / total_requests * 100) %}
+                <circle class="donut-segment"
+                  cx="60" cy="60" r="40"
+                  fill="none"
+                  stroke="{{ chart_colors[loop.index0 % chart_colors|length] }}"
+                  stroke-width="18"
+                  stroke-dasharray="{{ stroke_pct }} {{ 100 - stroke_pct }}"
+                  stroke-dashoffset="{{ -ns.offset + 100 }}"
+                  transform="rotate(-90 60 60)">
+                  <title>{{ item.label }}: {{ item.count }} ({{ pct }}%)</title>
+                </circle>
+                {% set ns.offset = ns.offset + stroke_pct %}
+              {% endif %}
+            {% endfor %}
+            <text x="60" y="56" text-anchor="middle" class="donut-total-num">{{ total_requests }}</text>
+            <text x="60" y="68" text-anchor="middle" class="donut-total-label">total</text>
+          </svg>
+          <div class="chart-legend">
+            {% for item in visible_request_mix %}
+            <a class="chart-legend-item" href="{{ item.url }}" title="{{ item.label }}: {{ item.count }}">
+              <span class="chart-legend-dot" style="background:{{ chart_colors[loop.index0 % chart_colors|length] }}"></span>
+              <span class="chart-legend-label">{{ item.label }}</span>
+              <span class="chart-legend-count">{{ item.count }}</span>
+            </a>
+            {% endfor %}
+          </div>
+        </div>
+        {# Horizontal bar chart below #}
+        <div class="bar-chart-rows" role="list">
+          {% for item in visible_request_mix %}
+          <a class="bar-row" href="{{ item.url }}" role="listitem" aria-label="{{ item.label }}: {{ item.count }} cases">
             <span class="bar-label">{{ item.label }}</span>
+            <span class="bar-track">
+              <span class="bar-fill" style="width:{{ item.width }}%; background:{{ chart_colors[loop.index0 % chart_colors|length] }}"></span>
+            </span>
             <span class="bar-count">{{ item.count }}</span>
-            <span class="bar-track"><span class="bar-fill" style="width:{{ item.width }}%"></span></span>
           </a>
+          {% endfor %}
+        </div>
         {% else %}
-          <p class="muted">No requests in this range.</p>
-        {% endfor %}
+          <div class="empty-state" style="padding:24px">
+            <p class="empty-state-title">No requests yet</p>
+            <p class="empty-state-body">Cases will appear here once calls are processed.</p>
+          </div>
+        {% endif %}
       </div>
 
       <div class="panel compact-panel" aria-label="Staff Workload">
@@ -313,7 +338,7 @@
           <tbody>
           {% for row in staff_activity.rows %}
             <tr>
-              <td><span class="staff-name-cell"><span class="staff-avatar-sm" title="{{ row.staff_name }}">{{ row.staff_name[0]|upper }}</span><span class="staff-name-text">{{ row.staff_name }}</span></span></td>
+              <td><span class="staff-name-cell"><span class="staff-avatar-sm" title="{{ row.staff_name }}">{{ row.staff_name[0]|upper }}</span>{{ row.staff_name }}</span></td>
               <td>{{ row.assigned_open }}</td>
               <td>{{ row.resolved_today }}</td>
               <td>{{ row.alerts_acknowledged }}</td>
@@ -439,7 +464,7 @@
         <p class="muted" id="batch-status-message">Bulk actions apply to selected cases on this page only.</p>
       </div>
       <div class="selection-controls">
-        <button type="button" id="select-visible-button" data-select-all-visible {% if current_staff and current_staff.role in ("readonly", "viewer") %}disabled title="Read-only staff cannot update cases."{% endif %}>Select all visible</button>
+        <button type="button" id="select-visible-button" data-select-all-visible {% if current_staff and current_staff.role == "readonly" %}disabled title="Read-only staff cannot update cases."{% endif %}>Select all visible</button>
         <button type="button" id="clear-selection-button" data-clear-selection disabled>Clear selection</button>
       </div>
       <div class="bulk-actions">
@@ -476,11 +501,11 @@
                    data-status="{{ case.status }}"
                    data-patient="{{ case.patient_name }}"
                    data-callback="{{ case.callback_number }}"
-                   {% if current_staff and current_staff.role in ("readonly", "viewer") %}disabled title="Read-only staff cannot update cases."{% endif %}>
+                   {% if current_staff and current_staff.role == "readonly" %}disabled title="Read-only staff cannot update cases."{% endif %}>
           </label>
 
           {# Top: badges + patient info + time #}
-          <div class="card-top">
+          <div class="card-top" style="padding-left:26px">
             <div class="card-top-left">
               <div class="card-badges">
                 <span class="badge {{ case.request_type }}">{{ case.request_type_label }}</span>
@@ -534,13 +559,13 @@
               <form method="post" action="/case/{{ case.call_id }}/quick_action" data-no-toggle>
                 <input type="hidden" name="action" value="reopen">
                 <input type="hidden" name="return_url" value="{{ current_list_url }}">
-                <button type="submit" class="btn-sm" {% if current_staff and current_staff.role in ("readonly", "viewer") %}disabled title="Read-only staff cannot update cases."{% endif %}>Reopen</button>
+                <button type="submit" class="btn-sm" {% if current_staff and current_staff.role == "readonly" %}disabled title="Read-only staff cannot update cases."{% endif %}>Reopen</button>
               </form>
               {% elif case.requires_individual_review %}
               <form method="post" action="/case/{{ case.call_id }}/quick_action" data-no-toggle>
                 <input type="hidden" name="action" value="start_review">
                 <input type="hidden" name="return_url" value="{{ current_list_url }}">
-                <button type="submit" class="btn-sm" {% if current_staff and current_staff.role in ("readonly", "viewer") %}disabled title="Read-only staff cannot update cases."{% endif %}>Start Review</button>
+                <button type="submit" class="btn-sm" {% if current_staff and current_staff.role == "readonly" %}disabled title="Read-only staff cannot update cases."{% endif %}>Start Review</button>
               </form>
               {% else %}
               <form method="post" action="/case/{{ case.call_id }}/quick_action" data-no-toggle>
@@ -548,7 +573,7 @@
                 <input type="hidden" name="return_url" value="{{ current_list_url }}">
                 <input type="hidden" name="outcome_notes" value="{{ case.outcome_notes or '' }}">
                 <input type="hidden" name="resolved_by" value="{{ case.resolved_by or '' }}">
-                <button type="submit" class="btn-sm" {% if current_staff and current_staff.role in ("readonly", "viewer") %}disabled title="Read-only staff cannot update cases."{% endif %}>Resolve</button>
+                <button type="submit" class="btn-sm" {% if current_staff and current_staff.role == "readonly" %}disabled title="Read-only staff cannot update cases."{% endif %}>Resolve</button>
               </form>
               {% endif %}
               <a class="button-link secondary-page btn-sm" href="/case/{{ case.call_id }}?return_url={{ current_list_url|urlencode }}" data-no-toggle>View</a>
@@ -557,7 +582,12 @@
 
         </article>
         {% else %}
-          <div class="empty">No cases found for this filter.</div>
+          <div class="empty-state" role="status">
+            <svg class="empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+            <p class="empty-state-title">No cases match this filter</p>
+            <p class="empty-state-body">Try a different filter, date range, or search term.</p>
+            <a href="{{ reset_filters_url }}" class="empty-state-action">Clear filters</a>
+          </div>
         {% endfor %}
 
         {# Pagination lives inside the scrollable list #}
@@ -600,11 +630,11 @@
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.39 2 2 0 0 1 3.58 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.54a16 16 0 0 0 6.29 6.29l.92-.92a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
                 Call
               </button>
-              <button class="panel-btn" id="panel-btn-sms" title="SMS patient (coming soon)" disabled>
+              <button class="panel-btn" id="panel-btn-sms" title="SMS patient (coming soon)" disabled style="opacity:0.45;cursor:not-allowed">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
                 SMS
               </button>
-              <button class="panel-btn" id="panel-btn-gp" title="GP workflow (coming soon)" disabled>
+              <button class="panel-btn" id="panel-btn-gp" title="GP workflow (coming soon)" disabled style="opacity:0.45;cursor:not-allowed">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
                 Send to GP
               </button>
@@ -627,7 +657,7 @@
               <div class="panel-section-hd">AI Summary</div>
               <p class="panel-text" id="panel-ai-summary"></p>
               <div class="panel-redflag-box" id="panel-redflag-box" hidden>
-                <div class="panel-redflag-title">⚠ Red Flag Warning</div>
+                <div class="panel-redflag-title"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Red Flag Warning</div>
                 <div class="panel-redflag-body" id="panel-redflag-body"></div>
               </div>
               <div id="panel-suggested" hidden>
@@ -710,33 +740,6 @@
 
 {# ── SCRIPTS ─────────────────────────────────────────────────────── #}
 <script>
-  // Sidebar collapse toggle with localStorage persistence
-  (function () {
-    var sidebar = document.getElementById('analytics-sidebar');
-    var btn = document.getElementById('sidebar-toggle-btn');
-    if (!sidebar || !btn) return;
-    var key = 'jefflocal_sidebar_collapsed';
-
-    function updateToggleLabel(collapsed) {
-      var label = collapsed ? 'Expand sidebar' : 'Collapse sidebar';
-      btn.setAttribute('aria-label', label);
-      btn.setAttribute('title', label);
-    }
-
-    // Load saved state from localStorage (persists across sessions)
-    var startCollapsed = localStorage.getItem(key) === 'true';
-    if (startCollapsed) {
-      sidebar.classList.add('is-collapsed');
-    }
-    updateToggleLabel(startCollapsed);
-
-    btn.addEventListener('click', function () {
-      var isCollapsed = sidebar.classList.toggle('is-collapsed');
-      localStorage.setItem(key, isCollapsed);
-      updateToggleLabel(isCollapsed);
-    });
-  })();
-
   // Service health refresh
   function serviceLabel(status) {
     return (status || 'unknown').replaceAll('_', ' ').replace(/\b\w/g, function (c) { return c.toUpperCase(); });
@@ -831,19 +834,19 @@
 
   // ── Batch selection ──────────────────────────────────────────────
   var selectionContext = JSON.stringify({
-    filter: {{ active_filter | tojson }},
-    q: {{ search_query | tojson }},
-    requestType: {{ active_request_type | tojson }},
-    range: {{ active_date_range | tojson }},
-    sort: {{ active_sort | tojson }},
-    page: {{ pagination.page | tojson }},
-    pageSize: {{ pagination.page_size | tojson }}
+    filter: '{{ active_filter }}',
+    q: '{{ search_query }}',
+    requestType: '{{ active_request_type }}',
+    range: '{{ active_date_range }}',
+    sort: '{{ active_sort }}',
+    page: '{{ pagination.page }}',
+    pageSize: '{{ pagination.page_size }}'
   });
   var selectionContextKey = 'jefflocal.selection.context';
   var selectionKey = 'jefflocal.selection.' + selectionContext;
   var previousSelectionContext = sessionStorage.getItem(selectionContextKey);
   var statusMessage = document.getElementById('batch-status-message');
-  var readonlyStaff = ['readonly', 'viewer'].includes({{ (current_staff.role if current_staff else 'staff') | tojson }});
+  var readonlyStaff = '{{ current_staff.role if current_staff else "staff" }}' === 'readonly';
   var selectedCallIds = new Set();
   var selectionClearedNotice = false;
 
@@ -1221,7 +1224,7 @@
         if (event.target.closest('form'))   return;
         if (event.target.closest('button')) return;
         if (event.target.closest('a'))      return;
-        var card = event.target.closest('[data-case-row]');
+        var card = event.target.closest('[data-' + 'case-row]');
         if (!card) return;
         var callId = card.id.replace(/^case-/, '');
         if (!callId) return;
@@ -1230,19 +1233,6 @@
         } else {
           openPanel(callId);
         }
-      });
-    }
-
-    // "View" button → open slide-in panel instead of navigating to case page
-    if (caseListScroll) {
-      caseListScroll.addEventListener('click', function (event) {
-        var link = event.target.closest('a[data-no-toggle]');
-        if (!link) return;
-        var card = link.closest('[data-case-row]');
-        if (!card) return;
-        event.preventDefault();
-        var callId = card.id.replace(/^case-/, '');
-        if (callId) openPanel(callId);
       });
     }
 
@@ -1602,11 +1592,8 @@
           '<span class="swp swp-done"   title="Resolved today">' + s.resolved_today + '</span>' +
           '</span></div>';
       });
-      if (!html) html = '<div class="analytics-row ar-row--muted">No staff found</div>';
+      if (!html) html = '<div class="analytics-row" style="color:var(--ink-subtle);font-size:11px;">No staff found</div>';
       list.innerHTML = html;
-      // Update collapsed tooltip metric
-      var card = document.getElementById('staff-workload-card');
-      if (card) card.dataset.metric = ' · ' + d.staff.length + ' staff';
       if (ts) {
         var now = new Date();
         ts.textContent = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
@@ -1618,3 +1605,4 @@
   setInterval(refreshStaffWorkload, 60000); // every 60 seconds
 </script>
 {% endblock %}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   

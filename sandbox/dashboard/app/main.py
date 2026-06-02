@@ -82,6 +82,20 @@ app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
 templates.env.filters["display_ts"] = format_display_timestamp
 
+
+def _nav_alert_count() -> int:
+    try:
+        with connect() as conn:
+            return conn.execute(
+                "SELECT COUNT(*) FROM alert_events WHERE acknowledged_at IS NULL"
+            ).fetchone()[0]
+    except Exception:
+        _log.error("_nav_alert_count: failed to query alert_events", exc_info=True)
+        return 0
+
+
+templates.env.globals["nav_alert_count"] = _nav_alert_count
+
 SESSION_COOKIE = "jefflocal_session"
 AUTH_PUBLIC_PATHS = {"/login", "/logout", "/forgot", "/reset", "/favicon.ico"}
 AUTH_PUBLIC_PREFIXES = ("/static/", "/api/health", "/api/n8n/", "/api/alerts/")
@@ -105,22 +119,26 @@ async def enforce_auth(request: Request, call_next):
         resp = RedirectResponse(url=f"/login?next={quote(str(request.url.path), safe='')}", status_code=302)
         resp.delete_cookie(SESSION_COOKIE)
         return resp
-    return await call_next(request)
+    response = await call_next(request)
+    # Refresh cookie on every authenticated request to keep session active
+    response.set_cookie(SESSION_COOKIE, token, httponly=True, samesite="lax", secure=True, max_age=3600)
+    return response
 
 
 # ── Auth routes ────────────────────────────────────────────────────────────────
 
 @app.get("/login")
 def login_page(request: Request, next: str = "/", error: str = "", info: str = ""):
+    safe_next = next if next and next.startswith("/") and not next.startswith("//") else "/"
     token = request.cookies.get(SESSION_COOKIE)
     if token:
         with connect() as conn:
             conn.row_factory = __import__("sqlite3").Row
             user = get_session_user(conn, token)
         if user:
-            return RedirectResponse(url=next or "/", status_code=302)
+            return RedirectResponse(url=safe_next, status_code=302)
     return templates.TemplateResponse(request, "login.html", {
-        "error": error, "info": info, "next": next,
+        "error": error, "info": info, "next": safe_next,
         "prefill_username": "", "auth_method": "password",
     })
 

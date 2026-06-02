@@ -219,23 +219,37 @@ def forgot_page(request: Request):
 
 @app.post("/forgot")
 async def forgot_post(request: Request, username: str = Form(""), reset_type: str = Form("password")):
+    """Generate a password/PIN reset link.
+
+    Security notes:
+    - No user enumeration: the same success message is shown regardless of
+      whether the username exists, is inactive, or is rate-limited.
+    - The reset link is only rendered when a valid, active user is found AND
+      the rate limit has not been exceeded.
+    - Rate limiting (3 requests/hr per user) is enforced in create_reset_token.
+    """
     username = username.strip().lower()
     reset_link = None
-    error = ""
-    success = ""
+    # Generic success message — identical for all outcomes (no user enumeration)
+    success = (
+        "If that username is registered, a reset link has been generated below. "
+        "Share it securely with the user (e.g. via WhatsApp or in person)."
+    )
     with connect() as conn:
         conn.row_factory = __import__("sqlite3").Row
         user = lookup_user_by_username(conn, username)
-        if user:
-            token = create_reset_token(conn, user["id"], reset_type)
-            base = str(request.base_url).rstrip("/")
-            reset_link = f"{base}/reset?token={token}&type={reset_type}"
-            write_audit_event(conn, "__auth__", "reset_requested", username, [], {}, {"type": reset_type})
-            success = f"Reset link generated for '{username}'. Share it securely."
-        else:
-            error = "Username not found."
+        if user and user.get("active"):
+            try:
+                token = create_reset_token(conn, user["id"], reset_type)
+                base = str(request.base_url).rstrip("/")
+                reset_link = f"{base}/reset?token={token}&type={reset_type}"
+                write_audit_event(conn, "__auth__", "reset_requested", username, [], {}, {"type": reset_type})
+            except ValueError:
+                # rate_limit_exceeded — show no link but keep generic success
+                # message so the rate-limit state is not revealed to the caller
+                pass
     return templates.TemplateResponse(request, "forgot.html", {
-        "mode": "request", "error": error, "success": success, "reset_link": reset_link,
+        "mode": "request", "error": "", "success": success, "reset_link": reset_link,
     })
 
 

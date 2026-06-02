@@ -25,7 +25,7 @@
     .btn-primary { width: 100%; padding: 10px; background: #1d4ed8; color: #fff; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; margin-top: 4px; }
     .btn-primary:hover { background: #1e40af; }
     .login-error { background: #fef2f2; border: 1px solid #fca5a5; color: #b91c1c; border-radius: 8px; padding: 10px 14px; font-size: 13px; margin-bottom: 16px; }
-    .login-info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1d4ed8; border-radius: 8px; padding: 10px 14px; font-size: 13px; margin-bottom: 16px; margin-top: 16px; word-break: break-all; }
+    .login-info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1d4ed8; border-radius: 8px; padding: 10px 14px; font-size: 13px; margin-bottom: 16px; }
     .login-success { background: #f0fdf4; border: 1px solid #86efac; color: #166534; border-radius: 8px; padding: 10px 14px; font-size: 13px; margin-bottom: 16px; }
     .back-link { margin-top: 16px; text-align: center; }
     .back-link a { font-size: 12px; color: #6b7280; text-decoration: none; }
@@ -83,7 +83,7 @@
         </div>
 
         {% if reset_link %}
-          <div class="login-info">
+          <div class="login-info" style="margin-top:16px;word-break:break-all;">
             <strong>Reset link (share securely with user):</strong><br>
             <a href="{{ reset_link }}">{{ reset_link }}</a><br>
             <small>Expires in 30 minutes. Single use.</small>

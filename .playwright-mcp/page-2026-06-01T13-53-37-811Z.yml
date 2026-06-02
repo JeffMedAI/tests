@@ -1,0 +1,23 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]: ⚠ SANDBOX — Churchtown Medical Centre — Not for live patient use. Testing and development only. ⚠
+  - generic [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]: CMC
+      - generic [ref=e7]:
+        - generic [ref=e8]: Churchtown Medical Centre
+        - generic [ref=e9]: SANDBOX
+    - heading "Staff sign in" [level=1] [ref=e10]
+    - paragraph [ref=e11]: Enter your username and password or PIN to access the dashboard.
+    - generic [ref=e12]:
+      - button "Password" [ref=e13] [cursor=pointer]
+      - button "PIN" [ref=e14] [cursor=pointer]
+    - generic [ref=e16]:
+      - generic [ref=e17]:
+        - generic [ref=e18]: Username
+        - textbox "Username" [ref=e19]: Saeed1
+      - generic [ref=e20]:
+        - generic [ref=e21]: Password
+        - textbox "Password" [ref=e22]: Saeed1234
+      - button "Sign in" [ref=e23] [cursor=pointer]
+    - link "Forgot password or PIN?" [ref=e25] [cursor=pointer]:
+      - /url: /forgot

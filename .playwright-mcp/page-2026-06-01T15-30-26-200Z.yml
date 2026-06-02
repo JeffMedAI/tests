@@ -1,0 +1,524 @@
+- generic [active] [ref=e1]:
+  - link "Skip to main content" [ref=e2] [cursor=pointer]:
+    - /url: "#main-content"
+  - alert "Sandbox environment notice" [ref=e3]:
+    - generic [ref=e4]: ⚠
+    - generic [ref=e5]: SANDBOX — Churchtown Medical Centre — Not for live patient use. Testing and development only.
+    - generic [ref=e6]: ⚠
+  - generic [ref=e7]:
+    - complementary [ref=e8]:
+      - generic [ref=e9]:
+        - generic [ref=e10]: Analytics
+        - button "Toggle sidebar" [ref=e11] [cursor=pointer]:
+          - img [ref=e12]
+          - generic "2 critical issues": "2"
+      - navigation "Main navigation" [ref=e14]:
+        - link "Dashboard" [ref=e15] [cursor=pointer]:
+          - /url: /
+        - link "Requests" [ref=e16] [cursor=pointer]:
+          - /url: /requests
+        - link "Patients" [ref=e17] [cursor=pointer]:
+          - /url: /patients
+        - link "Staff" [ref=e18] [cursor=pointer]:
+          - /url: /staff
+        - link "Reports" [ref=e19] [cursor=pointer]:
+          - /url: /reports
+        - link "Settings" [ref=e20] [cursor=pointer]:
+          - /url: /settings
+      - generic [ref=e22]:
+        - link "Today" [ref=e23] [cursor=pointer]:
+          - /url: /requests?range=today
+        - link "Week" [ref=e24] [cursor=pointer]:
+          - /url: /requests?range=week
+        - link "All" [ref=e25] [cursor=pointer]:
+          - /url: /requests?range=all
+      - generic [ref=e26]:
+        - generic "Quick Status" [ref=e27]:
+          - heading "Quick Status" [level=3] [ref=e28]:
+            - img [ref=e29]
+            - text: Quick Status
+          - generic [ref=e33]:
+            - generic [ref=e34]: Open
+            - generic [ref=e36]: "10"
+          - generic [ref=e37]:
+            - generic [ref=e38]: Overdue
+            - generic [ref=e40]: "0"
+          - generic [ref=e41]:
+            - generic [ref=e42]: Resolved Today
+            - generic [ref=e44]: "10"
+          - generic [ref=e45]:
+            - generic [ref=e46]: Critical
+            - generic [ref=e48]: "2"
+        - link "Critical Issues 2 Needs immediate attention 2" [ref=e49] [cursor=pointer]:
+          - /url: /requests?filter=urgent_red_flags&sort=newest&range=today
+          - img [ref=e51]
+          - generic [ref=e53]:
+            - generic [ref=e54]: Critical Issues
+            - generic [ref=e55]: "2"
+            - generic [ref=e56]: Needs immediate attention
+          - generic [ref=e57]: "2"
+        - generic "Staff Workload" [ref=e58]:
+          - heading "Staff Workload 16:30" [level=3] [ref=e59]:
+            - img [ref=e60]
+            - text: Staff Workload 16:30
+          - generic [ref=e64]:
+            - generic [ref=e65]:
+              - generic "Admin Demo" [ref=e66]
+              - generic [ref=e67]:
+                - generic "Open cases" [ref=e68]: "0"
+                - generic "In progress" [ref=e69]: "0"
+                - generic "Resolved today" [ref=e70]: "0"
+            - generic [ref=e71]:
+              - generic "GP Demo" [ref=e72]
+              - generic [ref=e73]:
+                - generic "Open cases" [ref=e74]: "0"
+                - generic "In progress" [ref=e75]: "0"
+                - generic "Resolved today" [ref=e76]: "0"
+            - generic [ref=e77]:
+              - generic "Jessica Test1" [ref=e78]
+              - generic [ref=e79]:
+                - generic "Open cases" [ref=e80]: "0"
+                - generic "In progress" [ref=e81]: "0"
+                - generic "Resolved today" [ref=e82]: "0"
+            - generic [ref=e83]:
+              - generic "Mary 1" [ref=e84]
+              - generic [ref=e85]:
+                - generic "Open cases" [ref=e86]: "0"
+                - generic "In progress" [ref=e87]: "0"
+                - generic "Resolved today" [ref=e88]: "0"
+            - generic [ref=e89]:
+              - generic "Reception Demo" [ref=e90]
+              - generic [ref=e91]:
+                - generic "Open cases" [ref=e92]: "0"
+                - generic "In progress" [ref=e93]: "0"
+                - generic "Resolved today" [ref=e94]: "0"
+            - generic [ref=e95]:
+              - generic "Saeed 1" [ref=e96]
+              - generic [ref=e97]:
+                - generic "Open cases" [ref=e98]: "31"
+                - generic "In progress" [ref=e99]: "0"
+                - generic "Resolved today" [ref=e100]: "10"
+          - generic [ref=e102]:
+            - text: Open
+            - text: Active
+            - text: Done
+        - generic "Call Analytics" [ref=e106]:
+          - heading "Call Analytics" [level=3] [ref=e107]:
+            - img [ref=e108]
+            - text: Call Analytics
+          - generic [ref=e110]:
+            - generic [ref=e111]: Total Calls
+            - generic [ref=e112]: "58"
+          - generic [ref=e113]:
+            - generic [ref=e114]: Dropped
+            - generic [ref=e115]: "3"
+          - generic [ref=e116]:
+            - generic [ref=e117]: Safe to Queue
+            - generic [ref=e118]: "52"
+          - generic [ref=e119]:
+            - generic [ref=e120]: Success Rate
+            - generic [ref=e121]: 89.7%
+          - generic [ref=e122]:
+            - generic [ref=e123]: Avg Response Time
+            - 'generic "Average response time in minutes: 3089" [ref=e124]': 2d 3h
+      - generic [ref=e125]:
+        - button "Import" [ref=e126] [cursor=pointer]
+        - link "Alerts" [ref=e127] [cursor=pointer]:
+          - /url: /alerts
+          - img [ref=e128]
+        - generic [ref=e131]:
+          - link "Saeed 1 Admin" [ref=e132] [cursor=pointer]:
+            - /url: /profile
+            - generic [ref=e133]:
+              - generic [ref=e134]: Saeed 1
+              - generic [ref=e135]: Admin
+            - generic [ref=e136]: S
+          - link "Sign out" [ref=e137] [cursor=pointer]:
+            - /url: /logout
+            - img [ref=e138]
+    - main [ref=e142]:
+      - status [ref=e143]:
+        - strong [ref=e144]: DEMO / TEST DATA MODE
+        - generic [ref=e145]: No real patient data. Google push disabled for test runs.
+      - generic [ref=e146]:
+        - generic [ref=e147]:
+          - generic [ref=e148]:
+            - link "All" [ref=e149] [cursor=pointer]:
+              - /url: /requests?filter=all&sort=newest&range=today
+            - link "Urgent Red Flags 2" [ref=e150] [cursor=pointer]:
+              - /url: /requests?filter=urgent_red_flags&sort=newest&range=today
+              - text: Urgent Red Flags
+              - generic [ref=e151]: "2"
+            - link "Needs Review 10" [ref=e152] [cursor=pointer]:
+              - /url: /requests?filter=needs_review&sort=newest&range=today
+              - text: Needs Review
+              - generic [ref=e153]: "10"
+            - link "Identity Issues 10" [ref=e154] [cursor=pointer]:
+              - /url: /requests?filter=identity_issues&sort=newest&range=today
+              - text: Identity Issues
+              - generic [ref=e155]: "10"
+            - link "Open 10" [ref=e156] [cursor=pointer]:
+              - /url: /requests?filter=open&sort=newest&range=today
+              - text: Open
+              - generic [ref=e157]: "10"
+            - link "Resolved" [ref=e158] [cursor=pointer]:
+              - /url: /requests?filter=resolved&sort=newest&range=today
+            - link "Resolved Today 10" [ref=e159] [cursor=pointer]:
+              - /url: /requests?filter=resolved_today&sort=newest&range=today
+              - text: Resolved Today
+              - generic [ref=e160]: "10"
+            - button "Filters ▾" [ref=e161] [cursor=pointer]:
+              - img [ref=e162]
+              - generic [ref=e163]: Filters
+              - generic [ref=e164]: ▾
+          - generic:
+            - generic:
+              - generic: "Type:"
+              - link "All Types":
+                - /url: /requests?filter=open&sort=newest&range=today
+              - link "Prescription":
+                - /url: /requests?filter=open&sort=newest&range=today&request_type=prescription
+              - link "Sick Note":
+                - /url: /requests?filter=open&sort=newest&range=today&request_type=sick_note
+              - link "Referral":
+                - /url: /requests?filter=open&sort=newest&range=today&request_type=referral
+              - link "Test Result":
+                - /url: /requests?filter=open&sort=newest&range=today&request_type=test_result
+              - link "Appointment":
+                - /url: /requests?filter=open&sort=newest&range=today&request_type=appointment_redirect
+              - link "Admin":
+                - /url: /requests?filter=open&sort=newest&range=today&request_type=admin
+              - link "Unknown":
+                - /url: /requests?filter=open&sort=newest&range=today&request_type=unknown
+            - generic:
+              - generic:
+                - text: Search
+                - textbox "Search":
+                  - /placeholder: Patient, DOB, NHS, call ID, postcode…
+              - generic:
+                - text: Sort by
+                - combobox "Sort by":
+                  - option "Newest first" [selected]
+                  - option "Oldest first"
+                  - option "Priority"
+                  - option "Unresolved first"
+              - generic:
+                - text: Date range
+                - combobox "Date range":
+                  - option "Today" [selected]
+                  - option "Last 7 days"
+                  - option "Last 30 days"
+                  - option "All"
+              - generic:
+                - text: Per page
+                - combobox "Per page":
+                  - option "20" [selected]
+                  - option "50"
+                  - option "100"
+              - button "Apply"
+              - link "Reset":
+                - /url: /requests?filter=all&sort=newest&range=all&page_size=20
+          - generic [ref=e165]:
+            - generic "Active filters" [ref=e166]:
+              - generic [ref=e167]: Open
+              - generic [ref=e168]: Today
+              - link "Clear filters" [ref=e169] [cursor=pointer]:
+                - /url: /requests?filter=all&sort=newest&range=all&page_size=20
+            - generic [ref=e170]: Showing 1–10 of 10
+        - generic [ref=e171]:
+          - generic [ref=e172]:
+            - strong [ref=e173]: 0 selected
+            - paragraph [ref=e174]: Bulk actions apply to selected cases on this page only.
+          - generic [ref=e175]:
+            - button "Select all visible" [ref=e176] [cursor=pointer]
+            - button "Clear selection" [disabled] [ref=e177]
+          - generic [ref=e178]:
+            - button "Assign to me" [disabled] [ref=e179]
+            - button "Start review" [disabled] [ref=e180]
+            - button "Resolve eligible only" [disabled] [ref=e181]
+        - generic [ref=e182]:
+          - generic "Patient requests" [ref=e183]:
+            - article [ref=e184] [cursor=pointer]:
+              - generic "Select E2E-20260601-135055-05-REDFLAG for bulk actions" [ref=e185]:
+                - checkbox "Select E2E-20260601-135055-05-REDFLAG for bulk actions" [ref=e186]
+              - generic [ref=e187]:
+                - generic [ref=e188]:
+                  - generic [ref=e189]:
+                    - generic [ref=e190]: Appointment
+                    - generic [ref=e191]: 999 Emergency
+                    - generic [ref=e192]: Red Flag
+                    - generic [ref=e193]: Not Safe To Queue
+                  - generic [ref=e194]: GEOFFREY HARGREAVES
+                  - generic [ref=e195]:
+                    - generic [ref=e196]: DOB 14/08/1938 · 87
+                    - generic [ref=e197]: NHS n/a
+                    - generic [ref=e198]: 📱 0770 090 0105
+                - generic [ref=e199]:
+                  - generic [ref=e200]: "13.50"
+                  - generic [ref=e201]: 1h 39m ago
+              - paragraph [ref=e202]: Possible emergency red-flag symptoms identified from caller report. Caller requires immediate urgent safety handling.
+              - generic [ref=e203]:
+                - generic [ref=e204]:
+                  - generic [ref=e205]: OPEN
+                  - generic [ref=e206]: Unassigned
+                  - generic [ref=e207]: E2E-20260601-135055-05-REDFLAG
+                - generic [ref=e208]:
+                  - button "Start Review" [ref=e210]
+                  - link "View" [ref=e211]:
+                    - /url: /case/E2E-20260601-135055-05-REDFLAG?return_url=/requests
+            - article [ref=e212] [cursor=pointer]:
+              - generic "Select E2E-20260601-135055-10-EMERGENCY-ESCALATION for bulk actions" [ref=e213]:
+                - checkbox "Select E2E-20260601-135055-10-EMERGENCY-ESCALATION for bulk actions" [ref=e214]
+              - generic [ref=e215]:
+                - generic [ref=e216]:
+                  - generic [ref=e217]:
+                    - generic [ref=e218]: Appointment
+                    - generic [ref=e219]: 999 Emergency
+                    - generic [ref=e220]: Red Flag
+                    - generic [ref=e221]: Not Safe To Queue
+                  - generic [ref=e222]: ALAN FORSYTH
+                  - generic [ref=e223]:
+                    - generic [ref=e224]: DOB 27/01/1944 · 82
+                    - generic [ref=e225]: NHS n/a
+                    - generic [ref=e226]: 📱 0770 090 0110
+                - generic [ref=e227]:
+                  - generic [ref=e228]: "13.50"
+                  - generic [ref=e229]: 1h 39m ago
+              - paragraph [ref=e230]: Possible emergency red-flag symptoms identified from caller report. Caller requires immediate urgent safety handling.
+              - generic [ref=e231]:
+                - generic [ref=e232]:
+                  - generic [ref=e233]: OPEN
+                  - generic [ref=e234]: Unassigned
+                  - generic [ref=e235]: E2E-20260601-135055-10-EMERGENCY-ESCALATION
+                - generic [ref=e236]:
+                  - button "Start Review" [ref=e238]
+                  - link "View" [ref=e239]:
+                    - /url: /case/E2E-20260601-135055-10-EMERGENCY-ESCALATION?return_url=/requests
+            - article [ref=e240] [cursor=pointer]:
+              - generic "Select E2E-20260601-135055-01-PRESCRIPTION for bulk actions" [ref=e241]:
+                - checkbox "Select E2E-20260601-135055-01-PRESCRIPTION for bulk actions" [ref=e242]
+              - generic [ref=e243]:
+                - generic [ref=e244]:
+                  - generic [ref=e245]:
+                    - generic [ref=e246]: Prescription
+                    - generic [ref=e247]: review required
+                    - 'generic "Identity Check · Verification: no_match" [ref=e248]': "ID: No Match"
+                  - generic [ref=e249]: MARGARET HOLDEN
+                  - generic [ref=e250]:
+                    - generic [ref=e251]: DOB 22/03/1958 · 68
+                    - generic [ref=e252]: NHS n/a
+                    - generic [ref=e253]: 📱 0770 090 0101
+                - generic [ref=e254]:
+                  - generic [ref=e255]: "13.50"
+                  - generic [ref=e256]: 1h 39m ago
+              - paragraph [ref=e257]: Prescription for Unknown patient; ramipril 5mg, amlodipine 10mg, No matching patient found in lookup..
+              - generic [ref=e258]:
+                - generic [ref=e259]:
+                  - generic [ref=e260]: OPEN
+                  - generic [ref=e261]: Unassigned
+                  - generic [ref=e262]: E2E-20260601-135055-01-PRESCRIPTION
+                - generic [ref=e263]:
+                  - button "Start Review" [ref=e265]
+                  - link "View" [ref=e266]:
+                    - /url: /case/E2E-20260601-135055-01-PRESCRIPTION?return_url=/requests
+            - article [ref=e267] [cursor=pointer]:
+              - generic "Select E2E-20260601-135055-02-SICKNOTE for bulk actions" [ref=e268]:
+                - checkbox "Select E2E-20260601-135055-02-SICKNOTE for bulk actions" [ref=e269]
+              - generic [ref=e270]:
+                - generic [ref=e271]:
+                  - generic [ref=e272]:
+                    - generic [ref=e273]: Sick Note
+                    - generic [ref=e274]: review required
+                    - 'generic "Identity Check · Verification: no_match" [ref=e275]': "ID: No Match"
+                  - generic [ref=e276]: DANIEL FIRTH
+                  - generic [ref=e277]:
+                    - generic [ref=e278]: DOB 04/11/1985 · 40
+                    - generic [ref=e279]: NHS n/a
+                    - generic [ref=e280]: 📱 0770 090 0102
+                - generic [ref=e281]:
+                  - generic [ref=e282]: "13.50"
+                  - generic [ref=e283]: 1h 39m ago
+              - paragraph [ref=e284]: Sick note for Unknown patient; work, No matching patient found in lookup..
+              - generic [ref=e285]:
+                - generic [ref=e286]:
+                  - generic [ref=e287]: OPEN
+                  - generic [ref=e288]: Unassigned
+                  - generic [ref=e289]: E2E-20260601-135055-02-SICKNOTE
+                - generic [ref=e290]:
+                  - button "Start Review" [ref=e292]
+                  - link "View" [ref=e293]:
+                    - /url: /case/E2E-20260601-135055-02-SICKNOTE?return_url=/requests
+            - article [ref=e294] [cursor=pointer]:
+              - generic "Select E2E-20260601-135055-03-REFERRAL for bulk actions" [ref=e295]:
+                - checkbox "Select E2E-20260601-135055-03-REFERRAL for bulk actions" [ref=e296]
+              - generic [ref=e297]:
+                - generic [ref=e298]:
+                  - generic [ref=e299]:
+                    - generic [ref=e300]: Referral
+                    - generic [ref=e301]: review required
+                    - 'generic "Identity Check · Verification: no_match" [ref=e302]': "ID: No Match"
+                  - generic [ref=e303]: SUSAN BLACKWELL
+                  - generic [ref=e304]:
+                    - generic [ref=e305]: DOB 19/07/1962 · 63
+                    - generic [ref=e306]: NHS n/a
+                    - generic [ref=e307]: 📱 0770 090 0103
+                - generic [ref=e308]:
+                  - generic [ref=e309]: "13.50"
+                  - generic [ref=e310]: 1h 39m ago
+              - paragraph [ref=e311]: Referral for Unknown patient; Southport and Ormskirk Hospital, No matching patient found in lookup..
+              - generic [ref=e312]:
+                - generic [ref=e313]:
+                  - generic [ref=e314]: OPEN
+                  - generic [ref=e315]: Unassigned
+                  - generic [ref=e316]: E2E-20260601-135055-03-REFERRAL
+                - generic [ref=e317]:
+                  - button "Start Review" [ref=e319]
+                  - link "View" [ref=e320]:
+                    - /url: /case/E2E-20260601-135055-03-REFERRAL?return_url=/requests
+            - article [ref=e321] [cursor=pointer]:
+              - generic "Select E2E-20260601-135055-04-TEST-RESULT for bulk actions" [ref=e322]:
+                - checkbox "Select E2E-20260601-135055-04-TEST-RESULT for bulk actions" [ref=e323]
+              - generic [ref=e324]:
+                - generic [ref=e325]:
+                  - generic [ref=e326]:
+                    - generic [ref=e327]: Test Result
+                    - generic [ref=e328]: review required
+                    - 'generic "Identity Check · Verification: no_match" [ref=e329]': "ID: No Match"
+                  - generic [ref=e330]: ROBERT KAYE
+                  - generic [ref=e331]:
+                    - generic [ref=e332]: DOB 30/05/1949 · 77
+                    - generic [ref=e333]: NHS n/a
+                    - generic [ref=e334]: 📱 0770 090 0104
+                - generic [ref=e335]:
+                  - generic [ref=e336]: "13.50"
+                  - generic [ref=e337]: 1h 39m ago
+              - paragraph [ref=e338]: Test result for Unknown patient; blood tests, No matching patient found in lookup..
+              - generic [ref=e339]:
+                - generic [ref=e340]:
+                  - generic [ref=e341]: OPEN
+                  - generic [ref=e342]: Unassigned
+                  - generic [ref=e343]: E2E-20260601-135055-04-TEST-RESULT
+                - generic [ref=e344]:
+                  - button "Start Review" [ref=e346]
+                  - link "View" [ref=e347]:
+                    - /url: /case/E2E-20260601-135055-04-TEST-RESULT?return_url=/requests
+            - article [ref=e348] [cursor=pointer]:
+              - generic "Select E2E-20260601-135055-06-IDENTITY-MISMATCH for bulk actions" [ref=e349]:
+                - checkbox "Select E2E-20260601-135055-06-IDENTITY-MISMATCH for bulk actions" [ref=e350]
+              - generic [ref=e351]:
+                - generic [ref=e352]:
+                  - generic [ref=e353]:
+                    - generic [ref=e354]: Prescription
+                    - generic [ref=e355]: review required
+                    - 'generic "Identity Check · Verification: no_match" [ref=e356]': "ID: No Match"
+                  - generic [ref=e357]: KATHRINE NOLAN
+                  - generic [ref=e358]:
+                    - generic [ref=e359]: DOB 28/02/1971 · 55
+                    - generic [ref=e360]: NHS n/a
+                    - generic [ref=e361]: 📱 0770 090 0106
+                - generic [ref=e362]:
+                  - generic [ref=e363]: "13.50"
+                  - generic [ref=e364]: 1h 39m ago
+              - paragraph [ref=e365]: Prescription for Unknown patient; amlodipine 5mg, No matching patient found in lookup..
+              - generic [ref=e366]:
+                - generic [ref=e367]:
+                  - generic [ref=e368]: OPEN
+                  - generic [ref=e369]: Unassigned
+                  - generic [ref=e370]: E2E-20260601-135055-06-IDENTITY-MISMATCH
+                - generic [ref=e371]:
+                  - button "Start Review" [ref=e373]
+                  - link "View" [ref=e374]:
+                    - /url: /case/E2E-20260601-135055-06-IDENTITY-MISMATCH?return_url=/requests
+            - article [ref=e375] [cursor=pointer]:
+              - generic "Select E2E-20260601-135055-07-ADMIN for bulk actions" [ref=e376]:
+                - checkbox "Select E2E-20260601-135055-07-ADMIN for bulk actions" [ref=e377]
+              - generic [ref=e378]:
+                - generic [ref=e379]:
+                  - generic [ref=e380]:
+                    - generic [ref=e381]: Admin
+                    - generic [ref=e382]: review required
+                    - 'generic "Identity Check · Verification: no_match" [ref=e383]': "ID: No Match"
+                  - generic [ref=e384]: PRIYA SHARMA
+                  - generic [ref=e385]:
+                    - generic [ref=e386]: DOB 15/06/1990 · 35
+                    - generic [ref=e387]: NHS n/a
+                    - generic [ref=e388]: 📱 0770 090 0107
+                - generic [ref=e389]:
+                  - generic [ref=e390]: "13.50"
+                  - generic [ref=e391]: 1h 39m ago
+              - paragraph [ref=e392]: Admin for Unknown patient; admin details unclear, No matching patient found in lookup..
+              - generic [ref=e393]:
+                - generic [ref=e394]:
+                  - generic [ref=e395]: OPEN
+                  - generic [ref=e396]: Unassigned
+                  - generic [ref=e397]: E2E-20260601-135055-07-ADMIN
+                - generic [ref=e398]:
+                  - button "Start Review" [ref=e400]
+                  - link "View" [ref=e401]:
+                    - /url: /case/E2E-20260601-135055-07-ADMIN?return_url=/requests
+            - article [ref=e402] [cursor=pointer]:
+              - generic "Select E2E-20260601-135055-08-LOW-CONFIDENCE for bulk actions" [ref=e403]:
+                - checkbox "Select E2E-20260601-135055-08-LOW-CONFIDENCE for bulk actions" [ref=e404]
+              - generic [ref=e405]:
+                - generic [ref=e406]:
+                  - generic [ref=e407]:
+                    - generic [ref=e408]: Admin
+                    - generic [ref=e409]: review required
+                    - 'generic "Identity Check · Verification: no_match" [ref=e410]': "ID: No Match"
+                  - generic [ref=e411]: TERRY BOWDEN
+                  - generic [ref=e412]:
+                    - generic [ref=e413]: DOB 09/09/1966 · 59
+                    - generic [ref=e414]: NHS n/a
+                    - generic [ref=e415]: 📱 0770 090 0108
+                - generic [ref=e416]:
+                  - generic [ref=e417]: "13.50"
+                  - generic [ref=e418]: 1h 39m ago
+              - paragraph [ref=e419]: Admin for Unknown patient; admin details unclear, No matching patient found in lookup..
+              - generic [ref=e420]:
+                - generic [ref=e421]:
+                  - generic [ref=e422]: OPEN
+                  - generic [ref=e423]: Unassigned
+                  - generic [ref=e424]: E2E-20260601-135055-08-LOW-CONFIDENCE
+                - generic [ref=e425]:
+                  - button "Start Review" [ref=e427]
+                  - link "View" [ref=e428]:
+                    - /url: /case/E2E-20260601-135055-08-LOW-CONFIDENCE?return_url=/requests
+            - article [ref=e429] [cursor=pointer]:
+              - generic "Select E2E-20260601-135055-09-MULTI-INTENT for bulk actions" [ref=e430]:
+                - checkbox "Select E2E-20260601-135055-09-MULTI-INTENT for bulk actions" [ref=e431]
+              - generic [ref=e432]:
+                - generic [ref=e433]:
+                  - generic [ref=e434]:
+                    - generic [ref=e435]: Prescription
+                    - generic [ref=e436]: review required
+                    - 'generic "Identity Check · Verification: no_match" [ref=e437]': "ID: No Match"
+                  - generic [ref=e438]: CAROL WHITFIELD
+                  - generic [ref=e439]:
+                    - generic [ref=e440]: DOB 01/12/1974 · 51
+                    - generic [ref=e441]: NHS n/a
+                    - generic [ref=e442]: 📱 0770 090 0109
+                - generic [ref=e443]:
+                  - generic [ref=e444]: "13.50"
+                  - generic [ref=e445]: 1h 39m ago
+              - paragraph [ref=e446]: Prescription for Unknown patient; metformin 500mg, No matching patient found in lookup..
+              - generic [ref=e447]:
+                - generic [ref=e448]:
+                  - generic [ref=e449]: OPEN
+                  - generic [ref=e450]: Unassigned
+                  - generic [ref=e451]: E2E-20260601-135055-09-MULTI-INTENT
+                - generic [ref=e452]:
+                  - button "Start Review" [ref=e454]
+                  - link "View" [ref=e455]:
+                    - /url: /case/E2E-20260601-135055-09-MULTI-INTENT?return_url=/requests
+            - navigation "Pagination" [ref=e456]:
+              - generic [ref=e457]: Showing 1–10 of 10
+              - generic [ref=e458]: Page 1 of 1
+              - generic [ref=e459]:
+                - link "Previous":
+                  - /url: /requests?filter=open&sort=newest&range=today&page=1&page_size=20
+                - link "Next":
+                  - /url: /requests?filter=open&sort=newest&range=today&page=1&page_size=20
+          - generic "Case detail panel":
+            - generic [ref=e460]:
+              - img [ref=e461]
+              - paragraph [ref=e464]: Select a request to view details

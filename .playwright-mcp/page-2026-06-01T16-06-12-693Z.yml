@@ -1,0 +1,175 @@
+- generic [active] [ref=e1]:
+  - link "Skip to main content" [ref=e2] [cursor=pointer]:
+    - /url: "#main-content"
+  - alert "Sandbox environment notice" [ref=e3]:
+    - generic [ref=e4]: ⚠
+    - generic [ref=e5]: SANDBOX — Churchtown Medical Centre — Not for live patient use. Testing and development only.
+    - generic [ref=e6]: ⚠
+  - banner [ref=e7]:
+    - generic [ref=e8]:
+      - generic [ref=e9]: CM
+      - generic [ref=e10]: Churchtown Medical Centre
+    - navigation "Main navigation" [ref=e11]:
+      - link "Dashboard" [ref=e12] [cursor=pointer]:
+        - /url: /
+        - img [ref=e13]
+        - text: Dashboard
+      - link "Requests" [ref=e18] [cursor=pointer]:
+        - /url: /requests
+        - img [ref=e19]
+        - text: Requests
+      - link "Patients" [ref=e22] [cursor=pointer]:
+        - /url: /patients
+        - img [ref=e23]
+        - text: Patients
+      - link "Staff" [ref=e26] [cursor=pointer]:
+        - /url: /staff
+        - img [ref=e27]
+        - text: Staff
+      - link "Reports" [ref=e31] [cursor=pointer]:
+        - /url: /reports
+        - img [ref=e32]
+        - text: Reports
+      - link "Settings" [ref=e33] [cursor=pointer]:
+        - /url: /settings
+        - img [ref=e34]
+        - text: Settings
+    - generic [ref=e37]:
+      - button "Import" [ref=e38] [cursor=pointer]
+      - link "Alerts" [ref=e39] [cursor=pointer]:
+        - /url: /alerts
+        - img [ref=e40]
+      - link "Saeed 1" [ref=e43] [cursor=pointer]:
+        - /url: /profile
+        - generic [ref=e44]: S
+        - generic [ref=e45]: Saeed 1
+      - link "Sign out" [ref=e46] [cursor=pointer]:
+        - /url: /logout
+        - img [ref=e47]
+  - generic [ref=e50]:
+    - complementary [ref=e51]:
+      - generic [ref=e52]:
+        - generic [ref=e53]:
+          - img [ref=e54]
+          - text: Analytics
+        - button "Toggle analytics sidebar" [ref=e58] [cursor=pointer]:
+          - img [ref=e59]
+    - generic [ref=e62]:
+      - generic [ref=e63]:
+        - navigation "breadcrumb" [ref=e64]:
+          - list [ref=e65]:
+            - listitem [ref=e66]:
+              - link "Requests" [ref=e67] [cursor=pointer]:
+                - /url: /requests
+            - listitem [ref=e68]: ›MARGARET HOLDEN
+        - generic [ref=e69]:
+          - link "Back to Requests" [ref=e70] [cursor=pointer]:
+            - /url: /requests?filter=all&sort=newest&range=today
+            - img [ref=e71]
+            - text: Back to Requests
+          - generic [ref=e74]: Prescription
+          - generic [ref=e75]: RESOLVED
+        - heading "MARGARET HOLDEN" [level=1] [ref=e76]
+        - generic [ref=e77]:
+          - generic [ref=e78]: DOB
+          - generic [ref=e79]: 22/03/1958 · 68
+          - generic [ref=e80]: Phone
+          - generic [ref=e81]: 0770 090 0101
+          - generic [ref=e82]: Received
+          - generic [ref=e83]: 01-06-2026 T 13.52
+          - generic [ref=e84]: Call age
+          - generic [ref=e85]: 2h 13m ago
+          - generic [ref=e86]: Duration
+          - generic [ref=e87]: 198s
+        - generic "Last action on this case" [ref=e88]:
+          - img [ref=e89]
+          - text: Resolved by
+          - strong [ref=e92]: Saeed 1
+          - text: · 01-06-2026 T 13.59 —
+          - link "view full audit trail" [ref=e93] [cursor=pointer]:
+            - /url: "#tab-panel-audit"
+        - generic [ref=e94]:
+          - link "Call" [ref=e95] [cursor=pointer]:
+            - /url: tel:07700900101
+            - img [ref=e96]
+            - text: Call
+          - button "Copy patient identifiers to clipboard" [ref=e98] [cursor=pointer]: Copy Identifiers
+          - button "Copy EMIS record note to clipboard" [ref=e99] [cursor=pointer]: Copy Record Note
+          - button "Copy staff task to clipboard" [ref=e100] [cursor=pointer]: Copy Staff Task
+        - button "↩ Reopen Case" [ref=e103] [cursor=pointer]
+      - tablist "Case detail sections" [ref=e104]:
+        - tab "Action Needed" [selected] [ref=e105] [cursor=pointer]
+        - tab "Conversation" [ref=e106] [cursor=pointer]
+        - tab "Triage" [ref=e107] [cursor=pointer]
+        - tab "Audit" [ref=e108] [cursor=pointer]
+      - tabpanel "Action Needed" [ref=e109]:
+        - generic [ref=e110]:
+          - generic [ref=e111]:
+            - generic [ref=e112]:
+              - generic [ref=e113]: AI Summary
+              - paragraph [ref=e114]: Prescription for Unknown patient; ramipril 5mg, amlodipine 10mg, No matching patient found in lookup..
+            - generic [ref=e115]:
+              - generic [ref=e116]: Staff Task & Suggested Actions
+              - paragraph [ref=e117]: Prescription - Unknown Patient - No Match
+              - paragraph [ref=e118]: "Prescription requested for ramipril 5mg, amlodipine 10mg. Caller-stated patient: MARGARET HOLDEN. No verified EMIS/NHS match. No matching patient found in lookup.. Callback provided. Staff review required."
+            - generic [ref=e119]:
+              - generic [ref=e120]: EMIS Workflow Steps
+              - list [ref=e121]:
+                - listitem [ref=e122]: Find patient on EMIS
+                - listitem [ref=e123]: Paste AI-generated record note into patient record
+                - listitem [ref=e124]: Assign task to Medicines Management
+            - generic [ref=e125]:
+              - generic [ref=e126]:
+                - text: Patient Record Note
+                - generic [ref=e127]: Review before pasting into patient record
+              - paragraph [ref=e128]: "Patient: MARGARET HOLDEN. The caller requested Prescription for Unknown patient; ramipril 5mg, amlodipine 10mg, No matching patient found in lookup... Relevant transcript context: Jeff: Good morning, Churchtown Medical Centre. How can I help you today? Caller: Hello, I need to order my repeat prescription please. Jeff: Of course. Can I take your full name, date of birth and postcode? Caller: It's Margaret Holden, twenty second of Mar.... Callback number provided: 07700900101. Identity verification was no_match. No red-flag symptoms were identified from the transcript. The request was assessed as review_required and safe to queue. Action: Staff review required"
+              - button "Copy to clipboard" [ref=e129] [cursor=pointer]
+            - group [ref=e130]:
+              - generic "Locked JeffLocal fields" [ref=e131] [cursor=pointer]
+          - generic [ref=e132]:
+            - generic [ref=e133]:
+              - generic [ref=e134]: Identifiers
+              - generic [ref=e135]:
+                - generic [ref=e136]: EMIS
+                - generic [ref=e137]: n/a
+                - button "Copy" [disabled] [ref=e138]
+              - generic [ref=e139]:
+                - generic [ref=e140]: NHS
+                - generic [ref=e141]: n/a
+                - button "Copy" [disabled] [ref=e142]
+              - generic [ref=e143]:
+                - generic [ref=e144]: Callback
+                - generic [ref=e145]: 0770 090 0101
+                - button "Copy" [ref=e146] [cursor=pointer]
+            - generic [ref=e147]:
+              - generic [ref=e148]: Safety & Status
+              - generic [ref=e149]:
+                - generic [ref=e150]: review_required
+                - generic [ref=e151]: No Red Flag
+                - generic [ref=e152]: Safe To Queue
+                - generic "Verification status at time of resolution" [ref=e153]: "ID: No Match"
+            - generic [ref=e154]:
+              - generic [ref=e155]: Staff Workflow
+              - generic [ref=e156]:
+                - generic [ref=e157]:
+                  - text: Status
+                  - strong [ref=e158]: Resolved
+                - generic [ref=e159]:
+                  - text: Assigned
+                  - strong [ref=e160]: Saeed 1
+                - generic [ref=e161]:
+                  - text: Resolved
+                  - strong [ref=e162]: 01-06-2026 T 13.59
+                - generic [ref=e163]:
+                  - text: Resolved by
+                  - strong [ref=e164]: Saeed 1
+                - generic [ref=e165]:
+                  - text: Turnaround
+                  - strong [ref=e166]: 6 mins
+                - generic [ref=e167]:
+                  - text: Last edited
+                  - strong [ref=e168]: Saeed 1
+              - generic [ref=e169]:
+                - button "↩ Reopen" [ref=e170] [cursor=pointer]
+                - link "Back to Requests" [ref=e171] [cursor=pointer]:
+                  - /url: /requests?filter=all&sort=newest&range=today

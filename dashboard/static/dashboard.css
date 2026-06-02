@@ -1,8 +1,34 @@
 /* ═══════════════════════════════════════════════════════════════════════
-   JeffLocal Dashboard — Figma-aligned design system
+   Sandbox Dashboard — Practice-configurable design system
+   Environment: SANDBOX — primary colour injected via --practice-accent
    ═══════════════════════════════════════════════════════════════════════ */
 
+/* ── SANDBOX BANNER ────────────────────────────────────────────────── */
+.sandbox-banner {
+  position: sticky;
+  top: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: #b45309;
+  color: #fff8ed;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 7px 16px;
+  text-align: center;
+}
+.sandbox-banner-icon { font-size: 13px; opacity: 0.85; }
+.sandbox-banner-text { flex: 1; max-width: 700px; }
+
 :root {
+  /* ── Practice colour — override per deployment via CSS var injection */
+  --practice-accent:       var(--accent);
+  --practice-accent-hover: var(--accent-hover);
+  --practice-accent-soft:  var(--accent-soft);
   /* ── Grays (Figma Tailwind-compatible) */
   --gray-50:  #f9fafb;
   --gray-100: #f3f4f6;
@@ -70,9 +96,9 @@
 
   /* ── Typography — NHS standard: Arial as Frutiger fallback */
   --font: Arial, "Segoe UI", system-ui, sans-serif;
-  --text-xs:   11px;
-  --text-sm:   12px;
-  --text-base: 14px;
+  --text-xs:   12px;  /* C4/H9: raised from 11px — minimum readable size */
+  --text-sm:   13px;  /* C4: raised from 12px */
+  --text-base: 14px;  /* note: 16px ideal for body, 14px acceptable for dense admin UI */
   --text-lg:   16px;
   --text-xl:   20px;
   --text-2xl:  24px;
@@ -84,6 +110,45 @@
 /* ── Reset ─────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 [hidden] { display: none !important; }
+
+/* ── C2: Focus-visible states (WCAG 2.4.7) ─────────────────────────── */
+/* Remove any blanket outline:none rules; restore via :focus-visible    */
+*:focus { outline: none; }
+*:focus-visible {
+  outline: 2px solid var(--accent, #005EB8);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+/* Slightly wider ring on buttons and nav links for visibility */
+button:focus-visible,
+a:focus-visible,
+[role="tab"]:focus-visible,
+[role="button"]:focus-visible {
+  outline: 3px solid var(--accent, #005EB8);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ── C5: Skip link ──────────────────────────────────────────────────── */
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: 8px;
+  z-index: 9999;
+  background: var(--accent, #005EB8);
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 0 0 6px 6px;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: top 0.1s;
+}
+.skip-link:focus-visible {
+  top: 0;
+  outline: 3px solid #fff;
+  outline-offset: -3px;
+}
 
 html { scroll-behavior: smooth; height: 100%; overflow: hidden; }
 
@@ -105,7 +170,148 @@ a:hover { text-decoration: underline; }
 h1, h2, h3, h4 { line-height: 1.25; }
 
 /* ══════════════════════════════════════════════════════════════════════
-   TOP BAR
+   MAIN TOPBAR — R1: nav moved here from sidebar
+   ══════════════════════════════════════════════════════════════════════ */
+
+:root { --main-topbar-h: 52px; }
+
+.main-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 150;
+  height: var(--main-topbar-h);
+  background: var(--accent);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 0 16px;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0,0,80,.15);
+}
+
+.main-topbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  margin-right: 20px;
+  text-decoration: none;
+}
+.main-topbar-logo {
+  width: 30px;
+  height: 30px;
+  background: rgba(255,255,255,.2);
+  border-radius: 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 12px;
+  letter-spacing: -0.5px;
+  flex-shrink: 0;
+}
+.main-topbar-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.main-topbar-nav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: 1;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.main-topbar-nav::-webkit-scrollbar { display: none; }
+
+.main-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255,255,255,.75);
+  text-decoration: none;
+  white-space: nowrap;
+  min-height: 36px;
+  transition: background .12s, color .12s;
+}
+.main-nav-link:hover { background: rgba(255,255,255,.12); color: #fff; text-decoration: none; }
+.main-nav-link.active { background: rgba(255,255,255,.2); color: #fff; font-weight: 600; }
+.main-nav-link svg { flex-shrink: 0; opacity: .8; }
+.main-nav-link.active svg { opacity: 1; }
+
+.main-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  margin-left: 12px;
+}
+
+.main-topbar-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.25);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.main-topbar-username {
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255,255,255,.85);
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Override topbar-icon-btn and topbar-signout-btn inside main-topbar */
+.main-topbar .topbar-icon-btn {
+  width: 36px;
+  height: 36px;
+  color: rgba(255,255,255,.8);
+}
+.main-topbar .topbar-icon-btn:hover { background: rgba(255,255,255,.12); color: #fff; }
+.main-topbar .topbar-user-link { padding: 4px 6px; border-radius: 8px; gap: 6px; }
+.main-topbar .topbar-user-link:hover { background: rgba(255,255,255,.12); }
+.main-topbar .topbar-signout-btn { color: rgba(255,255,255,.7); }
+.main-topbar .topbar-signout-btn:hover { background: rgba(255,0,0,.2); color: #fff; }
+.main-topbar .topbar-import-btn {
+  height: 32px;
+  font-size: 12px;
+  background: rgba(255,255,255,.15);
+  border-color: rgba(255,255,255,.3);
+  color: #fff;
+}
+.main-topbar .topbar-import-btn:hover { background: rgba(255,255,255,.25); color: #fff; }
+
+/* App body now sits below main-topbar */
+.app-body {
+  height: calc(100dvh - var(--main-topbar-h));
+}
+
+@media (max-width: 599px) {
+  .main-topbar-name { display: none; }
+  .main-topbar-username { display: none; }
+  .main-nav-link span { display: none; } /* icon-only on mobile */
+  .main-nav-link { padding: 6px 8px; min-height: 44px; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   TOP BAR (legacy — kept for reference, no longer in template)
    ══════════════════════════════════════════════════════════════════════ */
 
 .topbar {
@@ -173,6 +379,10 @@ h1, h2, h3, h4 { line-height: 1.25; }
   color: var(--ink-muted);
   transition: background .12s, color .12s;
   white-space: nowrap;
+  /* C3: minimum 44px touch target */
+  min-height: 44px;
+  display: flex;
+  align-items: center;
 }
 .topbar-nav-link:hover { background: var(--gray-100); color: var(--ink); text-decoration: none; }
 .topbar-nav-link.active { background: var(--accent-soft); color: var(--accent); }
@@ -194,8 +404,8 @@ h1, h2, h3, h4 { line-height: 1.25; }
 }
 
 .topbar-icon-btn {
-  width: 34px;
-  height: 34px;
+  width: 44px; /* C3: 44px touch target */
+  height: 44px;
   border-radius: 8px;
   display: inline-flex;
   align-items: center;
@@ -232,7 +442,7 @@ h1, h2, h3, h4 { line-height: 1.25; }
 .topbar-divider { width: 1px; height: 28px; background: var(--line); margin: 0 4px; }
 
 .topbar-import-btn {
-  height: 30px;
+  height: 36px; /* sidebar-appropriate height; mobile touch handled by parent padding */
   padding: 0 12px;
   border-radius: 7px;
   border: 1px solid var(--line, #e5e7eb);
@@ -313,7 +523,7 @@ h1, h2, h3, h4 { line-height: 1.25; }
   display: flex;
   flex: 1;
   overflow: hidden;
-  height: calc(100vh - var(--topbar-h));
+  /* height set dynamically by main-topbar rule above */
 }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -352,7 +562,6 @@ h1, h2, h3, h4 { line-height: 1.25; }
 }
 
 .is-collapsed .sidebar-hd-title { display: none; }
-.is-collapsed .sidebar-hd { justify-content: center; padding: 10px 0; }
 
 .sidebar-toggle {
   width: 26px;
@@ -370,7 +579,7 @@ h1, h2, h3, h4 { line-height: 1.25; }
   position: relative;   /* needed for badge positioning */
 }
 .sidebar-toggle:hover { background: var(--line); }
-.sidebar-toggle svg { transition: transform .2s; }
+.sidebar-toggle svg { width: 14px; height: 14px; flex-shrink: 0; transition: transform .2s; }
 .is-collapsed .sidebar-toggle svg { transform: rotate(180deg); }
 
 /* ── Critical alert badge on sidebar toggle (R2) ── */
@@ -388,9 +597,9 @@ h1, h2, h3, h4 { line-height: 1.25; }
   border-radius: 99px;
   background: var(--danger);
   color: #fff;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
   padding: 0 4px;
@@ -431,6 +640,10 @@ h1, h2, h3, h4 { line-height: 1.25; }
   text-align: center;
   transition: background .12s, color .12s;
   white-space: nowrap;
+  min-height: 36px; /* C3: improved touch target within constrained sidebar space */
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .period-tab.active, .period-tab:hover { background: var(--panel); color: var(--ink); }
 
@@ -452,9 +665,7 @@ h1, h2, h3, h4 { line-height: 1.25; }
   text-transform: uppercase;
   letter-spacing: .6px;
   color: var(--gray-900);
-  margin-bottom: 8px;
-  display: flex;
-  align-items: center;
+  margin-bottom: 6px;
 }
 .is-collapsed .sidebar-section-hd { display: none; }
 
@@ -563,60 +774,6 @@ h1, h2, h3, h4 { line-height: 1.25; }
   box-shadow: var(--shadow-md);
 }
 
-/* ══════════════════════════════════════════════════════════════════════
-   SIDEBAR CARD UTILITIES (R3 — Unified Card CSS)
-   ══════════════════════════════════════════════════════════════════════ */
-
-/* Danger dot — extends existing .ar-dot.blue / .amber / .green */
-.ar-dot.danger { background: var(--danger); }
-
-/* Workload legend dots — match pill badge colours */
-.ar-dot.legend-open   { background: #1d4ed8; }
-.ar-dot.legend-active { background: #854d0e; margin-left: 6px; }
-.ar-dot.legend-done   { background: #166534; margin-left: 6px; }
-
-/* Coloured ar-value variants */
-.ar-value.success { color: var(--success); }
-.ar-value.danger  { color: var(--danger); }
-.danger-text      { color: var(--danger); }
-
-/* Timestamp label inside a card header */
-.sidebar-card-ts {
-  font-size: 9px;
-  font-weight: 400;
-  color: var(--ink-subtle);
-  margin-left: 6px;
-  text-transform: none;
-  letter-spacing: 0;
-}
-
-/* "All Clear" card — success-tinted analytics card */
-.sidebar-card-clear { background: rgba(34, 197, 94, 0.05); border-color: #22c55e; }
-.sidebar-card-clear-label { color: #22c55e; font-weight: 700; }
-.sidebar-card-clear-sub   { display: block; font-size: 0.9em; color: var(--ink-muted); margin-top: 4px; }
-.is-collapsed .sidebar-card-clear-label,
-.is-collapsed .sidebar-card-clear-sub { display: none; }
-/* All-clear collapsed icon colour */
-.is-collapsed .sidebar-card-clear .card-collapsed-icon { color: #22c55e; font-weight: 700; font-size: 18px; }
-
-/* Legend row at bottom of staff-workload card */
-.sidebar-legend-row {
-  margin-top: 6px;
-  padding-top: 6px;
-  border-top: 1px solid var(--line);
-}
-.sidebar-legend-label {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  font-size: 10px;
-  color: var(--ink-subtle);
-  flex-wrap: wrap;
-}
-
-/* Muted / loading state row */
-.ar-row--muted { color: var(--ink-subtle); font-size: 11px; }
-
 /* Staff workload widget */
 .staff-workload-row {
   display: flex;
@@ -685,6 +842,60 @@ h1, h2, h3, h4 { line-height: 1.25; }
   box-shadow: var(--shadow-md);
 }
 .is-collapsed .red-flag-card { position: relative; }
+
+/* ══════════════════════════════════════════════════════════════════════
+   SIDEBAR CARD UTILITIES (R3 — Unified Card CSS)
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* Danger dot — extends existing .ar-dot.blue / .amber / .green */
+.ar-dot.danger { background: var(--danger); }
+
+/* Workload legend dots — match pill badge colours */
+.ar-dot.legend-open   { background: #1d4ed8; }
+.ar-dot.legend-active { background: #854d0e; margin-left: 6px; }
+.ar-dot.legend-done   { background: #166534; margin-left: 6px; }
+
+/* Coloured ar-value variants */
+.ar-value.success { color: var(--success); }
+.ar-value.danger  { color: var(--danger); }
+.danger-text      { color: var(--danger); }
+
+/* Timestamp label inside a card header */
+.sidebar-card-ts {
+  font-size: 9px;
+  font-weight: 400;
+  color: var(--ink-subtle);
+  margin-left: 6px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* "All Clear" card — success-tinted analytics card */
+.sidebar-card-clear { background: rgba(34, 197, 94, 0.05); border-color: #22c55e; }
+.sidebar-card-clear-label { color: #22c55e; font-weight: 700; }
+.sidebar-card-clear-sub   { display: block; font-size: 0.9em; color: var(--ink-muted); margin-top: 4px; }
+.is-collapsed .sidebar-card-clear-label,
+.is-collapsed .sidebar-card-clear-sub { display: none; }
+/* All-clear collapsed icon colour */
+.is-collapsed .sidebar-card-clear .card-collapsed-icon { color: #22c55e; font-weight: 700; font-size: 18px; }
+
+/* Legend row at bottom of staff-workload card */
+.sidebar-legend-row {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
+}
+.sidebar-legend-label {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  color: var(--ink-subtle);
+  flex-wrap: wrap;
+}
+
+/* Muted / loading state row */
+.ar-row--muted { color: var(--ink-subtle); font-size: 11px; }
 
 .analytics-row {
   display: flex;
@@ -870,7 +1081,6 @@ h1, h2, h3, h4 { line-height: 1.25; }
 .kpi-card:hover { box-shadow: var(--shadow-md); text-decoration: none; }
 .kpi-card span  { font-size: var(--text-xs); color: var(--ink-subtle); text-transform: uppercase; letter-spacing: .4px; font-weight: 600; }
 .kpi-card strong { font-size: var(--text-2xl); font-weight: 700; color: var(--ink); }
-.kpi-card small  { opacity: 0.6; font-size: 0.75em; }
 
 /* System health card inside kpi grid */
 .system-health-card {
@@ -878,7 +1088,6 @@ h1, h2, h3, h4 { line-height: 1.25; }
   border: 1px solid var(--line);
   border-radius: 10px;
   padding: 14px 16px;
-  opacity: 0.9;
 }
 .system-health-card > span { font-size: var(--text-xs); color: var(--ink-subtle); text-transform: uppercase; letter-spacing: .4px; font-weight: 600; display: block; margin-bottom: 8px; }
 
@@ -938,11 +1147,8 @@ h1, h2, h3, h4 { line-height: 1.25; }
 .staff-workload-table th { font-weight: 600; color: var(--ink-subtle); text-align: left; padding: 4px 6px; border-bottom: 1px solid var(--line); }
 .staff-workload-table td { padding: 5px 6px; border-bottom: 1px solid var(--gray-50); color: var(--ink-muted); }
 .staff-workload-table td:first-child { color: var(--ink); font-weight: 500; }
-
-/* Staff name cell with avatar */
 .staff-name-cell { display: flex; align-items: center; gap: 6px; }
 .staff-avatar-sm { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 10px; font-weight: 700; flex-shrink: 0; }
-.staff-name-text { flex: 1; min-width: 0; }
 
 /* Live workload */
 .workload-list { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; font-size: var(--text-xs); }
@@ -1159,8 +1365,6 @@ h1, h2, h3, h4 { line-height: 1.25; }
 
 /* Card row layouts */
 .card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
-/* Indent card body to clear the absolutely-positioned batch-select checkbox (left:14px, ~26px wide) */
-.request-card .card-top { padding-left: 26px; }
 .card-top-left { flex: 1; min-width: 0; }
 
 .card-badges { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 4px; }
@@ -2221,51 +2425,363 @@ button:disabled { background: var(--gray-200); color: var(--gray-500); border-co
 .pathway-item-label { color: var(--ink-subtle); font-weight: 600; }
 .pathway-item-value { color: var(--ink); }
 
-/* Warning / notice */
-.warning, .warning-inline { color: var(--danger); font-size: var(--text-sm); }
-.notice-banner { background: var(--success-bg); color: var(--success); border: 1px solid var(--success-line); border-radius: 6px; padding: 6px 12px; font-size: var(--text-sm); margin-bottom: 6px; }
 
 /* ══════════════════════════════════════════════════════════════════════
-   OTHER PAGES (patients, staff, reports, settings, alerts)
+   RESPONSIVE — SIDEBAR BREAKPOINTS
+   Mobile  : < 600px  → sidebar slides off-screen, overlay on expand
+   Tablet  : 600–1023px → sidebar narrows to 240px
+   Desktop : ≥ 1024px → full sidebar at 280px  (baseline; no change needed)
    ══════════════════════════════════════════════════════════════════════ */
 
-/* Scrollable wrapper for pages without an analytics sidebar */
-.page-scroll {
-  flex: 1;
-  overflow-y: auto;
-  min-width: 0;
-  min-height: 0;
-  padding: 20px 24px 28px;
+/* ── Tablet (600px – 1023px) ── */
+@media (min-width: 600px) and (max-width: 1023px) {
+  .analytics-sidebar {
+    width: var(--sidebar-w-tablet);
+    min-width: var(--sidebar-w-tablet);
+    flex-shrink: 0;
+  }
+  .analytics-sidebar.is-collapsed {
+    width: var(--sidebar-coll-w);
+    min-width: var(--sidebar-coll-w);
+  }
+  .app-main {
+    min-width: 0;
+    flex: 1;
+  }
 }
 
-/* ══════════════════════════════════════════════════════════════════════
-   R3 — INLINE STYLE ELIMINATION
-   Utility and component classes that replace inline styles in templates.
-   Dynamic data-driven values (flex ratios, bar widths from Jinja2) stay
-   as inline styles — only static presentational styles move here.
-   ══════════════════════════════════════════════════════════════════════ */
+/* ── Mobile (< 600px) ── */
+@media (max-width: 599px) {
+  .app-body {
+    position: relative;
+  }
+  .analytics-sidebar {
+    position: fixed;
+    top: var(--topbar-h);
+    left: 0;
+    bottom: 0;
+    z-index: 200;
+    width: min(var(--sidebar-w-desktop), 85vw);
+    min-width: 0;
+    transform: translateX(0);
+    transition: transform 0.25s ease, width 0.25s ease;
+    box-shadow: 2px 0 16px rgba(0,0,0,.20);
+  }
+  .analytics-sidebar.is-collapsed {
+    transform: translateX(-110%);
+    /* keep width so expand animation is smooth */
+    width: min(var(--sidebar-w-desktop), 85vw);
+  }
+  .app-main {
+    width: 100%;
+    min-width: 0;
+    flex: 1;
+  }
+  /* Tap-outside backdrop */
+  .sidebar-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 199;
+    background: rgba(0,0,0,.35);
+    cursor: pointer;
+  }
+  .sidebar-backdrop.is-visible {
+    display: block;
+  }
+}
 
-/* Spacing utility — replaces style="margin-top:24px" on section labels */
-.mt-section { margin-top: 24px; }
+/* ── H1: Breadcrumb ─────────────────────────────────────────────── */
+.cd-breadcrumb {
+  margin-bottom: 6px;
+}
+.cd-breadcrumb ol {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  list-style: none;
+  font-size: var(--text-xs);
+  color: var(--ink-subtle);
+  flex-wrap: wrap;
+}
+.cd-breadcrumb li + li::before {
+  content: "›";
+  margin-right: 6px;
+  opacity: 0.5;
+}
+.cd-breadcrumb a { color: var(--accent); text-decoration: none; }
+.cd-breadcrumb a:hover { text-decoration: underline; }
+.cd-breadcrumb [aria-current="page"] { color: var(--ink-muted); font-weight: 500; }
 
-/* Form inline — replaces style="display:inline" on small action forms */
-.form-inline { display: inline; }
+/* ── L4: Audit summary line ─────────────────────────────────────── */
+.cd-audit-summary {
+  font-size: var(--text-xs);
+  color: var(--ink-subtle);
+  margin: 4px 0 8px;
+  padding: 5px 10px;
+  background: var(--gray-50);
+  border-radius: 6px;
+  border: 1px solid var(--line);
+}
+.cd-audit-summary strong { color: var(--ink-muted); font-weight: 600; }
 
-/* Required field asterisk — replaces style="color:#dc2626" */
-.required-mark { color: var(--danger); }
+/* ── Dashboard header — clean single row ───────────────────────── */
+.dash-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px 10px;
+  flex-shrink: 0;
+}
+.dash-header-left { display: flex; flex-direction: column; gap: 3px; }
+.dash-header h1 { font-size: var(--text-xl); font-weight: 700; color: var(--ink); line-height: 1.2; }
+.dash-header-meta { font-size: var(--text-xs); color: var(--ink-subtle); display: flex; align-items: center; gap: 5px; }
+.dash-refresh-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background .12s, color .12s;
+  min-height: 36px;
+}
+.dash-refresh-btn:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
 
-/* Staff "no username" placeholder text */
-.no-username { color: var(--ink-subtle); font-style: italic; }
+/* ── Urgent banner — inline alert, replaces full urgent-panel section */
+.urgent-banner {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 20px 8px;
+  padding: 10px 14px;
+  background: var(--danger-bg);
+  border: 1px solid var(--danger-line);
+  border-left: 4px solid var(--danger);
+  border-radius: 8px;
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+}
+.urgent-banner svg { color: var(--danger); flex-shrink: 0; }
+.urgent-banner-text { color: var(--danger); font-weight: 600; }
+.urgent-banner a { color: var(--danger); font-weight: 500; text-decoration: underline; }
+.urgent-banner a:hover { color: var(--accent); }
+.urgent-banner-action { margin-left: auto; font-weight: 700 !important; }
+.urgent-banner-ack {
+  padding: 3px 10px;
+  border: 1px solid var(--danger-line);
+  border-radius: 5px;
+  background: transparent;
+  color: var(--danger);
+  font-size: var(--text-xs);
+  cursor: pointer;
+  transition: background .12s;
+}
+.urgent-banner-ack:hover { background: var(--danger); color: #fff; }
 
-/* case_detail.html — advanced staff fields details block */
-.advanced-staff-fields { margin-top: 8px; }
+/* ── Request Mix — donut chart ──────────────────────────────────── */
+.chart-container {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 10px 0 12px;
+}
+.donut-chart {
+  width: 100px;
+  height: 100px;
+  flex-shrink: 0;
+}
+.donut-segment {
+  transition: stroke-width .2s;
+}
+.donut-segment:hover { stroke-width: 22; }
+.donut-total-num {
+  font-size: 18px;
+  font-weight: 700;
+  fill: var(--ink);
+}
+.donut-total-label {
+  font-size: 8px;
+  fill: var(--ink-subtle);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.chart-legend {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.chart-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  text-decoration: none;
+  color: var(--ink-muted);
+  font-size: var(--text-xs);
+  padding: 2px 4px;
+  border-radius: 5px;
+  transition: background .12s;
+}
+.chart-legend-item:hover { background: var(--gray-100); color: var(--ink); text-decoration: none; }
+.chart-legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.chart-legend-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chart-legend-count { font-weight: 600; color: var(--ink); margin-left: auto; flex-shrink: 0; }
 
-/* case_detail.html — raw transcript details block */
-.raw-transcript { margin-top: 10px; }
-.raw-transcript p { font-size: var(--text-xs); margin-top: 8px; white-space: pre-wrap; }
+.bar-chart-rows { display: flex; flex-direction: column; gap: 5px; }
+.bar-row {
+  display: grid;
+  grid-template-columns: 90px 1fr 30px;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  color: var(--ink-muted);
+  font-size: var(--text-xs);
+  padding: 2px 0;
+}
+.bar-row:hover { color: var(--ink); text-decoration: none; }
+.bar-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bar-track { background: var(--gray-100); border-radius: 99px; height: 7px; overflow: hidden; }
+.bar-fill { display: block; height: 100%; border-radius: 99px; background: var(--accent); transition: width .4s ease; }
+.bar-count { text-align: right; font-weight: 600; color: var(--ink); font-size: var(--text-xs); }
 
-/* case_detail.html — recording card status line */
-.cd-recording-status { font-size: var(--text-sm); }
+/* ── H4: Hamburger toggle — visible on mobile only ────────────────── */
+.mobile-menu-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  position: fixed;
+  bottom: 24px;
+  left: 16px;
+  z-index: 300;
+  width: 48px;
+  height: 48px;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+  border-radius: 50%;
+  box-shadow: 0 4px 12px rgba(0,0,0,.25);
+  transition: background .12s, transform .12s;
+}
+.mobile-menu-btn:hover { background: var(--accent-hover); transform: scale(1.05); }
+.mobile-menu-btn[aria-expanded="true"] { background: var(--accent-hover); }
 
-/* case_detail.html — pathway intro paragraph in Triage tab */
-.cd-pathway-desc { font-size: var(--text-sm); margin-bottom: 12px; }
+@media (max-width: 599px) {
+  .mobile-menu-btn { display: flex; }
+}
+
+/* ── L5: Print styles ───────────────────────────────────────────────── */
+@media print {
+  .sandbox-banner,
+  .analytics-sidebar,
+  .sidebar-backdrop,
+  .cd-case-actions,
+  .cd-bulk-bar,
+  .cd-filter-bar,
+  .mobile-menu-btn,
+  .sidebar-toggle,
+  .topbar-import-btn,
+  .topbar-icon-btn,
+  .topbar-signout-btn,
+  .topbar-user,
+  .cd-workflow-form,
+  [data-copy-button],
+  button { display: none !important; }
+
+  body, html { height: auto; overflow: visible; }
+  .app-body { display: block; }
+  .app-main { width: 100%; padding: 0; }
+
+  h1 { font-size: 18pt; margin-bottom: 8pt; }
+  h2 { font-size: 14pt; margin: 6pt 0 4pt; }
+
+  .cd-case-header { border: none; padding: 0 0 12pt; }
+  .cd-tab-content[hidden] { display: block !important; }
+  .cd-tabs { display: none; }
+
+  a { color: inherit; text-decoration: none; }
+  a[href]::after { content: ""; }
+}
+
+/* ── M5: Empty state component ──────────────────────────────────────── */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 64px 24px;
+  text-align: center;
+  color: var(--ink-subtle);
+  gap: 12px;
+}
+.empty-state-icon {
+  width: 48px;
+  height: 48px;
+  color: var(--gray-300);
+}
+.empty-state-title {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--ink-muted);
+}
+.empty-state-body {
+  font-size: var(--text-sm);
+  max-width: 320px;
+}
+.empty-state-action {
+  margin-top: 4px;
+  padding: 8px 20px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  text-decoration: none;
+  transition: background .15s;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+.empty-state-action:hover { background: var(--accent-hover); text-decoration: none; }
+
+/* ── L2: Session timeout warning toast ──────────────────────────────── */
+/* (Requires Saeed approval before enabling — CSS included, JS gate off) */
+.session-timeout-toast {
+  display: none; /* toggled by JS when session near expiry */
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 9000;
+  background: var(--warning-bg);
+  border: 1px solid var(--warning-line);
+  border-left: 4px solid var(--warning);
+  border-radius: 8px;
+  padding: 14px 18px;
+  max-width: 320px;
+  box-shadow: var(--shadow-md);
+  gap: 10px;
+  align-items: flex-start;
+}
+.session-timeout-toast.is-visible { display: flex; }
+.session-timeout-toast-text { flex: 1; font-size: var(--text-sm); }
+.session-timeout-toast-title { font-weight: 600; color: var(--warning); margin-bottom: 2px; }
+.session-timeout-toast-btn {
+  margin-top: 8px;
+  padding: 6px 12px;
+  background: var(--warning);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+  min-height: 36px;
+}

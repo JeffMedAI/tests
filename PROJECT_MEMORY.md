@@ -1,6 +1,6 @@
 ﻿# PROJECT MEMORY â€” JeffLocal
 # READ THIS FIRST at every session start, before doing anything else.
-# Last updated: 2026-06-01 (auto-updated 07:00)
+# Last updated: 2026-06-02 (auto-updated 07:00)
 # Maintained by: Claude (update at end of every session)
 
 ---
@@ -76,21 +76,28 @@ Security Agent has VETO authority over all PRs. Lead Agent enforces vetoes.
 
 ---
 
-## CURRENT STATUS (as of 2026-05-30 16:30)
+## CURRENT STATUS (as of 2026-06-02 — updated by Dispatch after session log gap identified)
 
 ### What is working
 - Production dashboard LIVE at dashboard.app-avamed.uk
 - Cookie fix: LIVE in production
-- Sidebar R1 COMPLETE: sidebar now on all 6 primary pages (not just dashboard), topbar removed, nav in sidebar
 - All 4 missing config files: DONE
-- N1/N2 fixes: DONE
+- N1/N2 fixes: DONE and VERIFIED
 - Watchdog: REWRITTEN — all 5 services, restart cap 3/hr, WhatsApp alerts
-- WhatsApp daily report delivery: DONE
+- WhatsApp daily report delivery: DONE (07:00 scheduled, confirmed delivered)
 - Strategy Agent: fully onboarded
-- Test suite: 91/102 passing — conftest auth fixture working, failures are real app bugs not setup
-- E2E call flow test: Stages 1, 2, 4 PASSING. Stage 3: SQLite fix in place but pipeline gap identified
-  — n8n receives webhook (Stage 2 pass) but cases never reach DB — n8n workflow not writing handoff JSON
+- Test suite: auth fixture working, 109 passed
+- E2E call flow test: Stages 1-4 PASSING. Stage 3 SQLite fix confirmed.
+- HMAC-SHA256 webhook verification: DONE — 14/14 tests passing (sandbox)
+- Password reset end-to-end: DONE — 28/28 tests passing (sandbox)
+- GDPR 90-day purge script: DONE — atomic, dry-run mode, no PII in audit log
+- G1 governance breach: FORMALLY CLOSED
+- UX/UI Audit: COMPLETE (ui-ux-pro-max, 2026-06-01) — all 8 pages x 3 breakpoints, score 5.4/10
+- All UX fixes C1-C5, H1-H2-H4, M1-M8, L1-L4-L5: DONE in SANDBOX
+- Dashboard redesign: Navigation moved to NHS blue sticky topbar, sidebar analytics-only, SVG donut/bar chart added, status bug fixed
+- NHS SBS Framework proposal: DRAFTED — docs/project_documents/Avamed_NHS_SBS_Framework_Proposal.docx
 - n8n webhook path confirmed: jefflocal-test-intake
+- NOTE: 2026-06-01 Claude Code session end checklist NOT completed — session logs missing. Reconstructed from git commits.
 
 ### Blocking Pilot 1 go-live
 - No real staff accounts (need names, roles, emails from Saeed)
@@ -160,7 +167,7 @@ C:\JeffLocal\backups\RESTORE_POINT_20260529\        â† Latest restore point
 ```
 Repo:    https://github.com/JeffMedAI/tests
 Branch:  sandbox
-Latest:  f9c4c86 feat: GDPR 90-day automated purge script with audit log 2026-05-30
+Latest:  8e1151f fix: chart type order fix + video model research + UX report
 Tag:     RESTORE_20260529
 Author:  215987900+Avamedio@users.noreply.github.com
 ```
@@ -236,6 +243,7 @@ Monitoring:     Watchdog (restarts dashboard if down), checks every 5 min
 ---
 *Update this file at the end of every session. It is the single source of truth
 for project state and the first thing to read when starting fresh.*
+
 
 
 

@@ -1,0 +1,162 @@
+- generic [ref=e1]:
+  - alert "Sandbox environment notice" [ref=e2]:
+    - generic [ref=e3]: ⚠
+    - generic [ref=e4]: SANDBOX — Churchtown Medical Centre — Not for live patient use. Testing and development only.
+    - generic [ref=e5]: ⚠
+  - generic [ref=e6]:
+    - complementary [ref=e7]:
+      - generic [ref=e8]:
+        - generic [ref=e9]: Churchtown Medical Centre
+        - button "Toggle sidebar" [ref=e10] [cursor=pointer]:
+          - img [ref=e11]
+      - navigation "Main navigation" [ref=e13]:
+        - link "Dashboard" [ref=e14] [cursor=pointer]:
+          - /url: /
+        - link "Requests" [ref=e15] [cursor=pointer]:
+          - /url: /requests
+        - link "Patients" [ref=e16] [cursor=pointer]:
+          - /url: /patients
+        - link "Staff" [ref=e17] [cursor=pointer]:
+          - /url: /staff
+        - link "Reports" [ref=e18] [cursor=pointer]:
+          - /url: /reports
+        - link "Settings" [ref=e19] [cursor=pointer]:
+          - /url: /settings
+      - generic [ref=e20]:
+        - button "Import" [ref=e21] [cursor=pointer]
+        - link "Alerts" [ref=e22] [cursor=pointer]:
+          - /url: /alerts
+          - img [ref=e23]
+        - generic [ref=e26]:
+          - link "Saeed 1 Admin" [ref=e27] [cursor=pointer]:
+            - /url: /profile
+            - generic [ref=e28]:
+              - generic [ref=e29]: Saeed 1
+              - generic [ref=e30]: Admin
+            - generic [ref=e31]: S
+          - link "Sign out" [ref=e32] [cursor=pointer]:
+            - /url: /logout
+            - img [ref=e33]
+    - generic [ref=e36]:
+      - generic [ref=e37]:
+        - generic [ref=e38]:
+          - link "Back to Requests" [ref=e39] [cursor=pointer]:
+            - /url: /requests?filter=all&sort=newest&range=today&page_size=20
+            - img [ref=e40]
+            - text: Back to Requests
+          - generic [ref=e42]:
+            - generic [ref=e43]: 🚨 Emergency
+            - generic [ref=e44]: RED FLAG
+            - generic [ref=e45]: Appointment
+          - generic [ref=e46]: IN REVIEW
+        - heading "ALAN FORSYTH" [level=1] [ref=e47]
+        - generic [ref=e48]:
+          - generic [ref=e49]: DOB
+          - generic [ref=e50]: 27/01/1944 · 82
+          - generic [ref=e51]: Phone
+          - generic [ref=e52]: 0770 090 0110
+          - generic [ref=e53]: Received
+          - generic [ref=e54]: 01-06-2026 T 13.52
+          - generic [ref=e55]: Call age
+          - generic [ref=e56]: 2m ago
+          - generic [ref=e57]: Duration
+          - generic [ref=e58]: 143s
+        - generic [ref=e59]:
+          - link "Call" [ref=e60] [cursor=pointer]:
+            - /url: tel:07700900110
+            - img [ref=e61]
+            - text: Call
+          - button "Copy Identifiers" [ref=e63] [cursor=pointer]
+          - button "Copy Record Note" [ref=e64] [cursor=pointer]
+          - button "Copy Staff Task" [ref=e65] [cursor=pointer]
+        - button "✓ Mark as Resolved" [ref=e68] [cursor=pointer]
+      - navigation "Case detail sections" [ref=e69]:
+        - button "Action Needed" [ref=e70] [cursor=pointer]
+        - button "Conversation" [ref=e71] [cursor=pointer]
+        - button "Triage" [ref=e72] [cursor=pointer]
+        - button "Audit" [ref=e73] [cursor=pointer]
+      - generic [ref=e74]: 🚨 Emergency red-flag case — immediate staff review required
+      - generic [ref=e75]: 🪪 Identity review required before processing
+      - generic [ref=e77]:
+        - generic [ref=e78]:
+          - generic [ref=e79]:
+            - generic [ref=e80]: AI Summary
+            - paragraph [ref=e81]: Possible emergency red-flag symptoms identified from caller report. Caller requires immediate urgent safety handling.
+          - generic [ref=e82]:
+            - generic [ref=e83]: ⚠ Red Flag Warning
+            - paragraph [ref=e84]: Staff review required
+          - generic [ref=e85]:
+            - generic [ref=e86]: Staff Task & Suggested Actions
+            - paragraph [ref=e87]: POSSIBLE EMERGENCY - facial drooping, arm weakness, slurred speech, sudden onset
+            - paragraph [ref=e88]: "Caller reported: facial drooping, arm weakness, slurred speech, sudden onset. Priority: 999 Emergency. Safe to queue: false. Transcript/pathway indicates urgent care or 999/A&E advice was given. Callback: 07700900110. Patient verification: no_match. No matching patient found in lookup."
+          - generic [ref=e89]:
+            - generic [ref=e90]: EMIS Workflow Steps
+            - list [ref=e91]:
+              - listitem [ref=e92]: Find patient on EMIS
+              - listitem [ref=e93]: Check appointment availability or redirect protocol
+              - listitem [ref=e94]: Book or redirect as appropriate
+          - generic [ref=e95]:
+            - generic [ref=e96]:
+              - text: Patient Record Note
+              - generic [ref=e97]: Review before pasting into patient record
+            - paragraph [ref=e98]: "Patient: ALAN FORSYTH. The caller requested Possible emergency red-flag symptoms identified from caller report. Caller requires immediate urgent safety handling.. Relevant transcript context: Jeff: Good morning, Churchtown Medical Centre. How can I help? Caller: It's my husband. His face has dropped on one side and his arm is weak. He's trying to speak but the words aren't coming out right. It started about ten minutes ago. Jeff: This sounds lik.... Callback number provided: 07700900110. Identity verification was no_match. Red-flag symptoms were identified from the transcript. The request was assessed as 999 Emergency and not safe to queue. Action: Staff review required Urgent/red-flag case: follow local urgent escalation protocol. Do not rely on copied note alone."
+            - button "Copy to clipboard" [ref=e99] [cursor=pointer]
+          - group [ref=e100]:
+            - generic "Locked JeffLocal fields" [ref=e101] [cursor=pointer]
+        - generic [ref=e102]:
+          - generic [ref=e103]:
+            - generic [ref=e104]: Identifiers
+            - generic [ref=e105]:
+              - generic [ref=e106]: EMIS
+              - generic [ref=e107]: n/a
+              - button "Copy" [disabled] [ref=e108]
+            - generic [ref=e109]:
+              - generic [ref=e110]: NHS
+              - generic [ref=e111]: n/a
+              - button "Copy" [disabled] [ref=e112]
+            - generic [ref=e113]:
+              - generic [ref=e114]: Callback
+              - generic [ref=e115]: 0770 090 0110
+              - button "Copy" [ref=e116] [cursor=pointer]
+          - generic [ref=e117]:
+            - generic [ref=e118]: Safety & Status
+            - generic [ref=e119]:
+              - generic [ref=e120]: 999 Emergency
+              - generic [ref=e121]: Red Flag
+              - generic [ref=e122]: Not Safe To Queue
+              - generic [ref=e123]: Review Required
+              - generic [ref=e124]: "ID: No Match"
+          - generic [ref=e125]:
+            - generic [ref=e126]: Staff Workflow
+            - generic [ref=e127]:
+              - generic [ref=e128]:
+                - generic [ref=e129]:
+                  - text: Status
+                  - strong [ref=e130]: In Progress
+                - generic [ref=e131]:
+                  - text: Assigned
+                  - strong [ref=e132]: Saeed 1
+              - generic [ref=e133]:
+                - text: Outcome note
+                - textbox "Outcome note" [ref=e134]: Emergency escalation actioned. Called 999 — ambulance dispatched. Patient (Alan Forsyth, DOB 27/01/1944) presenting with facial drooping, arm weakness and slurred speech consistent with possible stroke. Advised family member on scene to keep patient calm and not give food/water. GP notified. Case closed — emergency services taking over.
+              - generic [ref=e135]:
+                - checkbox "I confirm staff review is complete and this request is ready to resolve." [checked] [active] [ref=e136]
+                - text: I confirm staff review is complete and this request is ready to resolve.
+              - paragraph [ref=e137]: Outcome notes required before resolving a red-flag case.
+              - paragraph [ref=e138]: Outcome notes required before resolving an identity issue.
+              - generic [ref=e139]:
+                - button "✓ Mark as Resolved" [ref=e140] [cursor=pointer]
+                - button "Save progress" [ref=e141] [cursor=pointer]
+                - link "Back to Requests" [ref=e142] [cursor=pointer]:
+                  - /url: /requests?filter=all&sort=newest&range=today&page_size=20
+              - group [ref=e143]:
+                - generic "Advanced staff fields" [ref=e144]
+                - option "New"
+                - option "Needs Review"
+                - option "Urgent Review"
+                - option "In Progress" [selected]
+                - option "Waiting for Patient"
+                - option "Waiting for GP"
+                - option "Resolved"
+                - option "Escalated"
+                - option "Unable to Complete"

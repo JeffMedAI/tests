@@ -1,0 +1,144 @@
+- generic [active] [ref=e1]:
+  - alert "Sandbox environment notice" [ref=e2]:
+    - generic [ref=e3]: ⚠
+    - generic [ref=e4]: SANDBOX — Churchtown Medical Centre — Not for live patient use. Testing and development only.
+    - generic [ref=e5]: ⚠
+  - generic [ref=e6]:
+    - complementary [ref=e7]:
+      - generic [ref=e8]:
+        - generic [ref=e9]: Churchtown Medical Centre
+        - button "Toggle sidebar" [ref=e10] [cursor=pointer]:
+          - img [ref=e11]
+      - navigation "Main navigation" [ref=e13]:
+        - link "Dashboard" [ref=e14] [cursor=pointer]:
+          - /url: /
+        - link "Requests" [ref=e15] [cursor=pointer]:
+          - /url: /requests
+        - link "Patients" [ref=e16] [cursor=pointer]:
+          - /url: /patients
+        - link "Staff" [ref=e17] [cursor=pointer]:
+          - /url: /staff
+        - link "Reports" [ref=e18] [cursor=pointer]:
+          - /url: /reports
+        - link "Settings" [ref=e19] [cursor=pointer]:
+          - /url: /settings
+      - generic [ref=e20]:
+        - button "Import" [ref=e21] [cursor=pointer]
+        - link "Alerts" [ref=e22] [cursor=pointer]:
+          - /url: /alerts
+          - img [ref=e23]
+        - generic [ref=e26]:
+          - link "Saeed 1 Admin" [ref=e27] [cursor=pointer]:
+            - /url: /profile
+            - generic [ref=e28]:
+              - generic [ref=e29]: Saeed 1
+              - generic [ref=e30]: Admin
+            - generic [ref=e31]: S
+          - link "Sign out" [ref=e32] [cursor=pointer]:
+            - /url: /logout
+            - img [ref=e33]
+    - generic [ref=e36]:
+      - generic [ref=e37]:
+        - generic [ref=e38]:
+          - link "Back to Requests" [ref=e39] [cursor=pointer]:
+            - /url: /requests?filter=all&sort=newest&range=today&page_size=20
+            - img [ref=e40]
+            - text: Back to Requests
+          - generic [ref=e43]: Prescription
+          - generic [ref=e44]: RESOLVED
+        - heading "MARGARET HOLDEN" [level=1] [ref=e45]
+        - generic [ref=e46]:
+          - generic [ref=e47]: DOB
+          - generic [ref=e48]: 22/03/1958 · 68
+          - generic [ref=e49]: Phone
+          - generic [ref=e50]: 0770 090 0101
+          - generic [ref=e51]: Received
+          - generic [ref=e52]: 01-06-2026 T 13.52
+          - generic [ref=e53]: Call age
+          - generic [ref=e54]: 23m ago
+          - generic [ref=e55]: Duration
+          - generic [ref=e56]: 198s
+        - generic [ref=e57]:
+          - link "Call" [ref=e58] [cursor=pointer]:
+            - /url: tel:07700900101
+            - img [ref=e59]
+            - text: Call
+          - button "Copy Identifiers" [ref=e61] [cursor=pointer]
+          - button "Copy Record Note" [ref=e62] [cursor=pointer]
+          - button "Copy Staff Task" [ref=e63] [cursor=pointer]
+        - button "↩ Reopen Case" [ref=e66] [cursor=pointer]
+      - navigation "Case detail sections" [ref=e67]:
+        - button "Action Needed" [ref=e68] [cursor=pointer]
+        - button "Conversation" [ref=e69] [cursor=pointer]
+        - button "Triage" [ref=e70] [cursor=pointer]
+        - button "Audit" [ref=e71] [cursor=pointer]
+      - generic [ref=e73]:
+        - generic [ref=e74]:
+          - generic [ref=e75]:
+            - generic [ref=e76]: AI Summary
+            - paragraph [ref=e77]: Prescription for Unknown patient; ramipril 5mg, amlodipine 10mg, No matching patient found in lookup..
+          - generic [ref=e78]:
+            - generic [ref=e79]: Staff Task & Suggested Actions
+            - paragraph [ref=e80]: Prescription - Unknown Patient - No Match
+            - paragraph [ref=e81]: "Prescription requested for ramipril 5mg, amlodipine 10mg. Caller-stated patient: MARGARET HOLDEN. No verified EMIS/NHS match. No matching patient found in lookup.. Callback provided. Staff review required."
+          - generic [ref=e82]:
+            - generic [ref=e83]: EMIS Workflow Steps
+            - list [ref=e84]:
+              - listitem [ref=e85]: Find patient on EMIS
+              - listitem [ref=e86]: Paste AI-generated record note into patient record
+              - listitem [ref=e87]: Assign task to Medicines Management
+          - generic [ref=e88]:
+            - generic [ref=e89]:
+              - text: Patient Record Note
+              - generic [ref=e90]: Review before pasting into patient record
+            - paragraph [ref=e91]: "Patient: MARGARET HOLDEN. The caller requested Prescription for Unknown patient; ramipril 5mg, amlodipine 10mg, No matching patient found in lookup... Relevant transcript context: Jeff: Good morning, Churchtown Medical Centre. How can I help you today? Caller: Hello, I need to order my repeat prescription please. Jeff: Of course. Can I take your full name, date of birth and postcode? Caller: It's Margaret Holden, twenty second of Mar.... Callback number provided: 07700900101. Identity verification was no_match. No red-flag symptoms were identified from the transcript. The request was assessed as review_required and safe to queue. Action: Staff review required"
+            - button "Copy to clipboard" [ref=e92] [cursor=pointer]
+          - group [ref=e93]:
+            - generic "Locked JeffLocal fields" [ref=e94] [cursor=pointer]
+        - generic [ref=e95]:
+          - generic [ref=e96]:
+            - generic [ref=e97]: Identifiers
+            - generic [ref=e98]:
+              - generic [ref=e99]: EMIS
+              - generic [ref=e100]: n/a
+              - button "Copy" [disabled] [ref=e101]
+            - generic [ref=e102]:
+              - generic [ref=e103]: NHS
+              - generic [ref=e104]: n/a
+              - button "Copy" [disabled] [ref=e105]
+            - generic [ref=e106]:
+              - generic [ref=e107]: Callback
+              - generic [ref=e108]: 0770 090 0101
+              - button "Copy" [ref=e109] [cursor=pointer]
+          - generic [ref=e110]:
+            - generic [ref=e111]: Safety & Status
+            - generic [ref=e112]:
+              - generic [ref=e113]: review_required
+              - generic [ref=e114]: No Red Flag
+              - generic [ref=e115]: Safe To Queue
+              - generic "Verification status at time of resolution" [ref=e116]: "ID: No Match"
+          - generic [ref=e117]:
+            - generic [ref=e118]: Staff Workflow
+            - generic [ref=e119]:
+              - generic [ref=e120]:
+                - text: Status
+                - strong [ref=e121]: Resolved
+              - generic [ref=e122]:
+                - text: Assigned
+                - strong [ref=e123]: Saeed 1
+              - generic [ref=e124]:
+                - text: Resolved
+                - strong [ref=e125]: 01-06-2026 T 13.59
+              - generic [ref=e126]:
+                - text: Resolved by
+                - strong [ref=e127]: Saeed 1
+              - generic [ref=e128]:
+                - text: Turnaround
+                - strong [ref=e129]: 6 mins
+              - generic [ref=e130]:
+                - text: Last edited
+                - strong [ref=e131]: Saeed 1
+            - generic [ref=e132]:
+              - button "↩ Reopen" [ref=e133] [cursor=pointer]
+              - link "Back to Requests" [ref=e134] [cursor=pointer]:
+                - /url: /requests?filter=all&sort=newest&range=today&page_size=20

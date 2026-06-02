@@ -1,0 +1,136 @@
+- generic [active] [ref=e1]:
+  - alert "Sandbox environment notice" [ref=e2]:
+    - generic [ref=e3]: ⚠
+    - generic [ref=e4]: SANDBOX — Churchtown Medical Centre — Not for live patient use. Testing and development only.
+    - generic [ref=e5]: ⚠
+  - generic [ref=e6]:
+    - complementary [ref=e7]:
+      - generic [ref=e8]:
+        - generic [ref=e9]: Churchtown Medical Centre
+        - button "Toggle sidebar" [ref=e10] [cursor=pointer]:
+          - img [ref=e11]
+      - navigation "Main navigation" [ref=e13]:
+        - link "Dashboard" [ref=e14] [cursor=pointer]:
+          - /url: /
+        - link "Requests" [ref=e15] [cursor=pointer]:
+          - /url: /requests
+        - link "Patients" [ref=e16] [cursor=pointer]:
+          - /url: /patients
+        - link "Staff" [ref=e17] [cursor=pointer]:
+          - /url: /staff
+        - link "Reports" [ref=e18] [cursor=pointer]:
+          - /url: /reports
+        - link "Settings" [ref=e19] [cursor=pointer]:
+          - /url: /settings
+      - generic [ref=e20]:
+        - link "Alerts" [ref=e21] [cursor=pointer]:
+          - /url: /alerts
+          - img [ref=e22]
+        - generic [ref=e25]:
+          - link "Saeed 1 Admin" [ref=e26] [cursor=pointer]:
+            - /url: /profile
+            - generic [ref=e27]:
+              - generic [ref=e28]: Saeed 1
+              - generic [ref=e29]: Admin
+            - generic [ref=e30]: S
+          - link "Sign out" [ref=e31] [cursor=pointer]:
+            - /url: /logout
+            - img [ref=e32]
+    - generic [ref=e35]:
+      - generic [ref=e36]:
+        - generic [ref=e37]:
+          - generic [ref=e38]: System Configuration
+          - heading "Settings" [level=1] [ref=e39]
+          - paragraph [ref=e40]: Local configuration overview. Edit config files directly on the server to change values.
+        - generic [ref=e42]: Read-only view
+      - generic [ref=e44]: Configuration Files
+      - generic [ref=e45]:
+        - generic [ref=e46]:
+          - generic [ref=e47]: 🤖
+          - generic [ref=e48]:
+            - generic [ref=e49]: Model settings
+            - generic [ref=e50]: Ollama model name, temperature, and inference parameters.
+            - generic [ref=e51]: C:\JeffLocal\config\model_settings.json
+          - generic [ref=e52]: ✓ Found
+        - generic [ref=e53]:
+          - generic [ref=e54]: 🔀
+          - generic [ref=e55]:
+            - generic [ref=e56]: Routing rules
+            - generic [ref=e57]: Pathway routing logic and staff assignment rules.
+            - generic [ref=e58]: C:\JeffLocal\config\routing_rules.json
+          - generic [ref=e59]: ✓ Found
+        - generic [ref=e60]:
+          - generic [ref=e61]: ☁️
+          - generic [ref=e62]:
+            - generic [ref=e63]: Google push/webhook
+            - generic [ref=e64]: Google Sheets push toggle, n8n webhook URL, and API keys.
+            - generic [ref=e65]: C:\JeffLocal\config\app_settings.json
+          - generic [ref=e66]: ✓ Found
+        - generic [ref=e67]:
+          - generic [ref=e68]: 🗺️
+          - generic [ref=e69]:
+            - generic [ref=e70]: Pathway configuration
+            - generic [ref=e71]: Active pathways, per-pathway steps, and EMIS workflow mapping.
+            - generic [ref=e72]: C:\JeffLocal\config\pathways.json
+          - generic [ref=e73]: ✓ Found
+        - generic [ref=e74]:
+          - generic [ref=e75]: 📡
+          - generic [ref=e76]:
+            - generic [ref=e77]: Monitoring thresholds
+            - generic [ref=e78]: Confidence floor, red-flag keywords, and alert escalation rules.
+            - generic [ref=e79]: C:\JeffLocal\config\model_monitoring.json
+          - generic [ref=e80]: ✓ Found
+      - generic [ref=e81]: System Diagnostics
+      - generic [ref=e83]:
+        - generic [ref=e84]:
+          - img [ref=e86]
+          - generic [ref=e88]: Database file
+          - generic [ref=e89]: Found
+        - generic [ref=e90]:
+          - img [ref=e92]
+          - generic [ref=e94]: Database writable
+          - generic [ref=e95]: "Yes"
+        - generic [ref=e96]:
+          - img [ref=e98]
+          - generic [ref=e100]: Last import
+          - generic [ref=e101]: Never
+        - generic [ref=e102]:
+          - img [ref=e104]
+          - generic [ref=e106]: Total cases
+          - generic [ref=e107]: "58"
+        - generic [ref=e108]:
+          - img [ref=e110]
+          - generic [ref=e112]: Open cases
+          - generic [ref=e113]: "10"
+        - generic [ref=e114]:
+          - img [ref=e116]
+          - generic [ref=e118]: Resolved today
+          - generic [ref=e119]: "10"
+        - generic [ref=e120]:
+          - img [ref=e122]
+          - generic [ref=e124]: Unacknowledged alerts
+          - generic [ref=e125]: "3"
+        - generic [ref=e126]:
+          - img [ref=e128]
+          - generic [ref=e130]: Active staff
+          - generic [ref=e131]: "6"
+      - generic [ref=e132]: Connected Services
+      - generic [ref=e133]:
+        - generic [ref=e134]:
+          - generic [ref=e135]: 🖥️
+          - generic [ref=e136]:
+            - generic [ref=e137]: Dashboard
+            - generic [ref=e138]: http://localhost:8765
+          - generic [ref=e139]: Running
+        - generic [ref=e141]:
+          - generic [ref=e142]: 🔗
+          - generic [ref=e143]:
+            - generic [ref=e144]: n8n Workflows
+            - generic [ref=e145]: http://localhost:5678
+          - generic [ref=e146]: Running
+        - generic [ref=e148]:
+          - generic [ref=e149]: 🤖
+          - generic [ref=e150]:
+            - generic [ref=e151]: Ollama AI
+            - generic [ref=e152]: http://localhost:11434
+          - generic [ref=e153]: Checking…

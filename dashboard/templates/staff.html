@@ -21,8 +21,8 @@
   {# ── Add Staff Form (collapsed by default) ──────────────────────── #}
   {% if can_manage_staff %}
   <div id="add-staff-panel" class="staff-add-panel" style="display:none;">
-    <div class="panel">
-      <div class="panel-header">
+    <div class="panel" style="margin:0 24px 20px;">
+      <div class="panel-header" style="display:flex;align-items:center;justify-content:space-between;">
         <span class="panel-title">New Staff Member</span>
         <button type="button" class="btn btn-outline btn-sm" id="add-staff-close">Cancel</button>
       </div>
@@ -30,11 +30,11 @@
         <form method="post" action="/staff/create" class="staff-create-form">
           <div class="staff-form-row">
             <div class="form-group">
-              <label class="form-label">Display Name <span class="required-mark">*</span></label>
+              <label class="form-label">Display Name <span style="color:#dc2626">*</span></label>
               <input name="display_name" class="form-input" placeholder="e.g. Jane Smith" required>
             </div>
             <div class="form-group">
-              <label class="form-label">Username <span class="required-mark">*</span></label>
+              <label class="form-label">Username <span style="color:#dc2626">*</span></label>
               <input name="username" class="form-input" placeholder="e.g. jane.smith" required>
             </div>
             <div class="form-group">
@@ -42,7 +42,7 @@
               <input name="email" type="email" class="form-input" placeholder="jane@practice.nhs.uk">
             </div>
             <div class="form-group">
-              <label class="form-label">Role <span class="required-mark">*</span></label>
+              <label class="form-label">Role <span style="color:#dc2626">*</span></label>
               <select name="role" class="form-input">
                 {% for role in roles %}
                   <option value="{{ role }}">{{ role|title }}</option>
@@ -50,11 +50,11 @@
               </select>
             </div>
             <div class="form-group">
-              <label class="form-label">Password <span class="required-mark">*</span></label>
+              <label class="form-label">Password <span style="color:#dc2626">*</span></label>
               <input name="password" type="password" class="form-input" placeholder="Min 8 characters" minlength="8" required>
             </div>
             <div class="form-group">
-              <label class="form-label">PIN <span class="required-mark">*</span></label>
+              <label class="form-label">PIN <span style="color:#dc2626">*</span></label>
               <input name="pin" type="tel" class="form-input" inputmode="numeric" pattern="[0-9]{4,6}" maxlength="6" placeholder="4–6 digits" required>
             </div>
           </div>
@@ -71,10 +71,10 @@
     {% for staff in active_staff_users %}
     <div class="staff-card">
       <div class="staff-card-top">
-        <div class="avatar avatar-md">{{ (staff.display_name or 'U')[0]|upper }}</div>
+        <div class="avatar avatar-md" style="flex-shrink:0;">{{ (staff.display_name or 'U')[0]|upper }}</div>
         <div class="staff-card-info">
           <div class="staff-card-name">{{ staff.display_name or '—' }}</div>
-          <div class="staff-card-username">{% if staff.username %}@{{ staff.username }}{% else %}<span class="no-username">No username set</span>{% endif %}</div>
+          <div class="staff-card-username">@{{ staff.username or '—' }}</div>
           <span class="badge badge-role-{{ staff.role }}">{{ staff.role|title }}</span>
         </div>
         <div class="staff-card-status">
@@ -88,7 +88,7 @@
       {% if can_manage_staff %}
       <details class="staff-card-edit">
         <summary class="staff-card-edit-toggle">Edit</summary>
-        <form method="post" action="/staff/{{ staff.id }}/edit" class="staff-edit-form" id="staff-edit-{{ staff.id }}">
+        <form method="post" action="/staff/{{ staff.id }}/edit" class="staff-edit-form">
           <div class="staff-form-row">
             <div class="form-group">
               <label class="form-label">Display Name</label>
@@ -112,13 +112,13 @@
               </label>
             </div>
           </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button type="submit" class="btn btn-primary btn-sm">Save Changes</button>
+            <form method="post" action="/staff/{{ staff.id }}/deactivate" style="display:inline;">
+              <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Deactivate {{ staff.display_name }}?')">Deactivate</button>
+            </form>
+          </div>
         </form>
-        <div class="staff-action-row">
-          <button type="submit" form="staff-edit-{{ staff.id }}" class="btn btn-primary btn-sm">Save Changes</button>
-          <form method="post" action="/staff/{{ staff.id }}/deactivate" id="staff-deactivate-{{ staff.id }}" class="form-inline">
-            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Deactivate {{ staff.display_name }}?')">Deactivate</button>
-          </form>
-        </div>
       </details>
       {% endif %}
     </div>
@@ -129,23 +129,23 @@
 
   {# ── Inactive Staff ─────────────────────────────────────────────── #}
   {% if inactive_staff_users %}
-  <div class="staff-section-label mt-section">Inactive Staff ({{ inactive_staff_users|length }})</div>
+  <div class="staff-section-label" style="margin-top:24px">Inactive Staff ({{ inactive_staff_users|length }})</div>
   <div class="staff-cards-grid">
     {% for staff in inactive_staff_users %}
     <div class="staff-card staff-card-inactive">
       <div class="staff-card-top">
-        <div class="avatar avatar-md">{{ (staff.display_name or 'U')[0]|upper }}</div>
+        <div class="avatar avatar-md" style="flex-shrink:0;opacity:.5;">{{ (staff.display_name or 'U')[0]|upper }}</div>
         <div class="staff-card-info">
-          <div class="staff-card-name">{{ staff.display_name or '—' }}</div>
-          <div class="staff-card-username">{% if staff.username %}@{{ staff.username }}{% else %}<span class="no-username">No username set</span>{% endif %}</div>
-          <span class="badge badge-role-{{ staff.role }}">{{ staff.role|title }}</span>
+          <div class="staff-card-name" style="opacity:.6;">{{ staff.display_name or '—' }}</div>
+          <div class="staff-card-username" style="opacity:.5;">@{{ staff.username or '—' }}</div>
+          <span class="badge badge-role-{{ staff.role }}" style="opacity:.6;">{{ staff.role|title }}</span>
         </div>
         <div class="staff-card-status">
-          <span class="status-pill"><i class="health-dot warn"></i>Inactive</span>
+          <span class="status-pill" style="opacity:.7;"><i class="health-dot warn"></i>Inactive</span>
         </div>
       </div>
       {% if can_manage_staff %}
-      <form method="post" action="/staff/{{ staff.id }}/reactivate" class="staff-reactivate-form">
+      <form method="post" action="/staff/{{ staff.id }}/reactivate" style="margin-top:10px;">
         <button type="submit" class="btn btn-outline btn-sm">Reactivate</button>
       </form>
       {% endif %}
@@ -156,26 +156,26 @@
 
   {# ── Pending Invitations ────────────────────────────────────────── #}
   {% if can_manage_staff and invitations %}
-  <div class="staff-section-label mt-section">Pending Invitations</div>
-  <div class="panel staff-invitations-panel">
-    <table class="invitations-table">
+  <div class="staff-section-label" style="margin-top:24px">Pending Invitations</div>
+  <div class="panel" style="margin:0 24px 24px;">
+    <table class="settings-diag-grid" style="width:100%;border-collapse:collapse;">
       <thead>
-        <tr>
-          <th>Email</th>
-          <th>Role</th>
-          <th>Status</th>
-          <th>Created</th>
-          <th></th>
+        <tr style="border-bottom:1px solid var(--line);">
+          <th style="text-align:left;padding:8px 12px;font-size:11px;font-weight:600;color:var(--ink-subtle);">Email</th>
+          <th style="text-align:left;padding:8px 12px;font-size:11px;font-weight:600;color:var(--ink-subtle);">Role</th>
+          <th style="text-align:left;padding:8px 12px;font-size:11px;font-weight:600;color:var(--ink-subtle);">Status</th>
+          <th style="text-align:left;padding:8px 12px;font-size:11px;font-weight:600;color:var(--ink-subtle);">Created</th>
+          <th style="padding:8px 12px;"></th>
         </tr>
       </thead>
       <tbody>
         {% for invitation in invitations %}
-        <tr>
-          <td>{{ invitation.email }}</td>
-          <td>{{ invitation.role|title }}</td>
-          <td style="text-transform:capitalize;">{{ invitation.status }}</td>
-          <td class="inv-date">{{ invitation.created_at|display_ts }}</td>
-          <td>
+        <tr style="border-bottom:1px solid var(--line);">
+          <td style="padding:10px 12px;font-size:13px;">{{ invitation.email }}</td>
+          <td style="padding:10px 12px;font-size:13px;">{{ invitation.role|title }}</td>
+          <td style="padding:10px 12px;font-size:13px;text-transform:capitalize;">{{ invitation.status }}</td>
+          <td style="padding:10px 12px;font-size:12px;color:var(--ink-subtle);">{{ invitation.created_at|display_ts }}</td>
+          <td style="padding:10px 12px;">
             {% if invitation.status == 'pending' %}
             <form method="post" action="/staff/invitations/{{ invitation.id }}/cancel">
               <button type="submit" class="btn btn-danger btn-sm">Cancel</button>
@@ -238,22 +238,6 @@
 .btn-danger { background: #dc2626; color: #fff; border: none; border-radius: 7px; font-weight: 600; cursor: pointer; font-size: 13px; padding: 7px 14px; }
 .btn-danger:hover { background: #b91c1c; }
 .staff-add-panel { margin-bottom: 4px; }
-.staff-add-panel .panel { margin: 0 24px 20px; }
-.panel-header { display: flex; align-items: center; justify-content: space-between; }
-.staff-card-top .avatar { flex-shrink: 0; }
-.staff-card-inactive .avatar { opacity: 0.5; }
-.staff-card-inactive .staff-card-name { opacity: 0.6; }
-.staff-card-inactive .staff-card-username { opacity: 0.5; }
-.staff-card-inactive .badge { opacity: 0.6; }
-.staff-card-inactive .status-pill { opacity: 0.7; }
-.staff-action-row { display: flex; gap: 8px; flex-wrap: wrap; }
-.staff-reactivate-form { margin-top: 10px; }
-.staff-invitations-panel { margin: 0 24px 24px; }
-.invitations-table { width: 100%; border-collapse: collapse; }
-.invitations-table tr { border-bottom: 1px solid var(--line); }
-.invitations-table th { text-align: left; padding: 8px 12px; font-size: 11px; font-weight: 600; color: var(--ink-subtle); }
-.invitations-table td { padding: 10px 12px; font-size: 13px; }
-.invitations-table td.inv-date { font-size: 12px; color: var(--ink-subtle); }
 .staff-empty-state { padding: 32px 24px; text-align: center; color: var(--ink-subtle); font-size: 13px; grid-column: 1 / -1; }
 @media (max-width: 700px) {
   .staff-form-row, .staff-create-form .staff-form-row { grid-template-columns: 1fr; }
