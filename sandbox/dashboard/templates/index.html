@@ -1028,15 +1028,19 @@
     }
 
     function renderPanel(data) {
-      // Badge row
+      // Badge row — mirrors the card exactly: request type + summary_chips
+      // summary_chips already encodes priority/identity/emergency as consolidated pills
+      // so we never leak raw internal values like "review_required" here.
       var badgeRow = document.getElementById('panel-badge-row');
       var badges = [];
-      if (data.red_flags_present) badges.push('<span class="badge danger">RED FLAG</span>');
-      if (data.priority && data.priority !== 'routine' && data.priority !== 'normal') {
-        badges.push('<span class="badge danger">' + escHtml(data.priority) + '</span>');
-      }
       if (data.request_type_label) {
         badges.push('<span class="badge ' + escHtml(data.request_type || '') + '">' + escHtml(data.request_type_label) + '</span>');
+      }
+      if (Array.isArray(data.summary_chips) && data.summary_chips.length) {
+        data.summary_chips.forEach(function (chip) {
+          var tip = chip.tooltip ? ' title="' + escHtml(chip.tooltip) + '"' : '';
+          badges.push('<span class="badge ' + escHtml(chip['class'] || '') + '"' + tip + '>' + escHtml(chip.label) + '</span>');
+        });
       }
       badgeRow.innerHTML = badges.join('');
 
