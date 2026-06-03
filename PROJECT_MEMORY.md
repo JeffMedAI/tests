@@ -1,6 +1,6 @@
 ﻿# PROJECT MEMORY â€” JeffLocal
 # READ THIS FIRST at every session start, before doing anything else.
-# Last updated: 2026-06-03 (auto-updated 07:00)
+# Last updated: 2026-06-03 14:30 (Claude Code session end)
 # Maintained by: Claude (update at end of every session)
 
 ---
@@ -76,7 +76,7 @@ Security Agent has VETO authority over all PRs. Lead Agent enforces vetoes.
 
 ---
 
-## CURRENT STATUS (as of 2026-06-03 — Cowork session, WhatsApp integration Day 1)
+## CURRENT STATUS (as of 2026-06-03 14:30 — Claude Code session, Phase 1 verification + cleanup)
 
 ### What is working
 - Production dashboard LIVE at dashboard.app-avamed.uk
@@ -87,6 +87,9 @@ Security Agent has VETO authority over all PRs. Lead Agent enforces vetoes.
 - WhatsApp daily report delivery: DONE (07:00 scheduled, confirmed delivered)
 - Strategy Agent: fully onboarded
 - **Test suite: ALL 149 tests passing (was 45 failures) — FULLY FIXED** — commit 1aba9aa
+- **Watchdog: FIXED (PS5.1 compat — null-conditional + em-dash encoding)** — commit ce422eb — all 5 services confirmed
+- **Digit-normalized search: INCORPORATED** — patch folded into sandbox/dashboard/app/main.py — commit 136f415
+- **Pre-rebase SQLite backups: DELETED** — Saeed approved 2026-06-03 (dashboard/data/*.pre_rebase_backup_*)
 - E2E call flow test: Stages 1-4 PASSING. Stage 3 SQLite fix confirmed.
 - HMAC-SHA256 webhook verification: DONE — 14/14 tests passing (sandbox)
 - Password reset end-to-end: DONE — 28/28 tests passing (sandbox)
@@ -112,12 +115,11 @@ Security Agent has VETO authority over all PRs. Lead Agent enforces vetoes.
 - Governance gates 1-7 not completed
 
 ### Pending Saeed approvals (action required)
-1. **URGENT: Run fix_git_lock.ps1** — git index corrupted, blocks all commits. Script at C:\JeffLocal\fix_git_lock.ps1 (also repairs index, not just lock)
-2. Task Scheduler registration: run scripts\register_scheduled_tasks.ps1 as Administrator
-4. **NEW: GDPR purge production deployment** — migration (add_created_at_20260531.sql) on live DB + remove --dry-run from Task Scheduler entry — requires explicit approval
-5. **WhatsApp Day 1 ACTION: Complete Meta Business account setup** — see docs/project_documents/Meta_WhatsApp_Setup_Guide.md — estimated 60 min. Save credentials to C:\JeffLocal\.env.whatsapp
-6. **WhatsApp Day 1 ACTION: Update patient poster** — replace [YOUR WHATSAPP NUMBER HERE] placeholder in WhatsApp_Patient_Poster.docx once number is confirmed
-7. **WhatsApp governance: Accept Meta DPA** — required before go-live (see governance/WHATSAPP_GDPR_ADDENDUM.md)
+1. **Admin PowerShell — disable broken old task:** `Disable-ScheduledTask -TaskName "JeffLocal Dashboard"` — references non-existent run_dashboard_service.ps1, superseded by JeffLocal-Watchdog
+2. **GDPR purge production deployment** — migration (add_created_at_20260531.sql) on live DB + remove --dry-run from Task Scheduler entry — requires explicit approval
+3. **WhatsApp Day 2 ACTION: Complete Meta Business account setup** — see docs/project_documents/Meta_WhatsApp_Setup_Guide.md — estimated 60 min. Save credentials to C:\JeffLocal\.env.whatsapp
+4. **WhatsApp Day 2 ACTION: Update patient poster** — replace [YOUR WHATSAPP NUMBER HERE] placeholder in WhatsApp_Patient_Poster.docx once number is confirmed
+5. **WhatsApp governance: Accept Meta DPA** — required before go-live (see governance/WHATSAPP_GDPR_ADDENDUM.md)
 
 ### Pending research / future tasks
 - OpenJarvis pilot: onboarding plan READY at docs\project_documents\Jarvis_Onboarding_Plan.md.
@@ -127,11 +129,11 @@ Security Agent has VETO authority over all PRs. Lead Agent enforces vetoes.
 RANK  | TASK                          | AGENT          | STATUS
 ------+-------------------------------+----------------+-----------------------------------
  1    | HMAC payload verification n8n | Backend Agent  | Assigned — IR-01, sec review req'd
- 2    | Password reset end-to-end     | Backend Agent  | Assigned — sec review req'd
+ 2    | Password reset end-to-end     | Backend Agent  | COMPLETE (sandbox) — sec review req'd
  3    | GDPR 90-day purge script      | Database Agent | COMPLETE (sandbox) — prod gate pending Saeed
  4    | E2E pipeline gap (n8n→DB)     | Backend Agent  | NEW — Stage 3 blocked by this
- 5    | Fix 11 test_render_pages bugs | Test Agent     | Pre-existing, LOW priority
- 6    | Full Playwright E2E suite     | Test Agent     | Pending (after tasks 1-3 done)
+ 5    | All 149 tests passing         | Test Agent     | COMPLETE — commit 1aba9aa
+ 6    | Full Playwright E2E suite     | Test Agent     | Pending (after tasks 1 and 4 done)
  7    | Multi-tenancy tenant_id       | Database Agent | Pending
  8    | Daily task scripts            | DevOps Agent   | Pending
  9    | Issue #1 retroactive sign-off | Strategy Agent | Pending (LOW)
@@ -176,7 +178,7 @@ C:\JeffLocal\backups\RESTORE_POINT_20260529\        â† Latest restore point
 ```
 Repo:    https://github.com/JeffMedAI/tests
 Branch:  sandbox
-Latest:  d0230a6 deploy: Phase 1A security + Phase 1B UX overhaul to production
+Latest:  136f415 cleanup: incorporate patches, remove defunct files, digit-normalized search
 Tag:     RESTORE_20260529
 Author:  215987900+Avamedio@users.noreply.github.com
 ```
