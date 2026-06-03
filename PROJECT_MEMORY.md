@@ -76,7 +76,7 @@ Security Agent has VETO authority over all PRs. Lead Agent enforces vetoes.
 
 ---
 
-## CURRENT STATUS (as of 2026-06-03 14:30 — Claude Code session, Phase 1 verification + cleanup)
+## CURRENT STATUS (as of 2026-06-03 18:00 — Claude Code session, UX/safety audit + pipeline fixes)
 
 ### What is working
 - Production dashboard LIVE at dashboard.app-avamed.uk
@@ -86,28 +86,27 @@ Security Agent has VETO authority over all PRs. Lead Agent enforces vetoes.
 - Watchdog: REWRITTEN — all 5 services, restart cap 3/hr, WhatsApp alerts
 - WhatsApp daily report delivery: DONE (07:00 scheduled, confirmed delivered)
 - Strategy Agent: fully onboarded
-- **Test suite: ALL 149 tests passing (was 45 failures) — FULLY FIXED** — commit 1aba9aa
-- **Watchdog: FIXED (PS5.1 compat — null-conditional + em-dash encoding)** — commit ce422eb — all 5 services confirmed
-- **Digit-normalized search: INCORPORATED** — patch folded into sandbox/dashboard/app/main.py — commit 136f415
-- **Pre-rebase SQLite backups: DELETED** — Saeed approved 2026-06-03 (dashboard/data/*.pre_rebase_backup_*)
-- E2E call flow test: Stages 1-4 PASSING. Stage 3 SQLite fix confirmed.
-- HMAC-SHA256 webhook verification: DONE — 14/14 tests passing (sandbox)
-- Password reset end-to-end: DONE — 28/28 tests passing (sandbox)
-- GDPR 90-day purge script: DONE — atomic, dry-run mode, no PII in audit log
+- **Test suite: ALL 149 tests passing** — commit 43df75a
+- **Watchdog: FIXED (PS5.1 compat)** — commit ce422eb
+- **Digit-normalized search: INCORPORATED** — commit 136f415
+- E2E call flow test: Stages 1-4 PASSING
+- HMAC-SHA256 webhook verification: DONE — 14/14 tests
+- Password reset end-to-end: DONE — 28/28 tests
+- GDPR 90-day purge script: DONE — atomic, dry-run mode
 - G1 governance breach: FORMALLY CLOSED
-- UX/UI Audit: COMPLETE (ui-ux-pro-max, 2026-06-01) — all 8 pages x 3 breakpoints, score 5.4/10
-- All UX fixes C1-C5, H1-H2-H4, M1-M8, L1-L4-L5: DONE in SANDBOX
-- Dashboard redesign: Navigation moved to NHS blue sticky topbar, sidebar analytics-only, SVG donut/bar chart added, status bug fixed
-- NHS SBS Framework proposal: DRAFTED — docs/project_documents/Avamed_NHS_SBS_Framework_Proposal.docx
+- **Case detail header: COMPACT (3-row inline)** — commit 43df75a
+- **Sticky header: DONE** — commit 43df75a
+- **Pill consistency: DONE** (summary_chips everywhere) — commit 43df75a
+- **Pipeline safety: RED FLAG REGEX FIXED** (pains plural, contractions, arm pain, carer signal) — commit 43df75a
+- **Ollama fail-safe: DONE** (failure → staff_review_required=true) — commit 43df75a
+- **Internal codes sanitized in display text** — commit 43df75a
+- **Session sign-out bug FIXED** (secure=True removed from HTTP cookie) — commit 43df75a
+- **Locked fields hidden from non-admin** — commit 43df75a
+- **Inline copy icons** on identifiers, staff task, patient record note — commit 43df75a
+- **34-item safety/UX audit completed** — critical pipeline issues fixed; 20+ UX items queued
+- NHS SBS Framework proposal: DRAFTED
 - n8n webhook path confirmed: jefflocal-test-intake
-- NOTE: 2026-06-01 Claude Code session end checklist NOT completed — session logs missing. Reconstructed from git commits.
-- WhatsApp Business integration: DAY 1 COMPLETE — all code built, awaiting Meta credentials from Saeed
-  - Files: sandbox/dashboard/app/whatsapp_conversation.py, whatsapp_state.py, whatsapp_webhook.py, whatsapp_handoff.py
-  - n8n workflow: docs/n8n/whatsapp_intake_workflow.json
-  - Patient poster: docs/project_documents/WhatsApp_Patient_Poster.docx
-  - GDPR addendum: governance/WHATSAPP_GDPR_ADDENDUM.md
-  - Master plan: docs/project_documents/WhatsApp_Integration_Plan.md
-  - Setup guide for Saeed: docs/project_documents/Meta_WhatsApp_Setup_Guide.md
+- WhatsApp Business integration: DAY 1 COMPLETE — awaiting Meta credentials from Saeed
 
 ### Blocking Pilot 1 go-live
 - No real staff accounts (need names, roles, emails from Saeed)
