@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     JeffLocal hardened service watchdog.
     Monitors all production and sandbox services. Restarts if down.
@@ -277,10 +277,11 @@ $Services = @(
         Restart = {
             # Look for cloudflared config
             $cfConfig = "$RepoRoot\config\cloudflared.yml"
-            $cfExe = (Get-Command "cloudflared" -ErrorAction SilentlyContinue)?.Source
+            $cfExeCmd = Get-Command "cloudflared" -ErrorAction SilentlyContinue
+            $cfExe = if ($cfExeCmd) { $cfExeCmd.Source } else { $null }
             if (-not $cfExe) { $cfExe = "C:\Program Files\cloudflared\cloudflared.exe" }
             if (-not (Test-Path $cfExe)) {
-                wlog "cloudflared.exe not found — cannot auto-restart tunnel" "ERROR"
+                wlog "cloudflared.exe not found - cannot auto-restart tunnel" "ERROR"
                 return $false
             }
             if (Test-Path $cfConfig) {
