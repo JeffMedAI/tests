@@ -56,3 +56,25 @@ def bypass_auth(monkeypatch):
     """
     import app.main as main_module
     monkeypatch.setattr(main_module, "_is_public_path", lambda path: True)
+
+
+@pytest.fixture(autouse=True)
+def no_archive_artifacts(monkeypatch):
+    """
+    Prevent archive_n8ntest_artifacts() from moving real files during tests.
+
+    Any test calling POST /api/n8n/test-intake-batch triggers archiving of
+    outputs/handoff_json/ (and other folders) to a backup directory. This
+    silently deletes the TC-* rawmock fixture files that other tests rely on,
+    causing downstream 'import returns 0' failures in a seemingly unrelated
+    order-dependent way.
+
+    This fixture patches archive_n8ntest_artifacts to return a harmless no-op
+    result so test ordering never affects the on-disk fixture state.
+    """
+    import app.main as main_module
+    monkeypatch.setattr(
+        main_module,
+        "archive_n8ntest_artifacts",
+        lambda: {"archive_root": "", "total_archived": 0, "folders": []},
+    )

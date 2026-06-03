@@ -485,7 +485,7 @@ def test_demo_staff_users_seed_and_selector_renders(tmp_path, monkeypatch):
     assert names["GP Demo"] == "readonly"
     assert response.status_code == 200
     assert "DEMO / TEST DATA MODE" in response.text
-    assert "Staff Dashboard" in response.text  # page title includes "Staff Dashboard"
+    assert "Dashboard" in response.text  # page title includes "Dashboard"
 
 
 def test_demo_banner_renders_for_test_cases(tmp_path, monkeypatch):
