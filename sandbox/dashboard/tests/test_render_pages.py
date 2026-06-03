@@ -521,9 +521,9 @@ def test_dashboard_renders_compact_case_row_hooks_and_expanded_copy_buttons(tmp_
     assert "data-patient" in response.text  # patient name embedded in card
     assert "Summary" in response.text
     assert detail.status_code == 200
-    assert "Copy Record Note" in detail.text
-    assert "Copy Staff Task" in detail.text
-    assert "Copy Identifiers" in detail.text
+    assert "Copy patient record note" in detail.text or "copied_patient_record_note" in detail.text
+    assert "copied_staff_task" in detail.text
+    assert "Copy EMIS number" in detail.text or "cd-copy-icon" in detail.text
     assert "Staff Task" in detail.text
     assert "Conversation" in detail.text
     assert "Recording" in detail.text
@@ -1111,9 +1111,9 @@ def test_action_needed_layout_groups_copy_buttons(tmp_path, monkeypatch):
 
     assert response.status_code == 200
     assert 'data-copy-button' in response.text
-    assert "Copy Record Note" in response.text
-    assert "Copy Staff Task" in response.text
-    assert "Copy Identifiers" in response.text
+    assert "copied_patient_record_note" in response.text
+    assert "copied_staff_task" in response.text
+    assert "cd-copy-icon" in response.text
     assert "Staff Task" in response.text
     assert "Patient Record Note" in response.text
 
@@ -1201,8 +1201,10 @@ def test_duplicate_staff_review_text_is_deduped_for_display(tmp_path, monkeypatc
         response = client.get("/case/TC-UX-DEDUPE")
 
     assert response.status_code == 200
-    assert "Patient verification: possible_match. Staff review required. Staff review required." not in response.text
-    assert "Patient verification: possible_match. Staff review required." in response.text
+    assert "Staff review required. Staff review required." not in response.text
+    # Internal codes are sanitized to human-readable in display text
+    assert "possible_match" not in response.text or "Possible Match" in response.text
+    assert "Staff review required." in response.text
     with connect(db_path) as conn:
         row = conn.execute("SELECT staff_review_required, action_needed FROM cases WHERE call_id = ?", ("TC-UX-DEDUPE",)).fetchone()
     assert row["staff_review_required"] == 1

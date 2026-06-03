@@ -741,9 +741,12 @@
 
 <div class="modal-backdrop" id="cd-action-error-modal" hidden>
   <section class="alert-modal" role="dialog" aria-modal="true" aria-labelledby="cd-action-error-title">
-    <h2 id="cd-action-error-title">Action Failed</h2>
+    <h2 id="cd-action-error-title">Cannot Resolve</h2>
     <p id="cd-action-error-message"></p>
-    <button type="button" id="cd-action-error-ok">OK</button>
+    <div class="modal-actions">
+      <a id="cd-action-error-open-case" href="#" class="btn-primary" style="display:none">Open Case to Resolve</a>
+      <button type="button" id="cd-action-error-ok" class="secondary-button">Dismiss</button>
+    </div>
   </section>
 </div>
 
@@ -1262,12 +1265,68 @@
       }, 3200);
     }
 
-    function showActionError(msg) {
+    function showActionError(msg, callId) {
       document.getElementById('cd-action-error-message').textContent = msg || 'Action failed. Please try again.';
+      var openLink = document.getElementById('cd-action-error-open-case');
+      if (openLink) {
+        if (callId) {
+          openLink.href = '/case/' + encodeURIComponent(callId);
+          openLink.style.display = '';
+        } else {
+          openLink.style.display = 'none';
+        }
+      }
       document.getElementById('cd-action-error-modal').hidden = false;
+      document.getElementById('cd-action-error-ok').focus();
     }
     document.getElementById('cd-action-error-ok')?.addEventListener('click', function () {
       document.getElementById('cd-action-error-modal').hidden = true;
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') {
+        var modal = document.getElementById('cd-action-error-modal');
+        if (modal && !modal.hidden) { modal.hidden = true; }
+      }
+    });
+
+    // Intercept card-footer resolve forms — use fetch so errors show in modal instead of raw JSON page
+    document.addEventListener('submit', async function (e) {
+      var form = e.target;
+      if (!form.closest('.request-card')) return;
+      var actionInput = form.querySelector('input[name="action"]');
+      if (!actionInput || actionInput.value !== 'resolve') return;
+      e.preventDefault();
+
+      var callId   = form.action.match(/\/case\/([^/]+)\/quick_action/)?.[1];
+      var submitBtn = form.querySelector('button[type="submit"]');
+      var origText  = submitBtn ? submitBtn.textContent : '';
+      if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Resolving…'; }
+
+      try {
+        var body = new URLSearchParams(new FormData(form));
+        var res  = await fetch(form.action, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest'},
+          body: body.toString()
+        });
+        if (!res.ok) {
+          var errData = {};
+          try { errData = await res.json(); } catch (_) {}
+          var msg = errData.detail || 'Could not resolve this case.';
+          showActionError(msg, callId);
+          if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = origText; }
+          return;
+        }
+        // Success — remove card and adjust count
+        var card = callId ? document.getElementById('case-' + callId) : form.closest('[id^="case-"]');
+        var patientName = card ? (card.querySelector('.card-patient') || {}).textContent : callId;
+        if (card) card.remove();
+        adjustTabCount(-1);
+        showToast((patientName ? patientName.trim() + ' ' : '') + 'resolved ✓');
+      } catch (_) {
+        showActionError('Network error. Please reload and try again.', callId);
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = origText; }
+      }
     });
 
     // Update the open-tab count badge after a resolve/reopen
@@ -1348,7 +1407,7 @@
         });
         var data = await res.json();
         if (!res.ok) {
-          showActionError(data.detail || 'Action failed. Please open the full case to resolve.');
+          showActionError(data.detail || 'Action failed. Please open the full case to resolve.', callId);
           btn.disabled = false;
           btn.textContent = original;
           return;

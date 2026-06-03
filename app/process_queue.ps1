@@ -529,6 +529,19 @@ if (@($duplicateBatchIds).Count -gt 0) {
                     }
                 } catch {
                     Write-Host "Ollama pathway extraction failed (non-fatal): $($_.Exception.Message)"
+                    # SAFETY: Ollama failure → force staff_review_required + not safe to queue.
+                    # Never silently pass through an unprocessed case as routine.
+                    if ($call.PSObject.Properties["staff_review_required"]) {
+                        $call.PSObject.Properties["staff_review_required"].Value = $true
+                    } else {
+                        $call | Add-Member -NotePropertyName "staff_review_required" -NotePropertyValue $true -Force
+                    }
+                    if ($call.PSObject.Properties["safe_to_queue"]) {
+                        $call.PSObject.Properties["safe_to_queue"].Value = $false
+                    } else {
+                        $call | Add-Member -NotePropertyName "safe_to_queue" -NotePropertyValue $false -Force
+                    }
+                    Write-Host "SAFETY: Ollama failure on $callId — forced staff_review_required=true, safe_to_queue=false"
                 }
             }
         }

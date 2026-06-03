@@ -2002,8 +2002,11 @@ button:disabled { background: var(--gray-200); color: var(--gray-500); border-co
 .cd-header {
   background: var(--panel);
   border-bottom: 1px solid var(--line);
-  padding: 16px 24px 20px;
+  padding: 10px 20px 10px;
   flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 20;
 }
 .cd-header.cd-header-danger {
   background: var(--danger-bg);
@@ -2012,9 +2015,9 @@ button:disabled { background: var(--gray-200); color: var(--gray-500); border-co
 .cd-header-top {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
-  margin-bottom: 10px;
+  margin-bottom: 5px;
 }
 .cd-back-link {
   display: inline-flex;
@@ -2035,24 +2038,51 @@ button:disabled { background: var(--gray-200); color: var(--gray-500); border-co
 }
 .cd-status-pill { font-size: var(--text-xs); }
 .cd-patient-name {
-  font-size: var(--text-2xl);
+  font-size: var(--text-xl);
   font-weight: 700;
   color: var(--ink);
-  margin: 0 0 12px;
+  margin: 0;
   line-height: 1.2;
 }
 .cd-patient-sub {
   font-size: var(--text-sm);
   color: var(--ink-muted);
-  margin: -8px 0 12px;
+  margin: 0;
 }
 
-/* Meta grid */
+/* Compact identity row: name + meta inline */
+.cd-identity-row {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0 16px;
+  margin-bottom: 6px;
+}
+.cd-identity-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0 12px;
+}
+.cd-meta-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+  white-space: nowrap;
+}
+.cd-meta-chip strong {
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--ink-subtle);
+  text-transform: uppercase;
+  letter-spacing: .03em;
+}
+
+/* Meta grid — kept for print / fallback, hidden when .cd-identity-row used */
 .cd-meta-grid {
-  display: grid;
-  grid-template-columns: max-content 1fr;
-  gap: 4px 20px;
-  margin-bottom: 14px;
+  display: none;
 }
 .cd-meta-label {
   font-size: var(--text-xs);
@@ -2072,18 +2102,23 @@ button:disabled { background: var(--gray-200); color: var(--gray-500); border-co
 .cd-meta-value.cd-age-recent { color: var(--warning); }
 .cd-meta-value.cd-age-old    { color: var(--danger); }
 
-/* Quick action button row */
+/* Quick action + primary CTA row — single inline bar */
 .cd-action-row {
   display: flex;
-  gap: 8px;
+  align-items: center;
+  gap: 6px;
   flex-wrap: wrap;
-  margin-bottom: 12px;
+  margin-top: 6px;
+}
+.cd-action-row .cd-primary-actions {
+  margin-left: auto;
+  flex-shrink: 0;
 }
 .cd-action-btn {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 6px 12px;
+  padding: 5px 10px;
   font-size: var(--text-sm);
   font-weight: 500;
   border: 1px solid var(--line);
@@ -2098,56 +2133,56 @@ button:disabled { background: var(--gray-200); color: var(--gray-500); border-co
 .cd-action-btn.accent { border-color: var(--accent); color: var(--accent); }
 .cd-action-btn.accent:hover { background: var(--accent-soft); }
 
-/* Primary action buttons */
+/* Primary action buttons — compact inline style */
 .cd-primary-actions {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   gap: 8px;
 }
 .cd-escalate-btn {
-  display: block;
-  width: 100%;
-  padding: 9px 16px;
-  text-align: center;
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 16px;
   font-size: var(--text-sm);
   font-weight: 600;
   background: var(--danger);
   color: #fff;
   border: none;
-  border-radius: 8px;
+  border-radius: 7px;
   cursor: pointer;
   text-decoration: none;
+  white-space: nowrap;
   transition: opacity .12s;
 }
 .cd-escalate-btn:hover { opacity: .88; }
 .cd-resolve-btn {
-  display: block;
-  width: 100%;
-  padding: 9px 16px;
-  text-align: center;
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 16px;
   font-size: var(--text-sm);
   font-weight: 600;
   background: var(--success);
   color: #fff;
   border: none;
-  border-radius: 8px;
+  border-radius: 7px;
   cursor: pointer;
+  white-space: nowrap;
   transition: opacity .12s;
 }
 .cd-resolve-btn:hover { opacity: .88; }
 .cd-resolve-btn:disabled { opacity: .45; cursor: not-allowed; }
 .cd-reopen-btn {
-  display: block;
-  width: 100%;
-  padding: 9px 16px;
-  text-align: center;
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 16px;
   font-size: var(--text-sm);
   font-weight: 600;
   background: var(--accent-soft);
   color: var(--accent);
   border: 1px solid var(--accent);
-  border-radius: 8px;
+  border-radius: 7px;
   cursor: pointer;
+  white-space: nowrap;
   transition: background .12s;
 }
 .cd-reopen-btn:hover { background: var(--accent); color: #fff; }
@@ -2158,6 +2193,7 @@ button:disabled { background: var(--gray-200); color: var(--gray-500); border-co
   display: flex;
   border-bottom: 1px solid var(--line);
   background: var(--panel);
+  flex-shrink: 0;
   padding: 0 24px;
   gap: 0;
   flex-shrink: 0;
@@ -2266,7 +2302,31 @@ button:disabled { background: var(--gray-200); color: var(--gray-500); border-co
   white-space: pre-wrap;
   margin: 0;
 }
-.cd-card-mono { font-family: monospace; font-size: 12px; }
+.cd-card-mono { font-family: var(--font); font-size: 12px; line-height: 1.6; }
+
+/* Confirmation checkbox row */
+.check-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: var(--text-sm);
+  color: var(--ink);
+  cursor: pointer;
+  padding: 8px 10px;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent);
+  border-radius: 7px;
+  line-height: 1.4;
+  font-weight: 500;
+}
+.check-row input[type="checkbox"] {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  margin-top: 1px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
 .cd-copy-btn {
   align-self: flex-start;
   padding: 5px 10px;
@@ -2319,6 +2379,29 @@ button:disabled { background: var(--gray-200); color: var(--gray-500); border-co
 .cd-id-row:last-child { border-bottom: none; }
 .cd-id-label { color: var(--ink-subtle); font-weight: 500; width: 60px; flex-shrink: 0; }
 .cd-id-value { font-weight: 600; color: var(--ink); flex: 1; }
+/* Inline copy icon button — appears next to identifier values and card headings */
+.cd-copy-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: none;
+  background: transparent;
+  color: var(--ink-subtle);
+  border-radius: 5px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity .15s, background .15s, color .15s;
+  flex-shrink: 0;
+}
+.cd-id-row:hover .cd-copy-icon,
+.cd-card-hd:hover .cd-copy-icon,
+.cd-copy-icon:focus { opacity: 1; }
+.cd-copy-icon:hover { background: var(--gray-100); color: var(--accent); opacity: 1; }
+.cd-copy-icon:disabled { opacity: 0 !important; cursor: default; }
+.cd-card-hd-copy { margin-left: 4px; vertical-align: middle; }
+
 .cd-copy-sm {
   padding: 3px 8px;
   font-size: 11px;

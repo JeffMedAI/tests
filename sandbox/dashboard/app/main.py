@@ -121,7 +121,7 @@ async def enforce_auth(request: Request, call_next):
         return resp
     response = await call_next(request)
     # Refresh cookie on every authenticated request to keep session active
-    response.set_cookie(SESSION_COOKIE, token, httponly=True, samesite="lax", secure=True, max_age=3600)
+    response.set_cookie(SESSION_COOKIE, token, httponly=True, samesite="lax", max_age=3600)
     return response
 
 
@@ -1229,6 +1229,31 @@ def summary_chips_for_case(case: dict[str, Any]) -> list[dict[str, str]]:
     return chips[:2]
 
 
+_INTERNAL_CODE_MAP: dict[str, str] = {
+    "review_required":    "Review Required",
+    "no_match":           "No ID Match",
+    "possible_match":     "Possible Match",
+    "possible_match_weak":"Possible Match",
+    "insufficient_data":  "Insufficient Data",
+    "unverified":         "Unverified",
+    "unable to verify":   "Unable to Verify",
+    "failed":             "Verification Failed",
+    "999 emergency":      "999 Emergency",
+    "urgent_review":      "Urgent Review",
+    "needs_review":       "Needs Review",
+}
+
+def sanitize_internal_codes(text: object) -> str:
+    """Replace pipeline-internal codes with human-readable equivalents in display text."""
+    if not text:
+        return str(text or "")
+    result = str(text)
+    for code, label in _INTERNAL_CODE_MAP.items():
+        # whole-word replacement, case-insensitive
+        result = re.sub(rf"\b{re.escape(code)}\b", label, result, flags=re.IGNORECASE)
+    return result
+
+
 def dedupe_repeated_display_sentences(value: object) -> str:
     text = str(value or "").strip()
     if not text:
@@ -1255,6 +1280,10 @@ def prepare_case(row: dict[str, Any]) -> dict[str, Any]:
     case["safe_to_queue_label"] = format_safe_to_queue(case.get("safe_to_queue"))
     case["staff_review_label"] = format_staff_review(case.get("staff_review_required"))
     case["red_flag_label"] = "EMERGENCY / RED FLAG" if case.get("red_flags_present") or case.get("priority") == "999 Emergency" else ""
+    # Human-readable priority — never expose internal codes like "review_required"
+    _p_raw = str(case.get("priority") or "routine").replace("_", " ").strip()
+    _p_internal = {"review required", "needs review"}
+    case["priority_label"] = "Routine" if _p_raw.lower() in _p_internal or not _p_raw else _p_raw.title()
     case["identity_review_required"] = str(case.get("verification_status", "")) in IDENTITY_REVIEW_STATUSES
     case["identity_label"] = "Identity review required" if case["identity_review_required"] else str(case.get("verification_status", "")).replace("_", " ").title()
     case["age_label"] = calculate_age_label(case.get("dob"), case.get("age"))
@@ -1309,9 +1338,9 @@ def prepare_case(row: dict[str, Any]) -> dict[str, Any]:
         and str(case.get("patient_record_note") or "").strip()
     )
     missing_message = "Processing output missing - staff review required."
-    case["staff_task_display"] = case.get("staff_task_body") or missing_message
-    case["ai_summary_display"] = case.get("ai_summary") or missing_message
-    case["patient_record_note_display"] = case.get("patient_record_note") or missing_message
+    case["staff_task_display"] = sanitize_internal_codes(case.get("staff_task_body") or missing_message)
+    case["ai_summary_display"] = sanitize_internal_codes(case.get("ai_summary") or missing_message)
+    case["patient_record_note_display"] = sanitize_internal_codes(case.get("patient_record_note") or missing_message)
     if case["processing_output_missing"]:
         case["call_summary_short"] = missing_message
     case["recording_badge_class"] = "safe" if case.get("recording_status") == "available" else "neutral"

@@ -114,17 +114,27 @@ function Test-JeffCallerSymptomAffirmed {
 
     $symptomChecks = @(
         @{
-            Regex = '\bchest\s*(pain|tightness)\b|\btight\s*chest\b'
+            # "chest pains" / "chest pain" / "chest tightness" / "tight chest"
+            Regex = '\bchest\s*(pains?|tightness|pressure|heaviness)\b|\btight\s*chest\b|\bheaviness\s*in\s*(my\s*)?chest\b|\bpressure\s*(in|on|across)\s*(my\s*)?chest\b'
             Text = 'chest pain'
             Denials = @(
-                '\b(no|not|denies?|denied|without)\b.{0,20}\b(chest\s*(pain|tightness)|tight\s*chest)\b'
+                '\b(no|not|denies?|denied|without)\b.{0,20}\b(chest\s*(pain|tightness|pressure)|tight\s*chest)\b'
             )
         },
         @{
-            Regex = '\bsevere difficulty breathing\b|\bstruggling to breathe\b|\bcannot breathe\b|\bgasping\b|\bshortness of breath\b|\bbreathless(ness)?\b'
+            # Breathlessness: covers "can't breathe", "cannot breathe", contractions, "trouble breathing"
+            Regex = '\bcan.?t\s+breathe\b|\bcannot\s+breathe\b|\bunable\s+to\s+breathe\b|\bstruggling\s+to\s+breathe\b|\bhaving\s+trouble\s+breathing\b|\bdifficulty\s+breathing\b|\bhard\s+to\s+breathe\b|\bsevere\s+difficulty\s+breathing\b|\bgasping\b|\bshortness\s+of\s+breath\b|\bbreathless(ness)?\b|\bcannot\s+catch\s+(my\s+)?breath\b|\bcan.?t\s+catch\s+(my\s+)?breath\b'
             Text = 'breathlessness'
             Denials = @(
-                '\b(no|not|denies?|denied|without)\b.{0,20}\b(breathless(ness)?|shortness of breath|struggling to breathe|cannot breathe|severe difficulty breathing|gasping)\b'
+                '\b(no|not|denies?|denied|without)\b.{0,20}\b(breathless(ness)?|shortness of breath|struggling to breathe|cannot breathe|difficulty breathing|gasping)\b'
+            )
+        },
+        @{
+            # Radiating arm/jaw/shoulder pain — classic cardiac
+            Regex = '\bpain\b.{0,40}\b(arm|arms|jaw|shoulder|left\s+side)\b|\b(arm|jaw|shoulder)\b.{0,40}\bpain\b|\bradiating\b.{0,40}\b(arm|jaw|shoulder)\b|\bpain\s+(going|spreading|radiating)\s+(in|into|down|across)\s+(my\s+)?(arm|jaw|shoulder|left)\b'
+            Text = 'radiating arm/jaw pain'
+            Denials = @(
+                '\b(no|not|denies?|denied|without)\b.{0,20}\b(arm|jaw|shoulder)\s*pain\b'
             )
         },
         @{
@@ -160,6 +170,22 @@ function Test-JeffCallerSymptomAffirmed {
             Text = 'allergic reaction'
             Denials = @(
                 '\b(no|not|denies?|denied|without)\b.{0,20}\b(anaphylaxis|swelling of lips|swelling of tongue|swelling of throat)\b'
+            )
+        },
+        @{
+            # Caller describing near-collapse, severe headache, unresponsiveness
+            Regex = '\bsevere\s+headache\b|\bworst\s+headache\b|\bthundering\s+headache\b|\bthunderclap\b|\bblurred\s+vision\b|\bblurry\s+vision\b|\bsudden\s+vision\s+loss\b|\bcoughing\s+blood\b|\bvomiting\s+blood\b|\bblood\s+in\s+urine\b'
+            Text = 'severe symptom'
+            Denials = @(
+                '\b(no|not|denies?|denied|without)\b.{0,20}\b(severe|worst|thunderclap|blurred|coughing blood|vomiting blood)\b'
+            )
+        },
+        @{
+            # Carer/family urgency signal — "wife says call 999", "they told me to call 999"
+            Regex = '\b(wife|husband|partner|family|carer|friend|daughter|son|mother|father|parent|someone|they|she|he)\b.{0,40}\b(call|ring|phone|dial)\s+(999|ambulance|emergency)\b|\b(told|asked|said|wants?\s+(me\s+)?to)\b.{0,20}\b(call|ring)\s+(999|ambulance)\b'
+            Text = 'carer/family urgency — advised to call 999'
+            Denials = @(
+                '\b(no|not|didn.?t|told.{0,10}not)\b.{0,20}\b(call|ring)\s+999\b'
             )
         }
     )
