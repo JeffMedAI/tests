@@ -76,7 +76,7 @@ Security Agent has VETO authority over all PRs. Lead Agent enforces vetoes.
 
 ---
 
-## CURRENT STATUS (as of 2026-06-02 — Cowork session, WhatsApp integration Day 1)
+## CURRENT STATUS (as of 2026-06-03 — Cowork session, WhatsApp integration Day 1)
 
 ### What is working
 - Production dashboard LIVE at dashboard.app-avamed.uk
@@ -86,7 +86,7 @@ Security Agent has VETO authority over all PRs. Lead Agent enforces vetoes.
 - Watchdog: REWRITTEN — all 5 services, restart cap 3/hr, WhatsApp alerts
 - WhatsApp daily report delivery: DONE (07:00 scheduled, confirmed delivered)
 - Strategy Agent: fully onboarded
-- Test suite: auth fixture working, 109 passed
+- **Test suite: ALL 149 tests passing (was 45 failures) — FULLY FIXED** — commit 1aba9aa
 - E2E call flow test: Stages 1-4 PASSING. Stage 3 SQLite fix confirmed.
 - HMAC-SHA256 webhook verification: DONE — 14/14 tests passing (sandbox)
 - Password reset end-to-end: DONE — 28/28 tests passing (sandbox)
@@ -114,7 +114,6 @@ Security Agent has VETO authority over all PRs. Lead Agent enforces vetoes.
 ### Pending Saeed approvals (action required)
 1. **URGENT: Run fix_git_lock.ps1** — git index corrupted, blocks all commits. Script at C:\JeffLocal\fix_git_lock.ps1 (also repairs index, not just lock)
 2. Task Scheduler registration: run scripts\register_scheduled_tasks.ps1 as Administrator
-3. Review 11 remaining test failures — assign to Backend Agent or accept as backlog
 4. **NEW: GDPR purge production deployment** — migration (add_created_at_20260531.sql) on live DB + remove --dry-run from Task Scheduler entry — requires explicit approval
 5. **WhatsApp Day 1 ACTION: Complete Meta Business account setup** — see docs/project_documents/Meta_WhatsApp_Setup_Guide.md — estimated 60 min. Save credentials to C:\JeffLocal\.env.whatsapp
 6. **WhatsApp Day 1 ACTION: Update patient poster** — replace [YOUR WHATSAPP NUMBER HERE] placeholder in WhatsApp_Patient_Poster.docx once number is confirmed
@@ -253,6 +252,7 @@ Monitoring:     Watchdog (restarts dashboard if down), checks every 5 min
 ---
 *Update this file at the end of every session. It is the single source of truth
 for project state and the first thing to read when starting fresh.*
+
 
 
 
