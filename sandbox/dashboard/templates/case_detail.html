@@ -331,7 +331,7 @@
       {% if case.is_emergency %}<span class="badge danger"><span aria-hidden="true">🚨 </span>Emergency</span>{% endif %}
       {% if case.red_flags_present %}<span class="badge danger">RED FLAG</span>{% endif %}
       {% if not case.is_resolved and case.priority and case.priority not in ('normal', 'routine', '999 Emergency') %}
-        <span class="badge review">{{ case.priority|title }}</span>
+        <span class="badge review">{{ case.priority | replace('_', ' ') | title }}</span>
       {% endif %}
       <span class="badge {{ case.request_type }}">{{ case.request_type_label }}</span>
     </div>

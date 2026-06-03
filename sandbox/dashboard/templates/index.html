@@ -515,7 +515,7 @@
                 {# ── Attention badges (guided UX Feature 4) ── #}
                 {% if case.red_flags_present and not case.is_resolved %}
                   <span class="attn-badge attn-badge-callnow" role="img" aria-label="Call now — red flag case" title="Red flag: contact patient or GP immediately">CALL NOW</span>
-                {% elif case.staff_review_required and case.status in ("New", "Needs Review") and not case.is_resolved %}
+                {% elif case.staff_review_required and not case.identity_review_required and case.status in ("New", "Needs Review") and not case.is_resolved %}
                   <span class="attn-badge attn-badge-review" role="img" aria-label="Review required before processing" title="Staff review required before this case can be resolved">Review</span>
                 {% endif %}
                 {% if not case.is_resolved and case.status == "New" and case.age_minutes is defined and case.age_minutes > 120 %}

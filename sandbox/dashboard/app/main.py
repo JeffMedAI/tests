@@ -514,7 +514,11 @@ TERMINAL_CASE_STATUSES = (
 )
 STAFF_REVIEW_STATUS_NAMES = ("staff review", "needs review", "urgent review", "escalated")
 IN_PROGRESS_STATUS_NAMES = ("in progress", "active processing")
-IDENTITY_REVIEW_STATUSES = {"possible_match", "possible_match_weak", "no_match", "insufficient_data", "needs_review"}
+IDENTITY_REVIEW_STATUSES = {
+    "possible_match", "possible_match_weak", "no_match", "insufficient_data", "needs_review",
+    # Additional statuses that require staff identity verification before processing
+    "partial", "unverified", "unable to verify", "failed",
+}
 SAFE_MATCH_STATUSES = {"matched", "exact_match", "verified_match"}
 OPEN_BATCH_STATUSES = {"New", "In Progress", "Waiting for Patient", "Waiting for GP"}
 DEMO_CALL_PREFIXES = ("TC-", "RX-TEST", "PRODSIM", "DEMO", "GPDEMO", "GPTDEMO")
@@ -586,6 +590,28 @@ async def _warmup_ollama() -> None:
         pass  # non-fatal
 
 
+_IMPORTER_INTERVAL_SECONDS: int = int(os.environ.get("JEFF_IMPORT_INTERVAL", "60"))
+_importer_log = logging.getLogger("jefflocal.importer")
+
+
+async def _background_importer() -> None:
+    """Continuously polls outputs/handoff_json/ and imports new cases into the DB.
+
+    Runs every JEFF_IMPORT_INTERVAL seconds (default 60). Errors are logged but
+    never crash the loop — the dashboard stays up regardless of pipeline state.
+    """
+    await asyncio.sleep(5)  # brief delay to let startup complete
+    while True:
+        try:
+            with connect() as conn:
+                count = import_handoffs(conn)
+            if count:
+                _importer_log.info("Auto-importer: imported %d new case(s)", count)
+        except Exception as exc:
+            _importer_log.warning("Auto-importer error (non-fatal): %s", exc)
+        await asyncio.sleep(_IMPORTER_INTERVAL_SECONDS)
+
+
 @app.on_event("startup")
 def startup() -> None:
     with connect() as conn:
@@ -593,7 +619,10 @@ def startup() -> None:
         import_handoffs(conn)
     asyncio.create_task(_daily_session_purge())
     asyncio.create_task(_warmup_ollama())
-    logging.getLogger(__name__).info("Ollama warm-up started")
+    asyncio.create_task(_background_importer())
+    logging.getLogger(__name__).info(
+        "Auto-importer started (interval=%ds)", _IMPORTER_INTERVAL_SECONDS
+    )
 
 
 @app.get("/favicon.ico")
@@ -959,7 +988,7 @@ def get_staff_users(conn, active_only: bool = True) -> list[dict[str, Any]]:
     where = "WHERE active = 1" if active_only else ""
     rows = conn.execute(
         f"""
-        SELECT id, display_name, email, role, active, created_at, updated_at
+        SELECT id, username, display_name, email, role, active, created_at, updated_at
         FROM staff_users
         {where}
         ORDER BY active DESC, role ASC, display_name ASC
@@ -1131,52 +1160,68 @@ def emis_workflow_steps(request_type: str | None) -> list[str]:
     return _EMIS_STEPS.get(rt, _EMIS_STEPS["admin"])
 
 
+_VS_LABEL: dict[str, str] = {
+    "no_match":         "No ID Match",
+    "unverified":       "Unverified",
+    "partial":          "Partial Match",
+    "unable to verify": "Unverifiable",
+    "insufficient_data":"No Data",
+    "failed":           "ID Failed",
+}
+
+
 def summary_chips_for_case(case: dict[str, Any]) -> list[dict[str, str]]:
-    """Generate status pills for case display. Avoids duplicate/redundant pills."""
+    """Generate status pills for case display.
+
+    Design rule: one pill per concern. Never show both a priority pill and an
+    identity/review pill that convey the same thing. Identity cases get a single
+    combined pill — 'Review (No ID Match)' etc. — so the card stays readable.
+    """
     chips: list[dict[str, str]] = []
-    priority = str(case.get("priority") or "routine").replace("_", " ")
     is_emergency = bool(case.get("red_flags_present") or str(case.get("priority") or "").strip() == "999 Emergency")
     verification_status = str(case.get("verification_status") or "").strip().lower()
-    recording_label = case.get("recording", {}).get("recording_label") if isinstance(case.get("recording"), dict) else ""
     staff_review = case.get("staff_review_required")
+    priority_raw = str(case.get("priority") or "routine").replace("_", " ").strip()
+    # Human-readable priority — never leak internal codes like "review_required"
+    priority_internal = {"review required", "review_required", "needs review"}
+    priority_display = priority_raw if priority_raw.lower() not in priority_internal else "routine"
 
-    # Resolved cases: no action-required chips — type badge + RESOLVED footer is sufficient
-    # Emergency resolved cases retain Red Flag badge for audit visibility
+    # Resolved cases: no action chips — type badge + RESOLVED footer is sufficient.
+    # Emergency resolved cases keep Red Flag for audit visibility.
     if case.get("is_resolved") or is_resolved_case(case):
         if is_emergency:
             chips.append({"label": "Red Flag", "class": "danger"})
         return chips
 
-    # Emergency cases: Priority + Red Flag + Safe to Queue
+    # Emergency: Safe To Queue + Red Flag (CALL NOW attn-badge handles the urgency label)
     if is_emergency:
-        chips.append({"label": priority, "class": "danger"})
         chips.append({"label": "Red Flag", "class": "danger"})
         chips.append({"label": format_safe_to_queue(case.get("safe_to_queue")), "class": "safe" if case.get("safe_to_queue") else "not-safe"})
-        return chips[:3]
+        return chips[:2]
 
-    # Identity check cases: Priority + merged ID pill
+    # Identity check: ONE combined pill — "Review (No ID Match)" / "Review (Partial Match)" etc.
+    # Avoids showing separate priority + ID + Review attn-badge for the same concern.
     if verification_status in IDENTITY_REVIEW_STATUSES:
-        chips.append({"label": priority, "class": "priority-routine" if priority.lower() == "routine" else "review"})
-        _vs_human = (case.get("verification_status") or "unknown").replace("_", " ").title()
+        vs_label = _VS_LABEL.get(verification_status, verification_status.replace("_", " ").title())
         chips.append({
-            "label": f"ID: {_vs_human}",
+            "label": f"Review ({vs_label})",
             "class": "review",
-            "tooltip": f"Identity Check · Verification: {case.get('verification_status') or 'unknown'}",
+            "tooltip": f"Staff review required · Verification: {vs_label}",
         })
-        return chips[:3]
+        return chips[:1]
 
-    # Staff review cases: Priority + Review Required + Safe to Queue
+    # Staff review (non-identity): one review pill + safe-to-queue
     if staff_review:
-        chips.append({"label": priority, "class": "priority-routine" if priority.lower() == "routine" else "review"})
         chips.append({"label": "Review Required", "class": "review"})
         chips.append({"label": format_safe_to_queue(case.get("safe_to_queue")), "class": "safe" if case.get("safe_to_queue") else "not-safe"})
-        return chips[:3]
+        return chips[:2]
 
-    # Default case: Priority + Safe to Queue only (minimal)
-    chips.append({
-        "label": priority,
-        "class": "danger" if case.get("priority") == "999 Emergency" else "priority-routine" if priority.lower() == "routine" else "review",
-    })
+    # Default: priority (if non-routine) + safe-to-queue
+    if priority_display.lower() not in ("routine", ""):
+        chips.append({
+            "label": priority_display.title(),
+            "class": "danger" if case.get("priority") == "999 Emergency" else "review",
+        })
     chips.append({
         "label": format_safe_to_queue(case.get("safe_to_queue")),
         "class": "safe" if case.get("safe_to_queue") else "not-safe",
