@@ -851,6 +851,10 @@ def make_query(filter_name: str, sort: str, q: str, request_type: str) -> tuple[
         values.append(request_type)
     if q:
         like = f"%{q}%"
+        # Digit-normalized search: strip spaces/dashes/dots/+ for phone/NHS/EMIS lookups.
+        # Allows "472 935 6187" to match nhs_number stored as "4729356187".
+        q_digits = "".join(ch for ch in q if ch.isdigit())
+        digit_like = f"%{q_digits}%" if q_digits else like
         parts.append(
             """
             (
@@ -859,10 +863,14 @@ def make_query(filter_name: str, sort: str, q: str, request_type: str) -> tuple[
                 OR call_summary LIKE ? OR ai_summary LIKE ? OR task_title LIKE ? OR task_body LIKE ?
                 OR staff_task_title LIKE ? OR staff_task_body LIKE ? OR patient_record_note LIKE ?
                 OR verification_status LIKE ?
+                OR REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(callback_number, ''), ' ', ''), '-', ''), '.', ''), '+', '') LIKE ?
+                OR REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(nhs_number, ''), ' ', ''), '-', ''), '.', ''), '+', '') LIKE ?
+                OR REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(emis_number, ''), ' ', ''), '-', ''), '.', ''), '+', '') LIKE ?
             )
             """
         )
         values.extend([like] * 15)
+        values.extend([digit_like, digit_like, digit_like])
     return " AND ".join(f"({part})" for part in parts), tuple(values)
 
 
