@@ -343,6 +343,7 @@ function Invoke-CheckPass {
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 wlog "=== JeffLocal watchdog started (Once=$Once Force=$Force IntervalSeconds=$IntervalSeconds) ==="
+Send-Alert "JeffLocal watchdog STARTED on $env:COMPUTERNAME at $(Get-Date -Format 'yyyy-MM-dd HH:mm')"
 
 if ($Once) {
     Invoke-CheckPass

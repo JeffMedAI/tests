@@ -1,7 +1,314 @@
 {% extends "base.html" %}
 {% block title %}{{ case.patient_name or case.call_id }} — {{ case.request_type_label }} — JeffLocal{% endblock %}
+
+{% block head %}
+<style>
+/* ── Next Step Banner ───────────────────────────────────────────────── */
+.ns-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  border-radius: 0;
+  font-size: var(--text-base);
+  font-weight: 600;
+  line-height: 1.35;
+  position: relative;
+  border-left: 5px solid transparent;
+}
+.ns-banner[hidden] { display: none !important; }
+.ns-banner-icon { font-size: 18px; flex-shrink: 0; line-height: 1; }
+.ns-banner-text { flex: 1; }
+.ns-banner-text strong { display: block; font-size: var(--text-lg); margin-bottom: 1px; }
+.ns-banner-text span   { font-size: var(--text-sm); font-weight: 400; opacity: 0.88; }
+.ns-banner-dismiss {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  opacity: 0.6;
+  padding: 4px;
+  line-height: 1;
+  border-radius: 4px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ns-banner-dismiss:hover { opacity: 1; }
+
+.ns-banner.ns-red {
+  background: var(--danger-bg);
+  border-left-color: var(--danger);
+  color: #7c0b07;
+}
+.ns-banner.ns-amber {
+  background: var(--warning-bg);
+  border-left-color: var(--warning);
+  color: #7a3000;
+}
+.ns-banner.ns-blue {
+  background: var(--accent-soft);
+  border-left-color: var(--accent);
+  color: var(--accent-hover);
+}
+.ns-banner.ns-green {
+  background: var(--success-bg);
+  border-left-color: var(--success);
+  color: #14532d;
+}
+.ns-banner.ns-grey {
+  background: var(--gray-100);
+  border-left-color: var(--gray-400);
+  color: var(--gray-700);
+}
+
+/* ── Progress Stepper ───────────────────────────────────────────────── */
+.cd-stepper {
+  display: flex;
+  align-items: center;
+  padding: 10px 20px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+  gap: 0;
+  overflow-x: auto;
+}
+.cd-step {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  position: relative;
+  cursor: default;
+}
+.cd-step-bubble {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid var(--gray-300);
+  background: var(--panel);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--gray-400);
+  flex-shrink: 0;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+.cd-step-label {
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--gray-500);
+  white-space: nowrap;
+  position: relative;
+}
+.cd-step-label[data-tooltip]:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--gray-800);
+  color: #fff;
+  font-size: var(--text-xs);
+  font-weight: 400;
+  padding: 5px 9px;
+  border-radius: 6px;
+  white-space: nowrap;
+  z-index: 100;
+  pointer-events: none;
+  box-shadow: var(--shadow-md);
+}
+.cd-step-connector {
+  flex: 1;
+  min-width: 24px;
+  max-width: 60px;
+  height: 2px;
+  background: var(--gray-200);
+  margin: 0 4px;
+  flex-shrink: 0;
+}
+/* Completed step */
+.cd-step.is-done .cd-step-bubble {
+  background: var(--success);
+  border-color: var(--success);
+  color: #fff;
+}
+.cd-step.is-done .cd-step-label { color: var(--gray-700); }
+.cd-step.is-done ~ .cd-step-connector { background: var(--success); }
+/* Active/current step */
+.cd-step.is-active .cd-step-bubble {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.cd-step.is-active .cd-step-label {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+@media (max-width: 600px) {
+  .ns-banner { padding: 12px 14px; }
+  .ns-banner-text strong { font-size: var(--text-base); }
+  .cd-stepper { padding: 8px 12px; }
+  .cd-step-label { font-size: 11px; }
+  .cd-step-connector { min-width: 12px; max-width: 28px; }
+}
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="page-scroll">
+
+{# ── NEXT STEP BANNER ──────────────────────────────────────────────── #}
+{#
+  Use Jinja2 namespace() so set inside if-blocks propagates to outer scope.
+  Jinja2 scoping rule: {% set %} inside child scopes (if/for) is local only
+  unless a namespace object is used.
+#}
+{% set _final_statuses = ["Resolved", "Closed", "Cannot Action", "Discharged"] %}
+{% set _is_final       = case.status in _final_statuses or case.is_resolved %}
+{% set _ns = namespace(colour="grey", icon="", heading="", sub="") %}
+
+{% if case.red_flags_present or case.priority == "999 Emergency" %}
+  {% set _ns.colour  = "red" %}
+  {% set _ns.icon    = "🚨" %}
+  {% set _ns.heading = "RED FLAG — Contact patient or GP immediately before taking any action" %}
+  {% set _ns.sub     = "Do not process this request through standard workflow until clinical review is complete." %}
+{% elif case.staff_review_required and case.status in ("New", "Needs Review", "In Progress") %}
+  {% set _ns.colour  = "amber" %}
+  {% set _ns.icon    = "⚠" %}
+  {% set _ns.heading = "Review required — Read the full AI summary before processing this request" %}
+  {% set _ns.sub     = "Check the Action Needed tab and verify all details before resolving." %}
+{% elif not case.task_title and not case.staff_task_title %}
+  {% set _ns.colour  = "amber" %}
+  {% set _ns.icon    = "⚠" %}
+  {% set _ns.heading = "Incomplete data — AI processing failed. Review transcript manually" %}
+  {% set _ns.sub     = "Check the Conversation tab for the raw transcript and process using standard workflow." %}
+{% elif _is_final %}
+  {% set _ns.colour  = "grey" %}
+  {% set _ns.icon    = "✓" %}
+  {% set _ns.heading = "Resolved — No further action needed" %}
+  {% set _ns.sub     = "This case is closed. Use Reopen if further action is required." %}
+{% elif case.status in ("Waiting for Patient", "Waiting for GP") %}
+  {% set _ns.colour  = "blue" %}
+  {% set _ns.icon    = "⏳" %}
+  {% set _ns.heading = "Waiting — No action needed until patient or GP responds" %}
+  {% set _ns.sub     = "Monitor for response and update status when received." %}
+{% elif case.status == "In Progress" %}
+  {% set _ns.colour  = "blue" %}
+  {% set _ns.icon    = "▶" %}
+  {% set _ns.heading = "In Progress — Update outcome notes when complete, then mark resolved" %}
+  {% set _ns.sub     = "Complete your workflow steps and use the Staff Workflow panel to resolve." %}
+{% elif case.status == "New" %}
+  {% set _ns.colour  = "green" %}
+  {% set _ns.icon    = "▶" %}
+  {% set _ns.heading = "New request — Assign to yourself and begin processing" %}
+  {% set _ns.sub     = "Review the AI summary and staff task, then update the status." %}
+{% else %}
+  {% set _ns.colour  = "blue" %}
+  {% set _ns.icon    = "▶" %}
+  {% set _ns.heading = "Review this case and take the appropriate action" %}
+  {% set _ns.sub     = "" %}
+{% endif %}
+
+<div class="ns-banner ns-{{ _ns.colour }}"
+     id="ns-banner-{{ case.call_id }}"
+     role="alert"
+     aria-label="Next step guidance">
+  <span class="ns-banner-icon" aria-hidden="true">{{ _ns.icon }}</span>
+  <div class="ns-banner-text">
+    <strong>{{ _ns.heading }}</strong>
+    {% if _ns.sub %}<span>{{ _ns.sub }}</span>{% endif %}
+  </div>
+  <button class="ns-banner-dismiss"
+          type="button"
+          aria-label="Dismiss next step guidance"
+          onclick="jefflocalDismissBanner('{{ case.call_id }}')">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+  </button>
+</div>
+
+{# ── PROGRESS STEPPER ──────────────────────────────────────────────── #}
+{#
+  Steps: Received → Reviewed → In Progress → Resolved
+  Reviewed = staff_review_required is False OR last_edited_by is set
+  In Progress = status is "In Progress"
+  Resolved = is_resolved or status in final statuses
+#}
+{% set _step_received   = true %}
+{% set _step_reviewed   = not case.staff_review_required or case.last_edited_by %}
+{% set _step_inprogress = case.status == "In Progress" or case.is_resolved %}
+{% set _step_resolved   = case.is_resolved or case.status in _final_statuses %}
+{% set _sns = namespace(active_step="received") %}
+{% if _step_resolved %}
+  {% set _sns.active_step = "resolved" %}
+{% elif _step_inprogress %}
+  {% set _sns.active_step = "inprogress" %}
+{% elif _step_reviewed %}
+  {% set _sns.active_step = "reviewed" %}
+{% endif %}
+
+<div class="cd-stepper" role="list" aria-label="Case workflow progress">
+
+  {# Step 1: Received #}
+  <div class="cd-step {% if _sns.active_step == 'received' %}is-active{% else %}is-done{% endif %}" role="listitem">
+    <div class="cd-step-bubble" aria-hidden="true">
+      {% if _sns.active_step != 'received' %}
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      {% else %}1{% endif %}
+    </div>
+    <span class="cd-step-label"
+          data-tooltip="Call received and imported into the dashboard">Received</span>
+  </div>
+
+  <div class="cd-step-connector"></div>
+
+  {# Step 2: Reviewed #}
+  <div class="cd-step
+    {% if _sns.active_step == 'reviewed' %}is-active
+    {% elif _step_inprogress or _step_resolved %}is-done
+    {% endif %}" role="listitem">
+    <div class="cd-step-bubble" aria-hidden="true">
+      {% if _step_inprogress or _step_resolved %}
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      {% else %}2{% endif %}
+    </div>
+    <span class="cd-step-label"
+          data-tooltip="Staff has reviewed the AI summary and patient details">Reviewed</span>
+  </div>
+
+  <div class="cd-step-connector"></div>
+
+  {# Step 3: In Progress #}
+  <div class="cd-step
+    {% if _sns.active_step == 'inprogress' %}is-active
+    {% elif _step_resolved %}is-done
+    {% endif %}" role="listitem">
+    <div class="cd-step-bubble" aria-hidden="true">
+      {% if _step_resolved %}
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      {% else %}3{% endif %}
+    </div>
+    <span class="cd-step-label"
+          data-tooltip="Staff is actively working this request — update outcome notes">In Progress</span>
+  </div>
+
+  <div class="cd-step-connector"></div>
+
+  {# Step 4: Resolved #}
+  <div class="cd-step {% if _step_resolved %}is-done{% endif %}" role="listitem">
+    <div class="cd-step-bubble" aria-hidden="true">
+      {% if _step_resolved %}
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      {% else %}4{% endif %}
+    </div>
+    <span class="cd-step-label"
+          data-tooltip="Request fully processed and closed — no further action needed">Resolved</span>
+  </div>
+
+</div>
 
 {# ── CASE DETAIL HEADER ─────────────────────────────────────────── #}
 <div class="cd-header {% if case.red_flags_present %}cd-header-danger{% endif %}">
@@ -483,6 +790,43 @@
 
 {% block scripts %}
 <script>
+  // ── Info Gap Toast: set data attrs then call shared init function ──
+  // jefflocalInitGapToast is defined in base.html AFTER this block runs.
+  (function () {
+    var toast = document.getElementById('jefflocal-gap-toast');
+    if (!toast) return;
+    toast.dataset.callId        = '{{ case.call_id | default("") }}';
+    toast.dataset.clarification = '{{ "true" if case.clarification_needed | default(false) else "false" }}';
+    {% if case.missing_information is defined and case.missing_information %}
+    var rawItems = {{ case.missing_information | tojson }};
+    {% else %}
+    var rawItems = [];
+    {% endif %}
+    toast.dataset.gapItems = JSON.stringify(Array.isArray(rawItems) ? rawItems : []);
+    // jefflocalInitGapToast is declared in base.html's deferred script block —
+    // schedule it to run after the page script order resolves.
+    window.addEventListener('load', function () {
+      if (typeof jefflocalInitGapToast === 'function') jefflocalInitGapToast();
+    });
+  })();
+
+  // ── Next Step Banner: dismiss persisted per case in sessionStorage ──
+  (function () {
+    var callId  = '{{ case.call_id }}';
+    var banner  = document.getElementById('ns-banner-' + callId);
+    var key     = 'jefflocal.nsbanner.' + callId;
+    if (!banner) return;
+    if (sessionStorage.getItem(key) === 'dismissed') {
+      banner.hidden = true;
+    }
+  })();
+
+  function jefflocalDismissBanner(callId) {
+    var banner = document.getElementById('ns-banner-' + callId);
+    if (banner) banner.hidden = true;
+    sessionStorage.setItem('jefflocal.nsbanner.' + callId, 'dismissed');
+  }
+
   // ── Case detail JS tab switching (H2: ARIA tabs) ─────────────────
   (function () {
     var tabs     = document.querySelectorAll('[role="tab"]');

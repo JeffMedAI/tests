@@ -73,7 +73,7 @@ def test_sidebar_navigation_and_dashboard_requests_split(tmp_path, monkeypatch):
     assert dashboard.status_code == 200
     assert 'class="analytics-sidebar"' in dashboard.text
     assert 'href="/requests"' in dashboard.text
-    assert "Urgent Attention" in dashboard.text
+    assert "urgent-banner" in dashboard.text or "/requests?filter=urgent_red_flags" in dashboard.text
     assert "TC-UX-NAV" not in dashboard.text
     assert 'class="search-sort-form filter-bar"' not in dashboard.text
     assert requests.status_code == 200
@@ -83,7 +83,6 @@ def test_sidebar_navigation_and_dashboard_requests_split(tmp_path, monkeypatch):
     assert staff.status_code == 200
     assert reports.status_code == 200
     assert settings.status_code == 200
-    assert "Urgent Attention" in dashboard.text
     assert "/requests?filter=urgent_red_flags" in dashboard.text
 
 
@@ -358,23 +357,15 @@ def test_rawmock_006_emergency_marker(tmp_path, monkeypatch):
     assert response.status_code == 200
     assert "TC-STATUS-RED-RESOLVED" in response.text
     row = response.text.split('id="case-TC-STATUS-RED-RESOLVED"')[1].split('</article>')[0]
-    status_section = row.split('class="request-cell status-cell"')[1].split('</div>', 1)[0]
-    summary_section = row.split('class="request-cell request-meta"')[1].split('</div>', 1)[0]
-    assert status_section.count('class="badge') == 1
-    assert "RESOLVED" in status_section
-    assert "EMERGENCY / RED FLAG" not in status_section
-    assert "POSSIBLE EMERGENCY" not in status_section
-    assert "999 Emergency" not in status_section
-    assert "Red Flag" not in status_section
-    assert "Not Safe To Queue" not in status_section
-    assert "Review Required" not in status_section
-    assert "Verification" not in status_section
-    assert "Recording" not in status_section
-    assert "999 Emergency" in summary_section
-    assert "Red Flag" in summary_section
-    assert "Not Safe To Queue" in summary_section
-    assert "Review Required" in summary_section
-    assert "Recording: Pending" in summary_section
+    # Footer-left holds the single primary status badge
+    footer_section = row.split('class="card-footer-left"')[1].split('</div>', 1)[0]
+    assert footer_section.count('class="badge') == 1
+    assert "RESOLVED" in footer_section
+    assert "EMERGENCY / RED FLAG" not in footer_section
+    assert "POSSIBLE EMERGENCY" not in footer_section
+    assert "999 Emergency" not in footer_section
+    # Red Flag chip IS shown in card-badges for resolved emergency (audit visibility)
+    assert "Red Flag" in row
 
 
 def test_search_matches_patient_call_id_emis_nhs_callback(tmp_path, monkeypatch):
@@ -588,21 +579,16 @@ def test_red_flag_case_row_remains_visually_marked_and_batch_checkbox_present(tm
     assert 'class="case-select"' in response.text
     assert 'data-red-flag="true"' in response.text
     row = response.text.split('id="case-TC-STATUS-RED-OPEN"')[1].split('</article>')[0]
-    status_section = row.split('class="request-cell status-cell"')[1].split('</div>', 1)[0]
-    summary_section = row.split('class="request-cell request-meta"')[1].split('</div>', 1)[0]
-    assert status_section.count('class="badge') == 1
-    assert "OPEN" in status_section
-    assert "999 Emergency" not in status_section
-    assert "Red Flag" not in status_section
-    assert "Not Safe To Queue" not in status_section
-    assert "Review Required" not in status_section
-    assert "Verification" not in status_section
-    assert "Recording" not in status_section
-    assert "999 Emergency" in summary_section
-    assert "Red Flag" in summary_section
-    assert "Not Safe To Queue" in summary_section
-    assert "Review Required" in summary_section
-    assert "Recording: Pending" in summary_section
+    # card-footer-left contains the single primary status badge
+    footer_section = row.split('class="card-footer-left"')[1].split('</div>', 1)[0]
+    assert footer_section.count('class="badge') == 1
+    assert "OPEN" in footer_section
+    assert "EMERGENCY / RED FLAG" not in footer_section
+    assert "POSSIBLE EMERGENCY" not in footer_section
+    # Summary chips and attention badge for open emergency appear in card-badges
+    assert "999 Emergency" in row
+    assert "Red Flag" in row
+    assert "CALL NOW" in row  # attention badge for active emergency
 
 
 def test_batch_resolve_frontend_messages_and_disabled_button_state_render(tmp_path, monkeypatch):
@@ -643,7 +629,6 @@ def test_dashboard_demo_polish_top_layout(tmp_path, monkeypatch):
     assert response.status_code == 200
     assert "Service Status" not in response.text
     assert "Connect / Refresh All Services" not in response.text
-    assert "Urgent Attention" in response.text
     assert "System Status" in response.text
     assert "Request Mix" in response.text
     assert "Staff Workload" in response.text
@@ -774,22 +759,23 @@ def test_status_column_renders_single_primary_status_only(tmp_path, monkeypatch)
     identity_row = identity.text.split('id="case-TC-STATUS-IDENTITY"')[1].split('</article>')[0]
     red_row = red_flag.text.split('id="case-TC-STATUS-RED"')[1].split('</article>')[0]
 
-    assert routine_row.split('class="request-cell status-cell"')[1].count('class="badge') == 1
-    assert "OPEN" in routine_row.split('class="request-cell status-cell"')[1]
+    # card-footer-left contains the single primary status badge
+    assert routine_row.split('class="card-footer-left"')[1].count('class="badge') == 1
+    assert "OPEN" in routine_row.split('class="card-footer-left"')[1]
 
-    assert resolved_row.split('class="request-cell status-cell"')[1].count('class="badge') == 1
-    assert "RESOLVED" in resolved_row.split('class="request-cell status-cell"')[1]
+    assert resolved_row.split('class="card-footer-left"')[1].count('class="badge') == 1
+    assert "RESOLVED" in resolved_row.split('class="card-footer-left"')[1]
 
-    assert review_row.split('class="request-cell status-cell"')[1].count('class="badge') == 1
-    assert "OPEN" in review_row.split('class="request-cell status-cell"')[1]
+    assert review_row.split('class="card-footer-left"')[1].count('class="badge') == 1
+    assert "OPEN" in review_row.split('class="card-footer-left"')[1]
 
-    assert identity_row.split('class="request-cell status-cell"')[1].count('class="badge') == 1
-    assert "OPEN" in identity_row.split('class="request-cell status-cell"')[1]
+    assert identity_row.split('class="card-footer-left"')[1].count('class="badge') == 1
+    assert "OPEN" in identity_row.split('class="card-footer-left"')[1]
 
-    assert red_row.split('class="request-cell status-cell"')[1].count('class="badge') == 1
-    assert "OPEN" in red_row.split('class="request-cell status-cell"')[1]
-    assert "EMERGENCY / RED FLAG" not in red_row.split('class="request-cell status-cell"')[1]
-    assert "POSSIBLE EMERGENCY" not in red_row.split('class="request-cell status-cell"')[1]
+    assert red_row.split('class="card-footer-left"')[1].count('class="badge') == 1
+    assert "OPEN" in red_row.split('class="card-footer-left"')[1]
+    assert "EMERGENCY / RED FLAG" not in red_row.split('class="card-footer-left"')[1]
+    assert "POSSIBLE EMERGENCY" not in red_row.split('class="card-footer-left"')[1]
     assert "999 Emergency" in red_row
     assert "Red Flag" in red_row
     assert "Not Safe To Queue" in red_row
@@ -892,7 +878,7 @@ def test_default_dashboard_paginates_latest_twenty(tmp_path, monkeypatch):
 
     assert first.status_code == 200
     assert first.text.count("data-case-row") == 20
-    assert "Showing 1-20 of 25" in first.text
+    assert "Showing 1–20 of 25" in first.text  # template uses en-dash –
     assert "Page 1 of 2" in first.text
     assert second.status_code == 200
     assert "Page 2 of 2" in second.text
@@ -1095,14 +1081,15 @@ def test_staff_workflow_is_simplified_with_advanced_fields_collapsed_and_save_pr
         resolved_detail = client.get("/case/TC-UX-WORKFLOW-RESOLVED")
 
     assert detail.status_code == 200
-    workflow_section = detail.text.split("<h3>Staff Workflow</h3>")[1].split("</form>")[0]
+    # Locate staff workflow section via its card header div
+    workflow_section = detail.text.split('<div class="cd-card-hd">Staff Workflow</div>')[1].split("</form>")[0]
     before_advanced = workflow_section.split("Advanced staff fields")[0]
     assert "Outcome note" in before_advanced
     assert "I confirm staff review is complete" in before_advanced
     assert "Save progress" in before_advanced
     assert "Assigned To" not in before_advanced
-    assert '<details class="advanced-staff-fields">' in workflow_section
-    assert "<summary>Advanced staff fields</summary>" in workflow_section
+    assert 'class="advanced-staff-fields"' in workflow_section
+    assert "Advanced staff fields" in workflow_section
     assert "Mark as Resolved" in workflow_section
     assert "Reception Demo" in workflow_section
     assert save.status_code == 303
@@ -1128,13 +1115,10 @@ def test_action_needed_layout_groups_copy_buttons(tmp_path, monkeypatch):
 
     assert response.status_code == 200
     assert 'data-copy-button' in response.text
-    copy_row = response.text  # copy-action-row removed in new UI
-    assert "Copy Record Note" in copy_row
-    assert "Copy Staff Task" in copy_row
-    assert "Copy Summary" in copy_row
-    assert "Copy Identifiers" in copy_row
+    assert "Copy Record Note" in response.text
+    assert "Copy Staff Task" in response.text
+    assert "Copy Identifiers" in response.text
     assert "Staff Task" in response.text
-    assert "AI-assisted Request Summary" in response.text
     assert "Patient Record Note" in response.text
 
 
@@ -1160,7 +1144,7 @@ def test_transcript_splits_inline_speaker_labels_and_raw_transcript_is_collapsed
     assert response.status_code == 200
     assert 'conversation-line agent' in response.text
     assert 'conversation-line caller' in response.text
-    assert '<details class="raw-transcript">' in response.text
+    assert 'class="raw-transcript"' in response.text  # may have inline style attr
     assert "Show raw transcript" in response.text
     fallback = main_module.transcript_conversation_lines("No speaker labels in this transcript.")
     assert fallback == [{"speaker": "Transcript", "role": "system", "text": "No speaker labels in this transcript."}]

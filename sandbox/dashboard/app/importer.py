@@ -3,8 +3,6 @@ from __future__ import annotations
 import json
 import os
 import sqlite3
-import urllib.request
-import urllib.error
 from pathlib import Path
 from typing import Any
 
@@ -16,7 +14,7 @@ HANDOFF_DIR = ROOT_DIR / "outputs" / "handoff_json"
 OLLAMA_RAW_DIR = ROOT_DIR / "outputs" / "ollama_raw"
 OLLAMA_URL = "http://localhost:11434/api/generate"
 OLLAMA_MODEL = "gemma4:e2b"
-OLLAMA_TIMEOUT_SECONDS = 20
+OLLAMA_TIMEOUT_SECONDS = 30
 
 STAFF_PRESERVED_FIELDS = (
     "status",
@@ -249,8 +247,10 @@ def build_processed_outputs(data: dict[str, Any], case: dict[str, Any]) -> tuple
     return task_title, task_body, summary, patient_record_note, action_needed
 
 
-def ollama_clinical_summary(transcript: str, case_ctx: dict[str, Any]) -> str | None:
+async def ollama_clinical_summary(transcript: str, case_ctx: dict[str, Any]) -> str | None:
     """Call local Ollama to generate a clinical AI summary. Returns string or None on failure."""
+    import httpx
+
     if not transcript.strip():
         return None
     priority = str(case_ctx.get("priority") or "routine")
@@ -266,24 +266,39 @@ def ollama_clinical_summary(transcript: str, case_ctx: dict[str, Any]) -> str | 
         "Be concise, factual, and use plain English. Do not repeat the patient name unnecessarily. "
         "Focus on what the patient reported and what action is needed."
     )
-    payload = json.dumps({"model": OLLAMA_MODEL, "prompt": prompt, "stream": False}).encode()
-    try:
-        req = urllib.request.Request(OLLAMA_URL, data=payload, headers={"Content-Type": "application/json"}, method="POST")
-        with urllib.request.urlopen(req, timeout=OLLAMA_TIMEOUT_SECONDS) as resp:
-            raw = resp.read().decode()
-        result = json.loads(raw)
-        summary = str(result.get("response") or "").strip()
-        if summary:
-            OLLAMA_RAW_DIR.mkdir(parents=True, exist_ok=True)
-            ts = utc_now_iso().replace(":", "").replace("-", "")[:15]
-            call_id = str(case_ctx.get("call_id") or "unknown")
-            (OLLAMA_RAW_DIR / f"{ts}_{call_id}.json").write_text(
-                json.dumps({"call_id": call_id, "model": OLLAMA_MODEL, "summary": summary, "prompt": prompt}, ensure_ascii=False),
-                encoding="utf-8",
-            )
-        return summary or None
-    except Exception:
-        return None
+    payload = {
+        "model": OLLAMA_MODEL,
+        "prompt": prompt,
+        "stream": False,
+        "keep_alive": -1,
+        "options": {
+            "num_predict": 150,
+            "temperature": 0.3,
+        },
+    }
+    last_exc: Exception | None = None
+    for attempt in range(3):
+        try:
+            if attempt > 0:
+                import asyncio as _asyncio
+                await _asyncio.sleep(3)
+            async with httpx.AsyncClient(timeout=OLLAMA_TIMEOUT_SECONDS) as client:
+                resp = await client.post(OLLAMA_URL, json=payload)
+                resp.raise_for_status()
+                result = resp.json()
+            summary = str(result.get("response") or "").strip()
+            if summary:
+                OLLAMA_RAW_DIR.mkdir(parents=True, exist_ok=True)
+                ts = utc_now_iso().replace(":", "").replace("-", "")[:15]
+                call_id = str(case_ctx.get("call_id") or "unknown")
+                (OLLAMA_RAW_DIR / f"{ts}_{call_id}.json").write_text(
+                    json.dumps({"call_id": call_id, "model": OLLAMA_MODEL, "summary": summary, "prompt": prompt}, ensure_ascii=False),
+                    encoding="utf-8",
+                )
+            return summary or None
+        except Exception as exc:
+            last_exc = exc
+    return None
 
 
 def map_handoff_to_case(data: dict[str, Any], source_path: Path | None = None) -> dict[str, Any]:

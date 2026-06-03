@@ -1,6 +1,6 @@
 ﻿# PROJECT MEMORY â€” JeffLocal
 # READ THIS FIRST at every session start, before doing anything else.
-# Last updated: 2026-06-02 (auto-updated 07:00)
+# Last updated: 2026-06-03 (auto-updated 07:00)
 # Maintained by: Claude (update at end of every session)
 
 ---
@@ -76,7 +76,7 @@ Security Agent has VETO authority over all PRs. Lead Agent enforces vetoes.
 
 ---
 
-## CURRENT STATUS (as of 2026-06-02 — updated by Dispatch after session log gap identified)
+## CURRENT STATUS (as of 2026-06-02 — Cowork session, WhatsApp integration Day 1)
 
 ### What is working
 - Production dashboard LIVE at dashboard.app-avamed.uk
@@ -98,6 +98,13 @@ Security Agent has VETO authority over all PRs. Lead Agent enforces vetoes.
 - NHS SBS Framework proposal: DRAFTED — docs/project_documents/Avamed_NHS_SBS_Framework_Proposal.docx
 - n8n webhook path confirmed: jefflocal-test-intake
 - NOTE: 2026-06-01 Claude Code session end checklist NOT completed — session logs missing. Reconstructed from git commits.
+- WhatsApp Business integration: DAY 1 COMPLETE — all code built, awaiting Meta credentials from Saeed
+  - Files: sandbox/dashboard/app/whatsapp_conversation.py, whatsapp_state.py, whatsapp_webhook.py, whatsapp_handoff.py
+  - n8n workflow: docs/n8n/whatsapp_intake_workflow.json
+  - Patient poster: docs/project_documents/WhatsApp_Patient_Poster.docx
+  - GDPR addendum: governance/WHATSAPP_GDPR_ADDENDUM.md
+  - Master plan: docs/project_documents/WhatsApp_Integration_Plan.md
+  - Setup guide for Saeed: docs/project_documents/Meta_WhatsApp_Setup_Guide.md
 
 ### Blocking Pilot 1 go-live
 - No real staff accounts (need names, roles, emails from Saeed)
@@ -109,6 +116,9 @@ Security Agent has VETO authority over all PRs. Lead Agent enforces vetoes.
 2. Task Scheduler registration: run scripts\register_scheduled_tasks.ps1 as Administrator
 3. Review 11 remaining test failures — assign to Backend Agent or accept as backlog
 4. **NEW: GDPR purge production deployment** — migration (add_created_at_20260531.sql) on live DB + remove --dry-run from Task Scheduler entry — requires explicit approval
+5. **WhatsApp Day 1 ACTION: Complete Meta Business account setup** — see docs/project_documents/Meta_WhatsApp_Setup_Guide.md — estimated 60 min. Save credentials to C:\JeffLocal\.env.whatsapp
+6. **WhatsApp Day 1 ACTION: Update patient poster** — replace [YOUR WHATSAPP NUMBER HERE] placeholder in WhatsApp_Patient_Poster.docx once number is confirmed
+7. **WhatsApp governance: Accept Meta DPA** — required before go-live (see governance/WHATSAPP_GDPR_ADDENDUM.md)
 
 ### Pending research / future tasks
 - OpenJarvis pilot: onboarding plan READY at docs\project_documents\Jarvis_Onboarding_Plan.md.
@@ -167,7 +177,7 @@ C:\JeffLocal\backups\RESTORE_POINT_20260529\        â† Latest restore point
 ```
 Repo:    https://github.com/JeffMedAI/tests
 Branch:  sandbox
-Latest:  8e1151f fix: chart type order fix + video model research + UX report
+Latest:  d0230a6 deploy: Phase 1A security + Phase 1B UX overhaul to production
 Tag:     RESTORE_20260529
 Author:  215987900+Avamedio@users.noreply.github.com
 ```
@@ -243,6 +253,7 @@ Monitoring:     Watchdog (restarts dashboard if down), checks every 5 min
 ---
 *Update this file at the end of every session. It is the single source of truth
 for project state and the first thing to read when starting fresh.*
+
 
 
 

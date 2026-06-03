@@ -385,16 +385,17 @@ class TestInvalidToken:
 def test_app():
     """Create a TestClient for the FastAPI app with a temporary in-memory DB."""
     import tempfile, os
+    from pathlib import Path
     from fastapi.testclient import TestClient
     from app.db import init_db, connect
     from app.auth import hash_password
+    import app.db as db_module
+    import app.main as main_module
 
     # Point the app at a temp file DB so tests are isolated
     with tempfile.NamedTemporaryFile(suffix=".sqlite", delete=False) as f:
         db_path = f.name
 
-    import app.db as db_module
-    from pathlib import Path
     original_path = db_module.DB_PATH
     db_module.DB_PATH = Path(db_path)
 
@@ -409,13 +410,24 @@ def test_app():
         )
         conn.commit()
 
+    # Bypass auth for these tests (consistent with the autouse fixture)
+    original_is_public = main_module._is_public_path
+    main_module._is_public_path = lambda path: True
+
     from app.main import app as fastapi_app
-    client = TestClient(fastapi_app, raise_server_exceptions=True)
+    with TestClient(fastapi_app, raise_server_exceptions=True) as client:
+        yield client, db_path
 
-    yield client, db_path
-
+    # Restore state
     db_module.DB_PATH = original_path
-    os.unlink(db_path)
+    main_module._is_public_path = original_is_public
+
+    # Windows-safe cleanup: SQLite WAL mode creates extra files
+    for suffix in ("", "-wal", "-shm"):
+        try:
+            Path(db_path + suffix).unlink(missing_ok=True)
+        except PermissionError:
+            pass  # File may still be briefly locked on Windows
 
 
 class TestHTTPFlow:

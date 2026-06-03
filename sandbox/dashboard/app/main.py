@@ -576,12 +576,24 @@ async def _daily_session_purge() -> None:
         await asyncio.sleep(86400)
 
 
+async def _warmup_ollama() -> None:
+    """Pre-load the Ollama model into RAM on startup."""
+    try:
+        from .importer import ollama_clinical_summary
+        await ollama_clinical_summary("warm-up ping", {"call_id": "warmup", "priority": "routine"})
+        logging.getLogger(__name__).info("Ollama warm-up complete")
+    except Exception:
+        pass  # non-fatal
+
+
 @app.on_event("startup")
 def startup() -> None:
     with connect() as conn:
         init_db(conn)
         import_handoffs(conn)
     asyncio.create_task(_daily_session_purge())
+    asyncio.create_task(_warmup_ollama())
+    logging.getLogger(__name__).info("Ollama warm-up started")
 
 
 @app.get("/favicon.ico")
@@ -741,9 +753,13 @@ def update_staff_fields(
     call_id: str,
     allowed_updates: dict[str, Any],
     edited_by: str,
+    known_old: dict[str, Any] | None = None,
 ) -> bool:
-    row = conn.execute("SELECT * FROM cases WHERE call_id = ?", (call_id,)).fetchone()
-    old = row_to_dict(row)
+    if known_old is not None:
+        old = known_old
+    else:
+        row = conn.execute("SELECT * FROM cases WHERE call_id = ?", (call_id,)).fetchone()
+        old = row_to_dict(row)
     if old is None:
         raise HTTPException(status_code=404, detail="Case not found")
 
@@ -2069,7 +2085,7 @@ def batch_resolve_cases(conn, call_ids: list[str], staff_name: str, outcome_note
             "last_edited_by": staff_name,
             "turnaround_minutes": calculate_turnaround_minutes(case["timestamp"], case["resolved_at"] or now),
         }
-        update_staff_fields(conn, case["call_id"], updates, staff_name)
+        update_staff_fields(conn, case["call_id"], updates, staff_name, known_old=case)
         write_audit_event(
             conn,
             call_id=case["call_id"],
@@ -2226,7 +2242,7 @@ def bulk_action_cases(conn, call_ids: list[str], action: str, staff_name: str, n
             if action == "start_review":
                 updates["status"] = "In Progress"
                 updates["action_needed"] = case.get("action_needed") or DEFAULT_ACTION_NEEDED
-            update_staff_fields(conn, call_id, updates, staff_name)
+            update_staff_fields(conn, call_id, updates, staff_name, known_old=case)
             updated.append({"call_id": call_id})
             continue
         reason = resolve_skip_reason(case)
@@ -2244,7 +2260,7 @@ def bulk_action_cases(conn, call_ids: list[str], action: str, staff_name: str, n
             "last_edited_by": staff_name,
             "turnaround_minutes": calculate_turnaround_minutes(case["timestamp"], case.get("resolved_at") or now),
         }
-        update_staff_fields(conn, call_id, updates, staff_name)
+        update_staff_fields(conn, call_id, updates, staff_name, known_old=case)
         updated.append({"call_id": call_id})
     action_label = action.replace("_", " ")
     return {
@@ -3066,7 +3082,7 @@ def api_case_action(
                 "turnaround_minutes": None,
             })
 
-        update_staff_fields(conn, call_id, updates, updates.get("last_edited_by", ""))
+        update_staff_fields(conn, call_id, updates, updates.get("last_edited_by", ""), known_old=case)
         updated_row = conn.execute("SELECT * FROM cases WHERE call_id = ?", (call_id,)).fetchone()
 
     updated_case = prepare_case(row_to_dict(updated_row))
@@ -3618,10 +3634,11 @@ async def verify_webhook_hmac(request: Request) -> None:
 async def api_n8n_test_intake_batch(
     request: Request,
     payload: dict[str, Any] = Body(...),
+    _hmac: None = Depends(verify_webhook_hmac),
 ) -> dict[str, Any]:
     """SANDBOX / TEST ONLY — bypasses n8n entirely.
     All real calls must route through n8n webhook: POST /webhook/jefflocal-test-intake (port 5678).
-    Guarded by test_mode=true. No HMAC required — this endpoint is internal sandbox use only.
+    Guarded by test_mode=true. HMAC-protected via JEFF_WEBHOOK_SECRET when set.
     It will be removed before production deployment.
     """
     ensure_ready()

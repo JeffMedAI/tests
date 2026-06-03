@@ -2785,3 +2785,137 @@ button:disabled { background: var(--gray-200); color: var(--gray-500); border-co
   cursor: pointer;
   min-height: 36px;
 }
+
+/* ════════════════════════════════════════════════════════════════════
+   GUIDED UX — Info Gap Toast (Feature 2)
+   Slides in from bottom-right 1.5s after page load on case detail.
+   ════════════════════════════════════════════════════════════════════ */
+.jl-gap-toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 8000;
+  width: 320px;
+  max-width: calc(100vw - 32px);
+  background: #fff;
+  border: 1px solid var(--warning-line);
+  border-left: 4px solid var(--warning);
+  border-radius: 10px;
+  box-shadow: var(--shadow-md);
+  padding: 14px 16px 12px;
+  transform: translateX(calc(100% + 28px));
+  opacity: 0;
+  transition: transform 0.35s cubic-bezier(.4,0,.2,1), opacity 0.35s ease;
+  font-size: var(--text-sm);
+}
+.jl-gap-toast.is-visible {
+  transform: translateX(0);
+  opacity: 1;
+}
+.jl-gap-toast[hidden] { display: none !important; }
+
+.jl-gap-toast-hd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.jl-gap-toast-title {
+  font-weight: 700;
+  font-size: var(--text-sm);
+  color: var(--warning);
+}
+.jl-gap-toast-close {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 2px;
+  color: var(--gray-500);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+}
+.jl-gap-toast-close:hover { color: var(--gray-900); }
+
+.jl-gap-toast-list {
+  list-style: disc;
+  margin: 0 0 10px 16px;
+  color: var(--gray-700);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+.jl-gap-toast-list li { margin-bottom: 2px; }
+
+.jl-gap-toast-actions {
+  display: flex;
+  gap: 8px;
+}
+.jl-gap-toast-btn {
+  flex: 1;
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: none;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  cursor: pointer;
+  background: var(--warning);
+  color: #fff;
+}
+.jl-gap-toast-btn:hover { opacity: 0.9; }
+.jl-gap-toast-btn-secondary {
+  background: var(--gray-100);
+  color: var(--gray-700);
+  border: 1px solid var(--gray-300);
+}
+.jl-gap-toast-btn-secondary:hover { background: var(--gray-200); }
+
+.jl-gap-toast-timer {
+  height: 3px;
+  background: var(--warning-line);
+  border-radius: 2px;
+  margin-top: 10px;
+  transform-origin: left;
+  transform: scaleX(1);
+  transition: transform 12s linear;
+}
+.jl-gap-toast-timer.is-running { transform: scaleX(0); }
+
+@media (max-width: 600px) {
+  .jl-gap-toast {
+    right: 12px;
+    bottom: 16px;
+    width: calc(100vw - 24px);
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   GUIDED UX — Case List Attention Badges (Feature 4)
+   ════════════════════════════════════════════════════════════════════ */
+.attn-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+.attn-badge-callnow {
+  background: var(--danger-bg);
+  color: var(--danger);
+  border: 1px solid var(--danger-line);
+}
+.attn-badge-review {
+  background: var(--warning-bg);
+  color: var(--warning);
+  border: 1px solid var(--warning-line);
+}
+.attn-badge-overdue {
+  background: var(--orange-bg);
+  color: var(--orange);
+  border: 1px solid var(--orange-line);
+}

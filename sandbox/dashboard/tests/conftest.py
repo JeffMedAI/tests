@@ -31,6 +31,15 @@ Security note:
     c) the sandbox app runs on port 5000; production (port 8765) is a
        separate process that this patch never touches.
 """
+import sys
+from pathlib import Path
+
+# Ensure sandbox/dashboard/ is on sys.path so `import app.*` works
+# whether tests are run from sandbox/dashboard/ or any other directory.
+_DASHBOARD_ROOT = Path(__file__).resolve().parents[1]
+if str(_DASHBOARD_ROOT) not in sys.path:
+    sys.path.insert(0, str(_DASHBOARD_ROOT))
+
 import pytest
 
 

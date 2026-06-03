@@ -109,6 +109,32 @@
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
   </button>
 
+  {# ── INFO GAP TOAST — shown on case detail pages when clarification needed #}
+  <div id="jefflocal-gap-toast"
+       class="jl-gap-toast"
+       role="alert"
+       aria-live="assertive"
+       aria-atomic="true"
+       hidden>
+    <div class="jl-gap-toast-hd">
+      <span class="jl-gap-toast-title">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-2px;margin-right:5px"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Information gaps detected
+      </span>
+      <button class="jl-gap-toast-close"
+              type="button"
+              aria-label="Dismiss information gap notification"
+              id="jefflocal-gap-toast-close">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <ul class="jl-gap-toast-list" id="jefflocal-gap-toast-list"></ul>
+    <div class="jl-gap-toast-actions">
+      <button type="button" class="jl-gap-toast-btn" id="jefflocal-gap-toast-dismiss">Dismiss</button>
+      <button type="button" class="jl-gap-toast-btn jl-gap-toast-btn-secondary" id="jefflocal-gap-toast-transcript">View transcript</button>
+    </div>
+    <div class="jl-gap-toast-timer" id="jefflocal-gap-toast-timer"></div>
+  </div>
+
   {# ── SHARED SCRIPTS ──────────────────────────────────────────────── #}
   <script>
     // Sidebar collapse toggle — responsive-aware with mobile overlay backdrop
@@ -317,5 +343,87 @@
     })();
   </script>
   {% block scripts %}{% endblock %}
+
+  {# ── Info Gap Toast JS — must run AFTER child block sets data attrs ── #}
+  <script>
+    // jefflocalInitGapToast is called from case_detail after data attrs are set,
+    // or runs automatically here as a fallback (no-op if data attrs not present).
+    function jefflocalInitGapToast() {
+      var toast = document.getElementById('jefflocal-gap-toast');
+      if (!toast) return;
+
+      var callId  = toast.dataset.callId;
+      var items   = [];
+      try { items = JSON.parse(toast.dataset.gapItems || '[]'); } catch (_) {}
+      var hasClar = toast.dataset.clarification === 'true';
+
+      if (!callId || (!hasClar && !items.length)) return;
+
+      var key = 'jefflocal.gaptoast.' + callId;
+      if (sessionStorage.getItem(key) === 'dismissed') return;
+
+      // Populate missing-info list
+      var list = document.getElementById('jefflocal-gap-toast-list');
+      if (list && !list.dataset.populated) {
+        list.dataset.populated = '1';
+        if (items.length) {
+          items.forEach(function (item) {
+            var li = document.createElement('li');
+            li.textContent = item;
+            list.appendChild(li);
+          });
+        } else {
+          var li = document.createElement('li');
+          li.textContent = 'Some patient information could not be captured from the call.';
+          list.appendChild(li);
+        }
+      }
+
+      var autoTimer;
+      var timerBar = document.getElementById('jefflocal-gap-toast-timer');
+
+      function dismissToast() {
+        sessionStorage.setItem(key, 'dismissed');
+        toast.classList.remove('is-visible');
+        setTimeout(function () { toast.hidden = true; }, 380);
+        clearTimeout(autoTimer);
+      }
+
+      function showToast() {
+        toast.hidden = false;
+        requestAnimationFrame(function () {
+          requestAnimationFrame(function () {
+            toast.classList.add('is-visible');
+            if (timerBar) {
+              requestAnimationFrame(function () { timerBar.classList.add('is-running'); });
+            }
+            autoTimer = setTimeout(dismissToast, 12000);
+          });
+        });
+      }
+
+      var closeBtn      = document.getElementById('jefflocal-gap-toast-close');
+      var dismissBtn    = document.getElementById('jefflocal-gap-toast-dismiss');
+      var transcriptBtn = document.getElementById('jefflocal-gap-toast-transcript');
+
+      if (closeBtn)      closeBtn.addEventListener('click', dismissToast);
+      if (dismissBtn)    dismissBtn.addEventListener('click', dismissToast);
+      if (transcriptBtn) {
+        transcriptBtn.addEventListener('click', function () {
+          dismissToast();
+          var convTab = document.querySelector('[data-cd-tab="conversation"]');
+          if (convTab) { convTab.click(); convTab.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+        });
+      }
+
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && toast.classList.contains('is-visible')) {
+          dismissToast();
+        }
+      });
+
+      setTimeout(showToast, 1500);
+    }
+  </script>
 </body>
 </html>
