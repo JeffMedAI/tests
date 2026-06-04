@@ -3570,6 +3570,13 @@ def run_encrypted_cycle_disable_google_push() -> dict[str, Any]:
         str(ROOT_DIR / "app" / "run_encrypted_intake_cycle.ps1"),
         "-DisableGooglePush",
     ]
+    # Ensure the venv Python (which has cryptography installed) is first on PATH
+    # so that `python` inside the PowerShell subprocess resolves to the venv
+    # interpreter rather than a system Python that may lack required packages.
+    venv_scripts = BASE_DIR / ".venv" / "Scripts"
+    env = os.environ.copy()
+    if venv_scripts.exists():
+        env["PATH"] = str(venv_scripts) + os.pathsep + env.get("PATH", "")
     result = subprocess.run(
         command,
         cwd=str(ROOT_DIR),
@@ -3577,6 +3584,7 @@ def run_encrypted_cycle_disable_google_push() -> dict[str, Any]:
         text=True,
         timeout=900,
         check=False,
+        env=env,
     )
     return {
         "returncode": result.returncode,

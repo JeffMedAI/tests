@@ -48,3 +48,5 @@ Thumbs.db
 # Temp / test working dirs
 .tmp/
 JeffLocal.tmppytest/
+
+n8n API key.txt
