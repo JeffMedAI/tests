@@ -76,7 +76,7 @@ Security Agent has VETO authority over all PRs. Lead Agent enforces vetoes.
 
 ---
 
-## CURRENT STATUS (as of 2026-06-03 18:00 — Claude Code session, UX/safety audit + pipeline fixes)
+## CURRENT STATUS (as of 2026-06-04 16:25 — Claude Code session, project system + security + root cleanup)
 
 ### What is working
 - Production dashboard LIVE at dashboard.app-avamed.uk
@@ -114,11 +114,11 @@ Security Agent has VETO authority over all PRs. Lead Agent enforces vetoes.
 - Governance gates 1-7 not completed
 
 ### Pending Saeed approvals (action required)
-1. **Admin PowerShell — disable broken old task:** `Disable-ScheduledTask -TaskName "JeffLocal Dashboard"` — references non-existent run_dashboard_service.ps1, superseded by JeffLocal-Watchdog
-2. **GDPR purge production deployment** — migration (add_created_at_20260531.sql) on live DB + remove --dry-run from Task Scheduler entry — requires explicit approval
-3. **WhatsApp Day 2 ACTION: Complete Meta Business account setup** — see docs/project_documents/Meta_WhatsApp_Setup_Guide.md — estimated 60 min. Save credentials to C:\JeffLocal\.env.whatsapp
-4. **WhatsApp Day 2 ACTION: Update patient poster** — replace [YOUR WHATSAPP NUMBER HERE] placeholder in WhatsApp_Patient_Poster.docx once number is confirmed
-5. **WhatsApp governance: Accept Meta DPA** — required before go-live (see governance/WHATSAPP_GDPR_ADDENDUM.md)
+1. **[URGENT — SECURITY] Rotate n8n API key** — old key committed to public repo (commit 0ecabb6e). Log into n8n UI → Settings → API → generate new key. File removed from git tracking but key is still in git history.
+2. **[ADMIN REQUIRED] Create GDPRPurge-Production scheduled task** — Register-ScheduledTask failed "Access is denied" in normal PowerShell. Open elevated PowerShell (Run as Administrator) and create: Python = C:\JeffLocal\sandbox\dashboard\.venv\Scripts\python.exe, script = C:\JeffLocal\scripts\daily\gdpr_purge.py, args = --db "C:\JeffLocal\dashboard\data\dashboard.sqlite" --days 90, trigger = Daily at 02:00
+3. **WhatsApp Day 2 ACTION: Complete Meta Business account setup** — see docs/project_documents/Meta_WhatsApp_Setup_Guide.md — estimated 60 min.
+4. **WhatsApp governance: Accept Meta DPA** — required before go-live (see governance/WHATSAPP_GDPR_ADDENDUM.md)
+5. **NHS SBS registration on Ariba Network** — DEADLINE 23 June 2026. Register at ariba.com before submission.
 
 ### Pending research / future tasks
 - OpenJarvis pilot: onboarding plan READY at docs\project_documents\Jarvis_Onboarding_Plan.md.
@@ -155,9 +155,9 @@ Full assignment briefs with acceptance criteria:
 
 ```
 C:\JeffLocal\PROJECT_MEMORY.md                     â† THIS FILE â€” update every session
-C:\JeffLocal\JeffLocal_Master_Strategy_v1.2.docx   â† Master strategy doc
-C:\JeffLocal\JeffLocal_Dispatch_Report_20260529.docx â† Latest dispatch report
-C:\JeffLocal\APPROVAL_PACK_COOKIE_FIX_FINAL.md     â† Cookie fix approval pack (ready)
+C:\JeffLocal\docs\project_documents\JeffLocal_Master_Strategy_v1.2.docx   <- Master strategy doc
+C:\JeffLocal\docs\project_documents\JeffLocal_Dispatch_Report_20260529.docx <- Latest dispatch report
+C:\JeffLocal\rules\                                 <- rules system (output, quality, boundaries)
 C:\JeffLocal\governance\GOVERNANCE_FRAMEWORK.md     â† Governance rules
 C:\JeffLocal\governance\CHANGE_LOG.md               â† All approved changes
 C:\JeffLocal\docs\reports\                          â† Daily reports (YYYY-MM-DD.md)
@@ -177,7 +177,7 @@ C:\JeffLocal\backups\RESTORE_POINT_20260529\        â† Latest restore point
 ```
 Repo:    https://github.com/JeffMedAI/tests
 Branch:  sandbox
-Latest:  f75efe0 memory: session summary 2026-06-03 evening ÔÇö UX/safety audit complete
+Latest:  be0ef9e feat: project system, root cleanup, security fix, procurement docs
 Tag:     RESTORE_20260529
 Author:  215987900+Avamedio@users.noreply.github.com
 ```
@@ -253,6 +253,7 @@ Monitoring:     Watchdog (restarts dashboard if down), checks every 5 min
 ---
 *Update this file at the end of every session. It is the single source of truth
 for project state and the first thing to read when starting fresh.*
+
 
 
 
