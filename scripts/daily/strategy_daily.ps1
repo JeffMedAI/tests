@@ -227,57 +227,42 @@ $StaleSection = if ($StaleDocs.Count -gt 0) { ($StaleDocs | ForEach-Object { "- 
 $SessionFiles = if ($SessionSummaries.Count -gt 0) { ($SessionSummaries | ForEach-Object { "- $($_.File) ($($_.Age)h ago)" }) -join "`n" } else { "- None found." }
 
 $Report = @"
-# JEFFLOCAL - DAILY BRIEFING
-Date: $Today
-Generated: $NowUTC UTC by strategy_daily.ps1
-Source: Session logs + git (last 24h)
+MORNING BRIEF — $Today — 07:00
 
 ---
 
-## WHAT WE DID YESTERDAY
-
+YESTERDAY
 $DidSection
 
 ---
 
-## WHAT IS PLANNED TODAY
-
+TODAY
 $NextSection
 
 ---
 
-## WHAT IS BLOCKING US
-
+BLOCKED
 $BlockerSection
 
 ---
 
-## PENDING SAEED APPROVALS
-
+YOUR CALL (approvals needed)
 $ApprovalSection
 
 ---
 
-## GIT ACTIVITY (last 24h)
-
+GIT (last 24h)
 $GitSection
 
 ---
 
-## SESSION LOGS COMPILED
-
-$SessionFiles
-
----
-
-## DOCUMENT HEALTH
-
+DOCUMENT HEALTH
 $StaleSection
 $StateVerificationSection
 
 ---
 
-*Auto-generated 07:00. Session logs: docs\sessions\  Full memory: PROJECT_MEMORY.md*
+Full memory: PROJECT_MEMORY.md | Session logs: docs\sessions\
 "@
 
 # ── 8. Save report ────────────────────────────────────────────────────────────
