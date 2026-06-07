@@ -239,7 +239,11 @@ def consume_reset_token(conn: sqlite3.Connection, token: str, token_type: str) -
     """Return user_id if token is valid, unused, and not expired. Marks it used.
 
     Security: the incoming plaintext token is hashed before the DB lookup so
-    that the DB never contains plaintext tokens.
+    that (a) the DB never contains plaintext tokens and (b) the comparison is
+    performed by the database engine on the hash, which is a fixed-length
+    deterministic value — there is no timing side-channel on the hash itself.
+    The secrets.compare_digest call in _verify_hash guards password/PIN paths;
+    for reset tokens the SHA-256 pre-image is the security barrier.
     """
     token_hash = _hash_reset_token(token)
     row = conn.execute(
@@ -258,6 +262,7 @@ def consume_reset_token(conn: sqlite3.Connection, token: str, token_type: str) -
             return None
     except Exception:
         return None
+    # Mark single-use: token cannot be replayed after this point
     conn.execute("UPDATE auth_reset_tokens SET used=1 WHERE id=?", (rid,))
     conn.commit()
     return user_id

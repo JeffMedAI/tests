@@ -512,6 +512,15 @@
                 {% for chip in case.summary_chips %}
                   <span class="badge {{ chip.class }}"{% if chip.tooltip %} title="{{ chip.tooltip }}"{% endif %}>{{ chip.label }}</span>
                 {% endfor %}
+                {# ── Attention badges (guided UX Feature 4) ── #}
+                {% if case.red_flags_present and not case.is_resolved %}
+                  <span class="attn-badge attn-badge-callnow" role="img" aria-label="Call now — red flag case" title="Red flag: contact patient or GP immediately">CALL NOW</span>
+                {% elif case.staff_review_required and not case.identity_review_required and case.status in ("New", "Needs Review") and not case.is_resolved %}
+                  <span class="attn-badge attn-badge-review" role="img" aria-label="Review required before processing" title="Staff review required before this case can be resolved">Review</span>
+                {% endif %}
+                {% if not case.is_resolved and case.status == "New" and case.age_minutes is defined and case.age_minutes > 120 %}
+                  <span class="attn-badge attn-badge-overdue" role="img" aria-label="Overdue — waiting more than 2 hours" title="Case received {{ case.age_label_short or '' }} ago and has not been actioned">Overdue</span>
+                {% endif %}
               </div>
               <div class="card-patient">
                 {{ case.patient_name or "Name not captured" }}{% if case.gender %} · {{ case.gender }}{% endif %}
@@ -732,9 +741,12 @@
 
 <div class="modal-backdrop" id="cd-action-error-modal" hidden>
   <section class="alert-modal" role="dialog" aria-modal="true" aria-labelledby="cd-action-error-title">
-    <h2 id="cd-action-error-title">Action Failed</h2>
+    <h2 id="cd-action-error-title">Cannot Resolve</h2>
     <p id="cd-action-error-message"></p>
-    <button type="button" id="cd-action-error-ok">OK</button>
+    <div class="modal-actions">
+      <a id="cd-action-error-open-case" href="#" class="btn-primary" style="display:none">Open Case to Resolve</a>
+      <button type="button" id="cd-action-error-ok" class="secondary-button">Dismiss</button>
+    </div>
   </section>
 </div>
 
@@ -1019,15 +1031,19 @@
     }
 
     function renderPanel(data) {
-      // Badge row
+      // Badge row — mirrors the card exactly: request type + summary_chips
+      // summary_chips already encodes priority/identity/emergency as consolidated pills
+      // so we never leak raw internal values like "review_required" here.
       var badgeRow = document.getElementById('panel-badge-row');
       var badges = [];
-      if (data.red_flags_present) badges.push('<span class="badge danger">RED FLAG</span>');
-      if (data.priority && data.priority !== 'routine' && data.priority !== 'normal') {
-        badges.push('<span class="badge danger">' + escHtml(data.priority) + '</span>');
-      }
       if (data.request_type_label) {
         badges.push('<span class="badge ' + escHtml(data.request_type || '') + '">' + escHtml(data.request_type_label) + '</span>');
+      }
+      if (Array.isArray(data.summary_chips) && data.summary_chips.length) {
+        data.summary_chips.forEach(function (chip) {
+          var tip = chip.tooltip ? ' title="' + escHtml(chip.tooltip) + '"' : '';
+          badges.push('<span class="badge ' + escHtml(chip['class'] || '') + '"' + tip + '>' + escHtml(chip.label) + '</span>');
+        });
       }
       badgeRow.innerHTML = badges.join('');
 
@@ -1249,12 +1265,68 @@
       }, 3200);
     }
 
-    function showActionError(msg) {
+    function showActionError(msg, callId) {
       document.getElementById('cd-action-error-message').textContent = msg || 'Action failed. Please try again.';
+      var openLink = document.getElementById('cd-action-error-open-case');
+      if (openLink) {
+        if (callId) {
+          openLink.href = '/case/' + encodeURIComponent(callId);
+          openLink.style.display = '';
+        } else {
+          openLink.style.display = 'none';
+        }
+      }
       document.getElementById('cd-action-error-modal').hidden = false;
+      document.getElementById('cd-action-error-ok').focus();
     }
     document.getElementById('cd-action-error-ok')?.addEventListener('click', function () {
       document.getElementById('cd-action-error-modal').hidden = true;
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') {
+        var modal = document.getElementById('cd-action-error-modal');
+        if (modal && !modal.hidden) { modal.hidden = true; }
+      }
+    });
+
+    // Intercept card-footer resolve forms — use fetch so errors show in modal instead of raw JSON page
+    document.addEventListener('submit', async function (e) {
+      var form = e.target;
+      if (!form.closest('.request-card')) return;
+      var actionInput = form.querySelector('input[name="action"]');
+      if (!actionInput || actionInput.value !== 'resolve') return;
+      e.preventDefault();
+
+      var callId   = form.action.match(/\/case\/([^/]+)\/quick_action/)?.[1];
+      var submitBtn = form.querySelector('button[type="submit"]');
+      var origText  = submitBtn ? submitBtn.textContent : '';
+      if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Resolving…'; }
+
+      try {
+        var body = new URLSearchParams(new FormData(form));
+        var res  = await fetch(form.action, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest'},
+          body: body.toString()
+        });
+        if (!res.ok) {
+          var errData = {};
+          try { errData = await res.json(); } catch (_) {}
+          var msg = errData.detail || 'Could not resolve this case.';
+          showActionError(msg, callId);
+          if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = origText; }
+          return;
+        }
+        // Success — remove card and adjust count
+        var card = callId ? document.getElementById('case-' + callId) : form.closest('[id^="case-"]');
+        var patientName = card ? (card.querySelector('.card-patient') || {}).textContent : callId;
+        if (card) card.remove();
+        adjustTabCount(-1);
+        showToast((patientName ? patientName.trim() + ' ' : '') + 'resolved ✓');
+      } catch (_) {
+        showActionError('Network error. Please reload and try again.', callId);
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = origText; }
+      }
     });
 
     // Update the open-tab count badge after a resolve/reopen
@@ -1335,7 +1407,7 @@
         });
         var data = await res.json();
         if (!res.ok) {
-          showActionError(data.detail || 'Action failed. Please open the full case to resolve.');
+          showActionError(data.detail || 'Action failed. Please open the full case to resolve.', callId);
           btn.disabled = false;
           btn.textContent = original;
           return;

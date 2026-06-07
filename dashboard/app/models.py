@@ -151,7 +151,7 @@ def format_display_timestamp(value: object) -> str:
     if parsed is None:
         return text
 
-    return parsed.strftime("%d-%m-%Y T %H:%M")
+    return parsed.strftime("%d-%m-%Y T %H.%M")
 
 
 def format_dob_uk(value: object) -> str:
