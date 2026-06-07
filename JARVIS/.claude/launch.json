@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "agent-diagram",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "7655", "--directory", "C:\\JeffLocal\\docs\\agent-diagram"],
+      "port": 7655
+    },
+    {
+      "name": "cleanup-plan",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "7656", "--directory", "C:\\JeffLocal\\docs\\cleanup-plan"],
+      "port": 7656
+    }
+  ]
+}

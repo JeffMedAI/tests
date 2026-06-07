@@ -74,7 +74,9 @@ function Send-Alert([string]$message) {
 
 # ── Restart rate limiter ──────────────────────────────────────────────────────
 # State file: JSON dict of serviceName -> list of restart timestamps (epoch seconds)
-$RestartMax = 3   # max restarts per hour per service
+# Also tracks last-alert timestamps to suppress repeated WhatsApp alerts.
+$RestartMax   = 3     # max restarts per hour per service
+$AlertCooldown = 3600  # seconds between repeated CRITICAL alerts per service
 
 function Get-RestartState {
     if (Test-Path $RestartState) {
@@ -126,6 +128,25 @@ function Get-RestartCount([string]$svc) {
         return @($state.$svc | Where-Object { ($now - $_) -lt $hour }).Count
     }
     return 0
+}
+
+# Send alert only if cooldown has elapsed since last alert for this service.
+function Send-AlertThrottled([string]$svc, [string]$message) {
+    $state   = Get-RestartState
+    $now     = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+    $alertKey = "${svc}_lastAlert"
+
+    $lastAlert = 0
+    if ($state.PSObject.Properties[$alertKey]) { $lastAlert = [long]$state.$alertKey }
+
+    if (($now - $lastAlert) -lt $AlertCooldown) {
+        wlog "Alert suppressed (cooldown): $message" "INFO"
+        return
+    }
+
+    $state | Add-Member -NotePropertyName $alertKey -NotePropertyValue $now -Force
+    Save-RestartState $state
+    Send-Alert $message
 }
 
 # ── Port / HTTP checks ────────────────────────────────────────────────────────
@@ -324,7 +345,7 @@ function Invoke-CheckPass {
         if (-not (Test-RestartAllowed $svc.Name)) {
             $count = Get-RestartCount $svc.Name
             wlog "$($svc.Label) restart cap hit ($count/$RestartMax in last hour) — CRITICAL" "ERROR"
-            Send-Alert "CRITICAL: $($svc.Label) has been down for >1 hour and cannot be auto-restarted. Manual intervention needed. (JeffLocal watchdog)"
+            Send-AlertThrottled $svc.Name "CRITICAL: $($svc.Label) has been down for >1 hour and cannot be auto-restarted. Manual intervention needed. (JeffLocal watchdog)"
             continue
         }
 

@@ -90,12 +90,13 @@ Every agent on this team operates like a senior professional, not an assistant. 
 
 ```
 PRODUCTION  = C:\JeffLocal\dashboard\        Port 8765   Watchdog-managed   LIVE
-SANDBOX     = C:\JeffLocal\sandbox\dashboard\ Port 5000   Manual start       SAFE TO EDIT
 ```
 
-**WARNING:** The git branch is named "sandbox." This does NOT mean the working directory is the sandbox. The production directory is `C:\JeffLocal\dashboard\` regardless of which git branch is checked out. On 2026-05-29, this confusion caused a real production breach. Always verify the actual file path, not the branch name, before editing any file.
+**The sandbox directory has been removed (2026-06-07).** There is no longer a separate sandbox directory. Development work happens on git feature branches. Test locally on the branch, get Security Agent + Lead Agent approval, then merge to production.
 
-Always work in sandbox first. Never touch production without Saeed's explicit written approval.
+**WARNING:** The git branch is still named "sandbox." The branch name has no relationship to a file path. The production directory is always `C:\JeffLocal\dashboard\`. Always verify the actual file path before editing any file.
+
+Never merge to the production directory without Saeed's explicit written approval.
 
 ---
 
@@ -171,12 +172,11 @@ If any pipeline code allows LLM output to set these fields, that is a critical b
 **Queue stages:** encrypted_raw → incoming → processing → processed / failed / deadletter
 **Note:** 5 items are currently in the deadletter queue. No replay tooling exists yet — this is documented technical debt.
 
-**Missing config files (Priority 1 blockers — PE-01 through PE-04):**
-- `model_settings.json`
+**Config files — all 4 exist in `C:\JeffLocal\config\` (confirmed 2026-06-07, PE-01 to PE-04 resolved):**
+- `model_settings.json` — model: gemma4:e2b, temperature: 0.1
 - `pathways.json`
 - `routing_rules.json`
 - `model_monitoring.json`
-These do not yet exist in the production codebase.
 
 **ENI department (EMIS/NHS integration) is INACTIVE — Phase 2 only.** Do not build or trigger ENI components.
 

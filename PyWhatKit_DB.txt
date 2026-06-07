@@ -1,0 +1,25 @@
+Date: 7/6/2026
+Time: 23:14
+Phone Number: +447440333938
+Message: ﻿ALERT: Sandbox Dashboard (5000) went DOWN — attempting restart. (JeffLocal watchdog)
+--------------------
+Date: 7/6/2026
+Time: 23:14
+Phone Number: +447440333938
+Message: ﻿ALERT: Sandbox Dashboard (5000) went DOWN — attempting restart. (JeffLocal watchdog)
+--------------------
+Date: 7/6/2026
+Time: 23:14
+Phone Number: +447440333938
+Message: ﻿CRITICAL: Sandbox Dashboard (5000) failed 3 restart attempts in 1 hour. Manual intervention needed. (JeffLocal watchdog)
+--------------------
+Date: 7/6/2026
+Time: 23:14
+Phone Number: +447440333938
+Message: ﻿CRITICAL: Sandbox Dashboard (5000) failed 3 restart attempts in 1 hour. Manual intervention needed. (JeffLocal watchdog)
+--------------------
+Date: 7/6/2026
+Time: 23:15
+Phone Number: +447440333938
+Message: ﻿CRITICAL: Sandbox Dashboard (5000) has been down for >1 hour and cannot be auto-restarted. Manual intervention needed. (JeffLocal watchdog)
+--------------------
