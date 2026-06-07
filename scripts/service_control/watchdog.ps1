@@ -207,16 +207,21 @@ $Services = @(
         }
         Restart = {
             Stop-PortProcess 5000
-            $venvPy = "$RepoRoot\sandbox\dashboard\.venv\Scripts\python.exe"
-            if (-not (Test-Path $venvPy)) {
-                python -m venv "$RepoRoot\sandbox\dashboard\.venv" 2>&1 | Out-Null
-                & $venvPy -m pip install -r "$RepoRoot\sandbox\dashboard\requirements.txt" --quiet 2>&1 | Out-Null
+            $launch = "$ScriptDir\_launch_sandbox.ps1"
+            if (Test-Path $launch) {
+                Start-HiddenPS $launch
+            } else {
+                $venvPy = "$RepoRoot\sandbox\dashboard\.venv\Scripts\python.exe"
+                if (-not (Test-Path $venvPy)) {
+                    python -m venv "$RepoRoot\sandbox\dashboard\.venv" 2>&1 | Out-Null
+                    & $venvPy -m pip install -r "$RepoRoot\sandbox\dashboard\requirements.txt" --quiet 2>&1 | Out-Null
+                }
+                Start-Process -FilePath $venvPy `
+                    -ArgumentList "-m uvicorn app.main:app --host 0.0.0.0 --port 5000" `
+                    -WorkingDirectory "$RepoRoot\sandbox\dashboard" `
+                    -WindowStyle Hidden
             }
-            Start-Process -FilePath $venvPy `
-                -ArgumentList "-m uvicorn main:app --host 0.0.0.0 --port 5000" `
-                -WorkingDirectory "$RepoRoot\sandbox\dashboard\app" `
-                -WindowStyle Hidden
-            Start-Sleep -Seconds 10
+            Start-Sleep -Seconds 12
             return (Test-Http "http://localhost:5000/api/health")
         }
     },

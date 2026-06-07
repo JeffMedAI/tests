@@ -121,7 +121,7 @@ async def enforce_auth(request: Request, call_next):
         return resp
     response = await call_next(request)
     # Refresh cookie on every authenticated request to keep session active
-    response.set_cookie(SESSION_COOKIE, token, httponly=True, samesite="lax", max_age=3600)
+    response.set_cookie(SESSION_COOKIE, token, httponly=True, samesite="lax", max_age=3600, secure=True)
     return response
 
 
@@ -197,7 +197,7 @@ async def login_post(
     if force_change:
         safe_next = "/profile?must_change=1"
     response = RedirectResponse(url=safe_next, status_code=302)
-    response.set_cookie(SESSION_COOKIE, token, httponly=True, samesite="lax", max_age=3600)
+    response.set_cookie(SESSION_COOKIE, token, httponly=True, samesite="lax", max_age=3600, secure=True)
     return response
 
 

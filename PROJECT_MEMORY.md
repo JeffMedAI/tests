@@ -1,6 +1,6 @@
 ﻿# PROJECT MEMORY â€” JeffLocal
 # READ THIS FIRST at every session start, before doing anything else.
-# Last updated: 2026-06-04 (auto-updated 07:00)
+# Last updated: 2026-06-07 (auto-updated 07:00)
 # Maintained by: Claude (update at end of every session)
 
 ---
@@ -76,7 +76,7 @@ Security Agent has VETO authority over all PRs. Lead Agent enforces vetoes.
 
 ---
 
-## CURRENT STATUS (as of 2026-06-04 16:25 — Claude Code session, project system + security + root cleanup)
+## CURRENT STATUS (as of 2026-06-07 13:35 — watchdog recovery, n8n key rotation, deploy readiness)
 
 ### What is working
 - Production dashboard LIVE at dashboard.app-avamed.uk
@@ -107,6 +107,9 @@ Security Agent has VETO authority over all PRs. Lead Agent enforces vetoes.
 - NHS SBS Framework proposal: DRAFTED
 - n8n webhook path confirmed: jefflocal-test-intake
 - WhatsApp Business integration: DAY 1 COMPLETE — awaiting Meta credentials from Saeed
+- **Watchdog fully recovered (2026-06-07)** — scheduled task re-registered (JeffLocal-Watchdog-task via XML import), Registry Run key restored, _launch_sandbox.ps1 created, sandbox dashboard UP
+- **n8n encryption key rotated (2026-06-07)** — new key active, no credentials lost
+- **Sandbox deploy-ready (2026-06-07)** — Security Agent APPROVED 6-file deploy after secure=True cookie fix. AWAITING SAEED APPROVAL TO DEPLOY.
 
 ### Blocking Pilot 1 go-live
 - No real staff accounts (need names, roles, emails from Saeed)
@@ -114,11 +117,12 @@ Security Agent has VETO authority over all PRs. Lead Agent enforces vetoes.
 - Governance gates 1-7 not completed
 
 ### Pending Saeed approvals (action required)
-1. **[URGENT — SECURITY] Rotate n8n API key** — old key committed to public repo (commit 0ecabb6e). Log into n8n UI → Settings → API → generate new key. File removed from git tracking but key is still in git history.
+1. **[DEPLOY READY] Deploy sandbox → production** — Security Agent APPROVED. 6 files: __init__.py, audit.py, auth.py, importer.py, models.py, main.py. Excludes whatsapp_*.py (Phase 2). Say "approved" to proceed.
 2. **[ADMIN REQUIRED] Create GDPRPurge-Production scheduled task** — Register-ScheduledTask failed "Access is denied" in normal PowerShell. Open elevated PowerShell (Run as Administrator) and create: Python = C:\JeffLocal\sandbox\dashboard\.venv\Scripts\python.exe, script = C:\JeffLocal\scripts\daily\gdpr_purge.py, args = --db "C:\JeffLocal\dashboard\data\dashboard.sqlite" --days 90, trigger = Daily at 02:00
 3. **WhatsApp Day 2 ACTION: Complete Meta Business account setup** — see docs/project_documents/Meta_WhatsApp_Setup_Guide.md — estimated 60 min.
 4. **WhatsApp governance: Accept Meta DPA** — required before go-live (see governance/WHATSAPP_GDPR_ADDENDUM.md)
 5. **NHS SBS registration on Ariba Network** — DEADLINE 23 June 2026. Register at ariba.com before submission.
+6. **[DONE] n8n encryption key rotated (2026-06-07)** — new key active. Old key `L3cUkqVwNM3gSaVUwdb0E4/wYXSNJ7Ci` retired. No credentials were stored so no re-import needed.
 
 ### Pending research / future tasks
 - OpenJarvis pilot: onboarding plan READY at docs\project_documents\Jarvis_Onboarding_Plan.md.
@@ -128,7 +132,7 @@ Security Agent has VETO authority over all PRs. Lead Agent enforces vetoes.
 RANK  | TASK                          | AGENT          | STATUS
 ------+-------------------------------+----------------+-----------------------------------
  1    | HMAC payload verification n8n | Backend Agent  | Assigned — IR-01, sec review req'd
- 2    | Password reset end-to-end     | Backend Agent  | COMPLETE (sandbox) — sec review req'd
+ 2    | Password reset end-to-end     | Backend Agent  | COMPLETE (sandbox) — SECURITY APPROVED, deploy pending Saeed
  3    | GDPR 90-day purge script      | Database Agent | COMPLETE (sandbox) — prod gate pending Saeed
  4    | E2E pipeline gap (n8n→DB)     | Backend Agent  | NEW — Stage 3 blocked by this
  5    | All 149 tests passing         | Test Agent     | COMPLETE — commit 1aba9aa
@@ -177,7 +181,7 @@ C:\JeffLocal\backups\RESTORE_POINT_20260529\        â† Latest restore point
 ```
 Repo:    https://github.com/JeffMedAI/tests
 Branch:  sandbox
-Latest:  be0ef9e feat: project system, root cleanup, security fix, procurement docs
+Latest:  b8b91b3 feat: caveman daily briefing format ÔÇö tighter morning report
 Tag:     RESTORE_20260529
 Author:  215987900+Avamedio@users.noreply.github.com
 ```
@@ -253,6 +257,9 @@ Monitoring:     Watchdog (restarts dashboard if down), checks every 5 min
 ---
 *Update this file at the end of every session. It is the single source of truth
 for project state and the first thing to read when starting fresh.*
+
+
+
 
 
 
