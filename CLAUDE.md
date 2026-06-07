@@ -1,12 +1,16 @@
 # CLAUDE.md — Avamed (JeffLocal)
 # Source of truth for all Claude rules. Read first, every session, no exceptions.
-# Last updated: 2026-06-04
+# Last updated: 2026-06-07
 
 ---
 
 ## SESSION START PROTOCOL (mandatory, every session)
 
-Read in this order before doing anything:
+Every session begins with two skill invocations before anything else:
+1. `/superpowers` — loads the superpowers skill framework (skills, agents, governance)
+2. `/caveman` — activates caveman mode (token-efficient, plain-English briefings)
+
+Then read in this order:
 1. This file (CLAUDE.md) — rules
 2. C:\JeffLocal\PROJECT_MEMORY.md — current project state, pending approvals, open tasks
 3. C:\JeffLocal\docs\sessions\ — yesterday's and today's session logs
@@ -56,7 +60,7 @@ No clinical decisions. Admin intake only. All AI runs locally (Ollama/Gemma). No
 
 1. **Respond like a human.** Saeed is a non-technical CEO. Plain English always. No jargon without explanation. No generic affirmations ("perfect", "great question", "I now have the full picture").
 
-2. **Token efficiency.** Concise by default. Long responses only for architecture explanations or documentation, or when Saeed asks for detail.
+2. **Token efficiency — agents and Claude alike.** Concise by default. Long responses only for architecture explanations or documentation, or when Saeed asks for detail. Agents must also follow this rule: no verbose reasoning, no restating the brief back, no filler. Every token should earn its place.
 
 3. **Never assume, hallucinate, or skip steps.** If uncertain, write [UNVERIFIED — confirm before proceeding] inline and ask. Never present untested work as done.
 
