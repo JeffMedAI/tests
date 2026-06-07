@@ -1,16 +1,17 @@
 ﻿<#
 .SYNOPSIS
     JeffLocal hardened service watchdog.
-    Monitors all production and sandbox services. Restarts if down.
+    Monitors all production services. Restarts if down.
     Sends WhatsApp alerts on failure. Caps restarts to avoid loops.
 
 .DESCRIPTION
     Services monitored:
-      - Production dashboard  : port 8765  (Flask)
-      - Sandbox dashboard     : port 5000  (Flask)
+      - Production dashboard  : port 8765  (FastAPI/uvicorn)
       - n8n                   : port 5678
       - Ollama                : port 11434
       - Cloudflare tunnel     : process check (cloudflared.exe)
+
+    Sandbox removed 2026-06-07. No port 5000 monitoring.
 
     Restart cap: 3 per service per hour. After cap hit → CRITICAL alert + stop retrying until next hour.
     WhatsApp alerts: sent via python send_whatsapp.py on DOWN and CRITICAL events.
@@ -216,34 +217,6 @@ $Services = @(
             }
             Start-Sleep -Seconds 12
             return (Test-Http "http://localhost:8765/api/health")
-        }
-    },
-
-    [PSCustomObject]@{
-        Name = "SandboxDashboard"
-        Label = "Sandbox Dashboard (5000)"
-        Test = {
-            if (-not (Test-Port 5000)) { return $false }
-            return (Test-Http "http://localhost:5000/api/health")
-        }
-        Restart = {
-            Stop-PortProcess 5000
-            $launch = "$ScriptDir\_launch_sandbox.ps1"
-            if (Test-Path $launch) {
-                Start-HiddenPS $launch
-            } else {
-                $venvPy = "$RepoRoot\sandbox\dashboard\.venv\Scripts\python.exe"
-                if (-not (Test-Path $venvPy)) {
-                    python -m venv "$RepoRoot\sandbox\dashboard\.venv" 2>&1 | Out-Null
-                    & $venvPy -m pip install -r "$RepoRoot\sandbox\dashboard\requirements.txt" --quiet 2>&1 | Out-Null
-                }
-                Start-Process -FilePath $venvPy `
-                    -ArgumentList "-m uvicorn app.main:app --host 0.0.0.0 --port 5000" `
-                    -WorkingDirectory "$RepoRoot\sandbox\dashboard" `
-                    -WindowStyle Hidden
-            }
-            Start-Sleep -Seconds 12
-            return (Test-Http "http://localhost:5000/api/health")
         }
     },
 
