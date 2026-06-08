@@ -37,7 +37,6 @@ from .auth import (
     record_failed_attempt,
     set_new_password,
     set_new_pin,
-    upgrade_hash_if_legacy,
     verify_password,
     verify_pin,
 )
@@ -187,11 +186,6 @@ async def login_post(
             return fail(msg)
 
         clear_failed_attempts(conn, user["id"])
-        # Transparently upgrade legacy static-salt hashes to per-user random-salt format.
-        if auth_method == "pin":
-            upgrade_hash_if_legacy(conn, user["id"], pin.strip(), "pin_hash", stored)
-        else:
-            upgrade_hash_if_legacy(conn, user["id"], password, "password_hash", stored)
         ip = request.client.host if request.client else ""
         ua = request.headers.get("user-agent", "")[:200]
         token = create_session(conn, user["id"], ip, ua)

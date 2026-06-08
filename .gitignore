@@ -26,6 +26,7 @@ data/patient_lookup/
 data/test_inputs/
 
 # Local secrets / config
+.mcp.json
 config/local_secrets.json
 config/*secret*
 config/*token*

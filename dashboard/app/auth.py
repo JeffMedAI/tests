@@ -3,10 +3,7 @@ JeffLocal dashboard authentication module.
 Handles password/PIN verification, session tokens, and lockout policy.
 All hashing uses PBKDF2-HMAC-SHA256 (stdlib only — no bcrypt dependency).
 
-Hash format (current): pbkdf2:sha256:<iterations>:<salt_hex>:<dk_hex>  (5 parts)
-Hash format (legacy):  pbkdf2:sha256:<iterations>:<dk_hex>             (4 parts, static global salt)
-
-On successful login the login route upgrades legacy hashes to the current format in-place.
+Hash format: pbkdf2:sha256:<iterations>:<salt_hex>:<dk_hex>  (5 parts, per-user random salt)
 """
 import hashlib
 import secrets
@@ -19,10 +16,6 @@ MAX_FAILED_ATTEMPTS = 5
 LOCKOUT_MINUTES = 15
 TOKEN_BYTES = 32
 PBKDF2_ITERATIONS = 100_000
-# Legacy static salts — kept only for backwards-compat verification of old hashes.
-# New hashes embed a per-user random salt in the hash string itself (5-part format).
-_LEGACY_PASSWORD_SALT = b"jefflocal_salt_v1"
-_LEGACY_PIN_SALT = b"jefflocal_pin_salt_v1"
 RESET_TOKEN_EXPIRY_MINUTES = 60        # 1-hour window per task spec
 RESET_RATE_LIMIT_PER_HOUR = 3          # max reset requests per user per hour
 
@@ -60,20 +53,6 @@ def _verify_new_format(value: str, stored: str) -> bool:
         return False
 
 
-def _verify_legacy_format(value: str, stored: str, legacy_salt: bytes) -> bool:
-    """Verify a 4-part hash that used the old global static salt."""
-    try:
-        parts = stored.split(":", 3)
-        if len(parts) != 4 or parts[0] != "pbkdf2":
-            return False
-        iterations = int(parts[2])
-        dk = hashlib.pbkdf2_hmac("sha256", value.encode(), legacy_salt, iterations)
-        expected = f"pbkdf2:{parts[1]}:{iterations}:{dk.hex()}"
-        return secrets.compare_digest(expected, stored)
-    except Exception:
-        return False
-
-
 def hash_password(password: str) -> str:
     """Generate a new password hash with a per-user random 16-byte salt."""
     salt = secrets.token_bytes(16)
@@ -87,33 +66,27 @@ def hash_pin(pin: str) -> str:
 
 
 def verify_password(password: str, stored_hash: str) -> bool:
-    """Verify a password against a stored hash.
+    """Verify a password against a stored 5-part hash (pbkdf2:sha256:<iter>:<salt_hex>:<dk_hex>).
 
-    Tries the current 5-part embedded-salt format first.
-    Falls back to the legacy 4-part static-salt format for accounts that
-    have not yet been upgraded. Returns True only on a confirmed match.
+    Returns True only on a confirmed match. Raises ValueError if the hash format
+    is not recognised (i.e. not a 5-part pbkdf2 string).
     """
-    if _verify_new_format(password, stored_hash):
-        return True
-    return _verify_legacy_format(password, stored_hash, _LEGACY_PASSWORD_SALT)
+    parts = stored_hash.split(":", 4)
+    if len(parts) != 5 or parts[0] != "pbkdf2":
+        raise ValueError(f"Unrecognised password hash format: expected 5-part pbkdf2 string")
+    return _verify_new_format(password, stored_hash)
 
 
 def verify_pin(pin: str, stored_hash: str) -> bool:
-    """Verify a PIN against a stored hash.
+    """Verify a PIN against a stored 5-part hash (pbkdf2:sha256:<iter>:<salt_hex>:<dk_hex>).
 
-    Same dual-format logic as verify_password.
-    """
-    if _verify_new_format(pin, stored_hash):
-        return True
-    return _verify_legacy_format(pin, stored_hash, _LEGACY_PIN_SALT)
-
-
-def is_legacy_hash(stored_hash: str) -> bool:
-    """Return True if stored_hash is in the old 4-part static-salt format.
-    Used by the login flow to upgrade hashes transparently on successful login.
+    Returns True only on a confirmed match. Raises ValueError if the hash format
+    is not recognised.
     """
     parts = stored_hash.split(":", 4)
-    return len(parts) == 4 and parts[0] == "pbkdf2"
+    if len(parts) != 5 or parts[0] != "pbkdf2":
+        raise ValueError(f"Unrecognised PIN hash format: expected 5-part pbkdf2 string")
+    return _verify_new_format(pin, stored_hash)
 
 
 def generate_token() -> str:
@@ -274,28 +247,6 @@ def clear_failed_attempts(conn: sqlite3.Connection, user_id: int) -> None:
     conn.execute(
         "UPDATE staff_users SET failed_attempts=0, locked_until=NULL WHERE id=?", (user_id,)
     )
-    conn.commit()
-
-
-def upgrade_hash_if_legacy(
-    conn: sqlite3.Connection,
-    user_id: int,
-    plaintext: str,
-    field: str,
-    stored_hash: str,
-) -> None:
-    """If stored_hash is in the legacy 4-part format, re-hash with a new random salt
-    and write the upgraded hash back to the DB.
-
-    field must be 'password_hash' or 'pin_hash'.
-    Called only after a successful login to ensure transparent migration.
-    """
-    if field not in ("password_hash", "pin_hash"):
-        return
-    if not is_legacy_hash(stored_hash):
-        return
-    new_hash = hash_password(plaintext) if field == "password_hash" else hash_pin(plaintext)
-    conn.execute(f"UPDATE staff_users SET {field}=? WHERE id=?", (new_hash, user_id))
     conn.commit()
 
 
