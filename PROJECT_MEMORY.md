@@ -75,58 +75,48 @@ strategy | Docs, reports, governance, marketing
 
 ---
 
-## CURRENT STATUS â€” 2026-06-08 02:42
+## CURRENT STATUS -- 2026-06-08 11:36
 
 ### What is working
 - Production dashboard LIVE at dashboard.app-avamed.uk (port 8765)
-- Watchdog monitoring 4 services: ProductionDashboard, N8n, Ollama, CloudflareTunnel
-- WhatsApp alerts: MUTED (flag file at logs/service_control/alerts_muted) â€” delete to re-enable
-- All 7 Phase 1+2 security fixes APPLIED and committed (4c6ea45)
-- Mute flag for WhatsApp alerts implemented (de35cf8)
-- Watchdog lock-file single-instance guard added (5410189)
+- Watchdog monitoring 4 services: ProductionDashboard, N8n, Ollama, CloudflareTunnel -- CLEAN
+- WhatsApp alerts: LIVE -- mute flag removed, tab fix and dedup active
+- Phase 1+2+3 security/quality sprint: ALL 11 fixes APPLIED, Lead Agent APPROVED
 
-### Security fixes applied this session (4c6ea45)
-1. jefflocal_staff_id cookie auth bypass â€” REMOVED
-2. /api/alerts/ from public allowlist â€” REMOVED
-3. LLM identity fields blocked from patient matching pipeline â€” DONE
-4. SafeToQueueOverride added to Get-JeffHandoffDisposition â€” DONE
-5. Per-user random salt for password/PIN hashing â€” DONE
-6. Session tokens hashed before DB storage â€” DONE (Saeed override of Security veto, written 2026-06-08)
-7. Post-password-change redirect loop â€” FIXED
-
-### Watchdog alert status
-- WhatsApp alerts MUTED via flag file: C:\JeffLocal\logs\service_control\alerts_muted
-- Elevated ghost watchdog process still running with OLD script (Sandbox in memory)
-- Cannot kill without admin Task Manager â€” harmless since alerts are muted
-- To fully resolve: open Task Manager as admin, kill the longest-running powershell.exe watchdog process
-- Once killed: new process loads clean script, lock file guard prevents duplicates
+### All security/quality fixes (Phase 1+2+3) -- Lead Agent endorsed 2026-06-08
+1. jefflocal_staff_id cookie auth bypass -- REMOVED
+2. /api/alerts/ from public allowlist -- REMOVED
+3. LLM identity fields blocked from patient matching pipeline -- DONE
+4. SafeToQueueOverride in Get-JeffHandoffDisposition -- DONE
+5. Per-user random salt for password/PIN hashing -- DONE
+6. Session tokens hashed before DB storage -- DONE (Saeed override 2026-06-08)
+7. Post-password-change redirect loop -- FIXED
+8. DB indexes: sessions(expires_at), sessions(user_id), audit_events(timestamp) -- DONE
+9. Import loop crash fix -- DONE (failed files -> failed/ subdir, loop never crashes)
+10. GDPR purge wired to production DB -- DONE
+11. Dead code (unreachable elseif in Jeff.Handoff.ps1) -- REMOVED
 
 ### Blocking Pilot 1 go-live
 - No real staff accounts (need names, roles, emails from Saeed)
-- Governance gates 1â€“7 not completed
-- Avamed not yet a registered company (blocks NHS SBS bid â€” DEADLINE 23 June 2026)
+- Governance gates 1-7 not completed
+- Avamed not yet a registered company (blocks NHS SBS bid -- DEADLINE 23 June 2026)
 
-### Pending Saeed approvals
-1. **Kill elevated watchdog ghost** â€” open Task Manager as admin, kill stale powershell.exe watchdog, then delete alerts_muted flag to re-enable alerts
-2. **NHS SBS Ariba registration** â€” DEADLINE 23 June 2026. Register at ariba.com before submission.
-3. **Real staff accounts** â€” provide names, roles, emails to unblock pilot go-live
-4. **Governance gates 1â€“7 sign-off** â€” cannot be delegated
+### Pending Saeed approvals / actions
+1. **NHS SBS Ariba registration** -- DEADLINE 23 June 2026. Register at ariba.com.
+2. **Real staff accounts** -- provide names, roles, emails to unblock pilot go-live
+3. **Governance gates 1-7 sign-off** -- cannot be delegated
 
 ### Open technical tasks (priority order)
 ```
-RANK | TASK                                    | AGENT    | STATUS
------+-----------------------------------------+----------+-------------------------
- 1   | Phase 3 sprint                          | Backend  | NEXT â€” GDPR purge DB,
-     |   - GDPR purge DB                       | Database |   import crash fix,
-     |   - Import loop crash fix               |          |   DB indexes, dead code
-     |   - DB indexes (sessions, audit_events) |          |
-     |   - Dead code cleanup                   |          |
- 2   | n8n API key rotation                    | DevOps   | NOT this session (Saeed);
-     |                                         |          |   required before go-live
- 3   | 5 deadletter queue items                | Backend  | No replay tooling â€” tech debt
- 4   | Confirm .mcp.json in .gitignore         | DevOps   | Quick check
- 5   | Full Playwright E2E suite               | Test     | After Phase 3
- 6   | Multi-tenancy tenant_id                 | Database | Phase 2
+RANK | TASK                                         | AGENT    | STATUS
+-----+----------------------------------------------+----------+------------------------
+ 1   | Remove legacy static-salt password fallback  | Backend  | PENDING -- once all
+     | from auth.py (verify_password legacy path)   |          |   staff have logged in
+ 2   | n8n API key rotation                         | DevOps   | Before go-live (Saeed)
+ 3   | 5 deadletter queue items -- replay tooling   | Backend  | Tech debt
+ 4   | Confirm .mcp.json in .gitignore              | DevOps   | Quick check
+ 5   | Full Playwright E2E suite                    | Test     | Next sprint
+ 6   | Multi-tenancy tenant_id                      | Database | Phase 2
 ```
 
 ---
@@ -160,8 +150,8 @@ C:\JeffLocal\config\model_monitoring.json
 ```
 Repo:    https://github.com/JeffMedAI/tests
 Branch:  sandbox
-Latest:  0e8e8f0 memory: session summary 2026-06-08
-Commits ahead of origin: 3 (not yet pushed)
+Latest:  d96edcf fix: gdpr_purge.py default --db arg now points to production DB
+Pushed to origin: yes (all commits pushed end of session 2026-06-08)
 ```
 
 ---
@@ -198,9 +188,13 @@ Monitoring:   Watchdog (restarts services if down, checks every 60s)
    WhatsApp chat recipient. ALWAYS use search-by-name/number, verify header, THEN send.
    If header does not match: ABORT. Rule enforced in send_whatsapp.py.
 
-7. **Watchdog elevated process** â€” Task Scheduler registered watchdog as elevated.
+7. **Watchdog elevated process** -- Task Scheduler registered watchdog as elevated.
    Cannot be killed by non-elevated code. Only admin Task Manager can kill it.
-   Alerts are muted via flag file as workaround.
+   Resolved 2026-06-08: ghost process killed via admin Task Manager, alerts re-enabled.
+   Lock file guard prevents duplicate instances going forward.
+
+8. **Legacy static-salt password fallback** -- auth.py verify_password() still accepts old
+   static-salt format for accounts not yet upgraded. Remove once all staff have logged in once.
 
 ---
 
