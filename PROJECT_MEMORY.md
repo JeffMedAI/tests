@@ -75,13 +75,18 @@ strategy | Docs, reports, governance, marketing
 
 ---
 
-## CURRENT STATUS -- 2026-06-08 11:36
+## CURRENT STATUS -- 2026-06-08 17:50
 
 ### What is working
 - Production dashboard LIVE at dashboard.app-avamed.uk (port 8765)
 - Watchdog monitoring 4 services: ProductionDashboard, N8n, Ollama, CloudflareTunnel -- CLEAN
 - WhatsApp alerts: LIVE -- mute flag removed, tab fix and dedup active
 - Phase 1+2+3 security/quality sprint: ALL 11 fixes APPLIED, Lead Agent APPROVED
+- **Full end-to-end pipeline verified 2026-06-08**: Jeff webhook -> n8n -> dashboard -> Ollama -> DB -> case visible
+- n8n WF06 fixed: no longer injects N8NTEST- prefixes; passes Jeff identifiers unchanged
+- process_queue.ps1 fixed: non-ASCII characters removed (were crashing PS 5.1 parser)
+- E2E Playwright test suite written (needs test_user account in DB to run)
+- Demo data seeding script created and verified
 
 ### All security/quality fixes (Phase 1+2+3) -- Lead Agent endorsed 2026-06-08
 1. jefflocal_staff_id cookie auth bypass -- REMOVED
@@ -100,11 +105,14 @@ strategy | Docs, reports, governance, marketing
 - No real staff accounts (need names, roles, emails from Saeed)
 - Governance gates 1-7 not completed
 - Avamed not yet a registered company (blocks NHS SBS bid -- DEADLINE 23 June 2026)
+- JEFF_WEBHOOK_SECRET not set -- HMAC verification currently skipped (must be set before live traffic)
 
 ### Pending Saeed approvals / actions
 1. **NHS SBS Ariba registration** -- DEADLINE 23 June 2026. Register at ariba.com.
 2. **Real staff accounts** -- provide names, roles, emails to unblock pilot go-live
 3. **Governance gates 1-7 sign-off** -- cannot be delegated
+4. **JEFF_WEBHOOK_SECRET** -- set in environment before any live Jeff traffic
+5. **n8n API key rotation** -- confirm go-ahead
 
 ### Open technical tasks (priority order)
 ```
@@ -113,9 +121,9 @@ RANK | TASK                                         | AGENT    | STATUS
  1   | Remove legacy static-salt password fallback  | Backend  | PENDING -- once all
      | from auth.py (verify_password legacy path)   |          |   staff have logged in
  2   | n8n API key rotation                         | DevOps   | Before go-live (Saeed)
- 3   | 5 deadletter queue items -- replay tooling   | Backend  | Tech debt
- 4   | Confirm .mcp.json in .gitignore              | DevOps   | Quick check
- 5   | Full Playwright E2E suite                    | Test     | Next sprint
+ 3   | Create test_user account in DB               | Test     | Enables Playwright E2E
+ 4   | Set JEFF_WEBHOOK_SECRET                      | DevOps   | Before live traffic
+ 5   | Confirm .mcp.json in .gitignore              | DevOps   | Quick check
  6   | Multi-tenancy tenant_id                      | Database | Phase 2
 ```
 
@@ -150,8 +158,8 @@ C:\JeffLocal\config\model_monitoring.json
 ```
 Repo:    https://github.com/JeffMedAI/tests
 Branch:  sandbox
-Latest:  d96edcf fix: gdpr_purge.py default --db arg now points to production DB
-Pushed to origin: yes (all commits pushed end of session 2026-06-08)
+Latest:  96680b6 feat: demo-ready sprint -- auth hardening, E2E tests, demo data, replay tooling
+Pushed to origin: yes (all commits pushed end of session 2026-06-08 17:50)
 ```
 
 ---
