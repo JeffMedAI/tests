@@ -53,7 +53,8 @@ function Get-JeffHandoffDisposition {
         [string]$VerificationStatus,
         [string]$CallbackNumber = "",
         $StaffReviewRequiredFromCall,
-        $RedFlagsPresentFromCall
+        $RedFlagsPresentFromCall,
+        [object]$SafeToQueueOverride = $null
     )
 
     $staffReviewRequired = $false
@@ -112,6 +113,8 @@ function Get-JeffHandoffDisposition {
             $priority = "review_required"
         }
     }
+
+    if ($SafeToQueueOverride -eq $false) { $safeToQueue = $false }
 
     $actionNeeded = if ($staffReviewRequired) { "Staff review required" } else { "Process according to workflow" }
 

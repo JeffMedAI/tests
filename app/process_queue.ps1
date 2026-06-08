@@ -550,18 +550,19 @@ if (@($duplicateBatchIds).Count -gt 0) {
         $prescriptionResponses = Get-ObjectPropertyValue -Object $pathwayResponses -Name "prescription" -Default $null
         $urgencyAssessment = Get-ObjectPropertyValue -Object $pathwayResponses -Name "urgency_assessment" -Default $null
 
+        # SAFETY: LLM identity block must NOT contribute to patient matching.
+        # identity.patient_name and identity.dob are intentionally excluded here.
         $patientNameRaw = Get-FirstNonBlankValue @(
             (Get-ObjectPropertyValue -Object $call -Name "patient_name_raw"),
             (Get-ObjectPropertyValue -Object $call -Name "patient_name"),
-            (Get-ObjectPropertyValue -Object $callNormalizedInput -Name "patient_name"),
-            (Get-ObjectPropertyValue -Object $identityResponses -Name "patient_name")
+            (Get-ObjectPropertyValue -Object $callNormalizedInput -Name "patient_name")
         )
 
+        # SAFETY: dob from LLM identity block excluded — deterministic fields only.
         $dobRaw = Get-FirstNonBlankValue @(
             (Get-ObjectPropertyValue -Object $call -Name "dob_raw"),
             (Get-ObjectPropertyValue -Object $call -Name "dob"),
-            (Get-ObjectPropertyValue -Object $callNormalizedInput -Name "dob"),
-            (Get-ObjectPropertyValue -Object $identityResponses -Name "dob")
+            (Get-ObjectPropertyValue -Object $callNormalizedInput -Name "dob")
         )
 
         $callbackRaw = Get-FirstNonBlankValue @(

@@ -37,6 +37,7 @@ from .auth import (
     record_failed_attempt,
     set_new_password,
     set_new_pin,
+    upgrade_hash_if_legacy,
     verify_password,
     verify_pin,
 )
@@ -98,7 +99,7 @@ templates.env.globals["nav_alert_count"] = _nav_alert_count
 
 SESSION_COOKIE = "jefflocal_session"
 AUTH_PUBLIC_PATHS = {"/login", "/logout", "/forgot", "/reset", "/favicon.ico"}
-AUTH_PUBLIC_PREFIXES = ("/static/", "/api/health", "/api/n8n/", "/api/alerts/")
+AUTH_PUBLIC_PREFIXES = ("/static/", "/api/health", "/api/n8n/")
 
 
 def _is_public_path(path: str) -> bool:
@@ -186,6 +187,11 @@ async def login_post(
             return fail(msg)
 
         clear_failed_attempts(conn, user["id"])
+        # Transparently upgrade legacy static-salt hashes to per-user random-salt format.
+        if auth_method == "pin":
+            upgrade_hash_if_legacy(conn, user["id"], pin.strip(), "pin_hash", stored)
+        else:
+            upgrade_hash_if_legacy(conn, user["id"], password, "password_hash", stored)
         ip = request.client.host if request.client else ""
         ua = request.headers.get("user-agent", "")[:200]
         token = create_session(conn, user["id"], ip, ua)
@@ -363,14 +369,11 @@ async def profile_change_password(
             return fail("Current password is incorrect.")
         set_new_password(conn, current_staff["id"], new_password)
         write_audit_event(conn, "__auth__", "password_changed", current_staff.get("username", ""), [], {}, {})
-    token = request.cookies.get(SESSION_COOKIE, "")
-    with connect() as conn:
-        if token:
-            conn.execute("INSERT OR IGNORE INTO sessions (token, user_id, created_at, last_active_at, expires_at) SELECT ?, ?, ?, ?, ? WHERE 0", (token, 0, "", "", ""))
-        user_id = current_staff["id"]
-        conn.execute("DELETE FROM sessions WHERE user_id=? AND token!=?", (user_id, token))
-        conn.commit()
+        ip = request.client.host if request.client else ""
+        ua = request.headers.get("user-agent", "")
+        new_token = create_session(conn, current_staff["id"], ip, ua)
     resp = RedirectResponse(url="/profile?pw_success=Password+updated+successfully.", status_code=302)
+    resp.set_cookie(SESSION_COOKIE, new_token, httponly=True, samesite="lax", max_age=3600, secure=True)
     return resp
 
 
@@ -1029,14 +1032,6 @@ def current_staff_from_request(request: Request | None, conn) -> dict[str, Any]:
                     "active": 1,
                     "username": user.get("username", ""),
                 }
-        # Fallback: jefflocal_staff_id cookie (test environments where session auth is bypassed)
-        staff_id_cookie = request.cookies.get("jefflocal_staff_id")
-        if staff_id_cookie:
-            import sqlite3 as _sqlite3
-            conn.row_factory = _sqlite3.Row
-            staff = get_staff_any_by_id(conn, staff_id_cookie)
-            if staff and staff.get("active"):
-                return staff
     return {"id": None, "display_name": "demo_user", "email": "", "role": "staff", "active": 1, "demo_fallback": True}
 
 

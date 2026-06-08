@@ -2,6 +2,11 @@
 JeffLocal dashboard authentication module.
 Handles password/PIN verification, session tokens, and lockout policy.
 All hashing uses PBKDF2-HMAC-SHA256 (stdlib only — no bcrypt dependency).
+
+Hash format (current): pbkdf2:sha256:<iterations>:<salt_hex>:<dk_hex>  (5 parts)
+Hash format (legacy):  pbkdf2:sha256:<iterations>:<dk_hex>             (4 parts, static global salt)
+
+On successful login the login route upgrades legacy hashes to the current format in-place.
 """
 import hashlib
 import secrets
@@ -14,8 +19,10 @@ MAX_FAILED_ATTEMPTS = 5
 LOCKOUT_MINUTES = 15
 TOKEN_BYTES = 32
 PBKDF2_ITERATIONS = 100_000
-PASSWORD_SALT = b"jefflocal_salt_v1"
-PIN_SALT = b"jefflocal_pin_salt_v1"
+# Legacy static salts — kept only for backwards-compat verification of old hashes.
+# New hashes embed a per-user random salt in the hash string itself (5-part format).
+_LEGACY_PASSWORD_SALT = b"jefflocal_salt_v1"
+_LEGACY_PIN_SALT = b"jefflocal_pin_salt_v1"
 RESET_TOKEN_EXPIRY_MINUTES = 60        # 1-hour window per task spec
 RESET_RATE_LIMIT_PER_HOUR = 3          # max reset requests per user per hour
 
@@ -28,18 +35,39 @@ def _utc_expires(minutes: int) -> str:
     return (datetime.now(timezone.utc) + timedelta(minutes=minutes)).isoformat()
 
 
-def _pbkdf2_hash(value: str, salt: bytes) -> str:
+# ── Hashing helpers ────────────────────────────────────────────────────────────
+
+def _pbkdf2_hash_with_salt(value: str, salt: bytes) -> str:
+    """Return a 5-part hash string with the salt embedded:
+    pbkdf2:sha256:<iterations>:<salt_hex>:<dk_hex>
+    """
     dk = hashlib.pbkdf2_hmac("sha256", value.encode(), salt, PBKDF2_ITERATIONS)
-    return f"pbkdf2:sha256:{PBKDF2_ITERATIONS}:{dk.hex()}"
+    return f"pbkdf2:sha256:{PBKDF2_ITERATIONS}:{salt.hex()}:{dk.hex()}"
 
 
-def _verify_hash(value: str, stored: str, salt: bytes) -> bool:
+def _verify_new_format(value: str, stored: str) -> bool:
+    """Verify a 5-part hash that embeds its own random salt."""
+    try:
+        parts = stored.split(":", 4)
+        if len(parts) != 5 or parts[0] != "pbkdf2":
+            return False
+        iterations = int(parts[2])
+        salt = bytes.fromhex(parts[3])
+        dk = hashlib.pbkdf2_hmac("sha256", value.encode(), salt, iterations)
+        expected = f"pbkdf2:{parts[1]}:{iterations}:{parts[3]}:{dk.hex()}"
+        return secrets.compare_digest(expected, stored)
+    except Exception:
+        return False
+
+
+def _verify_legacy_format(value: str, stored: str, legacy_salt: bytes) -> bool:
+    """Verify a 4-part hash that used the old global static salt."""
     try:
         parts = stored.split(":", 3)
         if len(parts) != 4 or parts[0] != "pbkdf2":
             return False
         iterations = int(parts[2])
-        dk = hashlib.pbkdf2_hmac("sha256", value.encode(), salt, iterations)
+        dk = hashlib.pbkdf2_hmac("sha256", value.encode(), legacy_salt, iterations)
         expected = f"pbkdf2:{parts[1]}:{iterations}:{dk.hex()}"
         return secrets.compare_digest(expected, stored)
     except Exception:
@@ -47,19 +75,45 @@ def _verify_hash(value: str, stored: str, salt: bytes) -> bool:
 
 
 def hash_password(password: str) -> str:
-    return _pbkdf2_hash(password, PASSWORD_SALT)
+    """Generate a new password hash with a per-user random 16-byte salt."""
+    salt = secrets.token_bytes(16)
+    return _pbkdf2_hash_with_salt(password, salt)
 
 
 def hash_pin(pin: str) -> str:
-    return _pbkdf2_hash(pin, PIN_SALT)
+    """Generate a new PIN hash with a per-user random 16-byte salt."""
+    salt = secrets.token_bytes(16)
+    return _pbkdf2_hash_with_salt(pin, salt)
 
 
 def verify_password(password: str, stored_hash: str) -> bool:
-    return _verify_hash(password, stored_hash, PASSWORD_SALT)
+    """Verify a password against a stored hash.
+
+    Tries the current 5-part embedded-salt format first.
+    Falls back to the legacy 4-part static-salt format for accounts that
+    have not yet been upgraded. Returns True only on a confirmed match.
+    """
+    if _verify_new_format(password, stored_hash):
+        return True
+    return _verify_legacy_format(password, stored_hash, _LEGACY_PASSWORD_SALT)
 
 
 def verify_pin(pin: str, stored_hash: str) -> bool:
-    return _verify_hash(pin, stored_hash, PIN_SALT)
+    """Verify a PIN against a stored hash.
+
+    Same dual-format logic as verify_password.
+    """
+    if _verify_new_format(pin, stored_hash):
+        return True
+    return _verify_legacy_format(pin, stored_hash, _LEGACY_PIN_SALT)
+
+
+def is_legacy_hash(stored_hash: str) -> bool:
+    """Return True if stored_hash is in the old 4-part static-salt format.
+    Used by the login flow to upgrade hashes transparently on successful login.
+    """
+    parts = stored_hash.split(":", 4)
+    return len(parts) == 4 and parts[0] == "pbkdf2"
 
 
 def generate_token() -> str:
@@ -73,33 +127,55 @@ def _hash_reset_token(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
+def _hash_session_token(token: str) -> str:
+    """SHA-256 hash of a plaintext session token — this is what is stored in sessions.token.
+    The plaintext token travels only in the cookie; it is never persisted.
+    Identical pre-image barrier to the reset-token pattern.
+    """
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
 # ── Session management ─────────────────────────────────────────────────────────
 
 def create_session(conn: sqlite3.Connection, user_id: int, ip: str = "", ua: str = "") -> str:
-    token = generate_token()
+    """Create a new session. Stores the SHA-256 hash of the token in the DB;
+    returns the plaintext token to the caller for placement in the session cookie only.
+
+    Migration note: existing rows that hold plaintext tokens will no longer match
+    the hashed lookups in get_session_user / invalidate_session after this change
+    is deployed. All active sessions will be invalidated on first deploy — users
+    will need to log in again. This is the expected and acceptable behaviour.
+    """
+    token = generate_token()                        # plaintext — returned to caller for cookie
+    token_hash = _hash_session_token(token)         # hash — stored in DB
     now = _utc_now()
     expires = _utc_expires(SESSION_TIMEOUT_MINUTES)
     conn.execute(
         "INSERT INTO sessions (token, user_id, created_at, last_active_at, expires_at, ip_address, user_agent) "
         "VALUES (?, ?, ?, ?, ?, ?, ?)",
-        (token, user_id, now, now, expires, ip, ua),
+        (token_hash, user_id, now, now, expires, ip, ua),
     )
     conn.execute("UPDATE staff_users SET last_login_at=? WHERE id=?", (now, user_id))
     conn.commit()
-    return token
+    return token  # plaintext — NEVER stored, only returned here for the cookie
 
 
 def get_session_user(conn: sqlite3.Connection, token: str) -> Optional[dict]:
-    """Return the user dict if the session is valid and not expired; also slides the expiry."""
+    """Return the user dict if the session is valid and not expired; also slides the expiry.
+
+    The incoming plaintext token (from the cookie) is hashed before the DB lookup —
+    the database only ever holds the SHA-256 hash, not the plaintext.
+    """
     if not token:
         return None
+    token_hash = _hash_session_token(token)         # hash the incoming cookie value before lookup
     now_dt = datetime.now(timezone.utc)
     row = conn.execute(
         "SELECT s.id as sid, s.user_id, s.expires_at, "
         "u.id, u.display_name, u.username, u.role, u.active, u.must_change_password "
         "FROM sessions s JOIN staff_users u ON s.user_id=u.id "
         "WHERE s.token=?",
-        (token,),
+        (token_hash,),
     ).fetchone()
     if row is None:
         return None
@@ -115,7 +191,7 @@ def get_session_user(conn: sqlite3.Connection, token: str) -> Optional[dict]:
     now_str = _utc_now()
     conn.execute(
         "UPDATE sessions SET last_active_at=?, expires_at=? WHERE token=?",
-        (now_str, new_expires, token),
+        (now_str, new_expires, token_hash),
     )
     conn.commit()
     if isinstance(row, sqlite3.Row):
@@ -133,7 +209,9 @@ def get_session_user(conn: sqlite3.Connection, token: str) -> Optional[dict]:
 
 
 def invalidate_session(conn: sqlite3.Connection, token: str) -> None:
-    conn.execute("DELETE FROM sessions WHERE token=?", (token,))
+    """Delete a session by its plaintext token. Hashes before the DB lookup."""
+    token_hash = _hash_session_token(token)
+    conn.execute("DELETE FROM sessions WHERE token=?", (token_hash,))
     conn.commit()
 
 
@@ -199,6 +277,28 @@ def clear_failed_attempts(conn: sqlite3.Connection, user_id: int) -> None:
     conn.commit()
 
 
+def upgrade_hash_if_legacy(
+    conn: sqlite3.Connection,
+    user_id: int,
+    plaintext: str,
+    field: str,
+    stored_hash: str,
+) -> None:
+    """If stored_hash is in the legacy 4-part format, re-hash with a new random salt
+    and write the upgraded hash back to the DB.
+
+    field must be 'password_hash' or 'pin_hash'.
+    Called only after a successful login to ensure transparent migration.
+    """
+    if field not in ("password_hash", "pin_hash"):
+        return
+    if not is_legacy_hash(stored_hash):
+        return
+    new_hash = hash_password(plaintext) if field == "password_hash" else hash_pin(plaintext)
+    conn.execute(f"UPDATE staff_users SET {field}=? WHERE id=?", (new_hash, user_id))
+    conn.commit()
+
+
 # ── Password / PIN reset ───────────────────────────────────────────────────────
 
 def create_reset_token(conn: sqlite3.Connection, user_id: int, token_type: str = "password") -> str:
@@ -242,7 +342,7 @@ def consume_reset_token(conn: sqlite3.Connection, token: str, token_type: str) -
     that (a) the DB never contains plaintext tokens and (b) the comparison is
     performed by the database engine on the hash, which is a fixed-length
     deterministic value — there is no timing side-channel on the hash itself.
-    The secrets.compare_digest call in _verify_hash guards password/PIN paths;
+    The secrets.compare_digest call in _verify_new_format guards password/PIN paths;
     for reset tokens the SHA-256 pre-image is the security barrier.
     """
     token_hash = _hash_reset_token(token)

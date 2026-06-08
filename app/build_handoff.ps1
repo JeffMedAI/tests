@@ -390,6 +390,8 @@ function New-JeffHandoffObject {
         "not confirmed"
     }
 
+    $safeToQueueFromCall = Get-SafePropertyValue -Object $Call -Name "safe_to_queue" -Default $null
+
     $dispositionArgs = @{
         RequestType = $requestType
         RequestSubtype = $requestSubtype
@@ -398,6 +400,7 @@ function New-JeffHandoffObject {
         CallbackNumber = $callbackNumber
         StaffReviewRequiredFromCall = $staffReviewRequiredFromCall
         RedFlagsPresentFromCall = $redFlagsPresentFromCall
+        SafeToQueueOverride = $safeToQueueFromCall
     }
     $disposition = Get-JeffHandoffDisposition @dispositionArgs
     $priority = $disposition.priority
