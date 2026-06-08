@@ -34,6 +34,13 @@ import os
 import time
 import pywhatkit
 
+# Mute flag: if this file exists, all alerts are silently dropped.
+# Create with: echo "" > C:\JeffLocal\logs\service_control\alerts_muted
+# Remove to re-enable alerts.
+_MUTE_FLAG = os.path.join(os.path.dirname(__file__), "..", "..", "logs", "service_control", "alerts_muted")
+if os.path.exists(os.path.normpath(_MUTE_FLAG)):
+    sys.exit(0)
+
 PHONE_NUMBER = "+447440333938"
 EXPECTED_RECIPIENT_DISPLAY = "Saeed Alam"  # substring expected in chat header
 MAX_MSG_LENGTH = 1500  # WhatsApp message character limit per chunk
