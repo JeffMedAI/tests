@@ -16,6 +16,9 @@ $Watchdog   = Join-Path $ScriptDir "watchdog.ps1"
 $HealthMon  = Join-Path $ScriptDir "health_monitor.ps1"
 $Purge      = "C:\JeffLocal\app\purge_old_data.ps1"
 $Backup     = "C:\JeffLocal\app\daily_backup.ps1"
+$GdprPurge  = "C:\JeffLocal\scripts\daily\gdpr_purge.py"
+$GdprPy     = "C:\JeffLocal\dashboard\.venv\Scripts\python.exe"
+$GdprDb     = "C:\JeffLocal\dashboard\data\dashboard.sqlite"
 $PS         = "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe"
 
 function Make-PSArgs([string]$scriptPath) {
@@ -26,6 +29,7 @@ $WatchdogArgs   = Make-PSArgs $Watchdog
 $HealthMonArgs  = Make-PSArgs $HealthMon
 $PurgeArgs      = Make-PSArgs $Purge
 $BackupArgs     = Make-PSArgs $Backup
+$GdprPurgeArgs  = """$GdprPurge"" --db ""$GdprDb"" --days 90"
 
 # --- Logon: Registry Run key (no admin needed) ───────────────────────────────
 $regPath = "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run"
@@ -88,6 +92,29 @@ if (Test-Path $Purge) {
     Write-Host "[$status3] JeffLocal-DailyPurge task (daily at 02:00)"
 } else {
     Write-Host "[SKIP] JeffLocal-DailyPurge - $Purge not found"
+}
+
+# --- Task: GDPR DB Purge - at 02:30 daily ----------------------------------------
+# Purges patient-identifiable fields from PRODUCTION SQLite DB after 90 days.
+# GDPR Article 5(1)(e) / UK GDPR compliance. DSPT obligation.
+# Target DB: C:\JeffLocal\dashboard\data\dashboard.sqlite (PRODUCTION — not sandbox)
+if (Test-Path $GdprPurge) {
+    $GdprAction  = New-ScheduledTaskAction -Execute $GdprPy -Argument $GdprPurgeArgs
+    $GdprTrigger = New-ScheduledTaskTrigger -Daily -At "02:30"
+    $GdprSettings= New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Minutes 30) -StartWhenAvailable
+
+    Register-ScheduledTask `
+        -TaskName    "JeffLocal-GDPRPurge" `
+        -Action      $GdprAction `
+        -Trigger     $GdprTrigger `
+        -Settings    $GdprSettings `
+        -Description "GDPR 90-day purge of patient PII from production DB (UK GDPR Article 5 / DSPT)" `
+        -Force | Out-Null
+
+    $statusGdpr = if ($?) { "OK" } else { "WARN" }
+    Write-Host "[$statusGdpr] JeffLocal-GDPRPurge task (daily at 02:30) → $GdprDb"
+} else {
+    Write-Host "[SKIP] JeffLocal-GDPRPurge - $GdprPurge not found"
 }
 
 # --- Task: Daily Backup - at 01:00 daily ----------------------------------------

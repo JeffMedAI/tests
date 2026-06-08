@@ -429,11 +429,34 @@ def import_handoffs(
     handoff_dir: Path | None = None,
     pattern: str = "*_handoff.json",
 ) -> int:
+    import logging
+    import shutil
+
+    logger = logging.getLogger(__name__)
     source_dir = handoff_dir or HANDOFF_DIR
+    failed_dir = source_dir / "failed"
     count = 0
     for path in sorted(source_dir.glob(pattern)):
-        with path.open("r", encoding="utf-8-sig") as handle:
-            data = json.load(handle)
-        upsert_case(conn, map_handoff_to_case(data, path))
-        count += 1
+        try:
+            raw = path.read_bytes()
+            if not raw.strip():
+                logger.warning("importer: skipping empty file %s — moving to failed/", path.name)
+                failed_dir.mkdir(parents=True, exist_ok=True)
+                shutil.move(str(path), str(failed_dir / path.name))
+                continue
+            data = json.loads(raw.decode("utf-8-sig"))
+            upsert_case(conn, map_handoff_to_case(data, path))
+            count += 1
+        except Exception as exc:
+            logger.error(
+                "importer: failed to import %s — %s: %s — moving to failed/",
+                path.name,
+                type(exc).__name__,
+                exc,
+            )
+            try:
+                failed_dir.mkdir(parents=True, exist_ok=True)
+                shutil.move(str(path), str(failed_dir / path.name))
+            except Exception as move_exc:
+                logger.error("importer: could not move %s to failed/ — %s", path.name, move_exc)
     return count

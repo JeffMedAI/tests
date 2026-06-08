@@ -8,7 +8,7 @@ Date: 2026-05-31
 PURPOSE
 -------
 UK GDPR Article 5(1)(e) — Personal data must not be kept longer than necessary.
-This script redacts patient-identifiable fields in sandbox SQLite database records
+This script redacts patient-identifiable fields in the production SQLite database records
 older than the configured retention period (default: 90 days, minimum: 30 days).
 
 APPROACH
@@ -72,7 +72,7 @@ LOG_DIR = REPO_ROOT / "logs" / "gdpr"
 LOG_FILE = LOG_DIR / "gdpr_purge.log"
 JSONL_FILE = REPO_ROOT / "docs" / "compliance" / "gdpr_purge_log.jsonl"
 
-SANDBOX_DB = REPO_ROOT / "sandbox" / "dashboard" / "data" / "dashboard.sqlite"
+PRODUCTION_DB = REPO_ROOT / "dashboard" / "data" / "dashboard.sqlite"
 
 # Minimum allowed retention period (days). Hard floor — never lower.
 MIN_RETENTION_DAYS = 30
@@ -163,8 +163,8 @@ def parse_args(argv=None):
     parser.add_argument(
         "--db",
         type=Path,
-        default=SANDBOX_DB,
-        help=f"Path to SQLite database (default: {SANDBOX_DB})"
+        default=PRODUCTION_DB,
+        help=f"Path to SQLite database (default: {PRODUCTION_DB})"
     )
     parser.add_argument(
         "--days",
