@@ -36,7 +36,7 @@ USAGE
 
 FLAGS
 -----
-  --db PATH       Path to SQLite database (default: auto-detected sandbox path)
+  --db PATH       Path to SQLite database (default: production DB)
   --days N        Retention period in days (default: 90, minimum: 30)
   --dry-run       Show what WOULD be purged; make no changes
   --manual        Mark purge_trigger as 'manual' instead of 'scheduled'
