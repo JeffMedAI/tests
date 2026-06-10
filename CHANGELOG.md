@@ -24,3 +24,32 @@
 **Security note:** n8n API key.txt deleted. Key NOT rotated this session per Saeed's decision — rotation recommended before go-live.
 **Tests run:** N/A (infrastructure cleanup only)
 **Saeed notified:** This session
+
+---
+
+## 2026-06-10 — Avamed Clarity Design Sprint (Tasks 1–6)
+**Agent:** Frontend Agent + Lead Agent (Claude Code session)
+**Approved by:** PENDING — this entry is the pre-merge record. Saeed's explicit "approved" required before production merge.
+**Security review:** Security Agent (GuardRail) — SIGNED OFF. See docs/reports/clarity-sprint-approval-pack-2026-06-10.md.
+**Description:** Full design system and UI refresh implementing the Avamed Clarity visual identity across the staff dashboard. Navy (#0B3D6B) and Teal (#00A896) replace NHS blue. New interactive components: KPI strip with count-up animation, sparkline chart, command palette (/ shortcut), patient hover card, urgent case pulse. Four new authenticated API endpoints. Typography system: Plus Jakarta Sans + Inter + JetBrains Mono via Google Fonts.
+
+**Files changed:**
+- dashboard/static/dashboard.css — CSS token migration, new Clarity tokens, component styles (KPI strip, sparkline, command palette, hover card, pulse animation)
+- dashboard/templates/base.html — Google Fonts, pipeline health dot, command palette overlay, keyboard shortcut update
+- dashboard/templates/index.html — KPI strip, sparkline, urgent pulse, patient hover card, chart colour palette fix
+- dashboard/templates/case_detail.html — typography tokens (.cd-meta-id mono font, display font on patient name)
+- dashboard/app/main.py — 4 new endpoints: /api/analytics/hourly-volume, /api/analytics/performance-summary, /api/patient-card, /api/search
+
+**New files:**
+- PRODUCT.md — Avamed product context for impeccable design tooling (register: product, personality: Calm · Precise · Trustworthy)
+- .impeccable/live/config.json — live mode pre-configuration for Clarity sprint iteration
+
+**Security notes:**
+- All 4 new API endpoints double-protected: auth middleware (primary) + demo_fallback check (defence-in-depth)
+- No PII in analytics endpoints (aggregate counts only)
+- NHS number masked server-side in /api/patient-card (digits[:3] + " ***")
+- /api/search limited to 8 results, returns minimum necessary fields (no NHS number, no DOB)
+- All SQL queries parameterised — no injection vectors
+
+**Tests run:** 21 unit tests passing. 83 failures confirmed pre-existing (git stash verified — identical failures on pre-sprint snapshot). E2E Playwright failures are Playwright auth timeout — pre-existing infrastructure issue unrelated to this sprint.
+**Saeed notified:** This session (pending approval)
