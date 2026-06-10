@@ -75,7 +75,7 @@ strategy | Docs, reports, governance, marketing
 
 ---
 
-## CURRENT STATUS -- 2026-06-08 17:50
+## CURRENT STATUS -- 2026-06-10
 
 ### What is working
 - Production dashboard LIVE at dashboard.app-avamed.uk (port 8765)
@@ -87,6 +87,9 @@ strategy | Docs, reports, governance, marketing
 - process_queue.ps1 fixed: non-ASCII characters removed (were crashing PS 5.1 parser)
 - E2E Playwright test suite written (needs test_user account in DB to run)
 - Demo data seeding script created and verified
+- **Clarity design sprint LIVE (approved Saeed 2026-06-10)**: navy/teal brand, KPI strip, sparkline, command palette, patient hover card, urgent pulse, pipeline dot
+- 4 new analytics endpoints added to main.py (all Security Agent cleared): /api/metrics/kpi, /api/metrics/sparkline, /api/metrics/pipeline, /api/metrics/alerts
+- UX audit: 4 minor items queued for next sprint (aria-live regions, focus rings, cursor-pointer on cards, sparkline alt text)
 
 ### All security/quality fixes (Phase 1+2+3) -- Lead Agent endorsed 2026-06-08
 1. jefflocal_staff_id cookie auth bypass -- REMOVED
@@ -158,8 +161,8 @@ C:\JeffLocal\config\model_monitoring.json
 ```
 Repo:    https://github.com/JeffMedAI/tests
 Branch:  sandbox
-Latest:  5e873fa docs: Avamed Clarity design spec ÔÇö Approach B, landing page + dashboard redesign
-Pushed to origin: yes (all commits pushed end of session 2026-06-08 17:50)
+Latest:  400e218 feat: Avamed Clarity design sprint — Tasks 1-6 approved by Saeed 2026-06-10
+Pushed to origin: pending (push in progress 2026-06-10)
 ```
 
 ---
