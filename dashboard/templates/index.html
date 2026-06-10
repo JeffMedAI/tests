@@ -642,7 +642,7 @@
       </div>{# end case-list-scroll #}
 
       {# ── Detail panel ── #}
-      <div class="detail-panel is-hidden" id="detail-panel" aria-label="Case detail panel" aria-live="polite">
+      <div class="detail-panel" id="detail-panel" aria-label="Case detail panel" aria-live="polite">
 
         {# Placeholder — shown when no case is selected #}
         <div class="detail-panel-placeholder" id="panel-placeholder">
@@ -1369,7 +1369,13 @@
       if (activeCard) activeCard.classList.add('panel-open');
 
       // Show panel in loading state
-      panel.classList.remove('is-hidden');
+      panel.classList.add('is-open');
+      var backdrop = document.getElementById('panel-backdrop');
+      if (backdrop) backdrop.classList.add('is-visible');
+      var topbar = document.querySelector('.main-topbar');
+      var topH = topbar ? topbar.offsetHeight : 0;
+      panel.style.top = topH + 'px';
+      panel.style.height = 'calc(100vh - ' + topH + 'px)';
       if (placeholder) placeholder.hidden = true;
       if (populated) {
         populated.hidden = false;
@@ -1414,7 +1420,9 @@
     }
 
     function closePanel() {
-      panel.classList.add('is-hidden');
+      panel.classList.remove('is-open');
+      var backdrop = document.getElementById('panel-backdrop');
+      if (backdrop) backdrop.classList.remove('is-visible');
       if (placeholder) placeholder.hidden = false;
       if (populated)  populated.hidden  = true;
       document.querySelectorAll('.request-card.panel-open').forEach(function (c) {
@@ -1428,6 +1436,15 @@
 
     // Close button
     if (closeBtn) closeBtn.addEventListener('click', closePanel);
+
+    // Backdrop click closes panel
+    var panelBackdrop = document.getElementById('panel-backdrop');
+    if (panelBackdrop) panelBackdrop.addEventListener('click', closePanel);
+
+    // ESC key closes panel
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && panel && panel.classList.contains('is-open')) closePanel();
+    });
 
     // Red flag banner dismiss
     document.getElementById('panel-redflag-close')?.addEventListener('click', function () {
@@ -2048,5 +2065,6 @@
     });
   })();
 </script>
+<div class="detail-panel-backdrop" id="panel-backdrop"></div>
 {% endblock %}
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    
