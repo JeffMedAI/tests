@@ -1,0 +1,456 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]: ⚠ DEMO / TEST DATA MODE — No real patient data. Testing and development only.
+    - generic [ref=e4]:
+      - generic [ref=e6]: A
+      - generic [ref=e7]:
+        - generic [ref=e8]:
+          - generic [ref=e9]: Avamed
+          - generic [ref=e10]: Churchtown Medical · Reception
+        - generic [ref=e14]: Jeff Online
+        - generic [ref=e15]: Tuesday, 9 June 2026
+      - generic [ref=e16]:
+        - generic [ref=e17]:
+          - generic [ref=e18]: /
+          - text: Search or command
+        - button "Import" [ref=e19] [cursor=pointer]:
+          - img [ref=e20]
+          - text: Import
+        - button "2" [ref=e23] [cursor=pointer]:
+          - img [ref=e24]
+          - generic [ref=e27]: "2"
+        - generic [ref=e28]:
+          - generic [ref=e29]: SJ
+          - generic [ref=e30]: KP
+          - generic [ref=e31]: MR
+        - button "SJ Sarah J." [ref=e32] [cursor=pointer]:
+          - generic [ref=e33]: SJ
+          - generic [ref=e34]: Sarah J.
+    - generic [ref=e35]:
+      - generic [ref=e36]: 🚨
+      - generic [ref=e37]: Urgent attention required —
+      - generic [ref=e38] [cursor=pointer]: 2 red flags
+      - text: ·
+      - generic [ref=e39] [cursor=pointer]: 1 identity check needed
+      - text: ·
+      - generic [ref=e40] [cursor=pointer]: 1 needs review
+      - text: ·
+      - generic [ref=e41] [cursor=pointer]: View all →
+      - button "Acknowledge" [ref=e42] [cursor=pointer]
+    - generic [ref=e43]:
+      - generic [ref=e44] [cursor=pointer]:
+        - generic [ref=e45]: "2"
+        - generic [ref=e46]:
+          - generic [ref=e47]: Red Flags
+          - generic [ref=e48]: Immediate
+      - generic [ref=e49] [cursor=pointer]:
+        - generic [ref=e50]: "1"
+        - generic [ref=e51]:
+          - generic [ref=e52]: Review Needed
+          - generic [ref=e53]: Staff check
+      - generic [ref=e54] [cursor=pointer]:
+        - generic [ref=e55]: "11"
+        - generic [ref=e56]:
+          - generic [ref=e57]: Routine
+          - generic [ref=e58]: In queue
+      - generic [ref=e59] [cursor=pointer]:
+        - generic [ref=e60]: "28"
+        - generic [ref=e61]:
+          - generic [ref=e62]: Completed
+          - generic [ref=e63]: Today
+      - generic [ref=e64] [cursor=pointer]:
+        - generic [ref=e65]: 91%
+        - generic [ref=e66]:
+          - generic [ref=e67]: Accuracy
+          - generic [ref=e68]: AI triage
+      - generic [ref=e70]:
+        - button "Today" [ref=e71] [cursor=pointer]
+        - button "Week" [ref=e72] [cursor=pointer]
+        - button "All" [ref=e73] [cursor=pointer]
+    - generic [ref=e74]:
+      - navigation [ref=e75]:
+        - generic [ref=e76] [cursor=pointer]:
+          - img [ref=e77]
+          - generic [ref=e78]: "3"
+          - generic: Queue
+        - generic [ref=e79] [cursor=pointer]:
+          - img [ref=e80]
+          - generic: Patients
+        - generic [ref=e83] [cursor=pointer]:
+          - img [ref=e84]
+          - generic: Staff
+        - generic [ref=e89] [cursor=pointer]:
+          - img [ref=e90]
+          - generic: Reports
+        - generic [ref=e94] [cursor=pointer]:
+          - img [ref=e95]
+          - generic: Alerts
+        - generic [ref=e98] [cursor=pointer]:
+          - img [ref=e99]
+          - generic: Settings
+      - generic [ref=e102]:
+        - generic [ref=e103]:
+          - generic [ref=e104]:
+            - button "🔴 Red Flags (2)" [ref=e105] [cursor=pointer]
+            - button "⚠ Review (1)" [ref=e106] [cursor=pointer]
+            - button "All (14)" [ref=e107] [cursor=pointer]
+            - button "Routine" [ref=e108] [cursor=pointer]
+            - button "Completed" [ref=e109] [cursor=pointer]
+          - generic [ref=e110]:
+            - img [ref=e111]
+            - text: Search patients...
+          - generic [ref=e114]:
+            - img [ref=e115]
+            - text: Priority ↓
+          - button "Analytics" [ref=e116] [cursor=pointer]:
+            - img [ref=e117]
+            - text: Analytics
+        - generic [ref=e121]:
+          - generic [ref=e122]:
+            - generic [ref=e123]: Red Flags
+            - generic [ref=e124]: "2"
+            - generic [ref=e125]:
+              - generic [ref=e126]: ↑ 2
+              - text: vs yesterday
+          - generic [ref=e127]:
+            - generic [ref=e128]: Needs Review
+            - generic [ref=e129]: "1"
+            - generic [ref=e130]:
+              - generic [ref=e131]: ⚠
+              - text: Staff check required
+          - generic [ref=e132]:
+            - generic [ref=e133]: Calls Today
+            - generic [ref=e134]: "42"
+            - generic [ref=e135]:
+              - generic [ref=e136]: ↑ 18%
+              - text: vs last Mon
+          - generic [ref=e137]:
+            - generic [ref=e138]: Resolved Today
+            - generic [ref=e139]: "28"
+            - generic [ref=e140]:
+              - generic [ref=e141]: 91%
+              - text: success rate
+          - generic [ref=e142]:
+            - generic [ref=e143]: Avg Response Time
+            - generic [ref=e144]: 67s
+            - generic [ref=e145]:
+              - generic [ref=e146]: ↓ 12s
+              - text: faster this wk
+        - table [ref=e148]:
+          - rowgroup [ref=e149]:
+            - row "Priority Patient Reason for Contact Via Received Assigned Status" [ref=e150]:
+              - columnheader "Priority" [ref=e151]
+              - columnheader "Patient" [ref=e152]
+              - columnheader "Reason for Contact" [ref=e153]
+              - columnheader "Via" [ref=e154]
+              - columnheader "Received" [ref=e155]
+              - columnheader "Assigned" [ref=e156]
+              - columnheader "Status" [ref=e157]
+              - columnheader [ref=e158]
+          - rowgroup [ref=e159]:
+            - row "URGENT 🚨 D. Okoye NHS 485 234 7821 Chest pain since yesterday, worse on movement 📞 Phone 09:41 Sarah J. NEW Action →" [ref=e160] [cursor=pointer]:
+              - cell "URGENT 🚨" [ref=e161]:
+                - generic [ref=e162]:
+                  - generic [ref=e164]: URGENT
+                  - generic [ref=e165]: 🚨
+              - cell "D. Okoye NHS 485 234 7821" [ref=e166]:
+                - generic [ref=e167]: D. Okoye
+                - generic [ref=e168]: NHS 485 234 7821
+              - cell "Chest pain since yesterday, worse on movement" [ref=e169]
+              - cell "📞 Phone" [ref=e170]:
+                - generic [ref=e171]: 📞 Phone
+              - cell "09:41" [ref=e172]
+              - cell "Sarah J." [ref=e173]
+              - cell "NEW" [ref=e174]
+              - cell "Action →" [ref=e175]:
+                - button "Action →" [ref=e176]
+            - row "URGENT 🚨 R. Thompson NHS 512 901 3347 Child (8yrs) fever 39.8°C — not eating 2 days 📞 Phone 10:12 — NEW Action →" [ref=e177] [cursor=pointer]:
+              - cell "URGENT 🚨" [ref=e178]:
+                - generic [ref=e179]:
+                  - generic [ref=e181]: URGENT
+                  - generic [ref=e182]: 🚨
+              - cell "R. Thompson NHS 512 901 3347" [ref=e183]:
+                - generic [ref=e184]: R. Thompson
+                - generic [ref=e185]: NHS 512 901 3347
+              - cell "Child (8yrs) fever 39.8°C — not eating 2 days" [ref=e186]
+              - cell "📞 Phone" [ref=e187]:
+                - generic [ref=e188]: 📞 Phone
+              - cell "10:12" [ref=e189]
+              - cell "—" [ref=e190]
+              - cell "NEW" [ref=e191]
+              - cell "Action →" [ref=e192]:
+                - button "Action →" [ref=e193]
+            - row "REVIEW F. Nkosi NHS 329 445 0098 Shortness of breath — AI incomplete, manual check needed 🌐 Web 11:58 Karen P. NEEDS REVIEW Action →" [ref=e194] [cursor=pointer]:
+              - cell "REVIEW" [ref=e195]:
+                - generic [ref=e198]: REVIEW
+              - cell "F. Nkosi NHS 329 445 0098" [ref=e199]:
+                - generic [ref=e200]: F. Nkosi
+                - generic [ref=e201]: NHS 329 445 0098
+              - cell "Shortness of breath — AI incomplete, manual check needed" [ref=e202]
+              - cell "🌐 Web" [ref=e203]:
+                - generic [ref=e204]: 🌐 Web
+              - cell "11:58" [ref=e205]
+              - cell "Karen P." [ref=e206]
+              - cell "NEEDS REVIEW" [ref=e207]
+              - cell "Action →" [ref=e208]:
+                - button "Action →" [ref=e209]
+            - row "IDENTITY A. Karim NHS — not matched Appointment request — patient not found in EMIS 📞 Phone 12:34 — ID CHECK Verify →" [ref=e210] [cursor=pointer]:
+              - cell "IDENTITY" [ref=e211]:
+                - generic [ref=e214]: IDENTITY
+              - cell "A. Karim NHS — not matched" [ref=e215]:
+                - generic [ref=e216]: A. Karim
+                - generic [ref=e217]: NHS — not matched
+              - cell "Appointment request — patient not found in EMIS" [ref=e218]
+              - cell "📞 Phone" [ref=e219]:
+                - generic [ref=e220]: 📞 Phone
+              - cell "12:34" [ref=e221]
+              - cell "—" [ref=e222]
+              - cell "ID CHECK" [ref=e223]
+              - cell "Verify →" [ref=e224]:
+                - button "Verify →" [ref=e225]
+            - row "ROUTINE M. Patel NHS 601 238 5514 Repeat prescription — Metformin 500mg 📞 Phone 08:22 Karen P. IN PROGRESS Review" [ref=e226] [cursor=pointer]:
+              - cell "ROUTINE" [ref=e227]:
+                - generic [ref=e230]: ROUTINE
+              - cell "M. Patel NHS 601 238 5514" [ref=e231]:
+                - generic [ref=e232]: M. Patel
+                - generic [ref=e233]: NHS 601 238 5514
+              - cell "Repeat prescription — Metformin 500mg" [ref=e234]
+              - cell "📞 Phone" [ref=e235]:
+                - generic [ref=e236]: 📞 Phone
+              - cell "08:22" [ref=e237]
+              - cell "Karen P." [ref=e238]
+              - cell "IN PROGRESS" [ref=e239]
+              - cell "Review" [ref=e240]:
+                - button "Review" [ref=e241]
+            - row "ROUTINE S. Ahmed NHS 773 501 2290 Follow-up after blood test — waiting for GP review 📞 Phone 09:05 Sarah J. WAITING GP Review" [ref=e242] [cursor=pointer]:
+              - cell "ROUTINE" [ref=e243]:
+                - generic [ref=e246]: ROUTINE
+              - cell "S. Ahmed NHS 773 501 2290" [ref=e247]:
+                - generic [ref=e248]: S. Ahmed
+                - generic [ref=e249]: NHS 773 501 2290
+              - cell "Follow-up after blood test — waiting for GP review" [ref=e250]
+              - cell "📞 Phone" [ref=e251]:
+                - generic [ref=e252]: 📞 Phone
+              - cell "09:05" [ref=e253]
+              - cell "Sarah J." [ref=e254]
+              - cell "WAITING GP" [ref=e255]
+              - cell "Review" [ref=e256]:
+                - button "Review" [ref=e257]
+            - row "ADMIN J. Wilson NHS 448 302 7761 Sick note request — back pain, 2 weeks 🌐 Web 13:30 — OPEN Review" [ref=e258] [cursor=pointer]:
+              - cell "ADMIN" [ref=e259]:
+                - generic [ref=e262]: ADMIN
+              - cell "J. Wilson NHS 448 302 7761" [ref=e263]:
+                - generic [ref=e264]: J. Wilson
+                - generic [ref=e265]: NHS 448 302 7761
+              - cell "Sick note request — back pain, 2 weeks" [ref=e266]
+              - cell "🌐 Web" [ref=e267]:
+                - generic [ref=e268]: 🌐 Web
+              - cell "13:30" [ref=e269]
+              - cell "—" [ref=e270]
+              - cell "OPEN" [ref=e271]
+              - cell "Review" [ref=e272]:
+                - button "Review" [ref=e273]
+            - row "DONE L. Kowalski NHS 381 772 4403 Annual medication review appointment 📞 Phone 08:03 Sarah J. RESOLVED View" [ref=e274] [cursor=pointer]:
+              - cell "DONE" [ref=e275]:
+                - generic [ref=e278]: DONE
+              - cell "L. Kowalski NHS 381 772 4403" [ref=e279]:
+                - generic [ref=e280]: L. Kowalski
+                - generic [ref=e281]: NHS 381 772 4403
+              - cell "Annual medication review appointment" [ref=e282]
+              - cell "📞 Phone" [ref=e283]:
+                - generic [ref=e284]: 📞 Phone
+              - cell "08:03" [ref=e285]
+              - cell "Sarah J." [ref=e286]
+              - cell "RESOLVED" [ref=e287]
+              - cell "View" [ref=e288]:
+                - button "View" [ref=e289]
+      - generic [ref=e290]:
+        - generic [ref=e291]:
+          - generic [ref=e292]:
+            - img [ref=e293]
+            - text: Call Analytics
+          - generic [ref=e295]:
+            - generic [ref=e296]: Total Calls
+            - generic [ref=e298]: "42"
+          - generic [ref=e299]:
+            - generic [ref=e300]: Dropped
+            - generic [ref=e302]: "3"
+          - generic [ref=e303]:
+            - generic [ref=e304]: Safe to Queue
+            - generic [ref=e306]: "39"
+          - generic [ref=e307]:
+            - generic [ref=e308]: Success Rate
+            - generic [ref=e310]: 91%
+          - generic [ref=e311]:
+            - generic [ref=e312]: Avg Response
+            - generic [ref=e313]: 67 sec
+        - generic [ref=e314]:
+          - generic [ref=e315]:
+            - img [ref=e316]
+            - text: Live Workload
+          - generic [ref=e319]:
+            - generic [ref=e320]: Incoming Queue
+            - generic [ref=e322]: "5"
+          - generic [ref=e323]:
+            - generic [ref=e324]: Awaiting Process
+            - generic [ref=e326]: "2"
+          - generic [ref=e327]:
+            - generic [ref=e328]: Processed Today
+            - generic [ref=e330]: "38"
+          - generic [ref=e331]:
+            - generic [ref=e332]: Failed / Deadletter
+            - generic [ref=e334]: "1"
+          - generic [ref=e335]: Updated 14:07 · auto-refreshes 60s
+        - generic [ref=e336]:
+          - generic [ref=e337]:
+            - img [ref=e338]
+            - text: Queue Status
+          - generic [ref=e342]:
+            - generic [ref=e343]: Open
+            - generic [ref=e345]: "14"
+          - generic [ref=e346]:
+            - generic [ref=e347]: Overdue (>2hr SLA)
+            - generic [ref=e349]: "1"
+          - generic [ref=e350]:
+            - generic [ref=e351]: Resolved Today
+            - generic [ref=e353]: "28"
+          - generic [ref=e354]:
+            - generic [ref=e355]: Critical (Red Flags)
+            - generic [ref=e357]: "2"
+        - generic [ref=e358]:
+          - generic [ref=e359]:
+            - img [ref=e360]
+            - text: Staff Workload
+          - generic [ref=e363]:
+            - generic [ref=e364]: Sarah J.
+            - generic [ref=e365]:
+              - generic [ref=e366]: "4"
+              - generic [ref=e367]: "2"
+              - generic [ref=e368]: "12"
+          - generic [ref=e369]:
+            - generic [ref=e370]: Karen P.
+            - generic [ref=e371]:
+              - generic [ref=e372]: "3"
+              - generic [ref=e373]: "1"
+              - generic [ref=e374]: "9"
+          - generic [ref=e375]:
+            - generic [ref=e376]: Mike R. (away)
+            - generic [ref=e377]:
+              - generic [ref=e378]: "0"
+              - generic [ref=e379]: "0"
+              - generic [ref=e380]: "7"
+          - generic [ref=e381]:
+            - generic [ref=e382]:
+              - generic [ref=e383]: "0"
+              - text: Open
+            - generic [ref=e384]:
+              - generic [ref=e385]: "0"
+              - text: Active
+            - generic [ref=e386]:
+              - generic [ref=e387]: "0"
+              - text: Done
+      - generic [ref=e388]:
+        - generic [ref=e389]:
+          - generic [ref=e390]: 🚨
+          - generic [ref=e391]:
+            - generic [ref=e392]: RED FLAG — Contact patient or GP immediately before processing
+            - generic [ref=e393]: Do not process through standard workflow until clinical review is complete.
+          - button "✕" [ref=e394] [cursor=pointer]
+        - generic [ref=e395]:
+          - generic [ref=e396]:
+            - img [ref=e398]
+            - generic [ref=e400]: Received
+          - generic [ref=e402]:
+            - generic [ref=e403]: "2"
+            - generic [ref=e404]: Reviewed
+          - generic [ref=e406]:
+            - generic [ref=e407]: "3"
+            - generic [ref=e408]: In Progress
+          - generic [ref=e410]:
+            - generic [ref=e411]: "4"
+            - generic [ref=e412]: Resolved
+        - generic [ref=e413]:
+          - generic [ref=e414]: D. Okoye — Case Detail
+          - generic [ref=e415]:
+            - generic [ref=e416]: Red Flag
+            - button "✕" [ref=e418] [cursor=pointer]
+        - generic [ref=e419]:
+          - generic [ref=e420]:
+            - generic [ref=e421]:
+              - generic [ref=e422]: DO
+              - generic [ref=e423]:
+                - generic [ref=e424]: D. Okoye
+                - generic [ref=e425]: Male · 52 yrs · DOB 14 Mar 1974
+            - generic [ref=e426]:
+              - generic [ref=e427]:
+                - generic [ref=e428]: NHS Number
+                - generic [ref=e429]: 485 234 7821
+              - generic [ref=e430]:
+                - generic [ref=e431]: Registered
+                - generic [ref=e432]: Apr 2009
+              - generic [ref=e433]:
+                - generic [ref=e434]: GP
+                - generic [ref=e435]: Dr. S. Rahman
+              - generic [ref=e436]:
+                - generic [ref=e437]: Last Contact
+                - generic [ref=e438]: 22 May 2026
+          - generic [ref=e439]:
+            - generic [ref=e440]:
+              - generic [ref=e441]: 🧠
+              - generic [ref=e442]:
+                - generic [ref=e443]: Jeff's Triage Summary
+                - generic [ref=e444]: Extracted 09:41 · Ollama/Gemma4 · on-premises
+            - generic [ref=e445]: Patient reports chest pain since yesterday morning — "tight pressure" across chest, worsening on movement, no improvement with rest. No cardiac history on record. Current smoker. Duration >24hrs.
+            - generic [ref=e446]:
+              - generic [ref=e447]: Chest pain
+              - generic [ref=e448]: Cardiac risk
+              - generic [ref=e449]: Smoker
+              - generic [ref=e450]: ">24hr duration"
+            - generic [ref=e451]:
+              - generic [ref=e452]: AI confidence
+              - generic [ref=e455]: 88%
+          - generic [ref=e456]:
+            - generic [ref=e457]: Guided Workflow
+            - generic [ref=e458]:
+              - generic [ref=e459]:
+                - generic [ref=e460]: ✓
+                - generic [ref=e461]:
+                  - generic [ref=e462]: Read reason for contact
+                  - generic [ref=e463]: ✓ Jeff summary reviewed
+              - generic [ref=e464]:
+                - generic [ref=e465]: "2"
+                - generic [ref=e466]:
+                  - generic [ref=e467]: Check patient record in EMIS
+                  - generic [ref=e468]: Verify history, medications, and flags before deciding action.
+                  - generic [ref=e469]:
+                    - generic [ref=e470]:
+                      - generic [ref=e471]: D. Okoye · NHS 485 234 7821
+                      - generic [ref=e472]: No cardiac history on record
+                    - generic [ref=e473] [cursor=pointer]: Open EMIS →
+              - generic [ref=e474]:
+                - generic [ref=e475]: "3"
+                - generic [ref=e476]:
+                  - generic [ref=e477]: Choose action
+                  - generic [ref=e478]:
+                    - generic [ref=e479] [cursor=pointer]: 📅 Emergency appt
+                    - generic [ref=e480] [cursor=pointer]: 📞 GP callback
+                    - generic [ref=e481] [cursor=pointer]: 🏥 999 / A&E
+                    - generic [ref=e482] [cursor=pointer]: ✉ SMS patient
+              - generic [ref=e483]:
+                - generic [ref=e484]: "4"
+                - generic [ref=e485]:
+                  - generic [ref=e486]: Confirm & close
+                  - generic [ref=e487]: Add outcome note — stored in audit log for compliance.
+        - generic [ref=e488]:
+          - button "Confirm Action →" [ref=e489] [cursor=pointer]
+          - button "Defer" [ref=e490] [cursor=pointer]
+  - generic [ref=e491]:
+    - generic [ref=e492]:
+      - generic [ref=e493]: ⚠ Information gaps detected
+      - button "✕" [ref=e494] [cursor=pointer]
+    - list [ref=e495]:
+      - listitem [ref=e496]: • Patient DOB not confirmed by caller
+      - listitem [ref=e497]: • Medication name unclear — transcript ambiguous
+    - generic [ref=e498]:
+      - button "Dismiss" [ref=e499] [cursor=pointer]
+      - button "View Transcript" [ref=e500] [cursor=pointer]

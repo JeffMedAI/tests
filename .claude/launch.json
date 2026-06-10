@@ -15,5 +15,13 @@
       "cwd": "C:\\JeffLocal",
       "port": 7654
     }
+  ,
+    {
+      "name": "landing-preview",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "3456", "--directory", "docs/preview"],
+      "cwd": "C:\\JeffLocal",
+      "port": 3456
+    }
   ]
 }

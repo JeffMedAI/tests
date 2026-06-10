@@ -38,19 +38,18 @@ param(
 
 $ErrorActionPreference = "SilentlyContinue"
 
-# ── Single-instance guard ─────────────────────────────────────────────────────
-# Kill any other watchdog.ps1 process before starting. Prevents ghost instances
-# accumulating when Task Scheduler spawns a new copy (MultipleInstances=IgnoreNew
-# cannot be changed without admin rights on this machine).
-$MyPID = $PID
-Get-WmiObject Win32_Process -Filter "Name='powershell.exe'" | Where-Object {
-    $_.ProcessId -ne $MyPID -and $_.CommandLine -like '*watchdog.ps1*'
-} | ForEach-Object {
-    $killedPid = $_.ProcessId
-    Stop-Process -Id $killedPid -Force -ErrorAction SilentlyContinue
-    # Brief log to a temp file — $WatchLog not yet defined
-    $tmpLog = "$env:TEMP\watchdog_singleinstance.log"
-    Add-Content -Path $tmpLog -Value "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') Killed stale watchdog PID $killedPid"
+# ── Single-instance guard (lock file) ────────────────────────────────────────
+# Uses an exclusive file lock so only one instance runs at a time.
+# Robust against race conditions — atomic, no process-kill approach needed.
+$LockFile = "$env:TEMP\jefflocal_watchdog.lock"
+try {
+    $LockStream = [System.IO.File]::Open($LockFile, 'OpenOrCreate', 'ReadWrite', 'None')
+    $LockWriter = New-Object System.IO.StreamWriter($LockStream)
+    $LockWriter.WriteLine($PID)
+    $LockWriter.Flush()
+} catch {
+    # Another instance holds the lock — exit silently
+    exit 0
 }
 
 # ── Paths ─────────────────────────────────────────────────────────────────────

@@ -529,7 +529,7 @@ if (@($duplicateBatchIds).Count -gt 0) {
                     }
                 } catch {
                     Write-Host "Ollama pathway extraction failed (non-fatal): $($_.Exception.Message)"
-                    # SAFETY: Ollama failure → force staff_review_required + not safe to queue.
+                    # SAFETY: Ollama failure -> force staff_review_required + not safe to queue.
                     # Never silently pass through an unprocessed case as routine.
                     if ($call.PSObject.Properties["staff_review_required"]) {
                         $call.PSObject.Properties["staff_review_required"].Value = $true
@@ -541,7 +541,7 @@ if (@($duplicateBatchIds).Count -gt 0) {
                     } else {
                         $call | Add-Member -NotePropertyName "safe_to_queue" -NotePropertyValue $false -Force
                     }
-                    Write-Host "SAFETY: Ollama failure on $callId — forced staff_review_required=true, safe_to_queue=false"
+                    Write-Host "SAFETY: Ollama failure on $callId - forced staff_review_required=true, safe_to_queue=false"
                 }
             }
         }
@@ -558,7 +558,7 @@ if (@($duplicateBatchIds).Count -gt 0) {
             (Get-ObjectPropertyValue -Object $callNormalizedInput -Name "patient_name")
         )
 
-        # SAFETY: dob from LLM identity block excluded — deterministic fields only.
+        # SAFETY: dob from LLM identity block excluded - deterministic fields only.
         $dobRaw = Get-FirstNonBlankValue @(
             (Get-ObjectPropertyValue -Object $call -Name "dob_raw"),
             (Get-ObjectPropertyValue -Object $call -Name "dob"),

@@ -19,7 +19,10 @@ import json
 import pytest
 from playwright.sync_api import Page, expect
 
-from conftest import BASE_URL, SESSION_COOKIE
+import os
+
+BASE_URL: str = os.environ.get("JEFF_BASE_URL", "http://127.0.0.1:8765")
+SESSION_COOKIE = "jefflocal_session"
 
 
 class TestHealthEndpoint:

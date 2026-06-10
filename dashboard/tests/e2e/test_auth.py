@@ -17,7 +17,12 @@ No real patient names, NHS numbers, or production credentials are used here.
 import pytest
 from playwright.sync_api import BrowserContext, Page, expect
 
-from conftest import BASE_URL, TEST_USER, TEST_PASS, SESSION_COOKIE
+import os
+
+BASE_URL: str = os.environ.get("JEFF_BASE_URL", "http://127.0.0.1:8765")
+TEST_USER: str = os.environ.get("JEFF_TEST_USER", "test_user")
+TEST_PASS: str = os.environ.get("JEFF_TEST_PASS", "test_pass")
+SESSION_COOKIE = "jefflocal_session"
 
 
 class TestLoginPageRenders:

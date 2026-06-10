@@ -184,7 +184,22 @@
       "Bash(npx @claude-flow*)",
       "Bash(npx claude-flow*)",
       "Bash(node .claude/*)",
-      "mcp__claude-flow__:*"
+      "mcp__claude-flow__:*",
+      "Bash(grep *)",
+      "Bash(Get-Content *)",
+      "Bash(Get-ChildItem *)",
+      "Bash(Get-Process *)",
+      "Bash(Get-WmiObject *)",
+      "Bash(schtasks /Query*)",
+      "Bash(tasklist *)",
+      "Bash(netstat *)",
+      "Bash(python3 -c *)",
+      "Bash(python3 - *)",
+      "Bash(wc *)",
+      "Bash(mcp__Claude_Preview__preview_screenshot)",
+      "mcp__Claude_Preview__preview_screenshot",
+      "mcp__Claude_Preview__preview_start",
+      "mcp__Claude_Preview__preview_list"
     ],
     "deny": [
       "Read(./.env)",
