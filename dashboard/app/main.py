@@ -4499,3 +4499,163 @@ def quick_action(
     elif action == "start_review":
         notice = "review_started"
     return RedirectResponse(return_url_with_notice(safe_return_url, notice), status_code=303)
+
+
+# ── Clarity Analytics Endpoints ────────────────────────────────────────────────
+
+
+@app.get("/api/analytics/hourly-volume")
+def api_hourly_volume(request: Request) -> dict[str, Any]:
+    """Return case counts grouped by hour for today (00–23). No PII in response."""
+    ensure_ready()
+    with connect() as conn:
+        staff = current_staff_from_request(request, conn)
+        if staff.get("demo_fallback"):
+            raise HTTPException(status_code=401, detail="Authentication required")
+        rows = conn.execute(
+            """
+            SELECT CAST(strftime('%H', created_at) AS INTEGER) AS hour,
+                   COUNT(*) AS count
+            FROM cases
+            WHERE date(created_at) = date('now')
+            GROUP BY hour
+            ORDER BY hour
+            """
+        ).fetchall()
+    hours_map: dict[int, int] = {row[0]: row[1] for row in rows}
+    return {
+        "ok": True,
+        "hours": [{"hour": h, "count": hours_map.get(h, 0)} for h in range(24)],
+    }
+
+
+@app.get("/api/analytics/performance-summary")
+def api_performance_summary(request: Request) -> dict[str, Any]:
+    """Return today's headline KPIs. No PII in response."""
+    ensure_ready()
+    with connect() as conn:
+        staff = current_staff_from_request(request, conn)
+        if staff.get("demo_fallback"):
+            raise HTTPException(status_code=401, detail="Authentication required")
+
+        cases_today: int = conn.execute(
+            "SELECT COUNT(*) FROM cases WHERE date(created_at) = date('now')"
+        ).fetchone()[0]
+
+        avg_row = conn.execute(
+            """
+            SELECT AVG(turnaround_minutes)
+            FROM cases
+            WHERE date(created_at) = date('now')
+              AND turnaround_minutes IS NOT NULL
+              AND turnaround_minutes > 0
+            """
+        ).fetchone()
+        avg_resolve: float | None = round(avg_row[0], 1) if avg_row and avg_row[0] is not None else None
+
+        red_flags_today: int = conn.execute(
+            """
+            SELECT COUNT(*) FROM cases
+            WHERE date(created_at) = date('now')
+              AND red_flags_present = 1
+            """
+        ).fetchone()[0]
+
+        one_hour_ago = (datetime.now(timezone.utc).timestamp() - 3600)
+        throughput_row = conn.execute(
+            "SELECT COUNT(*) FROM dashboard_imports WHERE imported_at > ?",
+            (one_hour_ago,),
+        ).fetchone()
+        throughput: int = throughput_row[0] if throughput_row else 0
+
+    return {
+        "ok": True,
+        "cases_today": cases_today,
+        "avg_resolve_minutes": avg_resolve,
+        "red_flags_today": red_flags_today,
+        "throughput_last_hour": throughput,
+    }
+
+
+@app.get("/api/patient-card")
+def api_patient_card(request: Request, name: str = "") -> dict[str, Any]:
+    """Return limited patient info for hover card. NHS number masked server-side."""
+    ensure_ready()
+    if not name or not name.strip():
+        raise HTTPException(status_code=400, detail="name parameter required")
+    with connect() as conn:
+        staff = current_staff_from_request(request, conn)
+        if staff.get("demo_fallback"):
+            raise HTTPException(status_code=401, detail="Authentication required")
+        row = conn.execute(
+            """
+            SELECT patient_name, dob, nhs_number,
+                   (SELECT COUNT(*) FROM cases c2
+                    WHERE c2.patient_name = cases.patient_name
+                      AND date(c2.created_at) = date('now')) AS cases_today
+            FROM cases
+            WHERE patient_name LIKE ?
+            ORDER BY COALESCE(call_timestamp_sort, 0) DESC
+            LIMIT 1
+            """,
+            (f"%{name.strip()}%",),
+        ).fetchone()
+    if not row:
+        return {"ok": True, "name": name, "dob": None, "nhs_number_masked": None, "cases_today": 0}
+
+    raw_nhs = row[2] or ""
+    nhs_masked: str | None = None
+    if raw_nhs:
+        digits = "".join(c for c in raw_nhs if c.isdigit())
+        nhs_masked = digits[:3] + " ***" if len(digits) >= 3 else "***"
+
+    return {
+        "ok": True,
+        "name": row[0] or name,
+        "dob": row[1] or None,
+        "nhs_number_masked": nhs_masked,
+        "cases_today": row[3] or 0,
+    }
+
+
+@app.get("/api/search")
+def api_search(request: Request, q: str = "") -> dict[str, Any]:
+    """Search cases by patient name, batch_id, or call_id. Auth required."""
+    ensure_ready()
+    if not q or not q.strip():
+        return {"ok": True, "results": []}
+    with connect() as conn:
+        staff = current_staff_from_request(request, conn)
+        if staff.get("demo_fallback"):
+            raise HTTPException(status_code=401, detail="Authentication required")
+        term = f"%{q.strip()}%"
+        rows = conn.execute(
+            """
+            SELECT call_id, patient_name, batch_id, status, priority
+            FROM cases
+            WHERE patient_name LIKE ?
+               OR batch_id      LIKE ?
+               OR call_id       LIKE ?
+            ORDER BY COALESCE(call_timestamp_sort, 0) DESC
+            LIMIT 8
+            """,
+            (term, term, term),
+        ).fetchall()
+
+    results = []
+    for row in rows:
+        call_id, patient_name, batch_id, status, priority = row
+        if patient_name and q.lower() in (patient_name or "").lower():
+            results.append({
+                "type": "patient",
+                "label": patient_name,
+                "url": f"/case/{call_id}",
+            })
+        else:
+            results.append({
+                "type": "case",
+                "label": f"{batch_id or call_id} — {patient_name or 'Unknown'}",
+                "url": f"/case/{call_id}",
+            })
+
+    return {"ok": True, "results": results}

@@ -339,10 +339,10 @@
         <span class="cd-meta-chip"><strong>Phone</strong> {{ case.callback_number_display }}</span>
       {% endif %}
       {% if case.nhs_number %}
-        <span class="cd-meta-chip"><strong>NHS</strong> {{ case.nhs_number }}</span>
+        <span class="cd-meta-chip"><strong>NHS</strong> <span class="cd-meta-id">{{ case.nhs_number }}</span></span>
       {% endif %}
       {% if case.emis_number or case.matched_patient_ref %}
-        <span class="cd-meta-chip"><strong>EMIS</strong> {{ case.emis_number or case.matched_patient_ref }}</span>
+        <span class="cd-meta-chip"><strong>EMIS</strong> <span class="cd-meta-id">{{ case.emis_number or case.matched_patient_ref }}</span></span>
       {% endif %}
       <span class="cd-meta-chip"><strong>Received</strong> {{ case.timestamp_display }}</span>
       {% if case.age_label_short %}
