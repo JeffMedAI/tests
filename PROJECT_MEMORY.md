@@ -75,7 +75,7 @@ strategy | Docs, reports, governance, marketing
 
 ---
 
-## CURRENT STATUS -- 2026-06-10
+## CURRENT STATUS -- 2026-06-11
 
 ### What is working
 - Production dashboard LIVE at dashboard.app-avamed.uk (port 8765)
@@ -90,6 +90,26 @@ strategy | Docs, reports, governance, marketing
 - **Clarity design sprint LIVE (approved Saeed 2026-06-10)**: navy/teal brand, KPI strip, sparkline, command palette, patient hover card, urgent pulse, pipeline dot
 - 4 new analytics endpoints added to main.py (all Security Agent cleared): /api/metrics/kpi, /api/metrics/sparkline, /api/metrics/pipeline, /api/metrics/alerts
 - UX audit: 4 minor items queued for next sprint (aria-live regions, focus rings, cursor-pointer on cards, sparkline alt text)
+
+### Changes this session (2026-06-11) -- sandbox branch, PENDING Saeed approval to merge
+1. **Detail panel full redesign** (dashboard/templates/index.html + dashboard/static/dashboard.css):
+   - Red flag banner: 2-line format (title + sub-text + X dismiss button)
+   - Status stepper: Received(1) → Reviewed(2) → In Progress(3) → Resolved(4) — updates dynamically on case status
+   - Patient card: avatar circle with initials (navy; red for red-flag cases) + structured info grid
+   - Jeff's Triage Summary: dedicated card with AI attribution ("Extracted [time] · Ollama/Gemma4 · on-premises") + topic chips
+   - Information gaps alert: dismissible banner, counts missing pathway fields, "View Transcript" shortcut
+   - JS syntax fix: curly quotes in GUIDED_STEPS array were crashing entire JS block (commit 494f8ed)
+   - Verified live via Playwright screenshot — panel renders correctly
+2. **Case list card audit** (dashboard/templates/index.html):
+   - Removed redundant raw call time ("13.20") from card top-right when age label ("2d ago") is present
+   - Card now shows only the age label; raw time shown only as fallback when no age label available
+   - Matches v2 mockup (clarity-requests.png reference)
+   - Phone emoji already replaced with SVG icon (prior session)
+
+### ⚠️ NOT YET committed or pushed this session
+- dashboard/templates/index.html — staged (AM), has both panel redesign + case list fix
+- CHANGELOG.md — staged (AM)
+- Run `git commit` before session end
 
 ### All security/quality fixes (Phase 1+2+3) -- Lead Agent endorsed 2026-06-08
 1. jefflocal_staff_id cookie auth bypass -- REMOVED
@@ -161,8 +181,9 @@ C:\JeffLocal\config\model_monitoring.json
 ```
 Repo:    https://github.com/JeffMedAI/tests
 Branch:  sandbox
-Latest:  e2ae680 fix: detail panel ÔÇö overlay slide from right, navy header, teal stepper
+Latest:  494f8ed fix: replace curly quotes in GUIDED_STEPS red_flag array
 Pushed to origin: yes (2026-06-10 session)
+Uncommitted changes: dashboard/templates/index.html, CHANGELOG.md (panel redesign + case list fix)
 ```
 
 ---

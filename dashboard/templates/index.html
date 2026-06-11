@@ -566,11 +566,12 @@
               </div>
             </div>
             <div class="card-time">
-              <span class="card-received">{{ case.time_display or case.timestamp_display }}</span>
               {% if case.age_label_short %}
                 <span class="card-age {{ case.age_class }}">{{ case.age_label_short }}</span>
               {% elif case.duration_label %}
                 <span class="card-age">{{ case.duration_label }}</span>
+              {% else %}
+                <span class="card-received">{{ case.time_display or case.timestamp_display }}</span>
               {% endif %}
             </div>
           </div>
@@ -1346,7 +1347,7 @@
         'appointment_redirect': ['Read the reason for contact', 'Check patient record in EMIS', 'Check GP availability', 'Book appointment or send triage message'],
         'admin':                ['Read the reason for contact', 'Check patient record in EMIS', 'Action the administrative request', 'Document outcome'],
         'unknown':              ['Read the reason for contact', 'Check patient record in EMIS', 'Determine appropriate pathway', 'Action or escalate as required'],
-        ‘red_flag’:             ["Read Jeff’s triage summary immediately", ‘Call patient now — do not delay’, ‘Review red flag indicators below’, ‘Escalate to GP or 999 if life-threatening’, ‘Document outcome and time of contact’],
+        'red_flag':             ["Read Jeff's triage summary immediately", 'Call patient now — do not delay', 'Review red flag indicators below', 'Escalate to GP or 999 if life-threatening', 'Document outcome and time of contact'],
       };
       var stepsKey = data.red_flags_present ? 'red_flag' : (data.request_type || 'unknown');
       var steps = GUIDED_STEPS[stepsKey] || GUIDED_STEPS['unknown'];
@@ -2067,4 +2068,4 @@
 </script>
 <div class="detail-panel-backdrop" id="panel-backdrop"></div>
 {% endblock %}
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   
+                                                                                                
