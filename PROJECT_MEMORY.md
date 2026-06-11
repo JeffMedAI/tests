@@ -181,9 +181,8 @@ C:\JeffLocal\config\model_monitoring.json
 ```
 Repo:    https://github.com/JeffMedAI/tests
 Branch:  sandbox
-Latest:  494f8ed fix: replace curly quotes in GUIDED_STEPS red_flag array
-Pushed to origin: yes (2026-06-10 session)
-Uncommitted changes: dashboard/templates/index.html, CHANGELOG.md (panel redesign + case list fix)
+Latest:  46c727d feat: detail panel redesign + case list card audit fix
+Pushed to origin: yes (2026-06-11 session)
 ```
 
 ---
