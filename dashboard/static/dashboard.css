@@ -2250,7 +2250,7 @@ button:disabled { background: var(--gray-200); color: var(--gray-500); border-co
 
 .detail-panel-backdrop.is-visible {
   opacity: 1;
-  pointer-events: auto;
+  pointer-events: none;
 }
 
 /* Panel populated state — fills panel as flex column */
@@ -2351,12 +2351,28 @@ button:disabled { background: var(--gray-200); color: var(--gray-500); border-co
 .panel-btn.full { flex: none; width: 100%; }
 .panel-btn.resolve  { background: var(--brand-teal); color: #fff; border-color: var(--brand-teal); }
 .panel-btn.resolve:hover  { background: #008a7e; border-color: #008a7e; }
+.panel-btn.resolve.confirming { background: #d97706; border-color: #d97706; color: #fff; }
+.panel-btn.resolve.confirming:hover { background: #b45309; border-color: #b45309; }
 .panel-btn.escalate { background: var(--danger); color: #fff; border-color: var(--danger); }
 .panel-btn.escalate:hover { background: #b91c1c; border-color: #b91c1c; }
 .panel-btn.reopen   { background: transparent; color: var(--brand-teal); border-color: var(--brand-teal); }
 .panel-btn.reopen:hover { background: var(--brand-teal-soft); }
 .panel-btn:disabled { opacity: .5; cursor: not-allowed; }
 .panel-btn:disabled:hover { background: var(--panel); color: var(--ink-muted); }
+
+/* Resolve countdown bar */
+.resolve-countdown-bar { width: 100%; height: 3px; background: var(--line); border-radius: 2px; overflow: hidden; display: none; margin-top: -4px; }
+.resolve-countdown-bar.active { display: block; }
+.resolve-countdown-bar-fill { height: 100%; background: #d97706; width: 100%; }
+.resolve-countdown-bar-fill.counting { transition: width 5s linear; width: 0%; }
+
+/* Copy-to-clipboard inline button */
+.copy-btn { background: none; border: none; cursor: pointer; padding: 0 0 0 5px; opacity: 0.45; color: inherit; vertical-align: middle; display: inline-flex; align-items: center; line-height: 1; transition: opacity 0.15s; }
+.copy-btn:hover { opacity: 1; }
+.copy-btn:active { opacity: 0.7; }
+
+/* Identity unconfirmed warning in meta grid */
+.panel-meta-value.value-unconfirmed { color: #fbbf24; font-style: italic; }
 
 /* Panel tabs */
 .panel-tabs {

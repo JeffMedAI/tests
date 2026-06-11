@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{% if show_requests %}Requests{% else %}Dashboard{% endif %} — JeffLocal{% endblock %}
+{% block title %}{% if show_requests %}Requests{% else %}Dashboard{% endif %} — Avamed{% endblock %}
 
 {% block sidebar_header %}
 <span class="sidebar-hd-title">Analytics</span>
@@ -705,10 +705,11 @@
             </div>
           </div>
 
-          {# Jeff's Triage Summary card #}
+          {# AI Intake Summary card #}
           <div class="panel-triage-card">
             <div class="panel-triage-card-hd">
-              <span class="panel-section-hd">Jeff's Triage Summary</span>
+              <span class="panel-section-hd">AI Intake Summary</span>
+              <button class="copy-btn" id="panel-ai-summary-copy" style="display:none" title="Copy AI summary" aria-label="Copy AI summary"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
               <span class="panel-triage-attribution" id="panel-triage-attribution"></span>
             </div>
             <p class="panel-text" id="panel-ai-summary"></p>
@@ -754,6 +755,7 @@
             <button class="panel-btn full start-review" id="panel-btn-start-review" hidden>Start Review First</button>
             <button class="panel-btn full escalate" id="panel-btn-escalate">Escalate Urgent</button>
             <button class="panel-btn full resolve" id="panel-btn-resolve" data-panel-action="resolve">Mark as Resolved</button>
+            <div class="resolve-countdown-bar" id="resolve-countdown-bar"><div class="resolve-countdown-bar-fill" id="resolve-countdown-fill"></div></div>
           </div>
 
           <nav class="panel-tabs" aria-label="Case panel sections">
@@ -830,7 +832,7 @@
     <h2 id="batch-modal-title">Resolve selected cases?</h2>
     <p id="batch-modal-message"></p>
     <label>Outcome note
-      <textarea id="batch-outcome-note" rows="3">Batch resolved after staff review in JeffLocal dashboard.</textarea>
+      <textarea id="batch-outcome-note" rows="3">Batch resolved after staff review in Avamed dashboard.</textarea>
     </label>
     <p class="warning" id="batch-modal-error" hidden></p>
     <div class="modal-actions">
@@ -1121,6 +1123,15 @@
       return '<span class="panel-meta-label">' + escHtml(label) + '</span>'
            + '<span class="panel-meta-value ' + (extraClass || '') + '">' + escHtml(value) + '</span>';
     }
+    var COPY_ICON = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+    function metaCellCopy(label, value, extraClass) {
+      var copyBtn = (value && value !== 'n/a')
+        ? '<button class="copy-btn" data-copy="' + escHtml(value) + '" title="Copy ' + escHtml(label) + '" aria-label="Copy ' + escHtml(label) + '">' + COPY_ICON + '</button>'
+        : '';
+      var cls = (extraClass || '') + ((!value || value === 'n/a') ? ' value-unconfirmed' : '');
+      return '<span class="panel-meta-label">' + escHtml(label) + '</span>'
+           + '<span class="panel-meta-value ' + cls.trim() + '">' + escHtml(value) + copyBtn + '</span>';
+    }
 
     function switchTab(target) {
       document.querySelectorAll('[data-panel-tab]').forEach(function (t) {
@@ -1176,22 +1187,27 @@
       var ageClass = data.age_class ? 'age-' + data.age_class : '';
       document.getElementById('panel-patient-meta').innerHTML = [
         metaCell('DOB',      data.dob_display        || data.dob              || 'n/a'),
-        metaCell('NHS',      data.nhs_number        || 'n/a'),
-        metaCell('Phone',    data.callback_number_display || data.callback_number || 'n/a'),
-        metaCell('EMIS',     data.emis_number       || 'n/a'),
+        metaCellCopy('NHS',   data.nhs_number        || 'n/a'),
+        metaCellCopy('Phone', data.callback_number_display || data.callback_number || 'n/a'),
+        metaCellCopy('EMIS',  data.emis_number       || 'n/a'),
         metaCell('Received', data.time_display || data.timestamp_display || 'n/a'),
         metaCell('Call age', data.age_label_short   || data.age_label || 'n/a', ageClass),
       ].join('');
 
       // AI summary
-      document.getElementById('panel-ai-summary').textContent =
-        data.ai_summary || data.call_summary_short || 'No summary available.';
+      var summaryText = data.ai_summary || data.call_summary_short || 'No summary available.';
+      document.getElementById('panel-ai-summary').textContent = summaryText;
+      var aiCopyBtn = document.getElementById('panel-ai-summary-copy');
+      if (aiCopyBtn) {
+        aiCopyBtn.style.display = summaryText && summaryText !== 'No summary available.' ? '' : 'none';
+        aiCopyBtn.dataset.copy = summaryText;
+      }
 
-      // AI attribution line
+      // AI attribution line — show extracted time only, no internal model details
       var attrEl = document.getElementById('panel-triage-attribution');
       if (attrEl) {
         var timeStr = data.time_display || data.timestamp_display || '';
-        attrEl.textContent = (timeStr ? 'Extracted ' + timeStr + ' · ' : '') + 'Ollama/Gemma4 · on-premises';
+        attrEl.textContent = timeStr ? 'Extracted ' + timeStr : '';
       }
 
       // Topic chips in triage card (reuse summary_chips from API)
@@ -1298,9 +1314,12 @@
         startRevBtn.dataset.callId = data.call_id;
       }
 
-      // Escalate button
+      // Escalate button — always visible for non-resolved cases
       var escalateBtn = document.getElementById('panel-btn-escalate');
-      if (escalateBtn) escalateBtn.dataset.callId = data.call_id;
+      if (escalateBtn) {
+        escalateBtn.dataset.callId = data.call_id;
+        escalateBtn.hidden = !!data.is_resolved;
+      }
 
       // Transcript excerpt
       var excerptEl = document.getElementById('panel-transcript-excerpt');
@@ -1384,10 +1403,14 @@
         document.getElementById('panel-badge-row').innerHTML = '';
         document.getElementById('panel-patient-meta').innerHTML = '';
         document.getElementById('panel-ai-summary').textContent = '';
+        var _aiCopy = document.getElementById('panel-ai-summary-copy');
+        if (_aiCopy) _aiCopy.style.display = 'none';
         document.getElementById('panel-redflag-box').hidden = true;
         document.getElementById('panel-suggested').hidden = true;
         document.getElementById('panel-redflag-banner').hidden = true;
         document.getElementById('panel-guided-steps').hidden = true;
+        var _escalateBtn = document.getElementById('panel-btn-escalate');
+        if (_escalateBtn) _escalateBtn.hidden = false;
         document.getElementById('panel-triage-attribution').textContent = '';
         document.getElementById('panel-chip-row').innerHTML = '';
         document.getElementById('panel-info-gaps').hidden = true;
@@ -1438,9 +1461,7 @@
     // Close button
     if (closeBtn) closeBtn.addEventListener('click', closePanel);
 
-    // Backdrop click closes panel
-    var panelBackdrop = document.getElementById('panel-backdrop');
-    if (panelBackdrop) panelBackdrop.addEventListener('click', closePanel);
+    // Note: backdrop is pointer-events:none so card clicks pass through; panel closes via ESC, close button, or clicking the same card again.
 
     // ESC key closes panel
     document.addEventListener('keydown', function (e) {
@@ -1620,16 +1641,30 @@
         btn.classList.add('confirming');
         btn.textContent = '✓ Confirm resolve?';
         clearTimeout(_resolveConfirmTimer);
+        // Start countdown bar
+        var cBar = document.getElementById('resolve-countdown-bar');
+        var cFill = document.getElementById('resolve-countdown-fill');
+        if (cBar && cFill) {
+          cFill.classList.remove('counting');
+          cBar.classList.add('active');
+          requestAnimationFrame(function () { requestAnimationFrame(function () { cFill.classList.add('counting'); }); });
+        }
         _resolveConfirmTimer = setTimeout(function () {
           if (btn.classList.contains('confirming')) {
             btn.classList.remove('confirming');
             btn.textContent = 'Mark as Resolved';
+            if (cBar) cBar.classList.remove('active');
+            if (cFill) cFill.classList.remove('counting');
           }
-        }, 3000);
+        }, 5000);
         return;
       }
       btn.classList.remove('confirming');
       clearTimeout(_resolveConfirmTimer);
+      var cBar2 = document.getElementById('resolve-countdown-bar');
+      var cFill2 = document.getElementById('resolve-countdown-fill');
+      if (cBar2) cBar2.classList.remove('active');
+      if (cFill2) cFill2.classList.remove('counting');
 
       var original = action === 'resolve' ? 'Mark as Resolved' : 'Reopen';
       btn.disabled = true;
@@ -1663,7 +1698,17 @@
           // Hide start-review button
           var startRevBtn2 = document.getElementById('panel-btn-start-review');
           if (startRevBtn2) startRevBtn2.hidden = true;
-          // Show resolved note in panel
+          // Hide guided steps and escalate — case is done
+          var guidedSteps = document.getElementById('panel-guided-steps');
+          if (guidedSteps) guidedSteps.hidden = true;
+          var escalateBtn2 = document.getElementById('panel-btn-escalate');
+          if (escalateBtn2) escalateBtn2.hidden = true;
+          // Advance stepper to Resolved (step 4)
+          document.querySelectorAll('#panel-stepper .stepper-step').forEach(function (step, i) {
+            step.classList.toggle('is-done',   i < 3);
+            step.classList.toggle('is-active', i === 3);
+          });
+          // Hide red flag box
           var rfBox = document.getElementById('panel-redflag-box');
           if (rfBox) rfBox.hidden = true;
           var summaryEl = document.getElementById('panel-ai-summary');
@@ -1722,6 +1767,26 @@
       var callId = activePanelCallId;
       if (callId) window.location.href = '/case/' + encodeURIComponent(callId);
     });
+
+    // Copy-to-clipboard — delegated handler for all .copy-btn elements in the panel
+    document.getElementById('detail-panel')?.addEventListener('click', function (e) {
+      var btn = e.target.closest('.copy-btn');
+      if (!btn) return;
+      var text = btn.dataset.copy;
+      if (!text) return;
+      e.stopPropagation();
+      function onCopied() { showToast('Copied to clipboard'); }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(onCopied).catch(function () {
+          fallbackCopy(text); onCopied();
+        });
+      } else { fallbackCopy(text); onCopied(); }
+    });
+    function fallbackCopy(text) {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0';
+      document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+    }
 
   })();
   {% endif %}

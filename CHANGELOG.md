@@ -53,3 +53,35 @@
 
 **Tests run:** 21 unit tests passing. 83 failures confirmed pre-existing (git stash verified — identical failures on pre-sprint snapshot). E2E Playwright failures are Playwright auth timeout — pre-existing infrastructure issue unrelated to this sprint.
 **Saeed notified:** This session (pending approval)
+
+## [Bug Fix] 2026-06-11 — Curly-quote SyntaxError in detail panel script
+
+**Agent:** Lead Agent  
+**Files changed:** dashboard/templates/index.html (line 1349)  
+**Approved by:** Saeed (explicit approval in session 2026-06-11)
+
+**Description:** Template line 1349 used Unicode curly/smart quotes (U+2018 / U+2019) as JavaScript string delimiters in the GUIDED_STEPS red_flag array. V8 threw SyntaxError: Invalid or unexpected token which silently killed the entire 46400-char inline script block on every page load. No event listeners registered — filter collapse, batch selection, and detail panel were all non-functional.
+
+**Fix:** Replaced 11 instances of U+2018/U+2019 with ASCII straight single quotes (U+0027) on line 1349.
+
+**Test result:** SyntaxError gone. Clicking a case card triggers the detail panel sliding in from right as designed.
+
+---
+
+## 2026-06-11 — Batch 1 UX/UI Fixes
+**Agent:** Frontend Agent (Claude Code session)
+**Approved by:** Saeed (explicit instruction in session 2026-06-11)
+**Files changed:** `dashboard/templates/index.html`, `dashboard/templates/base.html`, `dashboard/static/dashboard.css`
+
+**Description:** Batch 1 of approved UX improvements following a full UX/UI review of the dashboard.
+
+**Changes:**
+1. **Branding** — Replaced all user-facing "JeffLocal" references with "Avamed" (page title, browser tab, topbar, batch resolve note). Internal JS storage keys unchanged.
+2. **Resolve confirm UX** — Extended two-step confirm timeout from 3s to 5s. Added amber button state (`.confirming` CSS class). Added animated 5-second countdown progress bar beneath the resolve button.
+3. **Panel click-toggle** — Fixed backdrop `pointer-events: none` so clicking a different case card while the panel is open switches directly to that card (no close-then-open). Backdrop retains visual dim but no longer blocks pointer events.
+4. **Post-resolve panel state** — After resolve: stepper advances to step 4 (Resolved), guided steps hidden, Escalate button hidden. Both reset correctly when switching to a new case.
+5. **Clipboard copy icons** — Added copy-to-clipboard buttons for NHS number, EMIS number, Phone, and AI summary in the detail panel. Uses `navigator.clipboard` with textarea fallback.
+6. **NHS/EMIS unconfirmed warning** — Fields showing "n/a" now rendered in amber italic to signal identity not confirmed.
+7. **AI Intake Summary label** — Renamed "Jeff's Triage Summary" to "AI Intake Summary". Removed "Ollama/Gemma4 · on-premises" internal attribution from panel.
+
+**Test result:** 10 unit tests passed. 93 fixture-setup errors are pre-existing (test DB not seeded) and unrelated to these changes. No Python code modified.
