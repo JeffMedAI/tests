@@ -755,6 +755,10 @@
             <button id="panel-btn-sms" hidden></button>
             <button id="panel-btn-gp" hidden></button>
           </div>
+          <label class="panel-review-confirm" id="panel-review-confirm" hidden>
+            <input type="checkbox" id="panel-review-checkbox" aria-label="Confirm staff review complete">
+            I confirm I've read the AI summary and this case is ready to resolve.
+          </label>
           <div class="resolve-countdown-bar" id="resolve-countdown-bar"><div class="resolve-countdown-bar-fill" id="resolve-countdown-fill"></div></div>
 
           <nav class="panel-tabs" aria-label="Case panel sections">
@@ -1314,11 +1318,18 @@
       }
       if (pathwayEmpty) pathwayEmpty.hidden = items.length > 0;
 
-      // Resolve button state + start-review gate
+      // Resolve button state + review gates
       var resolveBtn    = document.getElementById('panel-btn-resolve');
       var startRevBtn   = document.getElementById('panel-btn-start-review');
+      var reviewConfirm = document.getElementById('panel-review-confirm');
+      var reviewCb      = document.getElementById('panel-review-checkbox');
+      // Staff-review cases: checkbox in panel. Emergency/identity-only: still needs start-review first.
+      var showReviewCb = !data.is_resolved && !!data.staff_review_required;
       var needsReviewFirst = !data.is_resolved && data.requires_individual_review
+                            && !data.staff_review_required
                             && (data.status || '').toLowerCase() !== 'in progress';
+      if (reviewConfirm) { reviewConfirm.hidden = !showReviewCb; }
+      if (reviewCb) { reviewCb.checked = false; }
       if (resolveBtn) {
         if (data.is_resolved) {
           resolveBtn.textContent = 'Reopen';
@@ -1336,8 +1347,8 @@
           resolveBtn.textContent = 'Mark as Resolved';
           resolveBtn.className   = 'panel-btn full resolve';
           resolveBtn.dataset.panelAction = 'resolve';
-          resolveBtn.disabled = false;
-          resolveBtn.title = '';
+          resolveBtn.disabled = showReviewCb;
+          resolveBtn.title = showReviewCb ? 'Tick the box below to confirm review and enable resolve' : '';
         }
         resolveBtn.dataset.callId = data.call_id;
       }
@@ -1490,11 +1501,27 @@
       // Reset inline confirm state
       var resolveBtn = document.getElementById('panel-btn-resolve');
       if (resolveBtn) { resolveBtn.classList.remove('confirming'); clearTimeout(_resolveConfirmTimer); }
+      var reviewConfirmReset = document.getElementById('panel-review-confirm');
+      var reviewCbReset = document.getElementById('panel-review-checkbox');
+      if (reviewConfirmReset) { reviewConfirmReset.hidden = true; }
+      if (reviewCbReset) { reviewCbReset.checked = false; }
       activePanelCallId = null;
     }
 
     // Close button
     if (closeBtn) closeBtn.addEventListener('click', closePanel);
+
+    // Review confirmation checkbox — enables resolve button when ticked
+    var reviewCbEl = document.getElementById('panel-review-checkbox');
+    if (reviewCbEl) {
+      reviewCbEl.addEventListener('change', function () {
+        var btn = document.getElementById('panel-btn-resolve');
+        if (btn && btn.dataset.panelAction === 'resolve') {
+          btn.disabled = !this.checked;
+          btn.title = this.checked ? '' : 'Tick the box below to confirm review and enable resolve';
+        }
+      });
+    }
 
     // Note: backdrop is pointer-events:none so card clicks pass through; panel closes via ESC, close button, or clicking the same card again.
 
