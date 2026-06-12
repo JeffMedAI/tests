@@ -1840,6 +1840,31 @@ def get_call_analytics_card(conn) -> dict[str, Any]:
     }
 
 
+def get_peak_hour(conn) -> str | None:
+    """Return the busiest hour today as a human-readable string, e.g. '10–11am'."""
+    today = datetime.now(timezone.utc).date().isoformat()
+    row = conn.execute(
+        "SELECT CAST(strftime('%H', created_at) AS INTEGER) AS hr, COUNT(*) AS cnt "
+        "FROM cases WHERE DATE(created_at) = ? AND created_at IS NOT NULL "
+        "GROUP BY hr ORDER BY cnt DESC LIMIT 1",
+        (today,),
+    ).fetchone()
+    if not row:
+        return None
+    hr = row[0]
+
+    def _fmt(h: int) -> str:
+        if h == 0:
+            return "12am"
+        if h < 12:
+            return f"{h}am"
+        if h == 12:
+            return "12pm"
+        return f"{h - 12}pm"
+
+    return f"{_fmt(hr)}–{_fmt((hr + 1) % 24)}"
+
+
 def health_indicator(status: str, label: str = "") -> dict[str, str]:
     value = (status or "unknown").lower()
     if value in {"online", "test_ready", "active", "healthy"}:
@@ -3972,6 +3997,7 @@ def index(
             "queue_status_card": queue_status_card,
             "call_analytics_card": call_analytics_card,
             "staff_workload_list": staff_workload_list,
+            "peak_hour": get_peak_hour(conn),
             "filters": filters,
             "current_list_url": current_list_url,
             "active_filter_label": active_filter_label,

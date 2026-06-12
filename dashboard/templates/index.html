@@ -14,165 +14,192 @@
 {% endblock %}
 
 {% block sidebar_content %}
-  <div class="sidebar-period">
-    <div class="period-tabs">
-      <a href="/requests?range=today" class="period-tab {% if active_date_range == 'today' %}active{% endif %}">Today</a>
-      <a href="/requests?range=week"  class="period-tab {% if active_date_range == 'week'  %}active{% endif %}">Week</a>
-      <a href="/requests?range=all"   class="period-tab {% if active_date_range == 'all'   %}active{% endif %}">All</a>
-    </div>
+
+{#── Build filter URL lookups (robust — by value, not index) ─── #}
+{% set ns = namespace(
+  open_url='/requests?filter=open',
+  red_url='/requests?filter=urgent_red_flags',
+  review_url='/requests?filter=needs_review',
+  identity_url='/requests?filter=identity_issues',
+  resolved_url='/requests?filter=resolved_today'
+) %}
+{% for lnk in filter_links %}
+  {% if lnk.value == 'open' %}{% set ns.open_url = lnk.url %}{% endif %}
+  {% if lnk.value == 'urgent_red_flags' %}{% set ns.red_url = lnk.url %}{% endif %}
+  {% if lnk.value == 'needs_review' %}{% set ns.review_url = lnk.url %}{% endif %}
+  {% if lnk.value == 'identity_issues' %}{% set ns.identity_url = lnk.url %}{% endif %}
+  {% if lnk.value == 'resolved_today' %}{% set ns.resolved_url = lnk.url %}{% endif %}
+{% endfor %}
+
+{#── Period filter ────────────────────────────────────────────── #}
+<div class="sidebar-period">
+  <div class="period-tabs">
+    <a href="/requests?range=today" class="period-tab {% if active_date_range == 'today' %}active{% endif %}">Today</a>
+    <a href="/requests?range=week"  class="period-tab {% if active_date_range == 'week'  %}active{% endif %}">Week</a>
+    <a href="/requests?range=all"   class="period-tab {% if active_date_range == 'all'   %}active{% endif %}">All</a>
   </div>
+</div>
 
-  <div class="sidebar-body">
+{#── Role mode toggle ─────────────────────────────────────────── #}
+<div class="sidebar-mode-toggle" id="sidebar-mode-toggle">
+  <button class="smt-btn is-active" id="smt-reception" data-mode="reception" type="button">Reception</button>
+  <button class="smt-btn" id="smt-manager" data-mode="manager" type="button">Manager</button>
+</div>
 
-    {# ── Queue status ── #}
-    {% if queue_status_card is defined %}
-    <div class="analytics-card" title="Quick Status" data-metric=" · {{ queue_status_card.open }} open">
-      <div class="card-collapsed-icon" aria-hidden="true" title="Quick Status"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="18" y="3" width="4" height="18"/><rect x="10" y="8" width="4" height="13"/><rect x="2" y="13" width="4" height="8"/></svg></div>
-      <div class="card-full-content"></div>
-      <h3 class="sidebar-section-hd"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><rect x="18" y="3" width="4" height="18"/><rect x="10" y="8" width="4" height="13"/><rect x="2" y="13" width="4" height="8"/></svg>Quick Status</h3>
-      <div class="analytics-row">
-        <span class="ar-label"><span class="ar-dot blue"></span>Open</span>
-        <span class="ar-value">{{ queue_status_card.open }}</span>
-      </div>
-      <div class="analytics-row">
-        <span class="ar-label"><span class="ar-dot danger"></span>Overdue</span>
-        <span class="ar-value {{ 'danger-text' if queue_status_card.overdue else '' }}">{{ queue_status_card.overdue }}</span>
-      </div>
-      <div class="analytics-row">
-        <span class="ar-label"><span class="ar-dot green"></span>Resolved Today</span>
-        <span class="ar-value">{{ queue_status_card.resolved_today }}</span>
-      </div>
-      <div class="analytics-row">
-        <span class="ar-label"><span class="ar-dot danger"></span>Critical</span>
-        <span class="ar-value {{ 'danger-text' if queue_status_card.red_flags else '' }}">{{ queue_status_card.red_flags }}</span>
-      </div>
+<div class="sidebar-body">
+
+  {#══════════════════ RECEPTION MODE ══════════════════#}
+  <div class="sidebar-mode-panel" id="sidebar-panel-reception">
+
+    {#── Needs Attention ──#}
+    <h3 class="sidebar-section-hd sidebar-section-hd--first">Needs Attention</h3>
+    <div class="action-items">
+
+      <a class="action-item{% if urgent_attention.red_flags > 0 %} action-item--danger{% endif %}" href="{{ ns.red_url }}">
+        <span class="ai-label">Critical</span>
+        <span class="ai-value{% if urgent_attention.red_flags > 0 %} ai-value--danger{% endif %}">{{ urgent_attention.red_flags }}</span>
+      </a>
+
+      <a class="action-item{% if queue_status_card.overdue > 0 %} action-item--warn{% endif %}" href="{{ ns.open_url }}">
+        <span class="ai-label">Overdue (&gt;2h)</span>
+        <span class="ai-value{% if queue_status_card.overdue > 0 %} ai-value--warn{% endif %}">{{ queue_status_card.overdue }}</span>
+      </a>
+
+      <a class="action-item{% if urgent_attention.staff_review > 0 %} action-item--info{% endif %}" href="{{ ns.review_url }}">
+        <span class="ai-label">Review needed</span>
+        <span class="ai-value{% if urgent_attention.staff_review > 0 %} ai-value--info{% endif %}">{{ urgent_attention.staff_review }}</span>
+      </a>
+
+      <a class="action-item{% if urgent_attention.identity_checks > 0 %} action-item--slate{% endif %}" href="{{ ns.identity_url }}">
+        <span class="ai-label">Identity issue</span>
+        <span class="ai-value{% if urgent_attention.identity_checks > 0 %} ai-value--slate{% endif %}">{{ urgent_attention.identity_checks }}</span>
+      </a>
+
     </div>
-    {% endif %}
 
-    {# ── Critical Issues alert card ── #}
-    {% if urgent_attention.red_flags > 0 %}
-    <a class="red-flag-card" title="Critical Issues" href="{{ filter_links[1].url if filter_links|length > 1 else '/requests?filter=urgent_red_flags' }}">
-      <span class="rf-icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
-      <div class="rf-body">
-        <span class="rf-label">Critical Issues</span>
-        <span class="rf-value">{{ urgent_attention.red_flags }}</span>
-        <span class="rf-sub">Needs immediate attention</span>
-      </div>
-      <span class="rf-value-coll">{{ urgent_attention.red_flags }}</span>
+    {#── Today ──#}
+    <h3 class="sidebar-section-hd">Today</h3>
+    <a class="glance-row" href="{{ ns.open_url }}">
+      <span class="gr-label">Open cases</span>
+      <span class="gr-value">{{ queue_status_card.open }}</span>
     </a>
-    {% else %}
-    <div class="analytics-card sidebar-card-clear" title="All Clear">
-      <div class="card-collapsed-icon">✓</div>
-      <span class="sidebar-card-clear-label">✓ All Clear</span>
-      <span class="sidebar-card-clear-sub">No critical issues</span>
+    <a class="glance-row" href="{{ ns.resolved_url }}">
+      <span class="gr-label">Resolved today</span>
+      <span class="gr-value gr-value--green">{{ queue_status_card.resolved_today }}</span>
+    </a>
+    {% if peak_hour %}
+    <div class="glance-row glance-row--static">
+      <span class="gr-label">Peak hour</span>
+      <span class="gr-value gr-value--muted">{{ peak_hour }}</span>
     </div>
     {% endif %}
 
-    {# ── Staff Workload (live) ── #}
-    <div class="analytics-card" title="Staff Workload" id="staff-workload-card" data-metric=" · {{ staff_workload_list|length }} staff">
-      <div class="card-collapsed-icon" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
-      <h3 class="sidebar-section-hd">
-        <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>Staff Workload
-        <span id="staff-workload-refresh-ts" class="sidebar-card-ts"></span>
-      </h3>
-      <div id="staff-workload-list">
-        {% for su in staff_workload_list|default([]) %}
-        <div class="staff-workload-row">
-          <span class="staff-workload-name" title="{{ su.name }}">{{ su.name }}</span>
-          <span class="staff-workload-pills">
-            <span class="swp swp-open"   title="Open cases">{{ su.open }}</span>
-            <span class="swp swp-active" title="In progress">{{ su.in_progress }}</span>
-            <span class="swp swp-done"   title="Resolved today">{{ su.resolved_today }}</span>
-          </span>
-        </div>
-        {% else %}
-        <div class="analytics-row ar-row--muted">Loading…</div>
-        {% endfor %}
+    {#── Team (simplified) ──#}
+    <h3 class="sidebar-section-hd">Team</h3>
+    <div id="staff-simple-list">
+      {% for su in staff_workload_list|default([]) %}
+      <div class="staff-simple-row">
+        <span class="ssr-name" title="{{ su.name }}">{{ su.name }}</span>
+        <span class="ssr-open{% if su.open > 3 %} ssr-open--warn{% endif %}">{{ su.open }}</span>
       </div>
-      <div class="analytics-row sidebar-legend-row">
-        <span class="ar-label sidebar-legend-label">
-          <span class="ar-dot legend-open"></span>Open
-          <span class="ar-dot legend-active"></span>Active
-          <span class="ar-dot legend-done"></span>Done
-        </span>
-      </div>
+      {% else %}
+      <div class="sidebar-empty-msg">No staff assigned</div>
+      {% endfor %}
     </div>
 
-    {# ── Call analytics ── #}
+  </div>{# /reception #}
+
+  {#══════════════════ MANAGER MODE ══════════════════#}
+  <div class="sidebar-mode-panel is-hidden" id="sidebar-panel-manager">
+
+    {#── Today's Numbers ──#}
+    <h3 class="sidebar-section-hd sidebar-section-hd--first">Today's Numbers</h3>
     {% if call_analytics_card is defined %}
-    <div class="analytics-card" title="Call Analytics" data-metric=" · {{ call_analytics_card.total_calls }} calls">
-      <div class="card-collapsed-icon" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.39 2 2 0 0 1 3.58 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6.29 6.29l.92-.92a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></div>
-      <h3 class="sidebar-section-hd"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.39 2 2 0 0 1 3.58 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6.29 6.29l.92-.92a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>Call Analytics</h3>
-      <div class="analytics-row">
-        <span class="ar-label">Total Calls</span>
-        <span class="ar-value">{{ call_analytics_card.total_calls }}</span>
-      </div>
-      <div class="analytics-row">
-        <span class="ar-label">Dropped</span>
-        <span class="ar-value">{{ call_analytics_card.dropped }}</span>
-      </div>
-      <div class="analytics-row">
-        <span class="ar-label">Safe to Queue</span>
-        <span class="ar-value">{{ call_analytics_card.safe_to_queue }}</span>
-      </div>
-      <div class="analytics-row">
-        <span class="ar-label">Success Rate</span>
-        <span class="ar-value success">{{ call_analytics_card.success_rate }}%</span>
-      </div>
-      {% if call_analytics_card.avg_turnaround %}
-      <div class="analytics-row">
-        <span class="ar-label">Avg Response Time</span>
-        <span class="ar-value" title="Average response time in minutes: {{ call_analytics_card.avg_turnaround }}">
-          {% set hours = call_analytics_card.avg_turnaround // 60 %}
-          {% if hours > 24 %}
-            {{ (hours // 24) }}d {{ (hours % 24) }}h
-          {% elif hours > 0 %}
-            {{ hours }}h {{ (call_analytics_card.avg_turnaround % 60) }}m
-          {% else %}
-            {{ call_analytics_card.avg_turnaround }} min
-          {% endif %}
+    <div class="glance-row glance-row--static">
+      <span class="gr-label">Calls received</span>
+      <span class="gr-value">{{ call_analytics_card.total_calls }}</span>
+    </div>
+    <div class="glance-row glance-row--static">
+      <span class="gr-label">Resolved today</span>
+      <span class="gr-value gr-value--green">{{ queue_status_card.resolved_today }}</span>
+    </div>
+    {% if call_analytics_card.avg_turnaround %}
+    <div class="glance-row glance-row--static">
+      <span class="gr-label">Avg response</span>
+      <span class="gr-value">
+        {%- set hrs = call_analytics_card.avg_turnaround // 60 -%}
+        {%- if hrs > 0 -%}{{ hrs }}h {{ call_analytics_card.avg_turnaround % 60 }}m{%- else -%}{{ call_analytics_card.avg_turnaround }}m{%- endif -%}
+      </span>
+    </div>
+    {% endif %}
+    {% endif %}
+    {% if peak_hour %}
+    <div class="glance-row glance-row--static">
+      <span class="gr-label">Peak hour</span>
+      <span class="gr-value gr-value--muted">{{ peak_hour }}</span>
+    </div>
+    {% endif %}
+
+    {#── Case Types ──#}
+    <h3 class="sidebar-section-hd">Case Types</h3>
+    <div class="type-bars">
+      {% for item in request_type_breakdown %}
+      {% if item.count > 0 %}
+      <a class="type-bar-row" href="{{ item.url }}">
+        <span class="tbr-label">{{ item.label }}</span>
+        <span class="tbr-track" aria-hidden="true"><span class="tbr-fill" style="width: {{ item.width }}%"></span></span>
+        <span class="tbr-count">{{ item.count }}</span>
+      </a>
+      {% endif %}
+      {% endfor %}
+    </div>
+
+    {#── Team (full view) ──#}
+    <h3 class="sidebar-section-hd">Team</h3>
+    <div id="staff-workload-list">
+      {% for su in staff_workload_list|default([]) %}
+      <div class="staff-workload-row">
+        <span class="staff-workload-name" title="{{ su.name }}">{{ su.name }}</span>
+        <span class="staff-workload-pills">
+          <span class="swp swp-open"   title="Open">{{ su.open }}</span>
+          <span class="swp swp-active" title="In progress">{{ su.in_progress }}</span>
+          <span class="swp swp-done"   title="Resolved today">{{ su.resolved_today }}</span>
         </span>
       </div>
-      {% endif %}
+      {% else %}
+      <div class="sidebar-empty-msg">No staff data</div>
+      {% endfor %}
+    </div>
+    {% if staff_workload_list %}
+    <div class="analytics-row sidebar-legend-row">
+      <span class="ar-label sidebar-legend-label">
+        <span class="ar-dot legend-open"></span>Open
+        <span class="ar-dot legend-active"></span>Active
+        <span class="ar-dot legend-done"></span>Done
+      </span>
     </div>
     {% endif %}
 
-    {% if show_dashboard_overview %}
-    {# ── Live workload ── #}
-    <div class="analytics-card" title="Live Workload" data-metric=" · {{ workload_card.incoming }} queued">
-      <div class="card-collapsed-icon" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M19.07 19.07l-1.41-1.41M4.93 19.07l1.41-1.41M12 2v2M12 20v2M2 12h2M20 12h2"/></svg></div>
-      <h3 class="sidebar-section-hd"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M19.07 19.07l-1.41-1.41M4.93 19.07l1.41-1.41M12 2v2M12 20v2M2 12h2M20 12h2"/></svg>Live Workload</h3>
-      <div class="analytics-row">
-        <span class="ar-label"><span class="ar-dot blue"></span>Incoming Queue</span>
-        <span class="ar-value">{{ workload_card.incoming }}</span>
-      </div>
-      <div class="analytics-row">
-        <span class="ar-label"><span class="ar-dot amber"></span>Awaiting</span>
-        <span class="ar-value">{{ workload_card.awaiting_processing }}</span>
-      </div>
-      <div class="analytics-row">
-        <span class="ar-label"><span class="ar-dot green"></span>Processed Today</span>
-        <span class="ar-value">{{ workload_card.processed_today }}</span>
-      </div>
-      {% if workload_card.failed %}
-      <div class="analytics-row">
-        <span class="ar-label"><span class="ar-dot danger"></span>Failed</span>
-        <span class="ar-value">{{ workload_card.failed }}</span>
-      </div>
-      {% endif %}
-    </div>
-    {% endif %}
+  </div>{# /manager #}
 
-    {# ── Hourly Call Volume sparkline ── #}
-    <div class="sparkline-card" id="sparkline-card">
-      <div class="sparkline-card-hd">
-        <span class="sparkline-card-title">Hourly Call Volume</span>
-      </div>
-      <div id="sparkline-no-data" class="sparkline-no-data">No data yet</div>
-      <div id="sparkline-apex"></div>
-    </div>
+</div>{# /sidebar-body #}
 
-  </div>{# end sidebar-body #}
+<script>
+(function () {
+  var stored = localStorage.getItem('sb-mode') || 'reception';
+  function switchMode(m) {
+    document.getElementById('sidebar-panel-reception').classList.toggle('is-hidden', m !== 'reception');
+    document.getElementById('sidebar-panel-manager').classList.toggle('is-hidden', m !== 'manager');
+    document.getElementById('smt-reception').classList.toggle('is-active', m === 'reception');
+    document.getElementById('smt-manager').classList.toggle('is-active', m === 'manager');
+    localStorage.setItem('sb-mode', m);
+  }
+  switchMode(stored);
+  document.getElementById('smt-reception').addEventListener('click', function () { switchMode('reception'); });
+  document.getElementById('smt-manager').addEventListener('click', function () { switchMode('manager'); });
+})();
+</script>
+
 {% endblock %}
 
 {% block content %}

@@ -85,3 +85,21 @@
 7. **AI Intake Summary label** — Renamed "Jeff's Triage Summary" to "AI Intake Summary". Removed "Ollama/Gemma4 · on-premises" internal attribution from panel.
 
 **Test result:** 10 unit tests passed. 93 fixture-setup errors are pre-existing (test DB not seeded) and unrelated to these changes. No Python code modified.
+
+---
+
+## 2026-06-12 — Sidebar Redesign (Role-based)
+**Agent:** Frontend Agent (Claude Code session)
+**Approved by:** Saeed (explicit instruction in session 2026-06-12 — design direction confirmed via 4 clarifying questions)
+**Files changed:** `dashboard/templates/index.html`, `dashboard/static/dashboard.css`, `dashboard/app/main.py`
+
+**Description:** Full redesign of the analytics sidebar. Removed pipeline jargon and replaced with two role-based views (Reception and Manager) with a persistent toggle stored in localStorage.
+
+**Changes:**
+1. **Reception mode (default)** — Needs Attention section: Critical, Overdue (>2h), Review needed, Identity issue — all clickable, jump to filtered case list. Today section: Open cases + Resolved today (clickable) + Peak hour text. Team section: simplified name + open-count only.
+2. **Manager mode** — Today's Numbers: Calls received, Resolved, Avg response time. Case Types: horizontal teal bar chart per request type (Prescription, Sick Note, Referral, Appointment, etc.), each bar clickable and filtered by type. Team section: full pills view (open/active/done) with legend.
+3. **Removed** — "Call Analytics" card (pipeline terms: "Safe to Queue", "Dropped"), "Live Workload" card (redundant), "Quick Status" card (replaced), hourly sparkline chart.
+4. **Added** — `get_peak_hour()` backend function returns busiest hour today (e.g. "10–11am"). `peak_hour` passed to template context.
+5. **Reused** — `request_type_breakdown` (already in context) provides bar chart data with pre-calculated `width` percentages and filter URLs.
+
+**Test result:** Python syntax check passed. No unit tests broken. UI requires manual login to verify (browser automation blocked by auth).
