@@ -705,58 +705,30 @@
             </div>
           </div>
 
-          {# AI Intake Summary card #}
-          <div class="panel-triage-card">
-            <div class="panel-triage-card-hd">
-              <span class="panel-section-hd">AI Intake Summary</span>
-              <button class="copy-btn" id="panel-ai-summary-copy" style="display:none" title="Copy AI summary" aria-label="Copy AI summary"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
-              <span class="panel-triage-attribution" id="panel-triage-attribution"></span>
-            </div>
-            <p class="panel-text" id="panel-ai-summary"></p>
-            <div class="panel-chip-row" id="panel-chip-row"></div>
+          {# Compact action bar — Call | Escalate | Resolve | Full Case, all inline #}
+          <div class="panel-action-bar">
+            <button class="pab-btn call" id="panel-btn-call" title="Call patient">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.39 2 2 0 0 1 3.58 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.54a16 16 0 0 0 6.29 6.29l.92-.92a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+              Call
+            </button>
+            <button class="pab-btn escalate" id="panel-btn-escalate">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              Escalate
+            </button>
+            <button class="pab-btn resolve" id="panel-btn-resolve" data-panel-action="resolve">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+              Resolve
+            </button>
+            <a class="pab-btn view-full" id="panel-btn-view-full" href="#">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+              Full Case
+            </a>
+            {# Hidden — kept for JS event listeners only #}
+            <button id="panel-btn-start-review" hidden></button>
+            <button id="panel-btn-sms" hidden></button>
+            <button id="panel-btn-gp" hidden></button>
           </div>
-
-          {# Information gaps alert — dismissible #}
-          <div class="panel-info-gaps" id="panel-info-gaps" hidden>
-            <div class="info-gaps-body">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-              <div class="info-gaps-text">
-                <span class="info-gaps-title">Information gaps detected</span>
-                <span class="info-gaps-sub" id="info-gaps-sub"></span>
-              </div>
-            </div>
-            <div class="info-gaps-actions">
-              <button class="info-gaps-btn" id="info-gaps-view-transcript">View Transcript</button>
-              <button class="info-gaps-btn info-gaps-dismiss" id="info-gaps-dismiss">Dismiss</button>
-            </div>
-          </div>
-
-          {# Guided workflow steps — case-type-specific, informational #}
-          <div class="panel-guided-steps" id="panel-guided-steps" hidden>
-            <div class="panel-section-hd">What to do</div>
-            <ol class="guided-steps-list" id="guided-steps-list"></ol>
-          </div>
-
-          <div class="panel-actions">
-            <div class="panel-actions-row">
-              <button class="panel-btn" id="panel-btn-call" title="Call patient">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.39 2 2 0 0 1 3.58 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.54a16 16 0 0 0 6.29 6.29l.92-.92a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-                Call
-              </button>
-              <button class="panel-btn" id="panel-btn-sms" title="SMS patient (coming soon)" disabled style="opacity:0.45;cursor:not-allowed">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-                SMS
-              </button>
-              <button class="panel-btn" id="panel-btn-gp" title="GP workflow (coming soon)" disabled style="opacity:0.45;cursor:not-allowed">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-                Send to GP
-              </button>
-            </div>
-            <button class="panel-btn full start-review" id="panel-btn-start-review" hidden>Start Review First</button>
-            <button class="panel-btn full escalate" id="panel-btn-escalate">Escalate Urgent</button>
-            <button class="panel-btn full resolve" id="panel-btn-resolve" data-panel-action="resolve">Mark as Resolved</button>
-            <div class="resolve-countdown-bar" id="resolve-countdown-bar"><div class="resolve-countdown-bar-fill" id="resolve-countdown-fill"></div></div>
-          </div>
+          <div class="resolve-countdown-bar" id="resolve-countdown-bar"><div class="resolve-countdown-bar-fill" id="resolve-countdown-fill"></div></div>
 
           <nav class="panel-tabs" aria-label="Case panel sections">
             <button class="panel-tab active" data-panel-tab="summary">Summary</button>
@@ -768,6 +740,39 @@
 
             {# Summary tab #}
             <div data-panel-content="summary">
+
+              {# AI Intake Summary — inside scroll area #}
+              <div class="panel-triage-card">
+                <div class="panel-triage-card-hd">
+                  <span class="panel-section-hd">AI Intake Summary</span>
+                  <button class="copy-btn" id="panel-ai-summary-copy" style="display:none" title="Copy AI summary" aria-label="Copy AI summary"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
+                  <span class="panel-triage-attribution" id="panel-triage-attribution"></span>
+                </div>
+                <p class="panel-text" id="panel-ai-summary"></p>
+                <div class="panel-chip-row" id="panel-chip-row"></div>
+              </div>
+
+              {# Information gaps alert — dismissible #}
+              <div class="panel-info-gaps" id="panel-info-gaps" hidden>
+                <div class="info-gaps-body">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  <div class="info-gaps-text">
+                    <span class="info-gaps-title">Information gaps detected</span>
+                    <span class="info-gaps-sub" id="info-gaps-sub"></span>
+                  </div>
+                </div>
+                <div class="info-gaps-actions">
+                  <button class="info-gaps-btn" id="info-gaps-view-transcript">View Transcript</button>
+                  <button class="info-gaps-btn info-gaps-dismiss" id="info-gaps-dismiss">Dismiss</button>
+                </div>
+              </div>
+
+              {# Guided workflow steps — What to do #}
+              <div class="panel-guided-steps" id="panel-guided-steps" hidden>
+                <div class="panel-section-hd">What to do</div>
+                <ol class="guided-steps-list" id="guided-steps-list"></ol>
+              </div>
+
               <div class="panel-redflag-box" id="panel-redflag-box" hidden>
                 <div class="panel-redflag-title"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Red Flag Warning</div>
                 <div class="panel-redflag-body" id="panel-redflag-body"></div>
@@ -1332,9 +1337,12 @@
       }
 
       // View full link — include return_url so Back button works from case detail
-      var viewFull = document.getElementById('panel-view-full');
-      if (viewFull) viewFull.href = '/case/' + encodeURIComponent(data.call_id)
+      var fullCaseUrl = '/case/' + encodeURIComponent(data.call_id)
         + '?return_url=' + encodeURIComponent(window.location.pathname + window.location.search);
+      var viewFull = document.getElementById('panel-view-full');
+      if (viewFull) viewFull.href = fullCaseUrl;
+      var viewFullBtn = document.getElementById('panel-btn-view-full');
+      if (viewFullBtn) viewFullBtn.href = fullCaseUrl;
 
       // Call button
       var callBtn = document.getElementById('panel-btn-call');
