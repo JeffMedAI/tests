@@ -1,6 +1,6 @@
 ﻿# PROJECT MEMORY â€” JeffLocal
 # READ THIS FIRST at every session start, before doing anything else.
-# Last updated: 2026-06-12 (auto-updated 18:00)
+# Last updated: 2026-06-12 (auto-updated 18:00 — refreshed after feature commits)
 # Maintained by: Claude (update at end of every session)
 
 ---
@@ -75,7 +75,7 @@ strategy | Docs, reports, governance, marketing
 
 ---
 
-## CURRENT STATUS -- 2026-06-11
+## CURRENT STATUS -- 2026-06-12
 
 ### What is working
 - Production dashboard LIVE at dashboard.app-avamed.uk (port 8765)
@@ -91,25 +91,15 @@ strategy | Docs, reports, governance, marketing
 - 4 new analytics endpoints added to main.py (all Security Agent cleared): /api/metrics/kpi, /api/metrics/sparkline, /api/metrics/pipeline, /api/metrics/alerts
 - UX audit: 4 minor items queued for next sprint (aria-live regions, focus rings, cursor-pointer on cards, sparkline alt text)
 
-### Changes this session (2026-06-11) -- sandbox branch, PENDING Saeed approval to merge
-1. **Detail panel full redesign** (dashboard/templates/index.html + dashboard/static/dashboard.css):
-   - Red flag banner: 2-line format (title + sub-text + X dismiss button)
-   - Status stepper: Received(1) → Reviewed(2) → In Progress(3) → Resolved(4) — updates dynamically on case status
-   - Patient card: avatar circle with initials (navy; red for red-flag cases) + structured info grid
-   - Jeff's Triage Summary: dedicated card with AI attribution ("Extracted [time] · Ollama/Gemma4 · on-premises") + topic chips
-   - Information gaps alert: dismissible banner, counts missing pathway fields, "View Transcript" shortcut
-   - JS syntax fix: curly quotes in GUIDED_STEPS array were crashing entire JS block (commit 494f8ed)
-   - Verified live via Playwright screenshot — panel renders correctly
-2. **Case list card audit** (dashboard/templates/index.html):
-   - Removed redundant raw call time ("13.20") from card top-right when age label ("2d ago") is present
-   - Card now shows only the age label; raw time shown only as fallback when no age label available
-   - Matches v2 mockup (clarity-requests.png reference)
-   - Phone emoji already replaced with SVG icon (prior session)
+### Changes this session (2026-06-12) -- sandbox branch, PENDING Saeed approval to merge
+1. **Panel layout fix** (commit a7c21d4): Compact action bar; full scrollable body in detail panel.
+2. **Role-based sidebar redesign** (commit c00dc8c): Reception and Manager views separated in the left sidebar.
+3. **Review confirmation checkbox** (commit 0c5f189): Added to detail panel — receptionist must tick before marking a case as reviewed.
+4. **Review gate refined** (commit c230e91): Custom checkbox design with amber (unchecked) → green (checked) visual transition.
 
-### ⚠️ NOT YET committed or pushed this session
-- dashboard/templates/index.html — staged (AM), has both panel redesign + case list fix
-- CHANGELOG.md — staged (AM)
-- Run `git commit` before session end
+### ⚠️ Pending merge to production
+- All four feature commits above are on the sandbox branch.
+- Awaiting Saeed's explicit approval before merge to C:\JeffLocal\dashboard\.
 
 ### All security/quality fixes (Phase 1+2+3) -- Lead Agent endorsed 2026-06-08
 1. jefflocal_staff_id cookie auth bypass -- REMOVED
@@ -181,8 +171,8 @@ C:\JeffLocal\config\model_monitoring.json
 ```
 Repo:    https://github.com/JeffMedAI/tests
 Branch:  sandbox
-Latest:  c2cd6c2 memory: retroactive session logs 2026-06-10 and 2026-06-11 — reconstructed from git history
-Pushed to origin: yes (2026-06-11 session)
+Latest:  c230e91 refine: review gate — custom checkbox, amber/green transition
+Pushed to origin: yes (2026-06-12 session)
 ```
 
 ---
