@@ -1,6 +1,6 @@
 ﻿# PROJECT MEMORY â€” JeffLocal
 # READ THIS FIRST at every session start, before doing anything else.
-# Last updated: 2026-06-12 (auto-updated 18:00 — refreshed after feature commits)
+# Last updated: 2026-06-16 (auto-updated 18:00)
 # Maintained by: Claude (update at end of every session)
 
 ---
@@ -75,7 +75,7 @@ strategy | Docs, reports, governance, marketing
 
 ---
 
-## CURRENT STATUS -- 2026-06-12
+## CURRENT STATUS -- 2026-06-16
 
 ### What is working
 - Production dashboard LIVE at dashboard.app-avamed.uk (port 8765)
@@ -171,8 +171,8 @@ C:\JeffLocal\config\model_monitoring.json
 ```
 Repo:    https://github.com/JeffMedAI/tests
 Branch:  sandbox
-Latest:  c230e91 refine: review gate — custom checkbox, amber/green transition
-Pushed to origin: yes (2026-06-12 session)
+Latest:  5b1650f chore: graphify integration, sandbox decommission, dual daily briefs
+Pushed to origin: yes (2026-06-16 session)
 ```
 
 ---
@@ -246,3 +246,11 @@ Monitoring:   Watchdog (restarts services if down, checks every 60s)
 
 
 
+
+
+
+
+
+
+
+    
