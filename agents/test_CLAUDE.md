@@ -79,3 +79,15 @@ If any of these are not true, the work comes back. Every time. No exceptions.
 - Sandbox: `C:\JeffLocal\sandbox\dashboard\` — port 5000 — always test here
 - Synthetic patient data only — never use real patient names, NHS numbers, or DOBs in fixtures
 - Test results should be reportable to Saeed in plain English (e.g. "149 tests passed, 0 failed")
+
+---
+
+## CODEBASE NAVIGATION — GRAPHIFY (mandatory)
+
+When starting or working on any task that touches code, query the knowledge graph BEFORE reading or searching source files. It returns a small, scoped answer instead of you grepping or reading whole files.
+
+- Starting a task / exploring code: `graphify query "<your question>"`
+- Understanding one function or symbol and what connects to it: `graphify explain "<name>"`
+- Tracing how two parts connect: `graphify path "<A>" "<B>"`
+
+Only open raw files after graphify has oriented you, or when you need to edit or debug specific lines. After you change code, run `graphify update .` to keep the graph current (AST-only, no API cost). This applies to any subagent you dispatch — include the same instruction in their brief.

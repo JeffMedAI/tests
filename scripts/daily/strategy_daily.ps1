@@ -1,31 +1,50 @@
-# strategy_daily.ps1
-# JeffLocal - Strategy Agent Daily Report
-# Schedule: Windows Task Scheduler, daily at 07:00
-# Label: "JeffLocal - Strategy Agent Daily Report"
+﻿# strategy_daily.ps1
+# JeffLocal - Strategy Agent Daily Brief (plain English for Saeed)
 #
-# What this script does:
-#   1. Reads all session logs from last 24 hours (docs\sessions\)
+# TWO scheduled runs (same script, different -Mode):
+#   -Mode Morning  -> 07:00  "MORNING BRIEF"  (look ahead: yesterday recap + today's plan)
+#   -Mode Evening  -> 19:00  "EVENING BRIEF"  (session close: what we did today + handover)
+#
+# What this script does (both modes):
+#   1. Reads session logs from last 24h (docs\sessions\). If none, falls back to
+#      the most recent log (any age) so the brief is NEVER empty.
 #   2. Reads git log for last 24 hours
 #   3. Checks document freshness
-#   4. Checks document freshness
-#   5. STATE VERIFICATION: compares PROJECT_MEMORY current status vs session logs
+#   4. STATE VERIFICATION: compares PROJECT_MEMORY current status vs session logs
 #      — extracts pending/blocked items from memory
 #      — checks for drift (memory items with no recent log activity)
 #      — appends STATE VERIFICATION section to report
-#   6. Updates PROJECT_MEMORY.md current status section
-#   7. Generates daily briefing: what we did / plan today / blockers
-#   8. Saves report to docs\reports\{date}.md
-#   9. Commits and pushes to git
+#   5. Updates PROJECT_MEMORY.md current status section
+#   6. Generates the brief in simple English (caveman style: short, plain, no jargon)
+#   7. Saves report to docs\reports\{date}.md (evening run suffixes -evening)
+#   8. Commits and pushes to git
+#   9. Sends the brief to Saeed via WhatsApp
 #
-# Last updated: 2026-05-29
+# Last updated: 2026-06-16
 
 param(
+    [ValidateSet('Morning','Evening')]
+    [string]$Mode        = 'Morning',
+    [switch]$DryRun,
     [string]$RepoRoot    = "C:\JeffLocal",
     [string]$ReportsDir  = "C:\JeffLocal\docs\reports",
     [string]$SessionsDir = "C:\JeffLocal\docs\sessions",
     [string]$ProjectDocs = "C:\JeffLocal\docs\project_documents",
     [string]$MemoryFile  = "C:\JeffLocal\PROJECT_MEMORY.md"
 )
+
+# ── Mode-dependent labels ─────────────────────────────────────────────────────
+if ($Mode -eq 'Evening') {
+    $BriefTitle = "EVENING BRIEF (session close)"
+    $BriefClock = "19:00"
+    $DidLabel   = "WHAT WE DID TODAY"
+    $NextLabel  = "WHAT IS NEXT (tomorrow)"
+} else {
+    $BriefTitle = "MORNING BRIEF"
+    $BriefClock = "07:00"
+    $DidLabel   = "WHAT WE DID YESTERDAY"
+    $NextLabel  = "WHAT WE ARE DOING TODAY"
+}
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
@@ -67,6 +86,28 @@ if (Test-Path $SessionsDir) {
     }
 }
 Write-Log "Found $($SessionSummaries.Count) session log(s) from last 24h"
+
+# ── 1b. Fallback: if no logs in last 24h, use the most recent one (any age) ───
+# Guarantees the brief is NEVER empty. PROJECT_MEMORY is still read below as a
+# second source. The "session logs not found" dead-end must never happen.
+$UsedFallbackLog = $false
+if ($SessionSummaries.Count -eq 0 -and (Test-Path $SessionsDir)) {
+    $MostRecent = Get-ChildItem -Path $SessionsDir -Filter "*.md" |
+        Where-Object { $_.Name -notlike "SESSION_TEMPLATE*" } |
+        Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    if ($MostRecent) {
+        $UsedFallbackLog = $true
+        $content = Get-Content $MostRecent.FullName -Raw -ErrorAction SilentlyContinue
+        $SessionSummaries += [PSCustomObject]@{
+            File    = $MostRecent.Name
+            Age     = [math]::Round(((Get-Date) - $MostRecent.LastWriteTime).TotalHours, 1)
+            Content = $content
+        }
+        Write-Log "No logs in last 24h — fell back to most recent: $($MostRecent.Name)"
+    } else {
+        Write-Log "WARNING: docs\sessions\ has no session logs at all. Session-close protocol was skipped."
+    }
+}
 
 # ── 2. Extract sections from session logs ────────────────────────────────────
 $WhatWeDid = @(); $Blockers = @(); $Approvals = @(); $NextTasks = @()
@@ -209,16 +250,20 @@ Write-Log "State verification complete. Memory pending items: $($MemoryPendingIt
 Write-Log "Updating PROJECT_MEMORY.md..."
 if (Test-Path $MemoryFile) {
     $memory = Get-Content $MemoryFile -Raw
-    $memory = $memory -replace "# Last updated: .+", "# Last updated: $Today (auto-updated 07:00)"
+    $memory = $memory -replace "# Last updated: .+", "# Last updated: $Today (auto-updated $BriefClock)"
     if ($LatestCommit -ne "unknown") {
         $memory = $memory -replace "Latest:\s+.+", "Latest:  $LatestCommit"
     }
-    Set-Content -Path $MemoryFile -Value $memory -Encoding UTF8
-    Write-Log "PROJECT_MEMORY.md updated"
+    if ($DryRun) {
+        Write-Log "DryRun: skipped PROJECT_MEMORY.md write"
+    } else {
+        Set-Content -Path $MemoryFile -Value $memory -Encoding UTF8
+        Write-Log "PROJECT_MEMORY.md updated"
+    }
 }
 
 # ── 7. Build daily briefing ───────────────────────────────────────────────────
-$DidSection = if ($WhatWeDid.Count -gt 0) { ($WhatWeDid | Select-Object -First 8 | ForEach-Object { "- $_" }) -join "`n" } else { "- No session logs found for last 24h. Check docs\sessions\." }
+$DidSection = if ($WhatWeDid.Count -gt 0) { ($WhatWeDid | Select-Object -First 8 | ForEach-Object { "- $_" }) -join "`n" } else { "- No clear 'what we did' lines in the latest session note. See PROJECT_MEMORY.md current status below." }
 $BlockerSection = if ($Blockers.Count -gt 0) { ($Blockers | Select-Object -Unique | ForEach-Object { "- $_" }) -join "`n" } else { "- None logged." }
 $ApprovalSection = if ($Approvals.Count -gt 0) { ($Approvals | Select-Object -Unique | ForEach-Object { "- [ ] $_" }) -join "`n" } else { "- None outstanding." }
 $NextSection = if ($NextTasks.Count -gt 0) { ($NextTasks | Select-Object -First 5 | ForEach-Object { "- $_" }) -join "`n" } else { "- See PROJECT_MEMORY.md open tasks." }
@@ -226,65 +271,71 @@ $GitSection = if ($GitLog -is [array]) { ($GitLog | Select-Object -First 10) -jo
 $StaleSection = if ($StaleDocs.Count -gt 0) { ($StaleDocs | ForEach-Object { "- $_" }) -join "`n" } else { "- All documents current." }
 $SessionFiles = if ($SessionSummaries.Count -gt 0) { ($SessionSummaries | ForEach-Object { "- $($_.File) ($($_.Age)h ago)" }) -join "`n" } else { "- None found." }
 
-$Report = @"
-MORNING BRIEF — $Today — 07:00
+$FallbackNote = if ($UsedFallbackLog) { "`n(Heads up: no new session note was written today. This brief uses the most recent note plus project memory.)`n" } else { "" }
 
+$Report = @"
+$BriefTitle — $Today — $BriefClock
+$FallbackNote
 ---
 
-YESTERDAY
+$DidLabel
 $DidSection
 
 ---
 
-TODAY
+$NextLabel
 $NextSection
 
 ---
 
-BLOCKED
+WHAT IS BLOCKING US
 $BlockerSection
 
 ---
 
-YOUR CALL (approvals needed)
+WHAT NEEDS YOUR OK (Saeed)
 $ApprovalSection
 
 ---
 
-GIT (last 24h)
+CODE CHANGES TODAY (git)
 $GitSection
 
 ---
 
-DOCUMENT HEALTH
+DOCS THAT NEED A REFRESH
 $StaleSection
 $StateVerificationSection
 
 ---
 
-Full memory: PROJECT_MEMORY.md | Session logs: docs\sessions\
+Want more detail? Full notes: PROJECT_MEMORY.md  |  Session notes: docs\sessions\
 "@
 
 # ── 8. Save report ────────────────────────────────────────────────────────────
 if (-not (Test-Path $ReportsDir)) { New-Item -ItemType Directory -Path $ReportsDir -Force | Out-Null }
-$ReportPath = "$ReportsDir\$Today.md"
+$ReportPath = if ($Mode -eq 'Evening') { "$ReportsDir\$Today-evening.md" } else { "$ReportsDir\$Today.md" }
 Set-Content -Path $ReportPath -Value $Report -Encoding UTF8
 Write-Log "Report saved: $ReportPath"
 
 # ── 9. Commit + push ──────────────────────────────────────────────────────────
-Write-Log "Committing to git..."
-Push-Location $RepoRoot
-try {
-    git config user.email "215987900+Avamedio@users.noreply.github.com"
-    git config user.name "Saeed"
-    git add PROJECT_MEMORY.md "docs\reports\$Today.md" 2>&1 | Out-Null
-    git commit -m "memory: daily auto-update $Today 07:00" 2>&1 | Out-Null
-    git push origin HEAD 2>&1 | Out-Null
-    Write-Log "Git push complete"
-} catch {
-    Write-Log "WARNING: Git push failed - $_"
+if ($DryRun) {
+    Write-Log "DryRun: skipped git commit/push"
+} else {
+    Write-Log "Committing to git..."
+    Push-Location $RepoRoot
+    try {
+        git config user.email "215987900+Avamedio@users.noreply.github.com"
+        git config user.name "Saeed"
+        git add PROJECT_MEMORY.md $ReportPath 2>&1 | Out-Null
+        git commit -m "memory: $($Mode.ToLower()) brief $Today $BriefClock" 2>&1 | Out-Null
+        git push origin HEAD 2>&1 | Out-Null
+        Write-Log "Git push complete"
+    } catch {
+        Write-Log "WARNING: Git push failed - $_"
+    }
+    Pop-Location
 }
-Pop-Location
 
 # ── 10. Write last_run summary ────────────────────────────────────────────────
 $Summary = "COMPLETE | Sessions: $($SessionSummaries.Count) | Stale docs: $($StaleDocs.Count) | Report: $ReportPath"
@@ -293,15 +344,19 @@ Set-Content -Path $LogFile -Value "[$Today $NowUTC UTC] strategy_daily $Summary"
 Write-Host "Done. Report: $ReportPath" -ForegroundColor Green
 
 # ── 11. Send report via WhatsApp ──────────────────────────────────────────────
-Write-Log "Sending report via WhatsApp..."
-$PythonScript = "$RepoRoot\scripts\daily\send_whatsapp.py"
-if (Test-Path $PythonScript) {
-    try {
-        $result = python $PythonScript $ReportPath 2>&1
-        Write-Log "WhatsApp send result: $result"
-    } catch {
-        Write-Log "WARNING: WhatsApp send failed - $_"
-    }
+if ($DryRun) {
+    Write-Log "DryRun: skipped WhatsApp send"
 } else {
-    Write-Log "WARNING: WhatsApp sender not found at $PythonScript"
+    Write-Log "Sending report via WhatsApp..."
+    $PythonScript = "$RepoRoot\scripts\daily\send_whatsapp.py"
+    if (Test-Path $PythonScript) {
+        try {
+            $result = python $PythonScript $ReportPath 2>&1
+            Write-Log "WhatsApp send result: $result"
+        } catch {
+            Write-Log "WARNING: WhatsApp send failed - $_"
+        }
+    } else {
+        Write-Log "WARNING: WhatsApp sender not found at $PythonScript"
+    }
 }

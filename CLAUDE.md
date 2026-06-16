@@ -235,11 +235,14 @@ Thresholds to be reviewed after first revenue.
 
 **WhatsApp and external messaging:** Before sending any external message (WhatsApp, email, SMS), locate the recipient by name or number search. Verify the chat header shows the correct recipient. Never navigate by visual list position or coordinate. This rule exists because of a real incident on 2026-06-01 where an internal briefing was sent to the wrong WhatsApp group.
 
-**Daily WhatsApp briefing to Saeed:** Sent automatically at 07:00 every day AND on demand when Saeed requests it. Recipient: 07440 333938 (Saeed's personal number — always verify before sending). Format defined in `REPORTING.md`. Content:
-1. What we did yesterday
-2. What we are doing today
-3. What is blocking us
-4. Approvals or tasks pending from Saeed
+**Daily WhatsApp briefings to Saeed — TWO per day.** Both are produced by `scripts\daily\strategy_daily.ps1` (one script, two modes), saved to `docs\reports\`, committed, and sent to 07440 333938 (Saeed's personal number — always verify before sending). Format in `REPORTING.md`. Both are written in simple, plain English (caveman style — short, no jargon).
+
+- **Morning brief — 07:00** (`-Mode Morning`, looks ahead): 1) what we did yesterday, 2) what we are doing today, 3) what is blocking us, 4) approvals/tasks pending from Saeed.
+- **Evening brief — 19:00** (`-Mode Evening`, session close, looks back): 1) what we did today, 2) what is next (tomorrow), 3) blockers, 4) approvals pending. This is part of the session-close routine.
+
+Scheduled tasks: `JeffLocal - Strategy Agent Daily Report` (07:00) and `JeffLocal - Evening Session Close Brief` (19:00).
+
+**READ-ALL-LOGS RULE (mandatory before writing ANY brief — manual or automated review).** Before composing or reviewing a brief, the agent MUST read ALL of: every session log in `docs\sessions\` (not just the latest), `PROJECT_MEMORY.md` current status, and `git log` for the period. Never write a brief from a single log or from memory alone. The brief script enforces a safety net — if no session log exists for the last 24h it falls back to the most recent log so a brief is NEVER empty — but the agent must still read the full set when reviewing or hand-writing one.
 
 **Weekly report:** Every Monday morning, consolidation of the previous week's daily reports plus a weekly recap. Format defined in `REPORTING.md`. Sent to same number.
 
@@ -277,11 +280,13 @@ Claude maintains and updates project memory autonomously at every session end.
 ## SESSION END PROTOCOL
 
 Before closing, do ALL of the following:
-1. Write session summary to: C:\JeffLocal\docs\sessions\YYYY-MM-DD-HHMM.md (use SESSION_TEMPLATE.md)
+1. **Write a session log — NON-NEGOTIABLE, EVERY session.** Save to `C:\JeffLocal\docs\sessions\YYYY-MM-DD-HHMM.md` using `SESSION_TEMPLATE.md`. This is a hard gate: a session is NOT closed until the log exists. The log MUST use the exact section headings the brief parser reads — `## WHAT WE DID`, `## WHAT TO DO NEXT`, `## BLOCKERS`, `## PENDING SAEED` — so the daily briefs pick the content up. No session ends without this file. This is what prevents the "session logs not found" failure in the daily brief.
 2. Update PROJECT_MEMORY.md: current status, pending approvals, open tasks, git state (latest commit hash)
 3. Commit: `git add PROJECT_MEMORY.md docs\sessions\ && git commit -m "memory: session summary YYYY-MM-DD"`
 4. Push: `git push origin HEAD`
 5. Tell Saeed: "Session saved. Memory updated. Ready to pick up tomorrow."
+
+**Lead Agent verifies the session log exists before declaring the session closed.** If it is missing, the session is not closed — write it first.
 
 ---
 

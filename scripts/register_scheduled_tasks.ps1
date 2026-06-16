@@ -84,11 +84,12 @@ Write-Host "Registered: JeffLocal - Service Watchdog (continuous, starts at boot
 # --- Task 4: GDPR weekly purge (Sunday 03:00) ---
 # Database Agent — 2026-05-31
 # Security Agent review: docs\compliance\security_review_gdpr_purge_2026-05-30.md
-# Purges patient PII from sandbox SQLite older than 90 days.
-# Runs --dry-run in sandbox; remove flag for production deployment (requires Saeed approval).
+# Purges patient PII from the PRODUCTION SQLite older than 90 days.
+# Sandbox decommissioned 2026-06-07 — path corrected to production DB to match
+# the live registered task (JeffLocal-GDPRPurge). Do NOT point this at sandbox.
 $action4 = New-ScheduledTaskAction `
-    -Execute "python.exe" `
-    -Argument "C:\JeffLocal\scripts\daily\gdpr_purge.py --db C:\JeffLocal\sandbox\dashboard\data\dashboard.sqlite --days 90" `
+    -Execute "C:\JeffLocal\dashboard\.venv\Scripts\python.exe" `
+    -Argument "C:\JeffLocal\scripts\daily\gdpr_purge.py --db C:\JeffLocal\dashboard\data\dashboard.sqlite --days 90" `
     -WorkingDirectory "C:\JeffLocal\scripts\daily"
 
 $trigger4 = New-ScheduledTaskTrigger -Weekly -WeeksInterval 1 -DaysOfWeek Sunday -At "03:00"
