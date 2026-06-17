@@ -1,6 +1,6 @@
 ﻿# PROJECT MEMORY â€” JeffLocal
 # READ THIS FIRST at every session start, before doing anything else.
-# Last updated: 2026-06-16 (auto-updated 18:00)
+# Last updated: 2026-06-17 (auto-updated 07:00)
 # Maintained by: Claude (update at end of every session)
 
 ---
@@ -75,7 +75,7 @@ strategy | Docs, reports, governance, marketing
 
 ---
 
-## CURRENT STATUS -- 2026-06-16
+## CURRENT STATUS -- 2026-06-17
 
 ### What is working
 - Production dashboard LIVE at dashboard.app-avamed.uk (port 8765)
@@ -90,15 +90,19 @@ strategy | Docs, reports, governance, marketing
 - **Clarity design sprint LIVE (approved Saeed 2026-06-10)**: navy/teal brand, KPI strip, sparkline, command palette, patient hover card, urgent pulse, pipeline dot
 - 4 new analytics endpoints added to main.py (all Security Agent cleared): /api/metrics/kpi, /api/metrics/sparkline, /api/metrics/pipeline, /api/metrics/alerts
 - UX audit: 4 minor items queued for next sprint (aria-live regions, focus rings, cursor-pointer on cards, sparkline alt text)
+- **test_render_pages.py fully passing (2026-06-17)**: 46/46 tests pass after rewrite to make_case()/upsert_case()
 
-### Changes this session (2026-06-12) -- sandbox branch, PENDING Saeed approval to merge
+### Changes this session (2026-06-17) -- sandbox branch, PENDING Saeed approval to merge
+1. **Test suite rewrite** (commit fe0fbbd): 23 failing render-page tests rewritten to use make_case()/upsert_case(). Added readonly_client fixture to conftest.py. 46/46 pass.
+
+### Still pending from prior sessions -- sandbox branch, PENDING Saeed approval to merge
 1. **Panel layout fix** (commit a7c21d4): Compact action bar; full scrollable body in detail panel.
 2. **Role-based sidebar redesign** (commit c00dc8c): Reception and Manager views separated in the left sidebar.
 3. **Review confirmation checkbox** (commit 0c5f189): Added to detail panel — receptionist must tick before marking a case as reviewed.
 4. **Review gate refined** (commit c230e91): Custom checkbox design with amber (unchecked) → green (checked) visual transition.
 
 ### ⚠️ Pending merge to production
-- All four feature commits above are on the sandbox branch.
+- All five feature commits above are on the sandbox branch.
 - Awaiting Saeed's explicit approval before merge to C:\JeffLocal\dashboard\.
 
 ### All security/quality fixes (Phase 1+2+3) -- Lead Agent endorsed 2026-06-08
@@ -171,7 +175,7 @@ C:\JeffLocal\config\model_monitoring.json
 ```
 Repo:    https://github.com/JeffMedAI/tests
 Branch:  sandbox
-Latest:  5b1650f chore: graphify integration, sandbox decommission, dual daily briefs
+Latest:  fe0fbbd test: rewrite 23 failing render-page tests to use make_case()
 Pushed to origin: yes (2026-06-16 session)
 ```
 
@@ -253,4 +257,4 @@ Monitoring:   Watchdog (restarts services if down, checks every 60s)
 
 
 
-    
+
