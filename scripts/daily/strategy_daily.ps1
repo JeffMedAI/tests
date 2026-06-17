@@ -76,7 +76,7 @@ if (Test-Path $SessionsDir) {
     foreach ($s in $AllSessions) {
         $Age = ((Get-Date) - $s.LastWriteTime).TotalHours
         if ($Age -le 24) {
-            $content = Get-Content $s.FullName -Raw -ErrorAction SilentlyContinue
+            $content = Get-Content $s.FullName -Raw -Encoding UTF8 -ErrorAction SilentlyContinue
             $SessionSummaries += [PSCustomObject]@{
                 File    = $s.Name
                 Age     = [math]::Round($Age, 1)
@@ -97,7 +97,7 @@ if ($SessionSummaries.Count -eq 0 -and (Test-Path $SessionsDir)) {
         Sort-Object LastWriteTime -Descending | Select-Object -First 1
     if ($MostRecent) {
         $UsedFallbackLog = $true
-        $content = Get-Content $MostRecent.FullName -Raw -ErrorAction SilentlyContinue
+        $content = Get-Content $MostRecent.FullName -Raw -Encoding UTF8 -ErrorAction SilentlyContinue
         $SessionSummaries += [PSCustomObject]@{
             File    = $MostRecent.Name
             Age     = [math]::Round(((Get-Date) - $MostRecent.LastWriteTime).TotalHours, 1)
@@ -117,18 +117,37 @@ foreach ($session in $SessionSummaries) {
     $inDid = $false; $inBlock = $false; $inApproval = $false; $inNext = $false
 
     foreach ($line in $lines) {
-        if ($line -match "^## WHAT WE DID")    { $inDid=$true; $inBlock=$false; $inApproval=$false; $inNext=$false; continue }
-        if ($line -match "^## BLOCKERS")        { $inBlock=$true; $inDid=$false; $inApproval=$false; $inNext=$false; continue }
-        if ($line -match "^## PENDING SAEED")   { $inApproval=$true; $inDid=$false; $inBlock=$false; $inNext=$false; continue }
-        if ($line -match "^## WHAT TO DO NEXT") { $inNext=$true; $inDid=$false; $inBlock=$false; $inApproval=$false; continue }
-        if ($line -match "^## ")                { $inDid=$false; $inBlock=$false; $inApproval=$false; $inNext=$false; continue }
+        # Section headers — broad matches so renamed headings still resolve
+        if ($line -match "^## WHAT WE DID")         { $inDid=$true;      $inBlock=$false; $inApproval=$false; $inNext=$false; continue }
+        if ($line -match "^## BLOCKERS")             { $inBlock=$true;    $inDid=$false;   $inApproval=$false; $inNext=$false; continue }
+        if ($line -match "^## PENDING SAEED")        { $inApproval=$true; $inDid=$false;   $inBlock=$false;   $inNext=$false; continue }
+        if ($line -match "^## OPEN TASKS")                   { $inNext=$true;     $inDid=$false; $inBlock=$false;   $inApproval=$false; continue }
+        if ($line -match "^## WHAT TO DO")           { $inNext=$true;     $inDid=$false;   $inBlock=$false;   $inApproval=$false; continue }
+        if ($line -match "^## ")                     { $inDid=$false;     $inBlock=$false; $inApproval=$false; $inNext=$false; continue }
 
         $clean = $line.Trim()
         if ($clean -and $clean -notmatch "^#" -and $clean -ne "---") {
-            if ($inDid     -and $clean -match "^\d+\.")  { $WhatWeDid += $clean -replace "^\d+\.\s*","" }
-            if ($inBlock   -and $clean -match "^-")      { $Blockers  += $clean -replace "^-\s*","" }
-            if ($inApproval -and $clean -match "^\[")    { $Approvals += $clean -replace "^\[.\]\s*","" }
-            if ($inNext    -and $clean -match "^\d+\.")  { $NextTasks += $clean -replace "^\d+\.\s*","" }
+            # Accept both numbered (1.) and bullet (-) list items for all sections
+            $isBullet   = $clean -match "^-\s+"
+            $isNumbered = $clean -match "^\d+\."
+
+            if ($inDid -and ($isNumbered -or $isBullet)) {
+                $WhatWeDid += $clean -replace "^(\d+\.\s*|-\s*\[.\]\s*|-\s*)", ""
+            }
+            if ($inBlock -and $isBullet) {
+                $Blockers += $clean -replace "^-\s*", ""
+            }
+            if ($inApproval -and ($isNumbered -or $isBullet)) {
+                # Strip leading markers: "1.", "- [ ]", "- [x]", "- ", "[ ]", "**" bold markers
+                $Approvals += $clean `
+                    -replace "^(\d+\.\s*|-\s*\[.\]\s*|-\s*|\[.\]\s*)", "" `
+                    -replace "^\*\*", "" `
+                    -replace "\*\*$", "" `
+                    -replace "\*\*", ""
+            }
+            if ($inNext -and ($isNumbered -or $isBullet)) {
+                $NextTasks += $clean -replace "^(\d+\.\s*|-\s*\[.\]\s*|-\s*)", ""
+            }
         }
     }
 }
@@ -157,7 +176,7 @@ if (Test-Path $ProjectDocs) {
 # ── 5. STATE VERIFICATION — compare PROJECT_MEMORY with session logs ─────────
 Write-Log "Running state verification..."
 
-$MemoryContent = if (Test-Path $MemoryFile) { Get-Content $MemoryFile -Raw } else { "" }
+$MemoryContent = if (Test-Path $MemoryFile) { Get-Content $MemoryFile -Raw -Encoding UTF8 } else { "" }
 
 # Extract CURRENT STATUS section from PROJECT_MEMORY.md
 $MemoryStatus = ""
@@ -249,7 +268,7 @@ Write-Log "State verification complete. Memory pending items: $($MemoryPendingIt
 # ── 6. Update PROJECT_MEMORY.md date + git state ────────────────────────────
 Write-Log "Updating PROJECT_MEMORY.md..."
 if (Test-Path $MemoryFile) {
-    $memory = Get-Content $MemoryFile -Raw
+    $memory = Get-Content $MemoryFile -Raw -Encoding UTF8
     $memory = $memory -replace "# Last updated: .+", "# Last updated: $Today (auto-updated $BriefClock)"
     if ($LatestCommit -ne "unknown") {
         $memory = $memory -replace "Latest:\s+.+", "Latest:  $LatestCommit"
@@ -271,7 +290,10 @@ $GitSection = if ($GitLog -is [array]) { ($GitLog | Select-Object -First 10) -jo
 $StaleSection = if ($StaleDocs.Count -gt 0) { ($StaleDocs | ForEach-Object { "- $_" }) -join "`n" } else { "- All documents current." }
 $SessionFiles = if ($SessionSummaries.Count -gt 0) { ($SessionSummaries | ForEach-Object { "- $($_.File) ($($_.Age)h ago)" }) -join "`n" } else { "- None found." }
 
-$FallbackNote = if ($UsedFallbackLog) { "`n(Heads up: no new session note was written today. This brief uses the most recent note plus project memory.)`n" } else { "" }
+$FallbackNote = if ($UsedFallbackLog) {
+    $FallbackAge = [math]::Round($SessionSummaries[0].Age, 0)
+    "`n(NOTE: No session log written in the last 24h. This brief uses the most recent log — $($SessionSummaries[0].File), ${FallbackAge}h ago. If no work was done, this is expected.)`n"
+} else { "" }
 
 $Report = @"
 $BriefTitle — $Today — $BriefClock

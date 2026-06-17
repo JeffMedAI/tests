@@ -1,58 +1,43 @@
 # SESSION SUMMARY — [YYYY-MM-DD HH:MM]
 # Tool: [Cowork / Claude Code / Claude.ai]
-# Duration: [approx]
 # Written by: Claude at session end
 
 ---
 
 ## WHAT WE DID THIS SESSION
 
-1. [task/action — outcome]
-2. [task/action — outcome]
-3. [task/action — outcome]
-
----
-
-## DECISIONS MADE
-
-- [decision — who approved — date]
-
----
-
-## FILES CHANGED
-
-```
-[path/to/file] — [what changed]
-```
-
----
-
-## PENDING SAEED APPROVALS (carried forward)
-
-- [ ] [item]
-
----
-
-## OPEN TASKS (top priority, carried forward)
-
-- [ ] [task — agent — priority]
+- [what was done — keep to one line per item]
+- [second item]
+- [third item]
 
 ---
 
 ## BLOCKERS
 
-- [blocker description] — [what is needed to unblock]
+- [blocker — what is needed to unblock]
+
+---
+
+## PENDING SAEED APPROVALS
+
+- [ ] [item needing Saeed's sign-off]
+
+---
+
+## OPEN TASKS (top priority, carry forward)
+
+- [ ] [task — which agent — priority]
 
 ---
 
 ## WHAT TO DO NEXT SESSION
 
-1. [first action]
-2. [second action]
+- [first action]
+- [second action]
 
 ---
 
-## GIT STATE AT END OF SESSION
+## GIT STATE
 
 Latest commit: [hash] — [message]
 Branch: sandbox
