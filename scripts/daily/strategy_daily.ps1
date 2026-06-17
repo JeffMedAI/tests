@@ -243,24 +243,16 @@ $StateVerificationSection = @"
 
 ---
 
-## STATE VERIFICATION
+## MEMORY CHECK
 
-*Cross-check: PROJECT_MEMORY current status vs session logs (last 24h)*
-
-### What PROJECT_MEMORY says is pending / blocked
-
+Pending/blocked in PROJECT_MEMORY:
 $MemoryPendingText
 
-### Last 5 commits (cross-reference anchor)
-
+Last 5 commits:
 $CommitText
 
-### Drift analysis
-
+Drift (memory items with no session log match):
 $DriftText
-
-*Drift = items marked pending/blocked in PROJECT_MEMORY with no matching session log activity in the last 24h.*
-*If drift items are present, they may need manual review — either genuinely stale or session log missing.*
 "@
 
 Write-Log "State verification complete. Memory pending items: $($MemoryPendingItems.Count). Drift items: $($DriftItems.Count)."
@@ -282,17 +274,16 @@ if (Test-Path $MemoryFile) {
 }
 
 # ── 7. Build daily briefing ───────────────────────────────────────────────────
-$DidSection = if ($WhatWeDid.Count -gt 0) { ($WhatWeDid | Select-Object -First 8 | ForEach-Object { "- $_" }) -join "`n" } else { "- No clear 'what we did' lines in the latest session note. See PROJECT_MEMORY.md current status below." }
-$BlockerSection = if ($Blockers.Count -gt 0) { ($Blockers | Select-Object -Unique | ForEach-Object { "- $_" }) -join "`n" } else { "- None logged." }
-$ApprovalSection = if ($Approvals.Count -gt 0) { ($Approvals | Select-Object -Unique | ForEach-Object { "- [ ] $_" }) -join "`n" } else { "- None outstanding." }
-$NextSection = if ($NextTasks.Count -gt 0) { ($NextTasks | Select-Object -First 5 | ForEach-Object { "- $_" }) -join "`n" } else { "- See PROJECT_MEMORY.md open tasks." }
-$GitSection = if ($GitLog -is [array]) { ($GitLog | Select-Object -First 10) -join "`n" } else { $GitLog }
-$StaleSection = if ($StaleDocs.Count -gt 0) { ($StaleDocs | ForEach-Object { "- $_" }) -join "`n" } else { "- All documents current." }
-$SessionFiles = if ($SessionSummaries.Count -gt 0) { ($SessionSummaries | ForEach-Object { "- $($_.File) ($($_.Age)h ago)" }) -join "`n" } else { "- None found." }
+$DidSection      = if ($WhatWeDid.Count -gt 0) { ($WhatWeDid | Select-Object -First 8 | ForEach-Object { "- $_" }) -join "`n" } else { "- No session log in last 24h. Check PROJECT_MEMORY.md." }
+$BlockerSection  = if ($Blockers.Count -gt 0)  { ($Blockers  | Select-Object -Unique  | ForEach-Object { "- $_" }) -join "`n" } else { "- None." }
+$ApprovalSection = if ($Approvals.Count -gt 0) { ($Approvals | Select-Object -Unique  | ForEach-Object { "- [ ] $_" }) -join "`n" } else { "- None." }
+$NextSection     = if ($NextTasks.Count -gt 0) { ($NextTasks | Select-Object -First 5  | ForEach-Object { "- $_" }) -join "`n" } else { "- Nothing queued. Check PROJECT_MEMORY.md." }
+$GitSection      = if ($GitLog -is [array])    { ($GitLog    | Select-Object -First 10) -join "`n" } else { $GitLog }
+$StaleSection    = if ($StaleDocs.Count -gt 0) { ($StaleDocs | ForEach-Object { "- $_" }) -join "`n" } else { "- All docs current." }
 
 $FallbackNote = if ($UsedFallbackLog) {
     $FallbackAge = [math]::Round($SessionSummaries[0].Age, 0)
-    "`n(NOTE: No session log written in the last 24h. This brief uses the most recent log — $($SessionSummaries[0].File), ${FallbackAge}h ago. If no work was done, this is expected.)`n"
+    "`n⚠ No session log past 24h. Using last known: $($SessionSummaries[0].File) (${FallbackAge}h ago). Normal if weekend / no work done.`n"
 } else { "" }
 
 $Report = @"
@@ -310,28 +301,28 @@ $NextSection
 
 ---
 
-WHAT IS BLOCKING US
+BLOCKERS
 $BlockerSection
 
 ---
 
-WHAT NEEDS YOUR OK (Saeed)
+NEEDS YOUR OK
 $ApprovalSection
 
 ---
 
-CODE CHANGES TODAY (git)
+GIT
 $GitSection
 
 ---
 
-DOCS THAT NEED A REFRESH
+STALE DOCS
 $StaleSection
 $StateVerificationSection
 
 ---
 
-Want more detail? Full notes: PROJECT_MEMORY.md  |  Session notes: docs\sessions\
+Detail: PROJECT_MEMORY.md | Logs: docs\sessions\
 "@
 
 # ── 8. Save report ────────────────────────────────────────────────────────────

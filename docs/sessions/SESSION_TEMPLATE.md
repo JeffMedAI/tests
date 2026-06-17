@@ -1,6 +1,10 @@
 # SESSION SUMMARY — [YYYY-MM-DD HH:MM]
 # Tool: [Cowork / Claude Code / Claude.ai]
 # Written by: Claude at session end
+#
+# WRITING RULE: caveman style. Drop filler words. Fragments OK. One line per item.
+# BAD:  "We successfully implemented the feature that allows users to..."
+# GOOD: "Added review checkbox to detail panel. Amber→green on confirm."
 
 ---
 

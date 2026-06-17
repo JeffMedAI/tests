@@ -182,6 +182,35 @@ If any pipeline code allows LLM output to set these fields, that is a critical b
 
 ---
 
+## TESTING PROTOCOL (mandatory — when Saeed says "run tests")
+
+The full recipe lives in `C:\JeffLocal\TESTING.md`. Read it before every test run. It is the
+reusable template for building and running test calls. The agreed standing rules:
+
+1. **Always run the real end-to-end pipeline.** Test calls enter through the live n8n webhook
+   (`http://localhost:5678/webhook-test/jefflocal-test-intake`, encrypted JEIE-1 envelopes via
+   `tests/send_gp_demo_n8n_webhook_calls.py`), Ollama/Gemma runs **live**, and the case must reach
+   the dashboard the same way a real call does. No stage is bypassed. If a stage must be shortcut,
+   say so in the run report and get Saeed's sign-off.
+2. **Cover every case the dashboard can show.** Build a fresh batch from the TEST CALL MATRIX in
+   TESTING.md — all 8 request types, all verification states, all priority bands, all 6 worklist
+   filters, plus difficult callers (third-party, angry, confused/elderly, non-native, child) and
+   bad transcripts (truncated, garbled ASR, near-silent, long-ramble, mixed-language).
+3. **Resolve every case by simulating a real reception worker** through the live dashboard
+   endpoints (`/case/<id>/update`, `/case/<id>/quick_action`). Assert locked fields cannot change,
+   staff fields persist, and red-flag/identity cases refuse to resolve without outcome notes.
+4. **The core safety invariant is asserted on every run:** the LLM never sets
+   verification_status, safe_to_queue, priority, or any patient-identity field — those are
+   deterministic-code-only. Any drift is a critical STOP; escalate to Saeed.
+5. **Independent monitoring agents run concurrently** (pipeline, safety, dashboard/UX,
+   data-integrity), each reporting issues and improvement suggestions.
+6. **One plain-English report per run** is written to `docs/reports/test-run-<YYYYMMDD-HHMMSS>.md`
+   and committed at session close.
+
+When the matrix or pipeline changes (new pathway, new filter), update TESTING.md in the same run.
+
+---
+
 ## COMPLIANCE
 
 Active obligations:
@@ -281,6 +310,7 @@ Claude maintains and updates project memory autonomously at every session end.
 
 Before closing, do ALL of the following:
 1. **Write a session log — NON-NEGOTIABLE, EVERY session.** Save to `C:\JeffLocal\docs\sessions\YYYY-MM-DD-HHMM.md` using `SESSION_TEMPLATE.md`. This is a hard gate: a session is NOT closed until the log exists. The log MUST use the exact section headings the brief parser reads — `## WHAT WE DID`, `## WHAT TO DO NEXT`, `## BLOCKERS`, `## PENDING SAEED` — so the daily briefs pick the content up. No session ends without this file. This is what prevents the "session logs not found" failure in the daily brief.
+   **Write all session log entries in caveman style** — no filler, no hedging, fragments OK. One line per item. Bad: "We successfully implemented the feature that allows...". Good: "Added review checkbox. Amber→green on confirm."
 2. Update PROJECT_MEMORY.md: current status, pending approvals, open tasks, git state (latest commit hash)
 3. Commit: `git add PROJECT_MEMORY.md docs\sessions\ && git commit -m "memory: session summary YYYY-MM-DD"`
 4. Push: `git push origin HEAD`
