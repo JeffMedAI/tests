@@ -1,187 +1,209 @@
 {% extends "base.html" %}
-{% block title %}{% if show_requests %}Requests{% else %}Dashboard{% endif %} - JeffLocal{% endblock %}
+{% block title %}{% if show_requests %}Requests{% else %}Dashboard{% endif %} — Avamed{% endblock %}
 
-{% block topbar_search %}
-{% if show_requests %}
-<form class="topbar-search-form" action="/requests" method="get">
-  <input type="hidden" name="filter" value="{{ active_filter|default('open') }}">
-  <input type="hidden" name="request_type" value="{{ active_request_type|default('') }}">
-  <input class="topbar-search" type="search" name="q" value="{{ search_query|default('') }}"
-         placeholder="Search patients, NHS, DOB, call ID…" aria-label="Search requests" autocomplete="off">
-</form>
-{% endif %}
+{% block sidebar_header %}
+<span class="sidebar-hd-title">Analytics</span>
+<button class="sidebar-toggle" id="sidebar-toggle-btn" aria-label="Toggle sidebar" title="Collapse sidebar">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+  <span class="sidebar-alert-badge{% if not urgent_attention.red_flags or urgent_attention.red_flags == 0 %} is-hidden{% endif %}"
+        id="sidebar-alert-badge"
+        aria-label="{{ urgent_attention.red_flags }} critical issue{{ 's' if urgent_attention.red_flags != 1 else '' }}"
+        title="{{ urgent_attention.red_flags }} critical issue{{ 's' if urgent_attention.red_flags != 1 else '' }} — click to expand sidebar"
+  >{{ urgent_attention.red_flags if urgent_attention.red_flags else '' }}</span>
+</button>
+{% endblock %}
+
+{% block sidebar_content %}
+
+{#── Build filter URL lookups (robust — by value, not index) ─── #}
+{% set ns = namespace(
+  open_url='/requests?filter=open',
+  red_url='/requests?filter=urgent_red_flags',
+  review_url='/requests?filter=needs_review',
+  identity_url='/requests?filter=identity_issues',
+  resolved_url='/requests?filter=resolved_today'
+) %}
+{% for lnk in filter_links %}
+  {% if lnk.value == 'open' %}{% set ns.open_url = lnk.url %}{% endif %}
+  {% if lnk.value == 'urgent_red_flags' %}{% set ns.red_url = lnk.url %}{% endif %}
+  {% if lnk.value == 'needs_review' %}{% set ns.review_url = lnk.url %}{% endif %}
+  {% if lnk.value == 'identity_issues' %}{% set ns.identity_url = lnk.url %}{% endif %}
+  {% if lnk.value == 'resolved_today' %}{% set ns.resolved_url = lnk.url %}{% endif %}
+{% endfor %}
+
+{#── Period filter ────────────────────────────────────────────── #}
+<div class="sidebar-period">
+  <div class="period-tabs">
+    <a href="/requests?range=today" class="period-tab {% if active_date_range == 'today' %}active{% endif %}">Today</a>
+    <a href="/requests?range=week"  class="period-tab {% if active_date_range == 'week'  %}active{% endif %}">Week</a>
+    <a href="/requests?range=all"   class="period-tab {% if active_date_range == 'all'   %}active{% endif %}">All</a>
+  </div>
+</div>
+
+{#── Role mode toggle ─────────────────────────────────────────── #}
+<div class="sidebar-mode-toggle" id="sidebar-mode-toggle">
+  <button class="smt-btn is-active" id="smt-reception" data-mode="reception" type="button">Reception</button>
+  <button class="smt-btn" id="smt-manager" data-mode="manager" type="button">Manager</button>
+</div>
+
+<div class="sidebar-body">
+
+  {#══════════════════ RECEPTION MODE ══════════════════#}
+  <div class="sidebar-mode-panel" id="sidebar-panel-reception">
+
+    {#── Needs Attention ──#}
+    <h3 class="sidebar-section-hd sidebar-section-hd--first">Needs Attention</h3>
+    <div class="action-items">
+
+      <a class="action-item{% if urgent_attention.red_flags > 0 %} action-item--danger{% endif %}" href="{{ ns.red_url }}">
+        <span class="ai-label">Critical</span>
+        <span class="ai-value{% if urgent_attention.red_flags > 0 %} ai-value--danger{% endif %}">{{ urgent_attention.red_flags }}</span>
+      </a>
+
+      <a class="action-item{% if queue_status_card.overdue > 0 %} action-item--warn{% endif %}" href="{{ ns.open_url }}">
+        <span class="ai-label">Overdue (&gt;2h)</span>
+        <span class="ai-value{% if queue_status_card.overdue > 0 %} ai-value--warn{% endif %}">{{ queue_status_card.overdue }}</span>
+      </a>
+
+      <a class="action-item{% if urgent_attention.staff_review > 0 %} action-item--info{% endif %}" href="{{ ns.review_url }}">
+        <span class="ai-label">Review needed</span>
+        <span class="ai-value{% if urgent_attention.staff_review > 0 %} ai-value--info{% endif %}">{{ urgent_attention.staff_review }}</span>
+      </a>
+
+      <a class="action-item{% if urgent_attention.identity_checks > 0 %} action-item--slate{% endif %}" href="{{ ns.identity_url }}">
+        <span class="ai-label">Identity issue</span>
+        <span class="ai-value{% if urgent_attention.identity_checks > 0 %} ai-value--slate{% endif %}">{{ urgent_attention.identity_checks }}</span>
+      </a>
+
+    </div>
+
+    {#── Today ──#}
+    <h3 class="sidebar-section-hd">Today</h3>
+    <a class="glance-row" href="{{ ns.open_url }}">
+      <span class="gr-label">Open cases</span>
+      <span class="gr-value">{{ queue_status_card.open }}</span>
+    </a>
+    <a class="glance-row" href="{{ ns.resolved_url }}">
+      <span class="gr-label">Resolved today</span>
+      <span class="gr-value gr-value--green">{{ queue_status_card.resolved_today }}</span>
+    </a>
+    {% if peak_hour %}
+    <div class="glance-row glance-row--static">
+      <span class="gr-label">Peak hour</span>
+      <span class="gr-value gr-value--muted">{{ peak_hour }}</span>
+    </div>
+    {% endif %}
+
+    {#── Team (simplified) ──#}
+    <h3 class="sidebar-section-hd">Team</h3>
+    <div id="staff-simple-list">
+      {% for su in staff_workload_list|default([]) %}
+      <div class="staff-simple-row">
+        <span class="ssr-name" title="{{ su.name }}">{{ su.name }}</span>
+        <span class="ssr-open{% if su.open > 3 %} ssr-open--warn{% endif %}">{{ su.open }}</span>
+      </div>
+      {% else %}
+      <div class="sidebar-empty-msg">No staff assigned</div>
+      {% endfor %}
+    </div>
+
+  </div>{# /reception #}
+
+  {#══════════════════ MANAGER MODE ══════════════════#}
+  <div class="sidebar-mode-panel is-hidden" id="sidebar-panel-manager">
+
+    {#── Today's Numbers ──#}
+    <h3 class="sidebar-section-hd sidebar-section-hd--first">Today's Numbers</h3>
+    {% if call_analytics_card is defined %}
+    <div class="glance-row glance-row--static">
+      <span class="gr-label">Calls received</span>
+      <span class="gr-value">{{ call_analytics_card.total_calls }}</span>
+    </div>
+    <div class="glance-row glance-row--static">
+      <span class="gr-label">Resolved today</span>
+      <span class="gr-value gr-value--green">{{ queue_status_card.resolved_today }}</span>
+    </div>
+    {% if call_analytics_card.avg_turnaround %}
+    <div class="glance-row glance-row--static">
+      <span class="gr-label">Avg response</span>
+      <span class="gr-value">
+        {%- set hrs = call_analytics_card.avg_turnaround // 60 -%}
+        {%- if hrs > 0 -%}{{ hrs }}h {{ call_analytics_card.avg_turnaround % 60 }}m{%- else -%}{{ call_analytics_card.avg_turnaround }}m{%- endif -%}
+      </span>
+    </div>
+    {% endif %}
+    {% endif %}
+    {% if peak_hour %}
+    <div class="glance-row glance-row--static">
+      <span class="gr-label">Peak hour</span>
+      <span class="gr-value gr-value--muted">{{ peak_hour }}</span>
+    </div>
+    {% endif %}
+
+    {#── Case Types ──#}
+    <h3 class="sidebar-section-hd">Case Types</h3>
+    <div class="type-bars">
+      {% for item in request_type_breakdown %}
+      {% if item.count > 0 %}
+      <a class="type-bar-row" href="{{ item.url }}">
+        <span class="tbr-label">{{ item.label }}</span>
+        <span class="tbr-track" aria-hidden="true"><span class="tbr-fill" style="width: {{ item.width }}%"></span></span>
+        <span class="tbr-count">{{ item.count }}</span>
+      </a>
+      {% endif %}
+      {% endfor %}
+    </div>
+
+    {#── Team (full view) ──#}
+    <h3 class="sidebar-section-hd">Team</h3>
+    <div id="staff-workload-list">
+      {% for su in staff_workload_list|default([]) %}
+      <div class="staff-workload-row">
+        <span class="staff-workload-name" title="{{ su.name }}">{{ su.name }}</span>
+        <span class="staff-workload-pills">
+          <span class="swp swp-open"   title="Open">{{ su.open }}</span>
+          <span class="swp swp-active" title="In progress">{{ su.in_progress }}</span>
+          <span class="swp swp-done"   title="Resolved today">{{ su.resolved_today }}</span>
+        </span>
+      </div>
+      {% else %}
+      <div class="sidebar-empty-msg">No staff data</div>
+      {% endfor %}
+    </div>
+    {% if staff_workload_list %}
+    <div class="analytics-row sidebar-legend-row">
+      <span class="ar-label sidebar-legend-label">
+        <span class="ar-dot legend-open"></span>Open
+        <span class="ar-dot legend-active"></span>Active
+        <span class="ar-dot legend-done"></span>Done
+      </span>
+    </div>
+    {% endif %}
+
+  </div>{# /manager #}
+
+</div>{# /sidebar-body #}
+
+<script>
+(function () {
+  var stored = localStorage.getItem('sb-mode') || 'reception';
+  function switchMode(m) {
+    document.getElementById('sidebar-panel-reception').classList.toggle('is-hidden', m !== 'reception');
+    document.getElementById('sidebar-panel-manager').classList.toggle('is-hidden', m !== 'manager');
+    document.getElementById('smt-reception').classList.toggle('is-active', m === 'reception');
+    document.getElementById('smt-manager').classList.toggle('is-active', m === 'manager');
+    localStorage.setItem('sb-mode', m);
+  }
+  switchMode(stored);
+  document.getElementById('smt-reception').addEventListener('click', function () { switchMode('reception'); });
+  document.getElementById('smt-manager').addEventListener('click', function () { switchMode('manager'); });
+})();
+</script>
+
 {% endblock %}
 
 {% block content %}
 {% set service_data = services_status|default(none) %}
-
-{# ── ANALYTICS SIDEBAR ────────────────────────────────────────────── #}
-<aside class="analytics-sidebar" id="analytics-sidebar">
-  <div class="sidebar-hd">
-    <span class="sidebar-hd-title">Analytics</span>
-    <button class="sidebar-toggle" id="sidebar-toggle-btn" aria-label="Toggle sidebar" title="Collapse sidebar">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-      <span class="sidebar-alert-badge{% if not urgent_attention.red_flags or urgent_attention.red_flags == 0 %} is-hidden{% endif %}"
-            id="sidebar-alert-badge"
-            aria-label="{{ urgent_attention.red_flags }} critical issue{{ 's' if urgent_attention.red_flags != 1 else '' }}"
-            title="{{ urgent_attention.red_flags }} critical issue{{ 's' if urgent_attention.red_flags != 1 else '' }} — click to expand sidebar"
-      >{{ urgent_attention.red_flags if urgent_attention.red_flags else '' }}</span>
-    </button>
-  </div>
-
-  <div class="sidebar-period">
-    <div class="period-tabs">
-      <a href="/requests?range=today" class="period-tab {% if active_date_range == 'today' %}active{% endif %}">Today</a>
-      <a href="/requests?range=week"  class="period-tab {% if active_date_range == 'week'  %}active{% endif %}">Week</a>
-      <a href="/requests?range=all"   class="period-tab {% if active_date_range == 'all'   %}active{% endif %}">All</a>
-    </div>
-  </div>
-
-  <div class="sidebar-body">
-
-    {# ── QUICK STATUS ONLY (removed duplicate KPI cards) ── #}
-
-    {# ── Queue status ── #}
-    {% if queue_status_card is defined %}
-    <div class="analytics-card" title="Quick Status" data-metric=" · {{ queue_status_card.open }} open">
-      <div class="card-collapsed-icon" title="Quick Status">📊</div>
-      <div class="card-full-content"></div>
-      <div class="sidebar-section-hd">📊 Quick Status</div>
-      <div class="analytics-row">
-        <span class="ar-label"><span class="ar-dot blue"></span>Open</span>
-        <span class="ar-value">{{ queue_status_card.open }}</span>
-      </div>
-      <div class="analytics-row">
-        <span class="ar-label"><span class="ar-dot danger"></span>Overdue</span>
-        <span class="ar-value {{ 'danger-text' if queue_status_card.overdue else '' }}">{{ queue_status_card.overdue }}</span>
-      </div>
-      <div class="analytics-row">
-        <span class="ar-label"><span class="ar-dot green"></span>Resolved Today</span>
-        <span class="ar-value">{{ queue_status_card.resolved_today }}</span>
-      </div>
-      <div class="analytics-row">
-        <span class="ar-label"><span class="ar-dot danger"></span>Critical</span>
-        <span class="ar-value {{ 'danger-text' if queue_status_card.red_flags else '' }}">{{ queue_status_card.red_flags }}</span>
-      </div>
-    </div>
-    {% endif %}
-
-    {# ── Critical Issues alert card ── #}
-    {% if urgent_attention.red_flags > 0 %}
-    <a class="red-flag-card" href="{{ filter_links[1].url if filter_links|length > 1 else '/requests?filter=urgent_red_flags' }}">
-      <span class="rf-icon">⚠️</span>
-      <div class="rf-body">
-        <span class="rf-label">Critical Issues</span>
-        <span class="rf-value">{{ urgent_attention.red_flags }}</span>
-        <span class="rf-sub">Needs immediate attention</span>
-      </div>
-      <span class="rf-value-coll">{{ urgent_attention.red_flags }}</span>
-    </a>
-    {% else %}
-    <div class="analytics-card sidebar-card-clear">
-      <span class="sidebar-card-clear-label">✓ All Clear</span>
-      <span class="sidebar-card-clear-sub">No critical issues</span>
-    </div>
-    {% endif %}
-
-    {# ── Staff Workload (live) ── #}
-    <div class="analytics-card" title="Staff Workload" id="staff-workload-card" data-metric=" · {{ staff_workload_list|length }} staff">
-      <div class="card-collapsed-icon">👥</div>
-      <div class="sidebar-section-hd">
-        Staff Workload
-        <span id="staff-workload-refresh-ts" class="sidebar-card-ts"></span>
-      </div>
-      <div id="staff-workload-list">
-        {# Seeded with server-side data; refreshed by JS every 60s #}
-        {% for su in staff_workload_list|default([]) %}
-        <div class="staff-workload-row">
-          <span class="staff-workload-name" title="{{ su.name }}">{{ su.name }}</span>
-          <span class="staff-workload-pills">
-            <span class="swp swp-open"   title="Open cases">{{ su.open }}</span>
-            <span class="swp swp-active" title="In progress">{{ su.in_progress }}</span>
-            <span class="swp swp-done"   title="Resolved today">{{ su.resolved_today }}</span>
-          </span>
-        </div>
-        {% else %}
-        <div class="analytics-row ar-row--muted">Loading…</div>
-        {% endfor %}
-      </div>
-      <div class="analytics-row sidebar-legend-row">
-        <span class="ar-label sidebar-legend-label">
-          <span class="ar-dot legend-open"></span>Open
-          <span class="ar-dot legend-active"></span>Active
-          <span class="ar-dot legend-done"></span>Done
-        </span>
-      </div>
-    </div>
-
-    {# ── Call analytics ── #}
-    {% if call_analytics_card is defined %}
-    <div class="analytics-card" title="Call Analytics" data-metric=" · {{ call_analytics_card.total_calls }} calls">
-      <div class="card-collapsed-icon">📞</div>
-      <div class="sidebar-section-hd">Call Analytics</div>
-      <div class="analytics-row">
-        <span class="ar-label">Total Calls</span>
-        <span class="ar-value">{{ call_analytics_card.total_calls }}</span>
-      </div>
-      <div class="analytics-row">
-        <span class="ar-label">Dropped</span>
-        <span class="ar-value">{{ call_analytics_card.dropped }}</span>
-      </div>
-      <div class="analytics-row">
-        <span class="ar-label">Safe to Queue</span>
-        <span class="ar-value">{{ call_analytics_card.safe_to_queue }}</span>
-      </div>
-      <div class="analytics-row">
-        <span class="ar-label">Success Rate</span>
-        <span class="ar-value success">{{ call_analytics_card.success_rate }}%</span>
-      </div>
-      {% if call_analytics_card.avg_turnaround %}
-      <div class="analytics-row">
-        <span class="ar-label">Avg Response Time</span>
-        <span class="ar-value" title="Average response time in minutes: {{ call_analytics_card.avg_turnaround }}">
-          {% set hours = call_analytics_card.avg_turnaround // 60 %}
-          {% if hours > 24 %}
-            {{ (hours // 24) }}d {{ (hours % 24) }}h
-          {% elif hours > 0 %}
-            {{ hours }}h {{ (call_analytics_card.avg_turnaround % 60) }}m
-          {% else %}
-            {{ call_analytics_card.avg_turnaround }} min
-          {% endif %}
-        </span>
-      </div>
-      {% endif %}
-    </div>
-    {% endif %}
-
-    {# ── Live workload ── #}
-    <div class="analytics-card" title="Live Workload" data-metric=" · {{ workload_card.incoming }} queued">
-      <div class="card-collapsed-icon">⚙️</div>
-      <div class="sidebar-section-hd">Live Workload</div>
-      <div class="analytics-row">
-        <span class="ar-label"><span class="ar-dot blue"></span>Incoming Queue</span>
-        <span class="ar-value">{{ workload_card.incoming }}</span>
-      </div>
-      <div class="analytics-row">
-        <span class="ar-label"><span class="ar-dot amber"></span>Awaiting</span>
-        <span class="ar-value">{{ workload_card.awaiting_processing }}</span>
-      </div>
-      <div class="analytics-row">
-        <span class="ar-label"><span class="ar-dot green"></span>Processed Today</span>
-        <span class="ar-value">{{ workload_card.processed_today }}</span>
-      </div>
-      {% if workload_card.failed %}
-      <div class="analytics-row">
-        <span class="ar-label"><span class="ar-dot danger"></span>Failed</span>
-        <span class="ar-value">{{ workload_card.failed }}</span>
-      </div>
-      {% endif %}
-    </div>
-
-    {# Request Mix removed from sidebar (see main dashboard area) #}
-
-  </div>{# end sidebar-body #}
-</aside>
 
 {# ── MAIN CONTENT ────────────────────────────────────────────────── #}
 <main class="app-main">
@@ -199,52 +221,45 @@
   {% if show_dashboard_overview %}
   <div class="dashboard-scroll">
 
-    <section class="page-head">
-      <div>
-        <span class="page-kicker">JeffLocal Reception Dashboard</span>
-        <h1>📊 Today's Overview</h1>
-        <p class="muted">Check critical issues, workload status, and team performance at a glance.</p>
+    {# ── Clean dashboard header — title + system status + refresh ── #}
+    <section class="dash-header">
+      <div class="dash-header-left">
+        <h1>Today's Overview</h1>
+        <span class="dash-header-meta">
+          <i class="health-dot {{ system_health.dashboard.state }}"></i>
+          System {{ system_health.dashboard.label }} &nbsp;·&nbsp; Updated {{ page_updated_at|display_ts }}
+        </span>
       </div>
-      <div class="header-actions">
-        <span class="status-pill"><i class="health-dot {{ system_health.dashboard.state }}"></i>System {{ system_health.dashboard.label }}</span>
-        <span class="header-meta">Updated {{ page_updated_at|display_ts }}</span>
-        <button type="button" data-refresh-services-button>Refresh</button>
-      </div>
+      <button type="button" class="dash-refresh-btn" data-refresh-services-button aria-label="Refresh dashboard">
+        <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+        Refresh
+      </button>
     </section>
 
-    <section class="urgent-panel" aria-label="Urgent Attention">
-      <div>
-        <h2>⚠️ Urgent Attention</h2>
-        {% if urgent_attention.latest %}
-          <p>{{ urgent_attention.latest.alert_type }}: {{ urgent_attention.latest.message }}</p>
-        {% else %}
-          <p>✓ No critical issues detected</p>
-        {% endif %}
-      </div>
-      {% if urgent_attention.red_flags > 0 or urgent_attention.staff_review > 0 or urgent_attention.identity_checks > 0 %}
-      <div class="urgent-counts">
-        {% if urgent_attention.red_flags > 0 %}<a href="{{ filter_links[1].url }}"><span>🚨 Critical Issues</span><strong>{{ urgent_attention.red_flags }}</strong></a>{% endif %}
-        {% if urgent_attention.staff_review > 0 %}<a href="{{ filter_links[2].url }}"><span>👁️ Cases Needing Review</span><strong>{{ urgent_attention.staff_review }}</strong></a>{% endif %}
-        {% if urgent_attention.identity_checks > 0 %}<a href="{{ filter_links[3].url }}"><span>🪪 Identity Issues</span><strong>{{ urgent_attention.identity_checks }}</strong></a>{% endif %}
-      </div>
-      <div class="urgent-actions">
-        <a class="button-link danger-link" href="{{ filter_links[1].url }}">→ View Issues</a>
-        {% if urgent_attention.latest %}
-          <button type="button" id="urgent-ack-button" data-alert-id="{{ urgent_attention.latest.alert_id }}">Acknowledge</button>
-        {% endif %}
-      </div>
+    {# ── Urgent alert banner — only shown when there are urgent items ── #}
+    {% if urgent_attention.red_flags > 0 or urgent_attention.staff_review > 0 or urgent_attention.identity_checks > 0 %}
+    <section class="urgent-banner" aria-live="polite" role="alert">
+      <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      <span class="urgent-banner-text">Urgent attention required —</span>
+      {% if urgent_attention.red_flags > 0 %}<a href="{{ filter_links[1].url }}"><strong>{{ urgent_attention.red_flags }}</strong> red flag{{ 's' if urgent_attention.red_flags != 1 }}</a>{% endif %}
+      {% if urgent_attention.staff_review > 0 %}<a href="{{ filter_links[2].url }}"><strong>{{ urgent_attention.staff_review }}</strong> needing review</a>{% endif %}
+      {% if urgent_attention.identity_checks > 0 %}<a href="{{ filter_links[3].url }}"><strong>{{ urgent_attention.identity_checks }}</strong> identity issue{{ 's' if urgent_attention.identity_checks != 1 }}</a>{% endif %}
+      <a class="urgent-banner-action" href="{{ filter_links[1].url }}">View all →</a>
+      {% if urgent_attention.latest %}
+        <button type="button" id="urgent-ack-button" data-alert-id="{{ urgent_attention.latest.alert_id }}" class="urgent-banner-ack">Acknowledge</button>
       {% endif %}
     </section>
+    {% endif %}
 
-    <section class="kpi-grid" aria-label="Today's Key Metrics">
+    <section class="kpi-grid" aria-label="Today's Key Metrics" aria-live="polite" aria-atomic="false">
       {% for card in kpi_cards %}
         <a class="kpi-card" href="{{ card.url }}" title="Click to view details">
           <span>{{ card.label }}</span>
           <strong>{{ card.value if card.value is not none else "n/a" }}</strong>
-          <small>→ View</small>
+          <small style="opacity: 0.6; font-size: 0.75em;">→ View</small>
         </a>
       {% endfor %}
-      <div class="kpi-card system-health-card" aria-label="System Status">
+      <div class="kpi-card system-health-card" aria-label="System Status" style="opacity: 0.9;">
         <span>System Status</span>
         <div class="health-list">
           <div data-service-key="dashboard"><i class="health-dot {{ system_health.dashboard.state }}"></i>Dashboard <strong>{{ system_health.dashboard.label }}</strong></div>
@@ -280,20 +295,67 @@
     </section>
 
     <section class="insight-grid three-up" aria-label="Dashboard insights">
-      <div class="panel compact-panel request-mix-card" aria-label="Request Mix">
+      <div class="panel compact-panel request-mix-card" aria-label="Request Mix by type">
         <div class="section-head">
           <h2>Request Mix</h2>
           <span class="muted">{{ active_date_range_label }}</span>
         </div>
-        {% for item in visible_request_mix %}
-          <a class="bar-row" href="{{ item.url }}">
+        {% if visible_request_mix %}
+        {# Interactive SVG donut chart #}
+        {% set total_requests = visible_request_mix | sum(attribute='count') %}
+        {% set chart_colors = ['#00A896','#0B3D6B','#009639','#768692','#E8871E','#AE2573','#006747','#7DD3CA'] %}
+        <div class="chart-container" aria-label="Request type breakdown chart">
+          <svg class="donut-chart" viewBox="0 0 120 120" role="img" aria-label="Request mix donut chart">
+            <title>Request type breakdown: {{ total_requests }} total</title>
+            {% set ns = namespace(offset=25) %}
+            {% for item in visible_request_mix %}
+              {% if total_requests > 0 %}
+                {% set pct = (item.count / total_requests * 100) | round(1) %}
+                {% set stroke_pct = (item.count / total_requests * 100) %}
+                <circle class="donut-segment"
+                  cx="60" cy="60" r="40"
+                  fill="none"
+                  stroke="{{ chart_colors[loop.index0 % chart_colors|length] }}"
+                  stroke-width="18"
+                  stroke-dasharray="{{ stroke_pct }} {{ 100 - stroke_pct }}"
+                  stroke-dashoffset="{{ -ns.offset + 100 }}"
+                  transform="rotate(-90 60 60)">
+                  <title>{{ item.label }}: {{ item.count }} ({{ pct }}%)</title>
+                </circle>
+                {% set ns.offset = ns.offset + stroke_pct %}
+              {% endif %}
+            {% endfor %}
+            <text x="60" y="56" text-anchor="middle" class="donut-total-num">{{ total_requests }}</text>
+            <text x="60" y="68" text-anchor="middle" class="donut-total-label">total</text>
+          </svg>
+          <div class="chart-legend">
+            {% for item in visible_request_mix %}
+            <a class="chart-legend-item" href="{{ item.url }}" title="{{ item.label }}: {{ item.count }}">
+              <span class="chart-legend-dot" style="background:{{ chart_colors[loop.index0 % chart_colors|length] }}"></span>
+              <span class="chart-legend-label">{{ item.label }}</span>
+              <span class="chart-legend-count">{{ item.count }}</span>
+            </a>
+            {% endfor %}
+          </div>
+        </div>
+        {# Horizontal bar chart below #}
+        <div class="bar-chart-rows" role="list">
+          {% for item in visible_request_mix %}
+          <a class="bar-row" href="{{ item.url }}" role="listitem" aria-label="{{ item.label }}: {{ item.count }} cases">
             <span class="bar-label">{{ item.label }}</span>
+            <span class="bar-track">
+              <span class="bar-fill" style="width:{{ item.width }}%; background:{{ chart_colors[loop.index0 % chart_colors|length] }}"></span>
+            </span>
             <span class="bar-count">{{ item.count }}</span>
-            <span class="bar-track"><span class="bar-fill" style="width:{{ item.width }}%"></span></span>
           </a>
+          {% endfor %}
+        </div>
         {% else %}
-          <p class="muted">No requests in this range.</p>
-        {% endfor %}
+          <div class="empty-state" style="padding:24px">
+            <p class="empty-state-title">No requests yet</p>
+            <p class="empty-state-body">Cases will appear here once calls are processed.</p>
+          </div>
+        {% endif %}
       </div>
 
       <div class="panel compact-panel" aria-label="Staff Workload">
@@ -351,6 +413,28 @@
      ════════════════════════════════════════════════════════════════ #}
   {% if show_requests %}
   <div class="requests-wrapper">
+
+    {# ── Today's Performance KPI Strip ── #}
+    <div class="kpi-strip" id="kpi-strip" aria-label="Today's performance">
+      <div class="kpi-tile">
+        <span class="kpi-tile-label">Cases Today</span>
+        <span class="kpi-tile-value kpi-count-animated" data-kpi="cases_today">—</span>
+      </div>
+      <div class="kpi-tile">
+        <span class="kpi-tile-label">Avg. Resolve Time</span>
+        <span class="kpi-tile-value kpi-count-animated" data-kpi="avg_resolve_minutes">—</span>
+        <span class="kpi-tile-sub">minutes</span>
+      </div>
+      <div class="kpi-tile">
+        <span class="kpi-tile-label">Red Flags</span>
+        <span class="kpi-tile-value kpi-count-animated" id="kpi-red-flags" data-kpi="red_flags_today">—</span>
+      </div>
+      <div class="kpi-tile">
+        <span class="kpi-tile-label">Pipeline Throughput</span>
+        <span class="kpi-tile-value kpi-count-animated" data-kpi="throughput_last_hour">—</span>
+        <span class="kpi-tile-sub">last 60 min</span>
+      </div>
+    </div>
 
     {# Sticky filter toolbar #}
     <div class="sticky-toolbar">
@@ -455,7 +539,7 @@
       <div class="case-list-scroll" aria-label="Patient requests">
         {% for case in cases %}
         <article
-          class="request-card {% if case.is_emergency %}emergency{% elif case.identity_review_required %}identity-row{% elif case.staff_review_required %}review-row{% endif %} {% if case.is_resolved %}resolved-row{% endif %}"
+          class="request-card {% if case.is_emergency %}emergency{% elif case.identity_review_required %}identity-row{% elif case.staff_review_required %}review-row{% endif %} {% if case.is_resolved %}resolved-row{% endif %}{% if not case.is_resolved and (case.red_flags_present or '999' in (case.priority or '')) %} is-urgent-pulse{% endif %}"
           id="case-{{ case.call_id }}"
           data-case-row>
 
@@ -479,15 +563,24 @@
           </label>
 
           {# Top: badges + patient info + time #}
-          <div class="card-top">
+          <div class="card-top" style="padding-left:26px">
             <div class="card-top-left">
               <div class="card-badges">
-                <span class="badge {{ case.request_type }}">{{ case.request_type_label }}</span>
+                <span class="badge {{ case.request_type_class }}">{{ case.request_type_label }}</span>
                 {% for chip in case.summary_chips %}
                   <span class="badge {{ chip.class }}"{% if chip.tooltip %} title="{{ chip.tooltip }}"{% endif %}>{{ chip.label }}</span>
                 {% endfor %}
+                {# ── Attention badges (guided UX Feature 4) ── #}
+                {% if case.red_flags_present and not case.is_resolved %}
+                  <span class="attn-badge attn-badge-callnow" role="img" aria-label="Call now — red flag case" title="Red flag: contact patient or GP immediately">CALL NOW</span>
+                {% elif case.staff_review_required and not case.identity_review_required and case.status in ("New", "Needs Review") and not case.is_resolved %}
+                  <span class="attn-badge attn-badge-review" role="img" aria-label="Review required before processing" title="Staff review required before this case can be resolved">Review</span>
+                {% endif %}
+                {% if not case.is_resolved and case.status == "New" and case.age_minutes is defined and case.age_minutes > 120 %}
+                  <span class="attn-badge attn-badge-overdue" role="img" aria-label="Overdue — waiting more than 2 hours" title="Case received {{ case.age_label_short or '' }} ago and has not been actioned">Overdue</span>
+                {% endif %}
               </div>
-              <div class="card-patient">
+              <div class="card-patient" data-patient-hover="{{ case.patient_name or '' }}">
                 {{ case.patient_name or "Name not captured" }}{% if case.gender %} · {{ case.gender }}{% endif %}
               </div>
               <div class="card-meta">
@@ -496,15 +589,16 @@
                 {% if case.emis_number or case.matched_patient_ref %}
                   <span class="card-meta-item">EMIS {{ case.emis_number or case.matched_patient_ref }}</span>
                 {% endif %}
-                <span class="card-meta-item">📱 {{ case.callback_number_display or "n/a" }}</span>
+                <span class="card-meta-item"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-1px;margin-right:2px"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.39 2 2 0 0 1 3.58 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.54a16 16 0 0 0 6.29 6.29l.92-.92a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>{{ case.callback_number_display or "n/a" }}</span>
               </div>
             </div>
             <div class="card-time">
-              <span class="card-received">{{ case.time_display or case.timestamp_display }}</span>
               {% if case.age_label_short %}
                 <span class="card-age {{ case.age_class }}">{{ case.age_label_short }}</span>
               {% elif case.duration_label %}
                 <span class="card-age">{{ case.duration_label }}</span>
+              {% else %}
+                <span class="card-received">{{ case.time_display or case.timestamp_display }}</span>
               {% endif %}
             </div>
           </div>
@@ -556,7 +650,12 @@
 
         </article>
         {% else %}
-          <div class="empty">No cases found for this filter.</div>
+          <div class="empty-state" role="status">
+            <svg class="empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+            <p class="empty-state-title">No cases match this filter</p>
+            <p class="empty-state-body">Try a different filter, date range, or search term.</p>
+            <a href="{{ reset_filters_url }}" class="empty-state-action">Clear filters</a>
+          </div>
         {% endfor %}
 
         {# Pagination lives inside the scrollable list #}
@@ -571,7 +670,7 @@
       </div>{# end case-list-scroll #}
 
       {# ── Detail panel ── #}
-      <div class="detail-panel is-hidden" id="detail-panel" aria-label="Case detail panel" aria-live="polite">
+      <div class="detail-panel" id="detail-panel" aria-label="Case detail panel" aria-live="polite">
 
         {# Placeholder — shown when no case is selected #}
         <div class="detail-panel-placeholder" id="panel-placeholder">
@@ -582,6 +681,41 @@
         {# Populated state — shown after fetch #}
         <div class="panel-populated" id="panel-populated" hidden>
 
+          {# Red flag banner — 2-line with close button #}
+          <div class="panel-redflag-banner" id="panel-redflag-banner" hidden>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            <div class="panel-redflag-banner-content">
+              <span class="panel-redflag-banner-title" id="panel-redflag-banner-text">RED FLAG</span>
+              <span class="panel-redflag-banner-sub">Do not process through standard workflow until clinical review is complete</span>
+            </div>
+            <button class="panel-redflag-close" id="panel-redflag-close" aria-label="Dismiss red flag banner">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+
+          {# Status stepper #}
+          <div class="panel-stepper" id="panel-stepper">
+            <div class="stepper-step is-active" data-step="received">
+              <div class="stepper-dot"><span>1</span></div>
+              <span class="stepper-label">Received</span>
+            </div>
+            <div class="stepper-connector"></div>
+            <div class="stepper-step" data-step="reviewed">
+              <div class="stepper-dot"><span>2</span></div>
+              <span class="stepper-label">Reviewed</span>
+            </div>
+            <div class="stepper-connector"></div>
+            <div class="stepper-step" data-step="in_progress">
+              <div class="stepper-dot"><span>3</span></div>
+              <span class="stepper-label">In Progress</span>
+            </div>
+            <div class="stepper-connector"></div>
+            <div class="stepper-step" data-step="resolved">
+              <div class="stepper-dot"><span>4</span></div>
+              <span class="stepper-label">Resolved</span>
+            </div>
+          </div>
+
           <div class="panel-hd">
             <div class="panel-hd-top">
               <div class="panel-badge-row" id="panel-badge-row"></div>
@@ -589,29 +723,52 @@
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               </button>
             </div>
-            <div class="panel-patient-name" id="panel-patient-name"></div>
-            <div class="panel-patient-meta" id="panel-patient-meta"></div>
+            <div class="panel-patient-card">
+              <div class="patient-avatar" id="panel-patient-avatar" aria-hidden="true"></div>
+              <div class="patient-card-info">
+                <div class="panel-patient-name" id="panel-patient-name"></div>
+                <div class="panel-patient-meta" id="panel-patient-meta"></div>
+              </div>
+            </div>
           </div>
 
-          <div class="panel-actions">
-            <div class="panel-actions-row">
-              <button class="panel-btn" id="panel-btn-call" title="Call patient">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.39 2 2 0 0 1 3.58 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.54a16 16 0 0 0 6.29 6.29l.92-.92a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-                Call
-              </button>
-              <button class="panel-btn" id="panel-btn-sms" title="SMS patient (coming soon)" disabled>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-                SMS
-              </button>
-              <button class="panel-btn" id="panel-btn-gp" title="GP workflow (coming soon)" disabled>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-                Send to GP
-              </button>
-            </div>
-            <button class="panel-btn full start-review" id="panel-btn-start-review" hidden>Start Review First</button>
-            <button class="panel-btn full escalate" id="panel-btn-escalate">Escalate Urgent</button>
-            <button class="panel-btn full resolve" id="panel-btn-resolve" data-panel-action="resolve">Mark as Resolved</button>
+          {# Compact action bar — Call | Escalate | Resolve | Full Case, all inline #}
+          <div class="panel-action-bar">
+            <button class="pab-btn call" id="panel-btn-call" title="Call patient">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.39 2 2 0 0 1 3.58 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.54a16 16 0 0 0 6.29 6.29l.92-.92a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+              Call
+            </button>
+            <button class="pab-btn escalate" id="panel-btn-escalate">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              Escalate
+            </button>
+            <button class="pab-btn resolve" id="panel-btn-resolve" data-panel-action="resolve">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+              Resolve
+            </button>
+            <a class="pab-btn view-full" id="panel-btn-view-full" href="#">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+              Full Case
+            </a>
+            {# Hidden — kept for JS event listeners only #}
+            <button id="panel-btn-start-review" hidden></button>
+            <button id="panel-btn-sms" hidden></button>
+            <button id="panel-btn-gp" hidden></button>
           </div>
+          <div class="panel-review-gate" id="panel-review-confirm" hidden>
+            <label class="prg-row" for="panel-review-checkbox">
+              <input type="checkbox" id="panel-review-checkbox" aria-label="Confirm staff review complete">
+              <span class="prg-icon" aria-hidden="true">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              </span>
+              <span class="prg-text">Review required — tick to confirm, then add a note</span>
+              <span class="prg-cb" aria-hidden="true">
+                <svg class="prg-cb-tick" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+            </label>
+            <textarea class="prg-outcome" id="panel-outcome-notes" placeholder="What action was taken? (required for identity cases)" rows="2" hidden></textarea>
+          </div>
+          <div class="resolve-countdown-bar" id="resolve-countdown-bar"><div class="resolve-countdown-bar-fill" id="resolve-countdown-fill"></div></div>
 
           <nav class="panel-tabs" aria-label="Case panel sections">
             <button class="panel-tab active" data-panel-tab="summary">Summary</button>
@@ -623,10 +780,41 @@
 
             {# Summary tab #}
             <div data-panel-content="summary">
-              <div class="panel-section-hd">AI Summary</div>
-              <p class="panel-text" id="panel-ai-summary"></p>
+
+              {# AI Intake Summary — inside scroll area #}
+              <div class="panel-triage-card">
+                <div class="panel-triage-card-hd">
+                  <span class="panel-section-hd">AI Intake Summary</span>
+                  <button class="copy-btn" id="panel-ai-summary-copy" style="display:none" title="Copy AI summary" aria-label="Copy AI summary"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
+                  <span class="panel-triage-attribution" id="panel-triage-attribution"></span>
+                </div>
+                <p class="panel-text" id="panel-ai-summary"></p>
+                <div class="panel-chip-row" id="panel-chip-row"></div>
+              </div>
+
+              {# Information gaps alert — dismissible #}
+              <div class="panel-info-gaps" id="panel-info-gaps" hidden>
+                <div class="info-gaps-body">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  <div class="info-gaps-text">
+                    <span class="info-gaps-title">Information gaps detected</span>
+                    <span class="info-gaps-sub" id="info-gaps-sub"></span>
+                  </div>
+                </div>
+                <div class="info-gaps-actions">
+                  <button class="info-gaps-btn" id="info-gaps-view-transcript">View Transcript</button>
+                  <button class="info-gaps-btn info-gaps-dismiss" id="info-gaps-dismiss">Dismiss</button>
+                </div>
+              </div>
+
+              {# Guided workflow steps — What to do #}
+              <div class="panel-guided-steps" id="panel-guided-steps" hidden>
+                <div class="panel-section-hd">What to do</div>
+                <ol class="guided-steps-list" id="guided-steps-list"></ol>
+              </div>
+
               <div class="panel-redflag-box" id="panel-redflag-box" hidden>
-                <div class="panel-redflag-title">⚠ Red Flag Warning</div>
+                <div class="panel-redflag-title"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Red Flag Warning</div>
                 <div class="panel-redflag-body" id="panel-redflag-body"></div>
               </div>
               <div id="panel-suggested" hidden>
@@ -689,7 +877,7 @@
     <h2 id="batch-modal-title">Resolve selected cases?</h2>
     <p id="batch-modal-message"></p>
     <label>Outcome note
-      <textarea id="batch-outcome-note" rows="3">Batch resolved after staff review in JeffLocal dashboard.</textarea>
+      <textarea id="batch-outcome-note" rows="3">Batch resolved after staff review in Avamed dashboard.</textarea>
     </label>
     <p class="warning" id="batch-modal-error" hidden></p>
     <div class="modal-actions">
@@ -701,41 +889,17 @@
 
 <div class="modal-backdrop" id="cd-action-error-modal" hidden>
   <section class="alert-modal" role="dialog" aria-modal="true" aria-labelledby="cd-action-error-title">
-    <h2 id="cd-action-error-title">Action Failed</h2>
+    <h2 id="cd-action-error-title">Cannot Resolve</h2>
     <p id="cd-action-error-message"></p>
-    <button type="button" id="cd-action-error-ok">OK</button>
+    <div class="modal-actions">
+      <a id="cd-action-error-open-case" href="#" class="btn-primary" style="display:none">Open Case to Resolve</a>
+      <button type="button" id="cd-action-error-ok" class="secondary-button">Dismiss</button>
+    </div>
   </section>
 </div>
 
 {# ── SCRIPTS ─────────────────────────────────────────────────────── #}
 <script>
-  // Sidebar collapse toggle with localStorage persistence
-  (function () {
-    var sidebar = document.getElementById('analytics-sidebar');
-    var btn = document.getElementById('sidebar-toggle-btn');
-    if (!sidebar || !btn) return;
-    var key = 'jefflocal_sidebar_collapsed';
-
-    function updateToggleLabel(collapsed) {
-      var label = collapsed ? 'Expand sidebar' : 'Collapse sidebar';
-      btn.setAttribute('aria-label', label);
-      btn.setAttribute('title', label);
-    }
-
-    // Load saved state from localStorage (persists across sessions)
-    var startCollapsed = localStorage.getItem(key) === 'true';
-    if (startCollapsed) {
-      sidebar.classList.add('is-collapsed');
-    }
-    updateToggleLabel(startCollapsed);
-
-    btn.addEventListener('click', function () {
-      var isCollapsed = sidebar.classList.toggle('is-collapsed');
-      localStorage.setItem(key, isCollapsed);
-      updateToggleLabel(isCollapsed);
-    });
-  })();
-
   // Service health refresh
   function serviceLabel(status) {
     return (status || 'unknown').replaceAll('_', ' ').replace(/\b\w/g, function (c) { return c.toUpperCase(); });
@@ -1004,6 +1168,15 @@
       return '<span class="panel-meta-label">' + escHtml(label) + '</span>'
            + '<span class="panel-meta-value ' + (extraClass || '') + '">' + escHtml(value) + '</span>';
     }
+    var COPY_ICON = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+    function metaCellCopy(label, value, extraClass) {
+      var copyBtn = (value && value !== 'n/a')
+        ? '<button class="copy-btn" data-copy="' + escHtml(value) + '" title="Copy ' + escHtml(label) + '" aria-label="Copy ' + escHtml(label) + '">' + COPY_ICON + '</button>'
+        : '';
+      var cls = (extraClass || '') + ((!value || value === 'n/a') ? ' value-unconfirmed' : '');
+      return '<span class="panel-meta-label">' + escHtml(label) + '</span>'
+           + '<span class="panel-meta-value ' + cls.trim() + '">' + escHtml(value) + copyBtn + '</span>';
+    }
 
     function switchTab(target) {
       document.querySelectorAll('[data-panel-tab]').forEach(function (t) {
@@ -1015,35 +1188,101 @@
     }
 
     function renderPanel(data) {
-      // Badge row
+      // Badge row — mirrors the card exactly: request type + summary_chips
+      // summary_chips already encodes priority/identity/emergency as consolidated pills
+      // so we never leak raw internal values like "review_required" here.
       var badgeRow = document.getElementById('panel-badge-row');
       var badges = [];
-      if (data.red_flags_present) badges.push('<span class="badge danger">RED FLAG</span>');
-      if (data.priority && data.priority !== 'routine' && data.priority !== 'normal') {
-        badges.push('<span class="badge danger">' + escHtml(data.priority) + '</span>');
-      }
       if (data.request_type_label) {
-        badges.push('<span class="badge ' + escHtml(data.request_type || '') + '">' + escHtml(data.request_type_label) + '</span>');
+        badges.push('<span class="badge ' + escHtml(data.request_type_class || data.request_type || '') + '">' + escHtml(data.request_type_label) + '</span>');
+      }
+      if (Array.isArray(data.summary_chips) && data.summary_chips.length) {
+        data.summary_chips.forEach(function (chip) {
+          var tip = chip.tooltip ? ' title="' + escHtml(chip.tooltip) + '"' : '';
+          badges.push('<span class="badge ' + escHtml(chip['class'] || '') + '"' + tip + '>' + escHtml(chip.label) + '</span>');
+        });
       }
       badgeRow.innerHTML = badges.join('');
 
-      // Patient name
+      // Patient name + avatar initials
       document.getElementById('panel-patient-name').textContent = data.patient_name || 'Name not captured';
+      var avatarEl = document.getElementById('panel-patient-avatar');
+      if (avatarEl) {
+        var pName = (data.patient_name || '').trim();
+        var nameParts = pName ? pName.split(/\s+/) : [];
+        var initials = nameParts.length >= 2
+          ? (nameParts[0][0] + nameParts[nameParts.length - 1][0]).toUpperCase()
+          : pName ? pName[0].toUpperCase() : '?';
+        avatarEl.textContent = initials;
+        avatarEl.className = 'patient-avatar' + (data.red_flags_present ? ' is-danger' : '');
+      }
+
+      // Status stepper
+      var statusVal = (data.status || '').toLowerCase();
+      var stepIndex = data.is_resolved ? 3
+        : statusVal.includes('progress') ? 2
+        : (statusVal.includes('review') || data.requires_individual_review) ? 1
+        : 0;
+      document.querySelectorAll('#panel-stepper .stepper-step').forEach(function (step, i) {
+        step.classList.toggle('is-done',   i < stepIndex);
+        step.classList.toggle('is-active', i === stepIndex);
+      });
 
       // Meta grid
       var ageClass = data.age_class ? 'age-' + data.age_class : '';
       document.getElementById('panel-patient-meta').innerHTML = [
         metaCell('DOB',      data.dob_display        || data.dob              || 'n/a'),
-        metaCell('NHS',      data.nhs_number        || 'n/a'),
-        metaCell('Phone',    data.callback_number_display || data.callback_number || 'n/a'),
-        metaCell('EMIS',     data.emis_number       || 'n/a'),
+        metaCellCopy('NHS',   data.nhs_number        || 'n/a'),
+        metaCellCopy('Phone', data.callback_number_display || data.callback_number || 'n/a'),
+        metaCellCopy('EMIS',  data.emis_number       || 'n/a'),
         metaCell('Received', data.time_display || data.timestamp_display || 'n/a'),
         metaCell('Call age', data.age_label_short   || data.age_label || 'n/a', ageClass),
       ].join('');
 
       // AI summary
-      document.getElementById('panel-ai-summary').textContent =
-        data.ai_summary || data.call_summary_short || 'No summary available.';
+      var summaryText = data.ai_summary || data.call_summary_short || 'No summary available.';
+      document.getElementById('panel-ai-summary').textContent = summaryText;
+      var aiCopyBtn = document.getElementById('panel-ai-summary-copy');
+      if (aiCopyBtn) {
+        aiCopyBtn.style.display = summaryText && summaryText !== 'No summary available.' ? '' : 'none';
+        aiCopyBtn.dataset.copy = summaryText;
+      }
+
+      // AI attribution line — show extracted time only, no internal model details
+      var attrEl = document.getElementById('panel-triage-attribution');
+      if (attrEl) {
+        var timeStr = data.time_display || data.timestamp_display || '';
+        attrEl.textContent = timeStr ? 'Extracted ' + timeStr : '';
+      }
+
+      // Topic chips in triage card (reuse summary_chips from API)
+      var chipRowEl = document.getElementById('panel-chip-row');
+      if (chipRowEl) {
+        if (Array.isArray(data.summary_chips) && data.summary_chips.length) {
+          chipRowEl.innerHTML = data.summary_chips.map(function (chip) {
+            return '<span class="panel-topic-chip ' + escHtml(chip['class'] || '') + '">' + escHtml(chip.label) + '</span>';
+          }).join('');
+          chipRowEl.hidden = false;
+        } else {
+          chipRowEl.innerHTML = '';
+          chipRowEl.hidden = true;
+        }
+      }
+
+      // Information gaps — derived from pathway items missing values
+      var gapsEl = document.getElementById('panel-info-gaps');
+      var gapsSubEl = document.getElementById('info-gaps-sub');
+      if (gapsEl) {
+        var pathItems = Array.isArray(data.pathway_items) ? data.pathway_items : [];
+        var missing = pathItems.filter(function (p) {
+          var v = (p.value || '').trim().toLowerCase();
+          return !v || v === 'not captured' || v === 'n/a' || v === 'unknown';
+        });
+        gapsEl.hidden = missing.length === 0;
+        if (missing.length && gapsSubEl) {
+          gapsSubEl.textContent = missing.length + ' field' + (missing.length === 1 ? '' : 's') + ' not captured during the call';
+        }
+      }
 
       // Red flag box
       var rfBox = document.getElementById('panel-redflag-box');
@@ -1078,7 +1317,16 @@
       if (triageHd) triageHd.textContent = (data.request_type_label || 'Pathway') + ' — Q&A';
       if (pathwayList) {
         pathwayList.innerHTML = '';
+        var curSection = '';
         items.forEach(function (item) {
+          var section = item.section || 'Pathway Q&A';
+          if (section !== curSection) {
+            var hd = document.createElement('li');
+            hd.className = 'panel-pathway-section';
+            hd.textContent = section;
+            pathwayList.appendChild(hd);
+            curSection = section;
+          }
           var li = document.createElement('li');
           li.className = 'panel-pathway-item';
           li.innerHTML = '<span class="panel-pathway-q">' + (item.label || '') + '</span>'
@@ -1088,11 +1336,21 @@
       }
       if (pathwayEmpty) pathwayEmpty.hidden = items.length > 0;
 
-      // Resolve button state + start-review gate
+      // Resolve button state + review gates
       var resolveBtn    = document.getElementById('panel-btn-resolve');
       var startRevBtn   = document.getElementById('panel-btn-start-review');
+      var reviewConfirm = document.getElementById('panel-review-confirm');
+      var reviewCb      = document.getElementById('panel-review-checkbox');
+      // Staff-review cases: checkbox in panel. Emergency/identity-only: still needs start-review first.
+      var showReviewCb = !data.is_resolved && !!data.staff_review_required;
       var needsReviewFirst = !data.is_resolved && data.requires_individual_review
+                            && !data.staff_review_required
                             && (data.status || '').toLowerCase() !== 'in progress';
+      if (reviewConfirm) { reviewConfirm.hidden = !showReviewCb; }
+      if (reviewCb) { reviewCb.checked = false; }
+      if (resolveBtn) { resolveBtn.dataset.reviewConfirmed = ''; }
+      var outcomeNotesPR = document.getElementById('panel-outcome-notes');
+      if (outcomeNotesPR) { outcomeNotesPR.hidden = true; outcomeNotesPR.value = ''; }
       if (resolveBtn) {
         if (data.is_resolved) {
           resolveBtn.textContent = 'Reopen';
@@ -1110,8 +1368,8 @@
           resolveBtn.textContent = 'Mark as Resolved';
           resolveBtn.className   = 'panel-btn full resolve';
           resolveBtn.dataset.panelAction = 'resolve';
-          resolveBtn.disabled = false;
-          resolveBtn.title = '';
+          resolveBtn.disabled = showReviewCb;
+          resolveBtn.title = showReviewCb ? 'Tick the box below to confirm review and enable resolve' : '';
         }
         resolveBtn.dataset.callId = data.call_id;
       }
@@ -1120,9 +1378,12 @@
         startRevBtn.dataset.callId = data.call_id;
       }
 
-      // Escalate button
+      // Escalate button — always visible for non-resolved cases
       var escalateBtn = document.getElementById('panel-btn-escalate');
-      if (escalateBtn) escalateBtn.dataset.callId = data.call_id;
+      if (escalateBtn) {
+        escalateBtn.dataset.callId = data.call_id;
+        escalateBtn.hidden = !!data.is_resolved;
+      }
 
       // Transcript excerpt
       var excerptEl = document.getElementById('panel-transcript-excerpt');
@@ -1135,9 +1396,12 @@
       }
 
       // View full link — include return_url so Back button works from case detail
-      var viewFull = document.getElementById('panel-view-full');
-      if (viewFull) viewFull.href = '/case/' + encodeURIComponent(data.call_id)
+      var fullCaseUrl = '/case/' + encodeURIComponent(data.call_id)
         + '?return_url=' + encodeURIComponent(window.location.pathname + window.location.search);
+      var viewFull = document.getElementById('panel-view-full');
+      if (viewFull) viewFull.href = fullCaseUrl;
+      var viewFullBtn = document.getElementById('panel-btn-view-full');
+      if (viewFullBtn) viewFullBtn.href = fullCaseUrl;
 
       // Call button
       var callBtn = document.getElementById('panel-btn-call');
@@ -1146,6 +1410,40 @@
           ? function () { window.location.href = 'tel:' + data.callback_number; }
           : null;
         callBtn.disabled = !data.callback_number;
+      }
+
+      // Red flag banner
+      var rfBanner = document.getElementById('panel-redflag-banner');
+      var rfBannerText = document.getElementById('panel-redflag-banner-text');
+      if (rfBanner) {
+        if (data.red_flags_present) {
+          if (rfBannerText) rfBannerText.textContent = 'RED FLAG — Contact ' + (data.patient_name || 'patient') + ' immediately';
+          rfBanner.hidden = false;
+        } else {
+          rfBanner.hidden = true;
+        }
+      }
+
+      // Guided workflow steps — case-type-specific, informational
+      var GUIDED_STEPS = {
+        'prescription':         ['Read the reason for contact', 'Check patient record in EMIS', 'Verify repeat prescription eligibility', 'Process or refer to prescribing GP'],
+        'sick_note':            ['Read the reason for contact', 'Check patient record in EMIS', 'Verify dates requested', 'Process or refer to GP'],
+        'referral':             ['Read the reason for contact', 'Check patient record in EMIS', 'Confirm referral destination', 'Submit referral or notify GP'],
+        'test_result':          ['Read the reason for contact', 'Check patient record in EMIS', 'Confirm result is ready to share', 'Relay result or book follow-up appointment'],
+        'appointment_redirect': ['Read the reason for contact', 'Check patient record in EMIS', 'Check GP availability', 'Book appointment or send triage message'],
+        'admin':                ['Read the reason for contact', 'Check patient record in EMIS', 'Action the administrative request', 'Document outcome'],
+        'unknown':              ['Read the reason for contact', 'Check patient record in EMIS', 'Determine appropriate pathway', 'Action or escalate as required'],
+        'red_flag':             ["Read Jeff's triage summary immediately", 'Call patient now — do not delay', 'Review red flag indicators below', 'Escalate to GP or 999 if life-threatening', 'Document outcome and time of contact'],
+      };
+      var stepsKey = data.red_flags_present ? 'red_flag' : (data.request_type || 'unknown');
+      var steps = GUIDED_STEPS[stepsKey] || GUIDED_STEPS['unknown'];
+      var guidedStepsEl = document.getElementById('panel-guided-steps');
+      var guidedListEl  = document.getElementById('guided-steps-list');
+      if (guidedStepsEl && guidedListEl) {
+        guidedListEl.innerHTML = steps.map(function (s) {
+          return '<li class="guided-step">' + escHtml(s) + '</li>';
+        }).join('');
+        guidedStepsEl.hidden = false;
       }
     }
 
@@ -1158,7 +1456,13 @@
       if (activeCard) activeCard.classList.add('panel-open');
 
       // Show panel in loading state
-      panel.classList.remove('is-hidden');
+      panel.classList.add('is-open');
+      var backdrop = document.getElementById('panel-backdrop');
+      if (backdrop) backdrop.classList.add('is-visible');
+      var topbar = document.querySelector('.main-topbar');
+      var topH = topbar ? topbar.offsetHeight : 0;
+      panel.style.top = topH + 'px';
+      panel.style.height = 'calc(100vh - ' + topH + 'px)';
       if (placeholder) placeholder.hidden = true;
       if (populated) {
         populated.hidden = false;
@@ -1166,8 +1470,23 @@
         document.getElementById('panel-badge-row').innerHTML = '';
         document.getElementById('panel-patient-meta').innerHTML = '';
         document.getElementById('panel-ai-summary').textContent = '';
+        var _aiCopy = document.getElementById('panel-ai-summary-copy');
+        if (_aiCopy) _aiCopy.style.display = 'none';
         document.getElementById('panel-redflag-box').hidden = true;
         document.getElementById('panel-suggested').hidden = true;
+        document.getElementById('panel-redflag-banner').hidden = true;
+        document.getElementById('panel-guided-steps').hidden = true;
+        var _escalateBtn = document.getElementById('panel-btn-escalate');
+        if (_escalateBtn) _escalateBtn.hidden = false;
+        document.getElementById('panel-triage-attribution').textContent = '';
+        document.getElementById('panel-chip-row').innerHTML = '';
+        document.getElementById('panel-info-gaps').hidden = true;
+        var _avatarEl = document.getElementById('panel-patient-avatar');
+        if (_avatarEl) _avatarEl.textContent = '';
+        document.querySelectorAll('#panel-stepper .stepper-step').forEach(function (s, i) {
+          s.classList.toggle('is-active', i === 0);
+          s.classList.remove('is-done');
+        });
       }
 
       activePanelCallId = callId;
@@ -1192,7 +1511,9 @@
     }
 
     function closePanel() {
-      panel.classList.add('is-hidden');
+      panel.classList.remove('is-open');
+      var backdrop = document.getElementById('panel-backdrop');
+      if (backdrop) backdrop.classList.remove('is-visible');
       if (placeholder) placeholder.hidden = false;
       if (populated)  populated.hidden  = true;
       document.querySelectorAll('.request-card.panel-open').forEach(function (c) {
@@ -1201,11 +1522,60 @@
       // Reset inline confirm state
       var resolveBtn = document.getElementById('panel-btn-resolve');
       if (resolveBtn) { resolveBtn.classList.remove('confirming'); clearTimeout(_resolveConfirmTimer); }
+      var reviewConfirmReset = document.getElementById('panel-review-confirm');
+      var reviewCbReset = document.getElementById('panel-review-checkbox');
+      if (reviewConfirmReset) { reviewConfirmReset.hidden = true; }
+      if (reviewCbReset) { reviewCbReset.checked = false; }
+      var resolveBtnReset = document.getElementById('panel-btn-resolve');
+      if (resolveBtnReset) { resolveBtnReset.dataset.reviewConfirmed = ''; }
+      var outcomeNotesReset = document.getElementById('panel-outcome-notes');
+      if (outcomeNotesReset) { outcomeNotesReset.hidden = true; outcomeNotesReset.value = ''; }
       activePanelCallId = null;
     }
 
     // Close button
     if (closeBtn) closeBtn.addEventListener('click', closePanel);
+
+    // Review confirmation checkbox — enables resolve button when ticked
+    // Also marks it so the two-step confirm is skipped (checkbox IS the confirmation)
+    var reviewCbEl = document.getElementById('panel-review-checkbox');
+    if (reviewCbEl) {
+      reviewCbEl.addEventListener('change', function () {
+        var btn = document.getElementById('panel-btn-resolve');
+        var notesEl = document.getElementById('panel-outcome-notes');
+        if (btn && btn.dataset.panelAction === 'resolve') {
+          btn.disabled = !this.checked;
+          btn.title = this.checked ? '' : 'Tick the box below to confirm review and enable resolve';
+          btn.dataset.reviewConfirmed = this.checked ? 'true' : '';
+        }
+        if (notesEl) {
+          notesEl.hidden = !this.checked;
+          if (this.checked) { setTimeout(function () { notesEl.focus(); }, 50); }
+        }
+      });
+    }
+
+    // Note: backdrop is pointer-events:none so card clicks pass through; panel closes via ESC, close button, or clicking the same card again.
+
+    // ESC key closes panel
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && panel && panel.classList.contains('is-open')) closePanel();
+    });
+
+    // Red flag banner dismiss
+    document.getElementById('panel-redflag-close')?.addEventListener('click', function () {
+      var banner = document.getElementById('panel-redflag-banner');
+      if (banner) banner.hidden = true;
+    });
+
+    // Info gaps — dismiss and view transcript
+    document.getElementById('info-gaps-dismiss')?.addEventListener('click', function () {
+      var gaps = document.getElementById('panel-info-gaps');
+      if (gaps) gaps.hidden = true;
+    });
+    document.getElementById('info-gaps-view-transcript')?.addEventListener('click', function () {
+      switchTab('transcript');
+    });
 
     // Tab switching
     document.querySelectorAll('[data-panel-tab]').forEach(function (tab) {
@@ -1220,7 +1590,7 @@
         if (event.target.closest('form'))   return;
         if (event.target.closest('button')) return;
         if (event.target.closest('a'))      return;
-        var card = event.target.closest('[data-case-row]');
+        var card = event.target.closest('[data-' + 'case-row]');
         if (!card) return;
         var callId = card.id.replace(/^case-/, '');
         if (!callId) return;
@@ -1245,12 +1615,68 @@
       }, 3200);
     }
 
-    function showActionError(msg) {
+    function showActionError(msg, callId) {
       document.getElementById('cd-action-error-message').textContent = msg || 'Action failed. Please try again.';
+      var openLink = document.getElementById('cd-action-error-open-case');
+      if (openLink) {
+        if (callId) {
+          openLink.href = '/case/' + encodeURIComponent(callId);
+          openLink.style.display = '';
+        } else {
+          openLink.style.display = 'none';
+        }
+      }
       document.getElementById('cd-action-error-modal').hidden = false;
+      document.getElementById('cd-action-error-ok').focus();
     }
     document.getElementById('cd-action-error-ok')?.addEventListener('click', function () {
       document.getElementById('cd-action-error-modal').hidden = true;
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') {
+        var modal = document.getElementById('cd-action-error-modal');
+        if (modal && !modal.hidden) { modal.hidden = true; }
+      }
+    });
+
+    // Intercept card-footer resolve forms — use fetch so errors show in modal instead of raw JSON page
+    document.addEventListener('submit', async function (e) {
+      var form = e.target;
+      if (!form.closest('.request-card')) return;
+      var actionInput = form.querySelector('input[name="action"]');
+      if (!actionInput || actionInput.value !== 'resolve') return;
+      e.preventDefault();
+
+      var callId   = form.action.match(/\/case\/([^/]+)\/quick_action/)?.[1];
+      var submitBtn = form.querySelector('button[type="submit"]');
+      var origText  = submitBtn ? submitBtn.textContent : '';
+      if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Resolving…'; }
+
+      try {
+        var body = new URLSearchParams(new FormData(form));
+        var res  = await fetch(form.action, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest'},
+          body: body.toString()
+        });
+        if (!res.ok) {
+          var errData = {};
+          try { errData = await res.json(); } catch (_) {}
+          var msg = errData.detail || 'Could not resolve this case.';
+          showActionError(msg, callId);
+          if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = origText; }
+          return;
+        }
+        // Success — remove card and adjust count
+        var card = callId ? document.getElementById('case-' + callId) : form.closest('[id^="case-"]');
+        var patientName = card ? (card.querySelector('.card-patient') || {}).textContent : callId;
+        if (card) card.remove();
+        adjustTabCount(-1);
+        showToast((patientName ? patientName.trim() + ' ' : '') + 'resolved ✓');
+      } catch (_) {
+        showActionError('Network error. Please reload and try again.', callId);
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = origText; }
+      }
     });
 
     // Update the open-tab count badge after a resolve/reopen
@@ -1305,33 +1731,49 @@
       if (!callId) return;
 
       // Two-step inline confirm for resolve only
-      if (action === 'resolve' && !btn.classList.contains('confirming')) {
+      // Skip if review checkbox was already ticked (checkbox IS the confirmation)
+      if (action === 'resolve' && !btn.classList.contains('confirming') && btn.dataset.reviewConfirmed !== 'true') {
         btn.classList.add('confirming');
         btn.textContent = '✓ Confirm resolve?';
         clearTimeout(_resolveConfirmTimer);
+        // Start countdown bar
+        var cBar = document.getElementById('resolve-countdown-bar');
+        var cFill = document.getElementById('resolve-countdown-fill');
+        if (cBar && cFill) {
+          cFill.classList.remove('counting');
+          cBar.classList.add('active');
+          requestAnimationFrame(function () { requestAnimationFrame(function () { cFill.classList.add('counting'); }); });
+        }
         _resolveConfirmTimer = setTimeout(function () {
           if (btn.classList.contains('confirming')) {
             btn.classList.remove('confirming');
             btn.textContent = 'Mark as Resolved';
+            if (cBar) cBar.classList.remove('active');
+            if (cFill) cFill.classList.remove('counting');
           }
-        }, 3000);
+        }, 5000);
         return;
       }
       btn.classList.remove('confirming');
       clearTimeout(_resolveConfirmTimer);
+      var cBar2 = document.getElementById('resolve-countdown-bar');
+      var cFill2 = document.getElementById('resolve-countdown-fill');
+      if (cBar2) cBar2.classList.remove('active');
+      if (cFill2) cFill2.classList.remove('counting');
 
       var original = action === 'resolve' ? 'Mark as Resolved' : 'Reopen';
       btn.disabled = true;
       btn.textContent = action === 'resolve' ? 'Resolving…' : 'Reopening…';
+      var outcomeNotes = (document.getElementById('panel-outcome-notes') || {}).value || '';
       try {
         var res = await fetch('/api/cases/' + encodeURIComponent(callId) + '/action', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({action: action})
+          body: JSON.stringify({action: action, outcome_notes: outcomeNotes})
         });
         var data = await res.json();
         if (!res.ok) {
-          showActionError(data.detail || 'Action failed. Please open the full case to resolve.');
+          showActionError(data.detail || 'Action failed. Please open the full case to resolve.', callId);
           btn.disabled = false;
           btn.textContent = original;
           return;
@@ -1352,7 +1794,17 @@
           // Hide start-review button
           var startRevBtn2 = document.getElementById('panel-btn-start-review');
           if (startRevBtn2) startRevBtn2.hidden = true;
-          // Show resolved note in panel
+          // Hide guided steps and escalate — case is done
+          var guidedSteps = document.getElementById('panel-guided-steps');
+          if (guidedSteps) guidedSteps.hidden = true;
+          var escalateBtn2 = document.getElementById('panel-btn-escalate');
+          if (escalateBtn2) escalateBtn2.hidden = true;
+          // Advance stepper to Resolved (step 4)
+          document.querySelectorAll('#panel-stepper .stepper-step').forEach(function (step, i) {
+            step.classList.toggle('is-done',   i < 3);
+            step.classList.toggle('is-active', i === 3);
+          });
+          // Hide red flag box
           var rfBox = document.getElementById('panel-redflag-box');
           if (rfBox) rfBox.hidden = true;
           var summaryEl = document.getElementById('panel-ai-summary');
@@ -1411,6 +1863,26 @@
       var callId = activePanelCallId;
       if (callId) window.location.href = '/case/' + encodeURIComponent(callId);
     });
+
+    // Copy-to-clipboard — delegated handler for all .copy-btn elements in the panel
+    document.getElementById('detail-panel')?.addEventListener('click', function (e) {
+      var btn = e.target.closest('.copy-btn');
+      if (!btn) return;
+      var text = btn.dataset.copy;
+      if (!text) return;
+      e.stopPropagation();
+      function onCopied() { showToast('Copied to clipboard'); }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(onCopied).catch(function () {
+          fallbackCopy(text); onCopied();
+        });
+      } else { fallbackCopy(text); onCopied(); }
+    });
+    function fallbackCopy(text) {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0';
+      document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+    }
 
   })();
   {% endif %}
@@ -1588,11 +2060,8 @@
           '<span class="swp swp-done"   title="Resolved today">' + s.resolved_today + '</span>' +
           '</span></div>';
       });
-      if (!html) html = '<div class="analytics-row ar-row--muted">No staff found</div>';
+      if (!html) html = '<div class="analytics-row" style="color:var(--ink-subtle);font-size:11px;">No staff found</div>';
       list.innerHTML = html;
-      // Update collapsed tooltip metric
-      var card = document.getElementById('staff-workload-card');
-      if (card) card.dataset.metric = ' · ' + d.staff.length + ' staff';
       if (ts) {
         var now = new Date();
         ts.textContent = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
@@ -1603,4 +2072,161 @@
   refreshStaffWorkload();
   setInterval(refreshStaffWorkload, 60000); // every 60 seconds
 </script>
+
+{# ── KPI strip + sparkline + patient hover card (Clarity sprint) ─── #}
+<script src="https://cdn.jsdelivr.net/npm/apexcharts" onerror="window._apexChartsLoadFailed=true"></script>
+<script>
+  /**
+   * Animates a numeric value from 0 to the target over ~800ms ease-out.
+   * @param {HTMLElement} el - Element whose textContent is updated
+   * @param {number} target - Final numeric value
+   * @param {boolean} isFloat - Whether to show one decimal place
+   */
+  function countUp(el, target, isFloat) {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      el.textContent = isFloat ? target.toFixed(1) : target;
+      return;
+    }
+    var start = 0;
+    var startTime = null;
+    var duration = 800;
+    function step(ts) {
+      if (!startTime) startTime = ts;
+      var progress = Math.min((ts - startTime) / duration, 1);
+      var ease = 1 - Math.pow(1 - progress, 3);
+      var current = start + (target - start) * ease;
+      el.textContent = isFloat ? current.toFixed(1) : Math.round(current);
+      if (progress < 1) requestAnimationFrame(step);
+      else el.textContent = isFloat ? target.toFixed(1) : target;
+    }
+    requestAnimationFrame(step);
+  }
+
+  /** Loads Today's Performance KPI strip from /api/analytics/performance-summary. */
+  (function loadKpiStrip() {
+    fetch('/api/analytics/performance-summary', { credentials: 'same-origin' })
+      .then(function (r) { return r.ok ? r.json() : Promise.reject(); })
+      .then(function (d) {
+        var map = {
+          cases_today:          { val: d.cases_today || 0,             float: false },
+          avg_resolve_minutes:  { val: d.avg_resolve_minutes,          float: true  },
+          red_flags_today:      { val: d.red_flags_today || 0,         float: false },
+          throughput_last_hour: { val: d.throughput_last_hour || 0,    float: false },
+        };
+        document.querySelectorAll('[data-kpi]').forEach(function (el) {
+          var key = el.dataset.kpi;
+          if (!(key in map)) return;
+          var entry = map[key];
+          if (entry.val === null || entry.val === undefined) {
+            el.textContent = '—';
+            return;
+          }
+          countUp(el, entry.val, entry.float);
+          if (key === 'red_flags_today' && entry.val > 0) {
+            el.classList.add('is-danger');
+          }
+        });
+      })
+      .catch(function () {});
+  })();
+
+  /** Loads hourly volume data and renders ApexCharts sparkline. */
+  (function loadSparkline() {
+    fetch('/api/analytics/hourly-volume', { credentials: 'same-origin' })
+      .then(function (r) { return r.ok ? r.json() : Promise.reject(); })
+      .then(function (d) {
+        var noDataEl = document.getElementById('sparkline-no-data');
+        var chartEl  = document.getElementById('sparkline-apex');
+        if (!chartEl) return;
+
+        var hasData = d.hours && d.hours.some(function (h) { return h.count > 0; });
+        if (!hasData) return;
+
+        if (noDataEl) noDataEl.style.display = 'none';
+
+        if (window._apexChartsLoadFailed || typeof ApexCharts === 'undefined') {
+          if (noDataEl) { noDataEl.textContent = 'Chart unavailable'; noDataEl.style.display = ''; }
+          return;
+        }
+
+        var seriesData = d.hours.map(function (h) { return [h.hour, h.count]; });
+        new ApexCharts(chartEl, {
+          series: [{ data: seriesData }],
+          chart: { type: 'area', height: 80, sparkline: { enabled: true }, animations: { enabled: true, easing: 'easeinout', speed: 800 } },
+          stroke: { curve: 'smooth', width: 2, colors: ['#00A896'] },
+          fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.15, opacityTo: 0, stops: [0, 100], colorStops: [{ offset: 0, color: '#00A896', opacity: 0.15 }, { offset: 100, color: '#00A896', opacity: 0 }] } },
+          xaxis: { type: 'numeric', min: 0, max: 23 },
+          yaxis: { show: false },
+          tooltip: { enabled: true, x: { formatter: function (v) { return v + ':00'; } } },
+        }).render();
+      })
+      .catch(function () {});
+  })();
+
+  /** Patient hover card — shows on hover over [data-patient-hover] elements. */
+  (function initPatientHoverCard() {
+    var card = document.createElement('div');
+    card.className = 'patient-hover-card';
+    card.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(card);
+
+    var hoverTimer = null;
+    var currentTarget = null;
+    var cache = {};
+
+    function showCard(el, name) {
+      currentTarget = el;
+      var rect = el.getBoundingClientRect();
+      card.style.left = rect.left + 'px';
+      card.style.top  = (rect.bottom + window.scrollY + 6) + 'px';
+
+      if (cache[name]) {
+        renderCard(cache[name]);
+        return;
+      }
+      card.innerHTML = '<div class="patient-hover-card-name">' + escHtml(name) + '</div><div class="patient-hover-card-row"><span>Loading…</span></div>';
+      card.classList.add('is-visible');
+
+      fetch('/api/patient-card?name=' + encodeURIComponent(name), { credentials: 'same-origin' })
+        .then(function (r) { return r.ok ? r.json() : Promise.reject(); })
+        .then(function (d) { cache[name] = d; if (currentTarget === el) renderCard(d); })
+        .catch(function () { if (currentTarget === el) card.classList.remove('is-visible'); });
+    }
+
+    function renderCard(d) {
+      var rows = '';
+      if (d.dob)               rows += '<div class="patient-hover-card-row"><span>DOB</span><span>' + escHtml(d.dob) + '</span></div>';
+      if (d.nhs_number_masked)  rows += '<div class="patient-hover-card-row"><span>NHS</span><span class="patient-hover-card-nhs">' + escHtml(d.nhs_number_masked) + '</span></div>';
+      rows += '<div class="patient-hover-card-row"><span>Today</span><span>' + (d.cases_today || 0) + ' case(s)</span></div>';
+      card.innerHTML = '<div class="patient-hover-card-name">' + escHtml(d.name || '—') + '</div>' + (rows || '<div class="patient-hover-card-row"><span>No prior cases today</span></div>');
+      card.classList.add('is-visible');
+    }
+
+    function hideCard() {
+      clearTimeout(hoverTimer);
+      currentTarget = null;
+      card.classList.remove('is-visible');
+    }
+
+    function escHtml(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    document.addEventListener('mouseover', function (e) {
+      var el = e.target.closest('[data-patient-hover]');
+      if (!el || !el.dataset.patientHover) return;
+      clearTimeout(hoverTimer);
+      hoverTimer = setTimeout(function () { showCard(el, el.dataset.patientHover); }, 200);
+    });
+
+    document.addEventListener('mouseout', function (e) {
+      var el = e.target.closest('[data-patient-hover]');
+      if (!el) return;
+      clearTimeout(hoverTimer);
+      hoverTimer = setTimeout(hideCard, 80);
+    });
+  })();
+</script>
+<div class="detail-panel-backdrop" id="panel-backdrop"></div>
 {% endblock %}
+                                                                                                

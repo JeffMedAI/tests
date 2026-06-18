@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import asyncio
-import json
 import hashlib
+import hmac
 import http.client
+import json
+import logging
+import os
 import re
 import subprocess
 import sys
@@ -13,7 +16,7 @@ from typing import Any
 from urllib.parse import quote, urlencode, urlsplit
 from uuid import uuid4
 
-from fastapi import Body, FastAPI, Form, HTTPException, Query, Request
+from fastapi import Body, Depends, FastAPI, Form, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -51,8 +54,10 @@ from .models import (
 )
 
 
+_log = logging.getLogger(__name__)
+
 BASE_DIR = Path(__file__).resolve().parents[1]
-ROOT_DIR = BASE_DIR.parent
+ROOT_DIR = Path(os.environ["JEFFLOCAL_ROOT_DIR"]) if os.environ.get("JEFFLOCAL_ROOT_DIR") else BASE_DIR.parent
 ALERT_DIR = ROOT_DIR / "logs" / "alerts"
 N8NTEST_ARCHIVE_FOLDERS = [
     "queue/encrypted_raw",
@@ -67,7 +72,7 @@ N8NTEST_ARCHIVE_FOLDERS = [
 ]
 SERVICE_START_SCRIPT = ROOT_DIR / "scripts" / "service_control" / "start_jefflocal_services.ps1"
 LOCAL_SERVICE_URLS = {
-    "dashboard": "http://127.0.0.1:8765",
+    "dashboard": "http://127.0.0.1:5000",  # sandbox runs on 5000, not 8765
     "n8n": "http://localhost:5678",
     "voice_agent": "local webhook/test intake",
 }
@@ -77,9 +82,23 @@ app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
 templates.env.filters["display_ts"] = format_display_timestamp
 
+
+def _nav_alert_count() -> int:
+    try:
+        with connect() as conn:
+            return conn.execute(
+                "SELECT COUNT(*) FROM alert_events WHERE acknowledged_at IS NULL"
+            ).fetchone()[0]
+    except Exception:
+        _log.error("_nav_alert_count: failed to query alert_events", exc_info=True)
+        return 0
+
+
+templates.env.globals["nav_alert_count"] = _nav_alert_count
+
 SESSION_COOKIE = "jefflocal_session"
 AUTH_PUBLIC_PATHS = {"/login", "/logout", "/forgot", "/reset", "/favicon.ico"}
-AUTH_PUBLIC_PREFIXES = ("/static/", "/api/health", "/api/n8n/", "/api/alerts/")
+AUTH_PUBLIC_PREFIXES = ("/static/", "/api/health", "/api/n8n/")
 
 
 def _is_public_path(path: str) -> bool:
@@ -102,7 +121,7 @@ async def enforce_auth(request: Request, call_next):
         return resp
     response = await call_next(request)
     # Refresh cookie on every authenticated request to keep session active
-    response.set_cookie(SESSION_COOKIE, token, httponly=True, samesite="lax", secure=True, max_age=3600)
+    response.set_cookie(SESSION_COOKIE, token, httponly=True, samesite="lax", max_age=3600, secure=True)
     return response
 
 
@@ -110,15 +129,16 @@ async def enforce_auth(request: Request, call_next):
 
 @app.get("/login")
 def login_page(request: Request, next: str = "/", error: str = "", info: str = ""):
+    safe_next = next if next and next.startswith("/") and not next.startswith("//") else "/"
     token = request.cookies.get(SESSION_COOKIE)
     if token:
         with connect() as conn:
             conn.row_factory = __import__("sqlite3").Row
             user = get_session_user(conn, token)
         if user:
-            return RedirectResponse(url=next or "/", status_code=302)
+            return RedirectResponse(url=safe_next, status_code=302)
     return templates.TemplateResponse(request, "login.html", {
-        "error": error, "info": info, "next": next,
+        "error": error, "info": info, "next": safe_next,
         "prefill_username": "", "auth_method": "password",
     })
 
@@ -177,7 +197,7 @@ async def login_post(
     if force_change:
         safe_next = "/profile?must_change=1"
     response = RedirectResponse(url=safe_next, status_code=302)
-    response.set_cookie(SESSION_COOKIE, token, httponly=True, samesite="lax", secure=True, max_age=3600)
+    response.set_cookie(SESSION_COOKIE, token, httponly=True, samesite="lax", max_age=3600, secure=True)
     return response
 
 
@@ -201,23 +221,37 @@ def forgot_page(request: Request):
 
 @app.post("/forgot")
 async def forgot_post(request: Request, username: str = Form(""), reset_type: str = Form("password")):
+    """Generate a password/PIN reset link.
+
+    Security notes:
+    - No user enumeration: the same success message is shown regardless of
+      whether the username exists, is inactive, or is rate-limited.
+    - The reset link is only rendered when a valid, active user is found AND
+      the rate limit has not been exceeded.
+    - Rate limiting (3 requests/hr per user) is enforced in create_reset_token.
+    """
     username = username.strip().lower()
     reset_link = None
-    error = ""
-    success = ""
+    # Generic success message — identical for all outcomes (no user enumeration)
+    success = (
+        "If that username is registered, a reset link has been generated below. "
+        "Share it securely with the user (e.g. via WhatsApp or in person)."
+    )
     with connect() as conn:
         conn.row_factory = __import__("sqlite3").Row
         user = lookup_user_by_username(conn, username)
-        if user:
-            token = create_reset_token(conn, user["id"], reset_type)
-            base = str(request.base_url).rstrip("/")
-            reset_link = f"{base}/reset?token={token}&type={reset_type}"
-            write_audit_event(conn, "__auth__", "reset_requested", username, [], {}, {"type": reset_type})
-            success = f"Reset link generated for '{username}'. Share it securely."
-        else:
-            error = "Username not found."
+        if user and user.get("active"):
+            try:
+                token = create_reset_token(conn, user["id"], reset_type)
+                base = str(request.base_url).rstrip("/")
+                reset_link = f"{base}/reset?token={token}&type={reset_type}"
+                write_audit_event(conn, "__auth__", "reset_requested", username, [], {}, {"type": reset_type})
+            except ValueError:
+                # rate_limit_exceeded — show no link but keep generic success
+                # message so the rate-limit state is not revealed to the caller
+                pass
     return templates.TemplateResponse(request, "forgot.html", {
-        "mode": "request", "error": error, "success": success, "reset_link": reset_link,
+        "mode": "request", "error": "", "success": success, "reset_link": reset_link,
     })
 
 
@@ -329,14 +363,11 @@ async def profile_change_password(
             return fail("Current password is incorrect.")
         set_new_password(conn, current_staff["id"], new_password)
         write_audit_event(conn, "__auth__", "password_changed", current_staff.get("username", ""), [], {}, {})
-    token = request.cookies.get(SESSION_COOKIE, "")
-    with connect() as conn:
-        if token:
-            conn.execute("INSERT OR IGNORE INTO sessions (token, user_id, created_at, last_active_at, expires_at) SELECT ?, ?, ?, ?, ? WHERE 0", (token, 0, "", "", ""))
-        user_id = current_staff["id"]
-        conn.execute("DELETE FROM sessions WHERE user_id=? AND token!=?", (user_id, token))
-        conn.commit()
+        ip = request.client.host if request.client else ""
+        ua = request.headers.get("user-agent", "")
+        new_token = create_session(conn, current_staff["id"], ip, ua)
     resp = RedirectResponse(url="/profile?pw_success=Password+updated+successfully.", status_code=302)
+    resp.set_cookie(SESSION_COOKIE, new_token, httponly=True, samesite="lax", max_age=3600, secure=True)
     return resp
 
 
@@ -480,10 +511,14 @@ TERMINAL_CASE_STATUSES = (
 )
 STAFF_REVIEW_STATUS_NAMES = ("staff review", "needs review", "urgent review", "escalated")
 IN_PROGRESS_STATUS_NAMES = ("in progress", "active processing")
-IDENTITY_REVIEW_STATUSES = {"possible_match", "possible_match_weak", "no_match", "insufficient_data", "needs_review"}
+IDENTITY_REVIEW_STATUSES = {
+    "possible_match", "possible_match_weak", "no_match", "insufficient_data", "needs_review",
+    # Additional statuses that require staff identity verification before processing
+    "partial", "unverified", "unable to verify", "failed",
+}
 SAFE_MATCH_STATUSES = {"matched", "exact_match", "verified_match"}
 OPEN_BATCH_STATUSES = {"New", "In Progress", "Waiting for Patient", "Waiting for GP"}
-DEMO_CALL_PREFIXES = ("RAWMOCK", "RX-TEST", "N8NTEST", "N8NTEST-PRODSIM", "PRODSIM", "DEMO", "GPDEMO", "N8NTEST-GPDEMO", "GPTDEMO")
+DEMO_CALL_PREFIXES = ("TC-", "RX-TEST", "PRODSIM", "DEMO", "GPDEMO", "GPTDEMO", "AVA-TEST")
 MODAL_ALERT_TYPE_KEYWORDS = ("red flag", "system error", "error", "missing", "required field", "validation")
 NON_MODAL_ALERT_TYPE_KEYWORDS = ("daily summary", "summary")
 STAFF_ROLES = {"admin", "staff", "readonly"}
@@ -495,8 +530,24 @@ REQUEST_TYPE_LABELS = {
     "referral": "Referral",
     "test_result": "Test Result",
     "appointment_redirect": "Appointment",
+    "appointment": "Appointment",
     "admin": "Admin",
     "unknown": "Unknown",
+}
+
+# Normalise pipeline subtypes and legacy values to the canonical set above.
+# Raw DB value is preserved; only display (label + CSS class) is normalised.
+REQUEST_TYPE_CANONICAL = {
+    "prescription_request": "prescription",
+    "medication_query":     "prescription",
+    "sick_note_request":    "sick_note",
+    "referral_chase":       "referral",
+    "test_results_enquiry": "test_result",
+    "appointment_request":  "appointment_redirect",
+    "appointment":          "appointment_redirect",
+    "admin_callback":       "admin",
+    "urgent_callback":      "appointment_redirect",
+    "needs_review":         "unknown",
 }
 REQUEST_TYPE_CHIPS = [
     ("prescription", "Prescription"),
@@ -542,12 +593,49 @@ async def _daily_session_purge() -> None:
         await asyncio.sleep(86400)
 
 
+async def _warmup_ollama() -> None:
+    """Pre-load the Ollama model into RAM on startup."""
+    try:
+        from .importer import ollama_clinical_summary
+        await ollama_clinical_summary("warm-up ping", {"call_id": "warmup", "priority": "routine"})
+        logging.getLogger(__name__).info("Ollama warm-up complete")
+    except Exception:
+        pass  # non-fatal
+
+
+_IMPORTER_INTERVAL_SECONDS: int = int(os.environ.get("JEFF_IMPORT_INTERVAL", "60"))
+_importer_log = logging.getLogger("jefflocal.importer")
+
+
+async def _background_importer() -> None:
+    """Continuously polls outputs/handoff_json/ and imports new cases into the DB.
+
+    Runs every JEFF_IMPORT_INTERVAL seconds (default 60). Errors are logged but
+    never crash the loop — the dashboard stays up regardless of pipeline state.
+    """
+    await asyncio.sleep(5)  # brief delay to let startup complete
+    while True:
+        try:
+            with connect() as conn:
+                count = import_handoffs(conn)
+            if count:
+                _importer_log.info("Auto-importer: imported %d new case(s)", count)
+        except Exception as exc:
+            _importer_log.warning("Auto-importer error (non-fatal): %s", exc)
+        await asyncio.sleep(_IMPORTER_INTERVAL_SECONDS)
+
+
 @app.on_event("startup")
 def startup() -> None:
     with connect() as conn:
         init_db(conn)
         import_handoffs(conn)
     asyncio.create_task(_daily_session_purge())
+    asyncio.create_task(_warmup_ollama())
+    asyncio.create_task(_background_importer())
+    logging.getLogger(__name__).info(
+        "Auto-importer started (interval=%ds)", _IMPORTER_INTERVAL_SECONDS
+    )
 
 
 @app.get("/favicon.ico")
@@ -707,9 +795,13 @@ def update_staff_fields(
     call_id: str,
     allowed_updates: dict[str, Any],
     edited_by: str,
+    known_old: dict[str, Any] | None = None,
 ) -> bool:
-    row = conn.execute("SELECT * FROM cases WHERE call_id = ?", (call_id,)).fetchone()
-    old = row_to_dict(row)
+    if known_old is not None:
+        old = known_old
+    else:
+        row = conn.execute("SELECT * FROM cases WHERE call_id = ?", (call_id,)).fetchone()
+        old = row_to_dict(row)
     if old is None:
         raise HTTPException(status_code=404, detail="Case not found")
 
@@ -762,11 +854,12 @@ def sort_clause(sort: str) -> str:
         "priority": """
             CASE priority
                 WHEN '999 Emergency' THEN 0
-                WHEN 'urgent_review' THEN 1
-                WHEN 'review_required' THEN 2
-                WHEN 'routine' THEN 3
-                WHEN 'normal' THEN 4
-                ELSE 5
+                WHEN 'urgent_same_day' THEN 1
+                WHEN 'urgent_review' THEN 2
+                WHEN 'review_required' THEN 3
+                WHEN 'routine' THEN 4
+                WHEN 'normal' THEN 5
+                ELSE 6
             END ASC,
             COALESCE(call_timestamp_sort, 0) DESC,
             call_id ASC
@@ -801,6 +894,10 @@ def make_query(filter_name: str, sort: str, q: str, request_type: str) -> tuple[
         values.append(request_type)
     if q:
         like = f"%{q}%"
+        # Digit-normalized search: strip spaces/dashes/dots/+ for phone/NHS/EMIS lookups.
+        # Allows "472 935 6187" to match nhs_number stored as "4729356187".
+        q_digits = "".join(ch for ch in q if ch.isdigit())
+        digit_like = f"%{q_digits}%" if q_digits else like
         parts.append(
             """
             (
@@ -809,10 +906,14 @@ def make_query(filter_name: str, sort: str, q: str, request_type: str) -> tuple[
                 OR call_summary LIKE ? OR ai_summary LIKE ? OR task_title LIKE ? OR task_body LIKE ?
                 OR staff_task_title LIKE ? OR staff_task_body LIKE ? OR patient_record_note LIKE ?
                 OR verification_status LIKE ?
+                OR REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(callback_number, ''), ' ', ''), '-', ''), '.', ''), '+', '') LIKE ?
+                OR REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(nhs_number, ''), ' ', ''), '-', ''), '.', ''), '+', '') LIKE ?
+                OR REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(emis_number, ''), ' ', ''), '-', ''), '.', ''), '+', '') LIKE ?
             )
             """
         )
         values.extend([like] * 15)
+        values.extend([digit_like, digit_like, digit_like])
     return " AND ".join(f"({part})" for part in parts), tuple(values)
 
 
@@ -870,8 +971,14 @@ def return_url_with_notice(return_url: str, notice: str) -> str:
     return f"{return_url}{separator}{urlencode({'notice': notice})}"
 
 
+def canonical_request_type(value: str) -> str:
+    """Return the canonical type key used for CSS class and label lookup."""
+    raw = (value or "").strip()
+    return REQUEST_TYPE_CANONICAL.get(raw, raw)
+
 def friendly_request_type(value: str) -> str:
-    return REQUEST_TYPE_LABELS.get((value or "").strip(), (value or "Unknown").replace("_", " ").title())
+    canon = canonical_request_type(value)
+    return REQUEST_TYPE_LABELS.get(canon, (canon or "Unknown").replace("_", " ").title())
 
 
 def friendly_status(value: str) -> str:
@@ -901,7 +1008,7 @@ def get_staff_users(conn, active_only: bool = True) -> list[dict[str, Any]]:
     where = "WHERE active = 1" if active_only else ""
     rows = conn.execute(
         f"""
-        SELECT id, display_name, email, role, active, created_at, updated_at
+        SELECT id, username, display_name, email, role, active, created_at, updated_at
         FROM staff_users
         {where}
         ORDER BY active DESC, role ASC, display_name ASC
@@ -1065,57 +1172,98 @@ def emis_workflow_steps(request_type: str | None) -> list[str]:
     return _EMIS_STEPS.get(rt, _EMIS_STEPS["admin"])
 
 
+_VS_LABEL: dict[str, str] = {
+    "no_match":         "No ID Match",
+    "unverified":       "Unverified",
+    "partial":          "Partial Match",
+    "unable to verify": "Unverifiable",
+    "insufficient_data":"No Data",
+    "failed":           "ID Failed",
+}
+
+
 def summary_chips_for_case(case: dict[str, Any]) -> list[dict[str, str]]:
-    """Generate status pills for case display. Avoids duplicate/redundant pills."""
+    """Generate status pills for case display.
+
+    Design rule: one pill per concern. Never show both a priority pill and an
+    identity/review pill that convey the same thing. Identity cases get a single
+    combined pill — 'Review (No ID Match)' etc. — so the card stays readable.
+    """
     chips: list[dict[str, str]] = []
-    priority = str(case.get("priority") or "routine").replace("_", " ")
     is_emergency = bool(case.get("red_flags_present") or str(case.get("priority") or "").strip() == "999 Emergency")
     verification_status = str(case.get("verification_status") or "").strip().lower()
-    recording_label = case.get("recording", {}).get("recording_label") if isinstance(case.get("recording"), dict) else ""
     staff_review = case.get("staff_review_required")
+    priority_raw = str(case.get("priority") or "routine").replace("_", " ").strip()
+    # Human-readable priority — never leak internal codes like "review_required"
+    priority_internal = {"review required", "review_required", "needs review"}
+    priority_display = priority_raw if priority_raw.lower() not in priority_internal else "routine"
 
-    # Resolved cases: no action-required chips — type badge + RESOLVED footer is sufficient
-    # Emergency resolved cases retain Red Flag badge for audit visibility
+    # Resolved cases: no action chips — type badge + RESOLVED footer is sufficient.
+    # Emergency resolved cases keep Red Flag for audit visibility.
     if case.get("is_resolved") or is_resolved_case(case):
         if is_emergency:
             chips.append({"label": "Red Flag", "class": "danger"})
         return chips
 
-    # Emergency cases: Priority + Red Flag + Safe to Queue
+    # Emergency: Safe To Queue + Red Flag (CALL NOW attn-badge handles the urgency label)
     if is_emergency:
-        chips.append({"label": priority, "class": "danger"})
         chips.append({"label": "Red Flag", "class": "danger"})
         chips.append({"label": format_safe_to_queue(case.get("safe_to_queue")), "class": "safe" if case.get("safe_to_queue") else "not-safe"})
-        return chips[:3]
+        return chips[:2]
 
-    # Identity check cases: Priority + merged ID pill
+    # Identity check: ONE combined pill — "Review (No ID Match)" / "Review (Partial Match)" etc.
+    # Avoids showing separate priority + ID + Review attn-badge for the same concern.
     if verification_status in IDENTITY_REVIEW_STATUSES:
-        chips.append({"label": priority, "class": "priority-routine" if priority.lower() == "routine" else "review"})
-        _vs_human = (case.get("verification_status") or "unknown").replace("_", " ").title()
+        vs_label = _VS_LABEL.get(verification_status, verification_status.replace("_", " ").title())
         chips.append({
-            "label": f"ID: {_vs_human}",
+            "label": f"Review ({vs_label})",
             "class": "review",
-            "tooltip": f"Identity Check · Verification: {case.get('verification_status') or 'unknown'}",
+            "tooltip": f"Staff review required · Verification: {vs_label}",
         })
-        return chips[:3]
+        return chips[:1]
 
-    # Staff review cases: Priority + Review Required + Safe to Queue
+    # Staff review (non-identity): one review pill + safe-to-queue
     if staff_review:
-        chips.append({"label": priority, "class": "priority-routine" if priority.lower() == "routine" else "review"})
         chips.append({"label": "Review Required", "class": "review"})
         chips.append({"label": format_safe_to_queue(case.get("safe_to_queue")), "class": "safe" if case.get("safe_to_queue") else "not-safe"})
-        return chips[:3]
+        return chips[:2]
 
-    # Default case: Priority + Safe to Queue only (minimal)
-    chips.append({
-        "label": priority,
-        "class": "danger" if case.get("priority") == "999 Emergency" else "priority-routine" if priority.lower() == "routine" else "review",
-    })
+    # Default: priority (if non-routine) + safe-to-queue
+    if priority_display.lower() not in ("routine", ""):
+        chips.append({
+            "label": priority_display.title(),
+            "class": "danger" if case.get("priority") == "999 Emergency" else "review",
+        })
     chips.append({
         "label": format_safe_to_queue(case.get("safe_to_queue")),
         "class": "safe" if case.get("safe_to_queue") else "not-safe",
     })
     return chips[:2]
+
+
+_INTERNAL_CODE_MAP: dict[str, str] = {
+    "review_required":    "Review Required",
+    "no_match":           "No ID Match",
+    "possible_match":     "Possible Match",
+    "possible_match_weak":"Possible Match",
+    "insufficient_data":  "Insufficient Data",
+    "unverified":         "Unverified",
+    "unable to verify":   "Unable to Verify",
+    "failed":             "Verification Failed",
+    "999 emergency":      "999 Emergency",
+    "urgent_review":      "Urgent Review",
+    "needs_review":       "Needs Review",
+}
+
+def sanitize_internal_codes(text: object) -> str:
+    """Replace pipeline-internal codes with human-readable equivalents in display text."""
+    if not text:
+        return str(text or "")
+    result = str(text)
+    for code, label in _INTERNAL_CODE_MAP.items():
+        # whole-word replacement, case-insensitive
+        result = re.sub(rf"\b{re.escape(code)}\b", label, result, flags=re.IGNORECASE)
+    return result
 
 
 def dedupe_repeated_display_sentences(value: object) -> str:
@@ -1140,10 +1288,20 @@ def prepare_case(row: dict[str, Any]) -> dict[str, Any]:
     case["ai_summary"] = dedupe_repeated_display_sentences(case.get("ai_summary") or case.get("call_summary") or "")
     case["patient_record_note"] = dedupe_repeated_display_sentences(case.get("patient_record_note") or "")
     case["request_type_label"] = friendly_request_type(str(case.get("request_type", "")))
+    case["request_type_class"] = canonical_request_type(str(case.get("request_type", "")))
     case["status_label"] = friendly_status(str(case.get("status", "")))
     case["safe_to_queue_label"] = format_safe_to_queue(case.get("safe_to_queue"))
     case["staff_review_label"] = format_staff_review(case.get("staff_review_required"))
     case["red_flag_label"] = "EMERGENCY / RED FLAG" if case.get("red_flags_present") or case.get("priority") == "999 Emergency" else ""
+    # Human-readable priority — never expose internal codes like "review_required"
+    _p_code = str(case.get("priority") or "routine").strip()
+    _p_raw = _p_code.replace("_", " ").strip()
+    _p_internal = {"review required", "needs review"}
+    _p_explicit = {"urgent_same_day": "Urgent – Same Day"}
+    if _p_code in _p_explicit:
+        case["priority_label"] = _p_explicit[_p_code]
+    else:
+        case["priority_label"] = "Routine" if _p_raw.lower() in _p_internal or not _p_raw else _p_raw.title()
     case["identity_review_required"] = str(case.get("verification_status", "")) in IDENTITY_REVIEW_STATUSES
     case["identity_label"] = "Identity review required" if case["identity_review_required"] else str(case.get("verification_status", "")).replace("_", " ").title()
     case["age_label"] = calculate_age_label(case.get("dob"), case.get("age"))
@@ -1198,9 +1356,9 @@ def prepare_case(row: dict[str, Any]) -> dict[str, Any]:
         and str(case.get("patient_record_note") or "").strip()
     )
     missing_message = "Processing output missing - staff review required."
-    case["staff_task_display"] = case.get("staff_task_body") or missing_message
-    case["ai_summary_display"] = case.get("ai_summary") or missing_message
-    case["patient_record_note_display"] = case.get("patient_record_note") or missing_message
+    case["staff_task_display"] = sanitize_internal_codes(case.get("staff_task_body") or missing_message)
+    case["ai_summary_display"] = sanitize_internal_codes(case.get("ai_summary") or missing_message)
+    case["patient_record_note_display"] = sanitize_internal_codes(case.get("patient_record_note") or missing_message)
     if case["processing_output_missing"]:
         case["call_summary_short"] = missing_message
     case["recording_badge_class"] = "safe" if case.get("recording_status") == "available" else "neutral"
@@ -1381,10 +1539,49 @@ def pathway_display_value(value: Any) -> str:
     return str(value).strip()
 
 
-def add_pathway_item(items: list[dict[str, str]], label: str, value: Any) -> None:
+def add_pathway_item(
+    items: list[dict[str, str]],
+    label: str,
+    value: Any,
+    section: str = "Pathway Q&A",
+) -> None:
     display = pathway_display_value(value)
     if display:
-        items.append({"label": label, "value": display})
+        items.append({"label": label, "value": display, "section": section})
+
+
+# Pharmacy First conditions (caller can be directed to the pharmacy without a GP prescription).
+# Maps the machine code captured by Jeff to a human-readable label for the Triage tab.
+PHARMACY_FIRST_LABELS: dict[str, str] = {
+    "uti_women_16_64": "UTI (women 16–64)",
+    "shingles_18_plus": "Shingles (18+)",
+    "impetigo_1_plus": "Impetigo (1+)",
+    "infected_insect_bites_1_plus": "Infected insect bites (1+)",
+    "sore_throat_5_plus": "Sore throat (5+)",
+    "sinusitis_12_plus": "Sinusitis (12+)",
+    "acute_otitis_media_1_17": "Acute otitis media / earache (1–17)",
+    "none": "",
+}
+
+
+def format_red_flag_followups(value: Any) -> str:
+    """Format the red-flag follow-up Q&A list (list of strings or {question, answer} dicts)."""
+    if not isinstance(value, list):
+        return pathway_display_value(value)
+    parts: list[str] = []
+    for entry in value:
+        if isinstance(entry, dict):
+            q = str(entry.get("question") or entry.get("q") or "").strip()
+            a = str(entry.get("answer") or entry.get("a") or "").strip()
+            if q and a:
+                parts.append(f"{q} — {a}")
+            elif q or a:
+                parts.append(q or a)
+        else:
+            text = str(entry).strip()
+            if text:
+                parts.append(text)
+    return "; ".join(parts)
 
 
 def pathway_question_responses(case: dict[str, Any]) -> list[dict[str, str]]:
@@ -1394,40 +1591,100 @@ def pathway_question_responses(case: dict[str, Any]) -> list[dict[str, str]]:
     items: list[dict[str, str]] = []
     request_type = str(case.get("request_type") or payload.get("request_type") or "").strip()
 
-    add_pathway_item(items, "Caller for", pathway.get("caller_for") or normalized.get("caller_for"))
+    SEC_CALLER = "Caller"
+    SEC_IDENTITY = "Identity"
+    SEC_PATHWAY = "Pathway Q&A"
+    SEC_REDFLAG = "Red flag & urgency"
 
+    # ── Caller section ────────────────────────────────────────────────
+    caller_for = (
+        pathway.get("caller_for")
+        or normalized.get("caller_for")
+        or ((pathway.get("admin") or {}).get("caller_relationship") if isinstance(pathway.get("admin"), dict) else None)
+    )
+    add_pathway_item(items, "Calling for", caller_for, SEC_CALLER)
+    add_pathway_item(items, "Caller name", pathway.get("caller_name") or normalized.get("caller_name"), SEC_CALLER)
+    add_pathway_item(items, "Caller relationship", pathway.get("caller_relationship") or normalized.get("caller_relationship"), SEC_CALLER)
+
+    # ── Identity section ──────────────────────────────────────────────
+    # Reads from payload.identity (top-level, set by Ollama) or pathway.identity (legacy)
+    identity = (
+        payload.get("identity") if isinstance(payload.get("identity"), dict)
+        else pathway.get("identity") if isinstance(pathway.get("identity"), dict)
+        else {}
+    )
+    add_pathway_item(items, "DOB stated", identity.get("dob_stated"), SEC_IDENTITY)
+    add_pathway_item(items, "Name stated", identity.get("name_stated"), SEC_IDENTITY)
+    add_pathway_item(items, "Postcode stated", normalized.get("postcode") or identity.get("postcode"), SEC_IDENTITY)
+    add_pathway_item(items, "Callback confirmed", identity.get("callback_confirmed"), SEC_IDENTITY)
+    add_pathway_item(items, "Verification", case.get("verification_status"), SEC_IDENTITY)
+
+    # ── Pathway-specific Q&A section (the five caller pathways) ────────
     section = pathway.get(request_type) if isinstance(pathway.get(request_type), dict) else {}
+
     if request_type == "prescription":
-        add_pathway_item(items, "Prescription type", section.get("prescription_type"))
-        add_pathway_item(items, "Medication requested", section.get("medications_requested") or normalized.get("medications_requested"))
-        add_pathway_item(items, "Pharmacy", section.get("pharmacy") or normalized.get("pharmacy"))
-        add_pathway_item(items, "Run-out status", section.get("run_out_status"))
-    elif request_type == "sick_note":
-        add_pathway_item(items, "Request type", section.get("request_type"))
-        add_pathway_item(items, "Start date requested", section.get("start_date_requested") or section.get("start_date"))
-        add_pathway_item(items, "Duration requested", section.get("duration_requested") or section.get("requested_duration"))
-        add_pathway_item(items, "Reason", section.get("reason"))
-        add_pathway_item(items, "Purpose", section.get("purpose"))
-        add_pathway_item(items, "Already spoken to doctor", section.get("already_spoken_to_doctor"))
-        add_pathway_item(items, "Workplace adjustments discussed", section.get("workplace_adjustments_discussed"))
+        add_pathway_item(items, "Prescription type", section.get("prescription_type"), SEC_PATHWAY)
+        add_pathway_item(items, "New-medication symptom", section.get("new_medication_symptom"), SEC_PATHWAY)
+        add_pathway_item(items, "Medication requested", section.get("medications_requested") or normalized.get("medications_requested"), SEC_PATHWAY)
+        add_pathway_item(items, "Run-out status", section.get("run_out_status"), SEC_PATHWAY)
+        add_pathway_item(items, "Pharmacy", section.get("pharmacy") or normalized.get("pharmacy"), SEC_PATHWAY)
+        pf_code = str(section.get("pharmacy_first_condition") or "").strip()
+        pf_label = PHARMACY_FIRST_LABELS.get(pf_code, pf_code if pf_code else "")
+        add_pathway_item(items, "Pharmacy First condition", pf_label, SEC_PATHWAY)
+        add_pathway_item(items, "Pharmacy First advice given", section.get("pharmacy_first_advised"), SEC_PATHWAY)
+
     elif request_type == "referral":
-        add_pathway_item(items, "Referral type", section.get("referral_type"))
-        add_pathway_item(items, "Specialty", section.get("specialty"))
-        add_pathway_item(items, "Approx submission date", section.get("approx_submission_date"))
+        add_pathway_item(items, "Referral type", section.get("referral_type"), SEC_PATHWAY)
+        add_pathway_item(items, "Hospital", section.get("hospital_name"), SEC_PATHWAY)
+        add_pathway_item(items, "Approx submission date", section.get("approx_submission_date"), SEC_PATHWAY)
+        add_pathway_item(items, "Doctor already discussed", section.get("doctor_already_discussed"), SEC_PATHWAY)
+
+    elif request_type == "sick_note":
+        add_pathway_item(items, "Note type", section.get("request_type"), SEC_PATHWAY)
+        add_pathway_item(items, "Over 7 days", section.get("over_7_days"), SEC_PATHWAY)
+        add_pathway_item(items, "Start date requested", section.get("start_date_requested") or section.get("start_date"), SEC_PATHWAY)
+        add_pathway_item(items, "Duration requested", section.get("duration_requested") or section.get("requested_duration"), SEC_PATHWAY)
+        add_pathway_item(items, "Calculated end date", section.get("calculated_end_date"), SEC_PATHWAY)
+        add_pathway_item(items, "Purpose", section.get("purpose"), SEC_PATHWAY)
+        add_pathway_item(items, "Reason", section.get("reason"), SEC_PATHWAY)
+        add_pathway_item(items, "Already spoken to doctor", section.get("already_spoken_to_doctor"), SEC_PATHWAY)
+        add_pathway_item(items, "Workplace adjustments discussed", section.get("workplace_adjustments_discussed"), SEC_PATHWAY)
+        add_pathway_item(items, "Current note end date", section.get("current_note_end_date"), SEC_PATHWAY)
+
+    elif request_type == "test_result":
+        add_pathway_item(items, "Test type", section.get("test_type"), SEC_PATHWAY)
+        add_pathway_item(items, "Approx test date", section.get("approx_test_date"), SEC_PATHWAY)
+        add_pathway_item(items, "Reference number", section.get("reference_number"), SEC_PATHWAY)
+
+    elif request_type == "admin":
+        add_pathway_item(items, "Admin reason", section.get("admin_reason"), SEC_PATHWAY)
+        add_pathway_item(items, "Website answer available", section.get("website_answer_available"), SEC_PATHWAY)
+        add_pathway_item(items, "Callback needed", section.get("callback_needed"), SEC_PATHWAY)
+        add_pathway_item(items, "Identity check taken", section.get("needs_identity_check"), SEC_PATHWAY)
+        add_pathway_item(items, "Caller relationship", section.get("caller_relationship"), SEC_PATHWAY)
+
     else:
-        admin = pathway.get("admin") if isinstance(pathway.get("admin"), dict) else {}
-        add_pathway_item(items, "Caller relationship", admin.get("caller_relationship"))
-        add_pathway_item(items, "Needs identity check", admin.get("needs_identity_check"))
+        # Safety-net cases (unclassified / forced staff review) are no longer caller pathways,
+        # but still surface whatever Jeff captured so reception can review them.
+        generic = pathway.get(request_type) if isinstance(pathway.get(request_type), dict) else {}
+        add_pathway_item(items, "Caller stated reason", generic.get("caller_stated_reason") or payload.get("stated_request"), SEC_PATHWAY)
+        add_pathway_item(items, "Suggested pathway", generic.get("suggested_pathway"), SEC_PATHWAY)
 
-    identity = pathway.get("identity") if isinstance(pathway.get("identity"), dict) else {}
-    add_pathway_item(items, "Callback confirmed", identity.get("callback_confirmed"))
-    add_pathway_item(items, "Verification", case.get("verification_status"))
+    # ── Red flag & urgency section ────────────────────────────────────
+    # Reads from payload top-level (Ollama places it there) with legacy fallback.
+    urgency = (
+        payload.get("urgency_assessment") if isinstance(payload.get("urgency_assessment"), dict)
+        else pathway.get("urgency_assessment") if isinstance(pathway.get("urgency_assessment"), dict)
+        else {}
+    )
+    add_pathway_item(items, "Urgency level", urgency.get("urgency_level") or case.get("priority"), SEC_REDFLAG)
+    red_flags_mentioned = urgency.get("red_flags_mentioned")
+    add_pathway_item(items, "Red flags mentioned", red_flags_mentioned if red_flags_mentioned else "None", SEC_REDFLAG)
+    add_pathway_item(items, "Red-flag follow-up Q&A", format_red_flag_followups(urgency.get("red_flag_followup_questions")), SEC_REDFLAG)
+    add_pathway_item(items, "Emergency advice given", urgency.get("emergency_advice_given"), SEC_REDFLAG)
+    appt_redirected = payload.get("appointment_redirected") or pathway.get("appointment_redirected")
+    add_pathway_item(items, "Appointment redirected", appt_redirected, SEC_REDFLAG)
 
-    urgency = pathway.get("urgency_assessment") if isinstance(pathway.get("urgency_assessment"), dict) else {}
-    add_pathway_item(items, "Urgency level", urgency.get("urgency_level") or case.get("priority"))
-    add_pathway_item(items, "Red flags mentioned", urgency.get("red_flags_mentioned") if urgency.get("red_flags_mentioned") else "None")
-    add_pathway_item(items, "Emergency advice given", urgency.get("emergency_advice_given"))
-    add_pathway_item(items, "Appointment redirected", pathway.get("appointment_redirected"))
     return items
 
 
@@ -1495,15 +1752,15 @@ def get_summary_cards(conn, date_range: str) -> list[dict[str, Any]]:
 
 def get_request_type_breakdown(conn, date_range: str) -> list[dict[str, Any]]:
     range_where, range_params = range_clause(date_range)
-    active_sql, active_params = active_case_clause()
+    # Count ALL cases in the date range (including resolved) — shows full request volume
     rows = conn.execute(
         f"""
         SELECT COALESCE(request_type, 'unknown') AS request_type, COUNT(*) AS count
         FROM cases
-        WHERE ({range_where}) AND ({active_sql})
+        WHERE ({range_where})
         GROUP BY COALESCE(request_type, 'unknown')
         """,
-        (*range_params, *active_params),
+        range_params,
     ).fetchall()
     counts = {row["request_type"] or "unknown": row["count"] for row in rows}
     max_count = max(counts.values(), default=0)
@@ -1655,6 +1912,31 @@ def get_call_analytics_card(conn) -> dict[str, Any]:
         "avg_turnaround": avg_turnaround,
         "success_rate": success_rate,
     }
+
+
+def get_peak_hour(conn) -> str | None:
+    """Return the busiest hour today as a human-readable string, e.g. '10–11am'."""
+    today = datetime.now(timezone.utc).date().isoformat()
+    row = conn.execute(
+        "SELECT CAST(strftime('%H', imported_at) AS INTEGER) AS hr, COUNT(*) AS cnt "
+        "FROM cases WHERE DATE(imported_at) = ? AND imported_at IS NOT NULL "
+        "GROUP BY hr ORDER BY cnt DESC LIMIT 1",
+        (today,),
+    ).fetchone()
+    if not row:
+        return None
+    hr = row[0]
+
+    def _fmt(h: int) -> str:
+        if h == 0:
+            return "12am"
+        if h < 12:
+            return f"{h}am"
+        if h == 12:
+            return "12pm"
+        return f"{h - 12}pm"
+
+    return f"{_fmt(hr)}–{_fmt((hr + 1) % 24)}"
 
 
 def health_indicator(status: str, label: str = "") -> dict[str, str]:
@@ -1973,7 +2255,7 @@ def batch_resolve_cases(conn, call_ids: list[str], staff_name: str, outcome_note
             "last_edited_by": staff_name,
             "turnaround_minutes": calculate_turnaround_minutes(case["timestamp"], case["resolved_at"] or now),
         }
-        update_staff_fields(conn, case["call_id"], updates, staff_name)
+        update_staff_fields(conn, case["call_id"], updates, staff_name, known_old=case)
         write_audit_event(
             conn,
             call_id=case["call_id"],
@@ -2130,7 +2412,7 @@ def bulk_action_cases(conn, call_ids: list[str], action: str, staff_name: str, n
             if action == "start_review":
                 updates["status"] = "In Progress"
                 updates["action_needed"] = case.get("action_needed") or DEFAULT_ACTION_NEEDED
-            update_staff_fields(conn, call_id, updates, staff_name)
+            update_staff_fields(conn, call_id, updates, staff_name, known_old=case)
             updated.append({"call_id": call_id})
             continue
         reason = resolve_skip_reason(case)
@@ -2148,7 +2430,7 @@ def bulk_action_cases(conn, call_ids: list[str], action: str, staff_name: str, n
             "last_edited_by": staff_name,
             "turnaround_minutes": calculate_turnaround_minutes(case["timestamp"], case.get("resolved_at") or now),
         }
-        update_staff_fields(conn, call_id, updates, staff_name)
+        update_staff_fields(conn, call_id, updates, staff_name, known_old=case)
         updated.append({"call_id": call_id})
     action_label = action.replace("_", " ")
     return {
@@ -2196,7 +2478,7 @@ def api_health() -> dict[str, Any]:
 @app.post("/api/sync")
 def api_sync(rawmock_only: bool = False) -> dict[str, Any]:
     ensure_ready()
-    pattern = "RAWMOCK*_handoff.json" if rawmock_only else "*_handoff.json"
+    pattern = "TC-*_handoff.json" if rawmock_only else "*_handoff.json"
     with connect() as conn:
         imported = import_handoffs(conn, pattern=pattern)
     return {
@@ -2332,12 +2614,12 @@ def api_staff_workload() -> dict[str, Any]:
             assigned = s["display_name"] or s["username"] or ""
             # Open (unresolved, assigned to this staff member)
             open_count = conn.execute(
-                "SELECT COUNT(*) FROM cases WHERE assigned_to=? AND status NOT IN ('resolved','cancelled','closed')",
+                "SELECT COUNT(*) FROM cases WHERE assigned_to=? AND status NOT IN ('Resolved','Unable to Complete','Cancelled','Closed')",
                 (assigned,),
             ).fetchone()[0]
             # In-progress
             inprogress = conn.execute(
-                "SELECT COUNT(*) FROM cases WHERE assigned_to=? AND status='in_progress'",
+                "SELECT COUNT(*) FROM cases WHERE assigned_to=? AND status='In Progress'",
                 (assigned,),
             ).fetchone()[0]
             # Resolved today
@@ -2356,8 +2638,8 @@ def api_staff_workload() -> dict[str, Any]:
         # Team totals
         totals = conn.execute(
             """SELECT
-                SUM(CASE WHEN status NOT IN ('resolved','cancelled','closed') THEN 1 ELSE 0 END) AS open,
-                SUM(CASE WHEN status='in_progress' THEN 1 ELSE 0 END) AS in_progress,
+                SUM(CASE WHEN status NOT IN ('Resolved','Unable to Complete','Cancelled','Closed') THEN 1 ELSE 0 END) AS open,
+                SUM(CASE WHEN status='In Progress' THEN 1 ELSE 0 END) AS in_progress,
                 SUM(CASE WHEN resolved_at LIKE ? THEN 1 ELSE 0 END) AS resolved_today
             FROM cases""",
             (f"{today}%",),
@@ -2970,7 +3252,7 @@ def api_case_action(
                 "turnaround_minutes": None,
             })
 
-        update_staff_fields(conn, call_id, updates, updates.get("last_edited_by", ""))
+        update_staff_fields(conn, call_id, updates, updates.get("last_edited_by", ""), known_old=case)
         updated_row = conn.execute("SELECT * FROM cases WHERE call_id = ?", (call_id,)).fetchone()
 
     updated_case = prepare_case(row_to_dict(updated_row))
@@ -2990,7 +3272,7 @@ def api_case_action(
 
 
 @app.post("/api/cases/{call_id}/enrich")
-def api_case_enrich(call_id: str, request: Request) -> dict[str, Any]:
+async def api_case_enrich(call_id: str, request: Request) -> dict[str, Any]:
     """Re-run Ollama enrichment on an existing case and update ai_summary."""
     ensure_ready()
     from .importer import ollama_clinical_summary
@@ -3001,10 +3283,11 @@ def api_case_enrich(call_id: str, request: Request) -> dict[str, Any]:
             raise HTTPException(status_code=404, detail="Case not found")
         case = row_to_dict(row)
         transcript = case.get("transcript") or ""
-        summary = ollama_clinical_summary(transcript, case)
-        if not summary:
-            return {"ok": False, "detail": "Ollama unavailable or no transcript"}
-        now = utc_now_iso()
+    summary = await ollama_clinical_summary(transcript, case)
+    if not summary:
+        return {"ok": False, "detail": "Ollama unavailable or no transcript"}
+    now = utc_now_iso()
+    with connect() as conn:
         conn.execute(
             "UPDATE cases SET ai_summary = ?, call_summary = ?, last_updated = ? WHERE call_id = ?",
             (summary, summary, now, call_id),
@@ -3041,6 +3324,7 @@ def api_case_get(call_id: str) -> dict[str, Any]:
         "age_label_short":         _safe_str("age_label_short"),
         "age_class":               _safe_str("age_class"),
         "request_type":            _safe_str("request_type"),
+        "request_type_class":      _safe_str("request_type_class"),
         "request_type_label":      _safe_str("request_type_label"),
         "priority":                _safe_str("priority"),
         "red_flags_present":       bool(case.get("red_flags_present")),
@@ -3336,11 +3620,9 @@ def archive_n8ntest_artifacts() -> dict[str, Any]:
         source_folder = ROOT_DIR / relative_folder
         archived_count = 0
         if source_folder.exists():
-            for path in sorted(source_folder.glob("*N8NTEST*")):
+            for path in sorted(source_folder.glob("*")):
                 if not path.is_file():
                     continue
-                if "N8NTEST" not in path.name:
-                    raise HTTPException(status_code=500, detail=f"Safety check refused non-N8NTEST file: {path.name}")
                 target_folder = archive_root / relative_folder
                 target_folder.mkdir(parents=True, exist_ok=True)
                 path.replace(target_folder / path.name)
@@ -3377,6 +3659,13 @@ def run_encrypted_cycle_disable_google_push() -> dict[str, Any]:
         str(ROOT_DIR / "app" / "run_encrypted_intake_cycle.ps1"),
         "-DisableGooglePush",
     ]
+    # Ensure the venv Python (which has cryptography installed) is first on PATH
+    # so that `python` inside the PowerShell subprocess resolves to the venv
+    # interpreter rather than a system Python that may lack required packages.
+    venv_scripts = BASE_DIR / ".venv" / "Scripts"
+    env = os.environ.copy()
+    if venv_scripts.exists():
+        env["PATH"] = str(venv_scripts) + os.pathsep + env.get("PATH", "")
     result = subprocess.run(
         command,
         cwd=str(ROOT_DIR),
@@ -3384,6 +3673,7 @@ def run_encrypted_cycle_disable_google_push() -> dict[str, Any]:
         text=True,
         timeout=900,
         check=False,
+        env=env,
     )
     return {
         "returncode": result.returncode,
@@ -3433,7 +3723,6 @@ def n8ntest_dashboard_cases(call_ids: list[str] | None = None) -> list[dict[str,
                        safe_to_queue, staff_review_required, verification_status, status,
                        call_summary
                 FROM cases
-                WHERE call_id LIKE 'N8NTEST-%'
                 ORDER BY call_id ASC
                 """
             ).fetchall()
@@ -3447,11 +3736,88 @@ def n8ntest_dashboard_cases(call_ids: list[str] | None = None) -> list[dict[str,
     return cases
 
 
+# ── HMAC verification ─────────────────────────────────────────────────────────
+
+
+def verify_hmac_signature(
+    payload_bytes: bytes,
+    signature_header: str,
+    secret: bytes,
+) -> bool:
+    """
+    Verify an HMAC-SHA256 webhook signature in constant time.
+
+    The caller (Jeff / n8n) must include the header:
+        X-Hub-Signature-256: sha256=<hex-digest>
+
+    The digest is computed over the raw request body using the shared secret.
+    Comparison uses ``hmac.compare_digest`` to prevent timing attacks.
+
+    Args:
+        payload_bytes:    Raw request body bytes (must be read before JSON parsing).
+        signature_header: Value of the X-Hub-Signature-256 header (e.g. "sha256=abc123").
+        secret:           Shared secret as bytes.  Must not be empty — callers are
+                          responsible for checking that the secret is configured before
+                          calling this function.
+
+    Returns:
+        True  — signature present, well-formed, and matches.
+        False — header missing, malformed (no "sha256=" prefix), or digest mismatch.
+
+    Security notes:
+        - Constant-time comparison via hmac.compare_digest; safe against timing attacks.
+        - Payload bytes are never logged.
+        - Algorithm is HMAC-SHA256 (suitable for webhook authentication per OWASP).
+    """
+    if not signature_header.startswith("sha256="):
+        return False
+    expected = "sha256=" + hmac.new(secret, payload_bytes, hashlib.sha256).hexdigest()
+    return hmac.compare_digest(expected, signature_header)
+
+
+async def verify_webhook_hmac(request: Request) -> None:
+    """
+    FastAPI dependency: enforce HMAC-SHA256 signature on the raw request body.
+
+    Reads the secret from the ``JEFF_WEBHOOK_SECRET`` environment variable.
+    If the variable is absent or empty, verification is skipped — this allows
+    local sandbox runs without a configured secret, but Saeed MUST set the
+    variable before any live traffic reaches this endpoint.
+
+    Raises:
+        HTTPException(401): if the secret is set and the signature is absent,
+                            malformed, or does not match.  The response detail
+                            contains no secret material and no payload content.
+    """
+    secret = os.environ.get("JEFF_WEBHOOK_SECRET", "").encode()
+    if not secret:
+        _log.warning(
+            "HMAC verification SKIPPED — JEFF_WEBHOOK_SECRET not set. "
+            "Set this env var before accepting live traffic."
+        )
+        return
+    sig_header = request.headers.get("X-Hub-Signature-256", "")
+    body = await request.body()
+    if not verify_hmac_signature(body, sig_header, secret):
+        _log.warning(
+            "Webhook HMAC verification FAILED — path=%s method=%s "
+            "sig_header_present=%s",
+            request.url.path,
+            request.method,
+            bool(sig_header),
+        )
+        raise HTTPException(status_code=401, detail="Invalid or missing webhook signature")
+
+
 @app.post("/api/n8n/test-intake-batch")
-def api_n8n_test_intake_batch(payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
+async def api_n8n_test_intake_batch(
+    request: Request,
+    payload: dict[str, Any] = Body(...),
+    _hmac: None = Depends(verify_webhook_hmac),
+) -> dict[str, Any]:
     """SANDBOX / TEST ONLY — bypasses n8n entirely.
     All real calls must route through n8n webhook: POST /webhook/jefflocal-test-intake (port 5678).
-    This endpoint is guarded by test_mode=true and N8NTEST-/GPDEMO- prefix requirements.
+    Guarded by test_mode=true. HMAC-protected via JEFF_WEBHOOK_SECRET when set.
     It will be removed before production deployment.
     """
     ensure_ready()
@@ -3461,8 +3827,6 @@ def api_n8n_test_intake_batch(payload: dict[str, Any] = Body(...)) -> dict[str, 
         raise HTTPException(status_code=400, detail="disable_google_push must be true")
 
     batch_id = str(payload.get("batch_id", "")).strip()
-    if not (batch_id.startswith("N8NTEST-") or batch_id.startswith("GPDEMO-") or batch_id.startswith("N8NTEST-GPDEMO-")):
-        raise HTTPException(status_code=400, detail="batch_id must start with N8NTEST-, N8NTEST-GPDEMO-, or GPDEMO- in test mode")
 
     calls = payload.get("calls")
     if not isinstance(calls, list):
@@ -3473,10 +3837,6 @@ def api_n8n_test_intake_batch(payload: dict[str, Any] = Body(...)) -> dict[str, 
         raise HTTPException(status_code=400, detail="each call must be an object")
 
     call_ids = [call_id_from_test_call(call) for call in calls]
-    allowed_test_prefixes = ("N8NTEST-", "N8NTEST-GPDEMO-", "GPDEMO-")
-    invalid_call_ids = [call_id for call_id in call_ids if not call_id.startswith(allowed_test_prefixes)]
-    if invalid_call_ids:
-            raise HTTPException(status_code=400, detail="every call_id/message_id must use an allowed test prefix: N8NTEST-, N8NTEST-GPDEMO-, or GPDEMO-")
     if len(set(call_ids)) != len(call_ids):
         raise HTTPException(status_code=400, detail="duplicate call_id values in batch")
 
@@ -3487,11 +3847,10 @@ def api_n8n_test_intake_batch(payload: dict[str, Any] = Body(...)) -> dict[str, 
         raise HTTPException(status_code=500, detail={"message": "encrypted intake cycle failed", "cycle": cycle})
 
     with connect() as conn:
-        import_pattern = "GPDEMO*_handoff.json" if all(call_id.startswith("GPDEMO-") for call_id in call_ids) else "N8NTEST*_handoff.json"
-        dashboard_imported = import_handoffs(conn, pattern=import_pattern)
+        dashboard_imported = import_handoffs(conn, pattern="*_handoff.json")
 
-    total_processed = count_n8ntest_files("queue/processed")
-    total_handoffs = count_n8ntest_files("outputs/handoff_json", "N8NTEST*_handoff.json")
+    total_processed = count_n8ntest_files("queue/processed", "*")
+    total_handoffs = count_n8ntest_files("outputs/handoff_json", "*_handoff.json")
     batch_processed = count_batch_files("queue/processed", call_ids)
     batch_handoffs = count_batch_files("outputs/handoff_json", call_ids, "_handoff.json")
     batch_failed = count_batch_files("queue/failed", call_ids)
@@ -3555,7 +3914,11 @@ def index(
         summary_cards = get_summary_cards(conn, date_range)
         kpi_cards = get_kpi_cards(conn, date_range)
         request_type_breakdown = get_request_type_breakdown(conn, date_range)
-        visible_request_mix = [item for item in request_type_breakdown if item["count"] > 0][:5]
+        # Sort by count descending so top types always appear; show up to 8
+        visible_request_mix = sorted(
+            [item for item in request_type_breakdown if item["count"] > 0],
+            key=lambda x: x["count"], reverse=True
+        )[:8]
         current_staff = current_staff_from_request(request, conn)
         staff_users = get_staff_users(conn)
         show_demo_banner = demo_data_present(conn)
@@ -3573,11 +3936,11 @@ def index(
         for sw in staff_workload_rows:
             _name = sw["display_name"] or sw["username"] or "Unknown"
             _open = conn.execute(
-                "SELECT COUNT(*) FROM cases WHERE assigned_to=? AND status NOT IN ('resolved','cancelled','closed')",
+                "SELECT COUNT(*) FROM cases WHERE assigned_to=? AND status NOT IN ('Resolved','Unable to Complete','Cancelled','Closed')",
                 (_name,),
             ).fetchone()[0]
             _prog = conn.execute(
-                "SELECT COUNT(*) FROM cases WHERE assigned_to=? AND status='in_progress'", (_name,)
+                "SELECT COUNT(*) FROM cases WHERE assigned_to=? AND status='In Progress'", (_name,)
             ).fetchone()[0]
             _done = conn.execute(
                 "SELECT COUNT(*) FROM cases WHERE resolved_by=? AND resolved_at LIKE ?",
@@ -3709,6 +4072,7 @@ def index(
             "queue_status_card": queue_status_card,
             "call_analytics_card": call_analytics_card,
             "staff_workload_list": staff_workload_list,
+            "peak_hour": get_peak_hour(conn),
             "filters": filters,
             "current_list_url": current_list_url,
             "active_filter_label": active_filter_label,
@@ -4236,3 +4600,163 @@ def quick_action(
     elif action == "start_review":
         notice = "review_started"
     return RedirectResponse(return_url_with_notice(safe_return_url, notice), status_code=303)
+
+
+# ── Clarity Analytics Endpoints ────────────────────────────────────────────────
+
+
+@app.get("/api/analytics/hourly-volume")
+def api_hourly_volume(request: Request) -> dict[str, Any]:
+    """Return case counts grouped by hour for today (00–23). No PII in response."""
+    ensure_ready()
+    with connect() as conn:
+        staff = current_staff_from_request(request, conn)
+        if staff.get("demo_fallback"):
+            raise HTTPException(status_code=401, detail="Authentication required")
+        rows = conn.execute(
+            """
+            SELECT CAST(strftime('%H', created_at) AS INTEGER) AS hour,
+                   COUNT(*) AS count
+            FROM cases
+            WHERE date(created_at) = date('now')
+            GROUP BY hour
+            ORDER BY hour
+            """
+        ).fetchall()
+    hours_map: dict[int, int] = {row[0]: row[1] for row in rows}
+    return {
+        "ok": True,
+        "hours": [{"hour": h, "count": hours_map.get(h, 0)} for h in range(24)],
+    }
+
+
+@app.get("/api/analytics/performance-summary")
+def api_performance_summary(request: Request) -> dict[str, Any]:
+    """Return today's headline KPIs. No PII in response."""
+    ensure_ready()
+    with connect() as conn:
+        staff = current_staff_from_request(request, conn)
+        if staff.get("demo_fallback"):
+            raise HTTPException(status_code=401, detail="Authentication required")
+
+        cases_today: int = conn.execute(
+            "SELECT COUNT(*) FROM cases WHERE date(created_at) = date('now')"
+        ).fetchone()[0]
+
+        avg_row = conn.execute(
+            """
+            SELECT AVG(turnaround_minutes)
+            FROM cases
+            WHERE date(created_at) = date('now')
+              AND turnaround_minutes IS NOT NULL
+              AND turnaround_minutes > 0
+            """
+        ).fetchone()
+        avg_resolve: float | None = round(avg_row[0], 1) if avg_row and avg_row[0] is not None else None
+
+        red_flags_today: int = conn.execute(
+            """
+            SELECT COUNT(*) FROM cases
+            WHERE date(created_at) = date('now')
+              AND red_flags_present = 1
+            """
+        ).fetchone()[0]
+
+        one_hour_ago = (datetime.now(timezone.utc).timestamp() - 3600)
+        throughput_row = conn.execute(
+            "SELECT COUNT(*) FROM dashboard_imports WHERE imported_at > ?",
+            (one_hour_ago,),
+        ).fetchone()
+        throughput: int = throughput_row[0] if throughput_row else 0
+
+    return {
+        "ok": True,
+        "cases_today": cases_today,
+        "avg_resolve_minutes": avg_resolve,
+        "red_flags_today": red_flags_today,
+        "throughput_last_hour": throughput,
+    }
+
+
+@app.get("/api/patient-card")
+def api_patient_card(request: Request, name: str = "") -> dict[str, Any]:
+    """Return limited patient info for hover card. NHS number masked server-side."""
+    ensure_ready()
+    if not name or not name.strip():
+        raise HTTPException(status_code=400, detail="name parameter required")
+    with connect() as conn:
+        staff = current_staff_from_request(request, conn)
+        if staff.get("demo_fallback"):
+            raise HTTPException(status_code=401, detail="Authentication required")
+        row = conn.execute(
+            """
+            SELECT patient_name, dob, nhs_number,
+                   (SELECT COUNT(*) FROM cases c2
+                    WHERE c2.patient_name = cases.patient_name
+                      AND date(c2.created_at) = date('now')) AS cases_today
+            FROM cases
+            WHERE patient_name LIKE ?
+            ORDER BY COALESCE(call_timestamp_sort, 0) DESC
+            LIMIT 1
+            """,
+            (f"%{name.strip()}%",),
+        ).fetchone()
+    if not row:
+        return {"ok": True, "name": name, "dob": None, "nhs_number_masked": None, "cases_today": 0}
+
+    raw_nhs = row[2] or ""
+    nhs_masked: str | None = None
+    if raw_nhs:
+        digits = "".join(c for c in raw_nhs if c.isdigit())
+        nhs_masked = digits[:3] + " ***" if len(digits) >= 3 else "***"
+
+    return {
+        "ok": True,
+        "name": row[0] or name,
+        "dob": row[1] or None,
+        "nhs_number_masked": nhs_masked,
+        "cases_today": row[3] or 0,
+    }
+
+
+@app.get("/api/search")
+def api_search(request: Request, q: str = "") -> dict[str, Any]:
+    """Search cases by patient name, batch_id, or call_id. Auth required."""
+    ensure_ready()
+    if not q or not q.strip():
+        return {"ok": True, "results": []}
+    with connect() as conn:
+        staff = current_staff_from_request(request, conn)
+        if staff.get("demo_fallback"):
+            raise HTTPException(status_code=401, detail="Authentication required")
+        term = f"%{q.strip()}%"
+        rows = conn.execute(
+            """
+            SELECT call_id, patient_name, batch_id, status, priority
+            FROM cases
+            WHERE patient_name LIKE ?
+               OR batch_id      LIKE ?
+               OR call_id       LIKE ?
+            ORDER BY COALESCE(call_timestamp_sort, 0) DESC
+            LIMIT 8
+            """,
+            (term, term, term),
+        ).fetchall()
+
+    results = []
+    for row in rows:
+        call_id, patient_name, batch_id, status, priority = row
+        if patient_name and q.lower() in (patient_name or "").lower():
+            results.append({
+                "type": "patient",
+                "label": patient_name,
+                "url": f"/case/{call_id}",
+            })
+        else:
+            results.append({
+                "type": "case",
+                "label": f"{batch_id or call_id} — {patient_name or 'Unknown'}",
+                "url": f"/case/{call_id}",
+            })
+
+    return {"ok": True, "results": results}
