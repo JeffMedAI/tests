@@ -518,7 +518,7 @@ IDENTITY_REVIEW_STATUSES = {
 }
 SAFE_MATCH_STATUSES = {"matched", "exact_match", "verified_match"}
 OPEN_BATCH_STATUSES = {"New", "In Progress", "Waiting for Patient", "Waiting for GP"}
-DEMO_CALL_PREFIXES = ("TC-", "RX-TEST", "PRODSIM", "DEMO", "GPDEMO", "GPTDEMO")
+DEMO_CALL_PREFIXES = ("TC-", "RX-TEST", "PRODSIM", "DEMO", "GPDEMO", "GPTDEMO", "AVA-TEST")
 MODAL_ALERT_TYPE_KEYWORDS = ("red flag", "system error", "error", "missing", "required field", "validation")
 NON_MODAL_ALERT_TYPE_KEYWORDS = ("daily summary", "summary")
 STAFF_ROLES = {"admin", "staff", "readonly"}
@@ -530,8 +530,24 @@ REQUEST_TYPE_LABELS = {
     "referral": "Referral",
     "test_result": "Test Result",
     "appointment_redirect": "Appointment",
+    "appointment": "Appointment",
     "admin": "Admin",
     "unknown": "Unknown",
+}
+
+# Normalise pipeline subtypes and legacy values to the canonical set above.
+# Raw DB value is preserved; only display (label + CSS class) is normalised.
+REQUEST_TYPE_CANONICAL = {
+    "prescription_request": "prescription",
+    "medication_query":     "prescription",
+    "sick_note_request":    "sick_note",
+    "referral_chase":       "referral",
+    "test_results_enquiry": "test_result",
+    "appointment_request":  "appointment_redirect",
+    "appointment":          "appointment_redirect",
+    "admin_callback":       "admin",
+    "urgent_callback":      "appointment_redirect",
+    "needs_review":         "unknown",
 }
 REQUEST_TYPE_CHIPS = [
     ("prescription", "Prescription"),
@@ -838,11 +854,12 @@ def sort_clause(sort: str) -> str:
         "priority": """
             CASE priority
                 WHEN '999 Emergency' THEN 0
-                WHEN 'urgent_review' THEN 1
-                WHEN 'review_required' THEN 2
-                WHEN 'routine' THEN 3
-                WHEN 'normal' THEN 4
-                ELSE 5
+                WHEN 'urgent_same_day' THEN 1
+                WHEN 'urgent_review' THEN 2
+                WHEN 'review_required' THEN 3
+                WHEN 'routine' THEN 4
+                WHEN 'normal' THEN 5
+                ELSE 6
             END ASC,
             COALESCE(call_timestamp_sort, 0) DESC,
             call_id ASC
@@ -954,8 +971,14 @@ def return_url_with_notice(return_url: str, notice: str) -> str:
     return f"{return_url}{separator}{urlencode({'notice': notice})}"
 
 
+def canonical_request_type(value: str) -> str:
+    """Return the canonical type key used for CSS class and label lookup."""
+    raw = (value or "").strip()
+    return REQUEST_TYPE_CANONICAL.get(raw, raw)
+
 def friendly_request_type(value: str) -> str:
-    return REQUEST_TYPE_LABELS.get((value or "").strip(), (value or "Unknown").replace("_", " ").title())
+    canon = canonical_request_type(value)
+    return REQUEST_TYPE_LABELS.get(canon, (canon or "Unknown").replace("_", " ").title())
 
 
 def friendly_status(value: str) -> str:
@@ -1265,14 +1288,20 @@ def prepare_case(row: dict[str, Any]) -> dict[str, Any]:
     case["ai_summary"] = dedupe_repeated_display_sentences(case.get("ai_summary") or case.get("call_summary") or "")
     case["patient_record_note"] = dedupe_repeated_display_sentences(case.get("patient_record_note") or "")
     case["request_type_label"] = friendly_request_type(str(case.get("request_type", "")))
+    case["request_type_class"] = canonical_request_type(str(case.get("request_type", "")))
     case["status_label"] = friendly_status(str(case.get("status", "")))
     case["safe_to_queue_label"] = format_safe_to_queue(case.get("safe_to_queue"))
     case["staff_review_label"] = format_staff_review(case.get("staff_review_required"))
     case["red_flag_label"] = "EMERGENCY / RED FLAG" if case.get("red_flags_present") or case.get("priority") == "999 Emergency" else ""
     # Human-readable priority — never expose internal codes like "review_required"
-    _p_raw = str(case.get("priority") or "routine").replace("_", " ").strip()
+    _p_code = str(case.get("priority") or "routine").strip()
+    _p_raw = _p_code.replace("_", " ").strip()
     _p_internal = {"review required", "needs review"}
-    case["priority_label"] = "Routine" if _p_raw.lower() in _p_internal or not _p_raw else _p_raw.title()
+    _p_explicit = {"urgent_same_day": "Urgent – Same Day"}
+    if _p_code in _p_explicit:
+        case["priority_label"] = _p_explicit[_p_code]
+    else:
+        case["priority_label"] = "Routine" if _p_raw.lower() in _p_internal or not _p_raw else _p_raw.title()
     case["identity_review_required"] = str(case.get("verification_status", "")) in IDENTITY_REVIEW_STATUSES
     case["identity_label"] = "Identity review required" if case["identity_review_required"] else str(case.get("verification_status", "")).replace("_", " ").title()
     case["age_label"] = calculate_age_label(case.get("dob"), case.get("age"))
@@ -1510,10 +1539,49 @@ def pathway_display_value(value: Any) -> str:
     return str(value).strip()
 
 
-def add_pathway_item(items: list[dict[str, str]], label: str, value: Any) -> None:
+def add_pathway_item(
+    items: list[dict[str, str]],
+    label: str,
+    value: Any,
+    section: str = "Pathway Q&A",
+) -> None:
     display = pathway_display_value(value)
     if display:
-        items.append({"label": label, "value": display})
+        items.append({"label": label, "value": display, "section": section})
+
+
+# Pharmacy First conditions (caller can be directed to the pharmacy without a GP prescription).
+# Maps the machine code captured by Jeff to a human-readable label for the Triage tab.
+PHARMACY_FIRST_LABELS: dict[str, str] = {
+    "uti_women_16_64": "UTI (women 16–64)",
+    "shingles_18_plus": "Shingles (18+)",
+    "impetigo_1_plus": "Impetigo (1+)",
+    "infected_insect_bites_1_plus": "Infected insect bites (1+)",
+    "sore_throat_5_plus": "Sore throat (5+)",
+    "sinusitis_12_plus": "Sinusitis (12+)",
+    "acute_otitis_media_1_17": "Acute otitis media / earache (1–17)",
+    "none": "",
+}
+
+
+def format_red_flag_followups(value: Any) -> str:
+    """Format the red-flag follow-up Q&A list (list of strings or {question, answer} dicts)."""
+    if not isinstance(value, list):
+        return pathway_display_value(value)
+    parts: list[str] = []
+    for entry in value:
+        if isinstance(entry, dict):
+            q = str(entry.get("question") or entry.get("q") or "").strip()
+            a = str(entry.get("answer") or entry.get("a") or "").strip()
+            if q and a:
+                parts.append(f"{q} — {a}")
+            elif q or a:
+                parts.append(q or a)
+        else:
+            text = str(entry).strip()
+            if text:
+                parts.append(text)
+    return "; ".join(parts)
 
 
 def pathway_question_responses(case: dict[str, Any]) -> list[dict[str, str]]:
@@ -1523,93 +1591,99 @@ def pathway_question_responses(case: dict[str, Any]) -> list[dict[str, str]]:
     items: list[dict[str, str]] = []
     request_type = str(case.get("request_type") or payload.get("request_type") or "").strip()
 
-    # Caller identity — always shown
+    SEC_CALLER = "Caller"
+    SEC_IDENTITY = "Identity"
+    SEC_PATHWAY = "Pathway Q&A"
+    SEC_REDFLAG = "Red flag & urgency"
+
+    # ── Caller section ────────────────────────────────────────────────
     caller_for = (
         pathway.get("caller_for")
         or normalized.get("caller_for")
-        or (pathway.get("admin") or {}).get("caller_relationship") if isinstance(pathway.get("admin"), dict) else None
+        or ((pathway.get("admin") or {}).get("caller_relationship") if isinstance(pathway.get("admin"), dict) else None)
     )
-    add_pathway_item(items, "Caller for", caller_for)
+    add_pathway_item(items, "Calling for", caller_for, SEC_CALLER)
+    add_pathway_item(items, "Caller name", pathway.get("caller_name") or normalized.get("caller_name"), SEC_CALLER)
+    add_pathway_item(items, "Caller relationship", pathway.get("caller_relationship") or normalized.get("caller_relationship"), SEC_CALLER)
 
-    # Pathway-specific fields
-    section = pathway.get(request_type) if isinstance(pathway.get(request_type), dict) else {}
-
-    if request_type == "prescription":
-        add_pathway_item(items, "Prescription type", section.get("prescription_type"))
-        add_pathway_item(items, "Medication requested", section.get("medications_requested") or normalized.get("medications_requested"))
-        add_pathway_item(items, "Pharmacy", section.get("pharmacy") or normalized.get("pharmacy"))
-        add_pathway_item(items, "Run-out status", section.get("run_out_status"))
-
-    elif request_type == "sick_note":
-        add_pathway_item(items, "Note type", section.get("request_type"))
-        add_pathway_item(items, "Start date requested", section.get("start_date_requested") or section.get("start_date"))
-        add_pathway_item(items, "Duration requested", section.get("duration_requested") or section.get("requested_duration"))
-        add_pathway_item(items, "Reason", section.get("reason"))
-        add_pathway_item(items, "Purpose", section.get("purpose"))
-        add_pathway_item(items, "Already spoken to doctor", section.get("already_spoken_to_doctor"))
-        add_pathway_item(items, "Workplace adjustments discussed", section.get("workplace_adjustments_discussed"))
-
-    elif request_type == "referral":
-        add_pathway_item(items, "Referral type", section.get("referral_type"))
-        add_pathway_item(items, "Specialty", section.get("specialty"))
-        add_pathway_item(items, "Hospital", section.get("hospital_name"))
-        add_pathway_item(items, "Approx submission date", section.get("approx_submission_date"))
-        add_pathway_item(items, "Choose & Book code", section.get("choose_and_book_code"))
-
-    elif request_type == "test_result":
-        add_pathway_item(items, "Test type", section.get("test_type"))
-        add_pathway_item(items, "Approx test date", section.get("approx_test_date"))
-        add_pathway_item(items, "Reference number", section.get("reference_number"))
-        add_pathway_item(items, "GP seen about result", section.get("gp_seen_about_result"))
-        add_pathway_item(items, "Patient expressed urgency concern", section.get("urgency_concern"))
-
-    elif request_type == "appointment_redirect":
-        add_pathway_item(items, "Appointment reason", section.get("appointment_reason"))
-        add_pathway_item(items, "Preferred timeframe", section.get("preferred_timeframe"))
-        add_pathway_item(items, "Who for", section.get("who_for"))
-        add_pathway_item(items, "Urgency", section.get("urgency"))
-        add_pathway_item(items, "Clinician preference", section.get("clinician_preference"))
-        add_pathway_item(items, "Previously declined appointment", section.get("previous_appointment_declined"))
-
-    elif request_type == "admin":
-        add_pathway_item(items, "Admin reason", section.get("admin_reason"))
-        add_pathway_item(items, "Caller relationship", section.get("caller_relationship"))
-        add_pathway_item(items, "Needs identity check", section.get("needs_identity_check"))
-        add_pathway_item(items, "Website answer available", section.get("website_answer_available"))
-        add_pathway_item(items, "Callback needed", section.get("callback_needed"))
-
-    elif request_type == "unknown":
-        unknown_sec = pathway.get("unknown") if isinstance(pathway.get("unknown"), dict) else {}
-        add_pathway_item(items, "Caller stated reason", unknown_sec.get("caller_stated_reason"))
-        add_pathway_item(items, "Suggested pathway", unknown_sec.get("suggested_pathway"))
-
-    # Identity confirmation — always shown
+    # ── Identity section ──────────────────────────────────────────────
     # Reads from payload.identity (top-level, set by Ollama) or pathway.identity (legacy)
     identity = (
         payload.get("identity") if isinstance(payload.get("identity"), dict)
         else pathway.get("identity") if isinstance(pathway.get("identity"), dict)
         else {}
     )
-    add_pathway_item(items, "Callback confirmed", identity.get("callback_confirmed"))
-    add_pathway_item(items, "Name stated", identity.get("name_stated"))
-    add_pathway_item(items, "DOB stated", identity.get("dob_stated"))
-    add_pathway_item(items, "Verification", case.get("verification_status"))
+    add_pathway_item(items, "DOB stated", identity.get("dob_stated"), SEC_IDENTITY)
+    add_pathway_item(items, "Name stated", identity.get("name_stated"), SEC_IDENTITY)
+    add_pathway_item(items, "Postcode stated", normalized.get("postcode") or identity.get("postcode"), SEC_IDENTITY)
+    add_pathway_item(items, "Callback confirmed", identity.get("callback_confirmed"), SEC_IDENTITY)
+    add_pathway_item(items, "Verification", case.get("verification_status"), SEC_IDENTITY)
 
-    # Urgency assessment — reads from payload top-level (Ollama places it there)
-    # with fallback to pathway_responses.urgency_assessment (legacy location)
+    # ── Pathway-specific Q&A section (the five caller pathways) ────────
+    section = pathway.get(request_type) if isinstance(pathway.get(request_type), dict) else {}
+
+    if request_type == "prescription":
+        add_pathway_item(items, "Prescription type", section.get("prescription_type"), SEC_PATHWAY)
+        add_pathway_item(items, "New-medication symptom", section.get("new_medication_symptom"), SEC_PATHWAY)
+        add_pathway_item(items, "Medication requested", section.get("medications_requested") or normalized.get("medications_requested"), SEC_PATHWAY)
+        add_pathway_item(items, "Run-out status", section.get("run_out_status"), SEC_PATHWAY)
+        add_pathway_item(items, "Pharmacy", section.get("pharmacy") or normalized.get("pharmacy"), SEC_PATHWAY)
+        pf_code = str(section.get("pharmacy_first_condition") or "").strip()
+        pf_label = PHARMACY_FIRST_LABELS.get(pf_code, pf_code if pf_code else "")
+        add_pathway_item(items, "Pharmacy First condition", pf_label, SEC_PATHWAY)
+        add_pathway_item(items, "Pharmacy First advice given", section.get("pharmacy_first_advised"), SEC_PATHWAY)
+
+    elif request_type == "referral":
+        add_pathway_item(items, "Referral type", section.get("referral_type"), SEC_PATHWAY)
+        add_pathway_item(items, "Hospital", section.get("hospital_name"), SEC_PATHWAY)
+        add_pathway_item(items, "Approx submission date", section.get("approx_submission_date"), SEC_PATHWAY)
+        add_pathway_item(items, "Doctor already discussed", section.get("doctor_already_discussed"), SEC_PATHWAY)
+
+    elif request_type == "sick_note":
+        add_pathway_item(items, "Note type", section.get("request_type"), SEC_PATHWAY)
+        add_pathway_item(items, "Over 7 days", section.get("over_7_days"), SEC_PATHWAY)
+        add_pathway_item(items, "Start date requested", section.get("start_date_requested") or section.get("start_date"), SEC_PATHWAY)
+        add_pathway_item(items, "Duration requested", section.get("duration_requested") or section.get("requested_duration"), SEC_PATHWAY)
+        add_pathway_item(items, "Calculated end date", section.get("calculated_end_date"), SEC_PATHWAY)
+        add_pathway_item(items, "Purpose", section.get("purpose"), SEC_PATHWAY)
+        add_pathway_item(items, "Reason", section.get("reason"), SEC_PATHWAY)
+        add_pathway_item(items, "Already spoken to doctor", section.get("already_spoken_to_doctor"), SEC_PATHWAY)
+        add_pathway_item(items, "Workplace adjustments discussed", section.get("workplace_adjustments_discussed"), SEC_PATHWAY)
+        add_pathway_item(items, "Current note end date", section.get("current_note_end_date"), SEC_PATHWAY)
+
+    elif request_type == "test_result":
+        add_pathway_item(items, "Test type", section.get("test_type"), SEC_PATHWAY)
+        add_pathway_item(items, "Approx test date", section.get("approx_test_date"), SEC_PATHWAY)
+        add_pathway_item(items, "Reference number", section.get("reference_number"), SEC_PATHWAY)
+
+    elif request_type == "admin":
+        add_pathway_item(items, "Admin reason", section.get("admin_reason"), SEC_PATHWAY)
+        add_pathway_item(items, "Website answer available", section.get("website_answer_available"), SEC_PATHWAY)
+        add_pathway_item(items, "Callback needed", section.get("callback_needed"), SEC_PATHWAY)
+        add_pathway_item(items, "Identity check taken", section.get("needs_identity_check"), SEC_PATHWAY)
+        add_pathway_item(items, "Caller relationship", section.get("caller_relationship"), SEC_PATHWAY)
+
+    else:
+        # Safety-net cases (unclassified / forced staff review) are no longer caller pathways,
+        # but still surface whatever Jeff captured so reception can review them.
+        generic = pathway.get(request_type) if isinstance(pathway.get(request_type), dict) else {}
+        add_pathway_item(items, "Caller stated reason", generic.get("caller_stated_reason") or payload.get("stated_request"), SEC_PATHWAY)
+        add_pathway_item(items, "Suggested pathway", generic.get("suggested_pathway"), SEC_PATHWAY)
+
+    # ── Red flag & urgency section ────────────────────────────────────
+    # Reads from payload top-level (Ollama places it there) with legacy fallback.
     urgency = (
         payload.get("urgency_assessment") if isinstance(payload.get("urgency_assessment"), dict)
         else pathway.get("urgency_assessment") if isinstance(pathway.get("urgency_assessment"), dict)
         else {}
     )
-    add_pathway_item(items, "Urgency level", urgency.get("urgency_level") or case.get("priority"))
+    add_pathway_item(items, "Urgency level", urgency.get("urgency_level") or case.get("priority"), SEC_REDFLAG)
     red_flags_mentioned = urgency.get("red_flags_mentioned")
-    add_pathway_item(items, "Red flags mentioned", red_flags_mentioned if red_flags_mentioned else "None")
-    add_pathway_item(items, "Emergency advice given", urgency.get("emergency_advice_given"))
-
-    # Appointment redirected flag — reads from payload top-level (Ollama places it there)
+    add_pathway_item(items, "Red flags mentioned", red_flags_mentioned if red_flags_mentioned else "None", SEC_REDFLAG)
+    add_pathway_item(items, "Red-flag follow-up Q&A", format_red_flag_followups(urgency.get("red_flag_followup_questions")), SEC_REDFLAG)
+    add_pathway_item(items, "Emergency advice given", urgency.get("emergency_advice_given"), SEC_REDFLAG)
     appt_redirected = payload.get("appointment_redirected") or pathway.get("appointment_redirected")
-    add_pathway_item(items, "Appointment redirected", appt_redirected)
+    add_pathway_item(items, "Appointment redirected", appt_redirected, SEC_REDFLAG)
 
     return items
 
@@ -1844,8 +1918,8 @@ def get_peak_hour(conn) -> str | None:
     """Return the busiest hour today as a human-readable string, e.g. '10–11am'."""
     today = datetime.now(timezone.utc).date().isoformat()
     row = conn.execute(
-        "SELECT CAST(strftime('%H', created_at) AS INTEGER) AS hr, COUNT(*) AS cnt "
-        "FROM cases WHERE DATE(created_at) = ? AND created_at IS NOT NULL "
+        "SELECT CAST(strftime('%H', imported_at) AS INTEGER) AS hr, COUNT(*) AS cnt "
+        "FROM cases WHERE DATE(imported_at) = ? AND imported_at IS NOT NULL "
         "GROUP BY hr ORDER BY cnt DESC LIMIT 1",
         (today,),
     ).fetchone()
@@ -3250,6 +3324,7 @@ def api_case_get(call_id: str) -> dict[str, Any]:
         "age_label_short":         _safe_str("age_label_short"),
         "age_class":               _safe_str("age_class"),
         "request_type":            _safe_str("request_type"),
+        "request_type_class":      _safe_str("request_type_class"),
         "request_type_label":      _safe_str("request_type_label"),
         "priority":                _safe_str("priority"),
         "red_flags_present":       bool(case.get("red_flags_present")),

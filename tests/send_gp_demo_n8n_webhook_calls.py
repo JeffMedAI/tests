@@ -30,7 +30,7 @@ except Exception:  # pragma: no cover - local fallback only
     build_n8ntest_batch = None
 
 
-DEFAULT_WEBHOOK_URL = "http://localhost:5678/webhook-test/jefflocal-test-intake"
+DEFAULT_WEBHOOK_URL = "http://localhost:5678/webhook/jefflocal-test-intake"
 LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1"}
 REQUIRED_ENVELOPE_FIELDS = {
     "protocol",
@@ -424,8 +424,8 @@ def main() -> int:
     print(json.dumps({"batch_id": batch_id, "status": status}, indent=2))
     if status == 404:
         print(
-            "n8n webhook not found. For /webhook-test, click Execute workflow / Listen for test event in n8n. "
-            "For active workflows, use /webhook/..."
+            "n8n webhook not found. Check that the 'JeffLocal - 06 Test Intake Webhook' workflow is active in n8n "
+            "and that n8n is running on port 5678."
         )
     if status in {400, 500}:
         print(body)
