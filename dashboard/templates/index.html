@@ -566,7 +566,7 @@
           <div class="card-top" style="padding-left:26px">
             <div class="card-top-left">
               <div class="card-badges">
-                <span class="badge {{ case.request_type }}">{{ case.request_type_label }}</span>
+                <span class="badge {{ case.request_type_class }}">{{ case.request_type_label }}</span>
                 {% for chip in case.summary_chips %}
                   <span class="badge {{ chip.class }}"{% if chip.tooltip %} title="{{ chip.tooltip }}"{% endif %}>{{ chip.label }}</span>
                 {% endfor %}
@@ -755,16 +755,19 @@
             <button id="panel-btn-sms" hidden></button>
             <button id="panel-btn-gp" hidden></button>
           </div>
-          <label class="panel-review-gate" id="panel-review-confirm" hidden>
-            <input type="checkbox" id="panel-review-checkbox" aria-label="Confirm staff review complete">
-            <span class="prg-icon" aria-hidden="true">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-            </span>
-            <span class="prg-text">Review required — tick to confirm before resolving</span>
-            <span class="prg-cb" aria-hidden="true">
-              <svg class="prg-cb-tick" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-            </span>
-          </label>
+          <div class="panel-review-gate" id="panel-review-confirm" hidden>
+            <label class="prg-row" for="panel-review-checkbox">
+              <input type="checkbox" id="panel-review-checkbox" aria-label="Confirm staff review complete">
+              <span class="prg-icon" aria-hidden="true">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              </span>
+              <span class="prg-text">Review required — tick to confirm, then add a note</span>
+              <span class="prg-cb" aria-hidden="true">
+                <svg class="prg-cb-tick" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+            </label>
+            <textarea class="prg-outcome" id="panel-outcome-notes" placeholder="What action was taken? (required for identity cases)" rows="2" hidden></textarea>
+          </div>
           <div class="resolve-countdown-bar" id="resolve-countdown-bar"><div class="resolve-countdown-bar-fill" id="resolve-countdown-fill"></div></div>
 
           <nav class="panel-tabs" aria-label="Case panel sections">
@@ -1191,7 +1194,7 @@
       var badgeRow = document.getElementById('panel-badge-row');
       var badges = [];
       if (data.request_type_label) {
-        badges.push('<span class="badge ' + escHtml(data.request_type || '') + '">' + escHtml(data.request_type_label) + '</span>');
+        badges.push('<span class="badge ' + escHtml(data.request_type_class || data.request_type || '') + '">' + escHtml(data.request_type_label) + '</span>');
       }
       if (Array.isArray(data.summary_chips) && data.summary_chips.length) {
         data.summary_chips.forEach(function (chip) {
@@ -1314,7 +1317,16 @@
       if (triageHd) triageHd.textContent = (data.request_type_label || 'Pathway') + ' — Q&A';
       if (pathwayList) {
         pathwayList.innerHTML = '';
+        var curSection = '';
         items.forEach(function (item) {
+          var section = item.section || 'Pathway Q&A';
+          if (section !== curSection) {
+            var hd = document.createElement('li');
+            hd.className = 'panel-pathway-section';
+            hd.textContent = section;
+            pathwayList.appendChild(hd);
+            curSection = section;
+          }
           var li = document.createElement('li');
           li.className = 'panel-pathway-item';
           li.innerHTML = '<span class="panel-pathway-q">' + (item.label || '') + '</span>'
@@ -1336,6 +1348,9 @@
                             && (data.status || '').toLowerCase() !== 'in progress';
       if (reviewConfirm) { reviewConfirm.hidden = !showReviewCb; }
       if (reviewCb) { reviewCb.checked = false; }
+      if (resolveBtn) { resolveBtn.dataset.reviewConfirmed = ''; }
+      var outcomeNotesPR = document.getElementById('panel-outcome-notes');
+      if (outcomeNotesPR) { outcomeNotesPR.hidden = true; outcomeNotesPR.value = ''; }
       if (resolveBtn) {
         if (data.is_resolved) {
           resolveBtn.textContent = 'Reopen';
@@ -1511,6 +1526,10 @@
       var reviewCbReset = document.getElementById('panel-review-checkbox');
       if (reviewConfirmReset) { reviewConfirmReset.hidden = true; }
       if (reviewCbReset) { reviewCbReset.checked = false; }
+      var resolveBtnReset = document.getElementById('panel-btn-resolve');
+      if (resolveBtnReset) { resolveBtnReset.dataset.reviewConfirmed = ''; }
+      var outcomeNotesReset = document.getElementById('panel-outcome-notes');
+      if (outcomeNotesReset) { outcomeNotesReset.hidden = true; outcomeNotesReset.value = ''; }
       activePanelCallId = null;
     }
 
@@ -1518,13 +1537,20 @@
     if (closeBtn) closeBtn.addEventListener('click', closePanel);
 
     // Review confirmation checkbox — enables resolve button when ticked
+    // Also marks it so the two-step confirm is skipped (checkbox IS the confirmation)
     var reviewCbEl = document.getElementById('panel-review-checkbox');
     if (reviewCbEl) {
       reviewCbEl.addEventListener('change', function () {
         var btn = document.getElementById('panel-btn-resolve');
+        var notesEl = document.getElementById('panel-outcome-notes');
         if (btn && btn.dataset.panelAction === 'resolve') {
           btn.disabled = !this.checked;
           btn.title = this.checked ? '' : 'Tick the box below to confirm review and enable resolve';
+          btn.dataset.reviewConfirmed = this.checked ? 'true' : '';
+        }
+        if (notesEl) {
+          notesEl.hidden = !this.checked;
+          if (this.checked) { setTimeout(function () { notesEl.focus(); }, 50); }
         }
       });
     }
@@ -1705,7 +1731,8 @@
       if (!callId) return;
 
       // Two-step inline confirm for resolve only
-      if (action === 'resolve' && !btn.classList.contains('confirming')) {
+      // Skip if review checkbox was already ticked (checkbox IS the confirmation)
+      if (action === 'resolve' && !btn.classList.contains('confirming') && btn.dataset.reviewConfirmed !== 'true') {
         btn.classList.add('confirming');
         btn.textContent = '✓ Confirm resolve?';
         clearTimeout(_resolveConfirmTimer);
@@ -1737,11 +1764,12 @@
       var original = action === 'resolve' ? 'Mark as Resolved' : 'Reopen';
       btn.disabled = true;
       btn.textContent = action === 'resolve' ? 'Resolving…' : 'Reopening…';
+      var outcomeNotes = (document.getElementById('panel-outcome-notes') || {}).value || '';
       try {
         var res = await fetch('/api/cases/' + encodeURIComponent(callId) + '/action', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({action: action})
+          body: JSON.stringify({action: action, outcome_notes: outcomeNotes})
         });
         var data = await res.json();
         if (!res.ok) {
