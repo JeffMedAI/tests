@@ -75,7 +75,7 @@ strategy | Docs, reports, governance, marketing
 
 ---
 
-## CURRENT STATUS -- 2026-06-17 (18:00)
+## CURRENT STATUS -- 2026-06-18 (18:00)
 
 ### What is working
 - Production dashboard LIVE at dashboard.app-avamed.uk (port 8765)
@@ -84,16 +84,14 @@ strategy | Docs, reports, governance, marketing
 - Phase 1+2+3 security/quality sprint: ALL 11 fixes APPLIED, Lead Agent APPROVED
 - **Full end-to-end pipeline verified 2026-06-08**: Jeff webhook -> n8n -> dashboard -> Ollama -> DB -> case visible
 - n8n WF06 fixed: no longer injects N8NTEST- prefixes; passes Jeff identifiers unchanged
-- process_queue.ps1 fixed: non-ASCII characters removed (were crashing PS 5.1 parser)
-- E2E Playwright test suite written (needs test_user account in DB to run)
-- Demo data seeding script created and verified
-- **Clarity design sprint LIVE (approved Saeed 2026-06-10)**: navy/teal brand, KPI strip, sparkline, command palette, patient hover card, urgent pulse, pipeline dot
-- 4 new analytics endpoints added to main.py (all Security Agent cleared): /api/metrics/kpi, /api/metrics/sparkline, /api/metrics/pipeline, /api/metrics/alerts
-- UX audit: 4 minor items queued for next sprint (aria-live regions, focus rings, cursor-pointer on cards, sparkline alt text)
-- **test_render_pages.py fully passing (2026-06-17)**: 46/46 tests pass after rewrite to make_case()/upsert_case()
+- **104/104 pytest tests passing (2026-06-18)**: all unit/integration tests green. E2E blocked on playwright not installed.
+- Governance gate artifacts created (Gates 2, 5, 6, 7): VALIDATION_RULES.json, PATHWAY_REGISTRY.md, HANDOFF_TEMPLATES.json, SCHEMA_V1.sql, DISASTER_RECOVERY_PLAN.md, RELEASE_GATE_CRITERIA.md, PIPELINE_HEALTH.md, DATABASE_HEALTH.md, runbooks
 
-### Changes this session (2026-06-17) -- sandbox branch, PENDING Saeed approval to merge
-1. **Test suite rewrite** (commit fe0fbbd): 23 failing render-page tests rewritten to use make_case()/upsert_case(). Added readonly_client fixture to conftest.py. 46/46 pass.
+### Changes this session (2026-06-18) -- sandbox branch, PENDING Saeed approval to merge
+1. **CLAUDE.md updated**: 8 rules (was 5) + restore point protocol added to session end
+2. **test_importer.py rewritten**: 5 RAWMOCK file-dependent tests replaced with tmp_path JSON fixtures (TC- IDs)
+3. **test_dashboard_active_metrics.py fixed**: test_reopen uses authed_client fixture (old jefflocal_staff_id cookie removed)
+4. **N8NTEST prefix validation reverted**: hallucinated block removed from main.py; test deleted
 
 ### Still pending from prior sessions -- sandbox branch, PENDING Saeed approval to merge
 1. **Panel layout fix** (commit a7c21d4): Compact action bar; full scrollable body in detail panel.
@@ -175,8 +173,8 @@ C:\JeffLocal\config\model_monitoring.json
 ```
 Repo:    https://github.com/JeffMedAI/tests
 Branch:  sandbox
-Latest:  c317c94 memory: session end protocol 2026-06-17 18:00
-Pushed to origin: yes (2026-06-16 session)
+Latest:  (updated at commit below)
+Pushed to origin: pending this session's commit
 ```
 
 ---

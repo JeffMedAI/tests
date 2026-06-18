@@ -1,0 +1,139 @@
+{
+  "version": "1.0",
+  "date": "2026-06-18",
+  "description": "Field validation and safety rules for JeffLocal handoff JSON and dashboard case records. All rules here are enforced by deterministic code, not by the LLM.",
+
+  "locked_fields": {
+    "description": "These fields are set ONLY by deterministic code. LLM output must never set or override them.",
+    "fields": [
+      "verification_status",
+      "safe_to_queue",
+      "priority",
+      "matched_patient_name",
+      "emis_number",
+      "nhs_number",
+      "dob",
+      "clinical_urgency"
+    ],
+    "enforcement": "pipeline/patient_matcher.py and deterministic safety rules. Any pipeline code that allows LLM output to set these fields is a critical bug."
+  },
+
+  "verification_status": {
+    "type": "enum",
+    "allowed_values": ["matched", "possible_match", "no_match", "insufficient_data"],
+    "set_by": "deterministic patient matching (patient_matcher.py)",
+    "rules": {
+      "matched": "Name, DOB, and postcode all match an EMIS reference record within tolerance.",
+      "possible_match": "At least one identifier matches but full verification incomplete (e.g. third-party caller, DOB mismatch).",
+      "no_match": "No EMIS record found matching the supplied identifiers.",
+      "insufficient_data": "Caller refused or could not supply enough identifying information to attempt a match."
+    }
+  },
+
+  "safe_to_queue": {
+    "type": "boolean",
+    "set_by": "deterministic safety rules",
+    "rules": {
+      "true": "verification_status=matched AND no red flags AND priority != 999 Emergency",
+      "false": "Any of: red_flags_present=true, verification_status != matched, priority = 999 Emergency"
+    }
+  },
+
+  "priority": {
+    "type": "enum",
+    "allowed_values": ["999 Emergency", "urgent_same_day", "routine", "review_required"],
+    "set_by": "deterministic safety rules",
+    "rules": {
+      "999 Emergency": "Red flag symptoms detected in transcript or pathway responses.",
+      "urgent_same_day": "Caller explicitly states urgency; no red flags.",
+      "routine": "Standard request, no urgency or red flag indicators.",
+      "review_required": "staff_review_required=true or verification_status != matched."
+    }
+  },
+
+  "call_id": {
+    "type": "string",
+    "pattern": "^[A-Z0-9][A-Z0-9\\-]+$",
+    "required": true,
+    "notes": "Unique per call. Used as primary key in SQLite. Format: PREFIX-DATE-HH-MM-SS-NNN"
+  },
+
+  "request_type": {
+    "type": "enum",
+    "allowed_values": [
+      "prescription",
+      "referral",
+      "sick_note",
+      "test_result",
+      "admin",
+      "appointment_redirect",
+      "unknown",
+      "needs_review"
+    ],
+    "set_by": "LLM extraction (Ollama/Gemma) — display field only, not a safety field"
+  },
+
+  "callback_number": {
+    "type": "string",
+    "pattern": "^[0-9 +()-]{7,15}$",
+    "required": false,
+    "notes": "UK phone number. Stored as-supplied. Staff must verify before calling back."
+  },
+
+  "dob": {
+    "type": "string",
+    "format": "YYYY-MM-DD",
+    "set_by": "deterministic code only — never LLM output",
+    "notes": "Date of birth from patient identity block. Must match EMIS reference within tolerance for matched status."
+  },
+
+  "transcript": {
+    "type": "string",
+    "min_length": 500,
+    "required": true,
+    "notes": "Minimum 500 characters enforced by the test harness and the voice agent. Shorter transcripts indicate a failed or garbled call."
+  },
+
+  "red_flags_present": {
+    "type": "boolean",
+    "set_by": "deterministic safety rules",
+    "triggers": [
+      "chest pain with breathlessness or sweating",
+      "FAST stroke symptoms (face droop, arm weakness, slurred speech)",
+      "high fever with confusion and rapid breathing (sepsis)",
+      "active suicidal intent",
+      "unconscious caller",
+      "severe allergic reaction / anaphylaxis"
+    ]
+  },
+
+  "staff_review_required": {
+    "type": "boolean",
+    "set_by": "deterministic rules",
+    "true_when": [
+      "verification_status != matched",
+      "request_type = unknown or needs_review",
+      "red_flags_present = true",
+      "caller_for = third_party or carer",
+      "extraction_confidence < 0.5"
+    ]
+  },
+
+  "gdpr_fields": {
+    "description": "Fields containing personal data subject to 90-day purge.",
+    "fields": [
+      "patient_name",
+      "dob",
+      "postcode",
+      "callback_number",
+      "nhs_number",
+      "emis_number",
+      "transcript",
+      "call_summary",
+      "ai_summary",
+      "patient_record_note"
+    ],
+    "purge_after_days": 90,
+    "purge_method": "Automated scheduled task; audit_events rows retained (no PII in audit log)"
+  }
+}

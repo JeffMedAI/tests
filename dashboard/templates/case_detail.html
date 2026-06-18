@@ -430,7 +430,9 @@
 
       {# AI Summary #}
       <div class="cd-card">
-        <div class="cd-card-hd">AI Summary</div>
+        <div class="cd-card-hd">AI Summary
+          <button type="button" class="cd-copy-icon cd-card-hd-copy" data-copy-button data-copy-action="copied_ai_summary" data-call-id="{{ case.call_id }}" data-copy-text="{{ case.copy_safe_summary }}" aria-label="Copy AI summary"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
+        </div>
         <p class="cd-card-body">{{ case.ai_summary_display }}</p>
       </div>
 
@@ -535,7 +537,7 @@
       <div class="cd-card">
         <div class="cd-card-hd">Safety &amp; Status</div>
         <div class="cd-status-badges">
-          <span class="badge {{ case.request_type }}">{{ case.request_type_label }}</span>
+          <span class="badge {{ case.request_type_class }}">{{ case.request_type_label }}</span>
           {% for chip in case.summary_chips %}
             <span class="badge {{ chip.class }}"{% if chip.tooltip %} title="{{ chip.tooltip }}"{% endif %}>{{ chip.label }}</span>
           {% endfor %}
@@ -697,14 +699,20 @@
         <p class="muted" style="font-size:var(--text-sm);margin-bottom:12px">
           Answers captured by Jeff during the call. Review before processing.
         </p>
-        <ul class="cd-pathway-list cd-pathway-list-full">
-          {% for item in pathway_items %}
-            <li class="cd-pathway-item">
-              <span class="cd-pathway-q">{{ item.label }}</span>
-              <span class="cd-pathway-a">{{ item.value }}</span>
-            </li>
-          {% endfor %}
-        </ul>
+        {% set ns = namespace(cur='') %}
+        {% for item in pathway_items %}
+          {% if item.section != ns.cur %}
+            {% if not loop.first %}</ul>{% endif %}
+            <div class="cd-pathway-section">{{ item.section }}</div>
+            <ul class="cd-pathway-list cd-pathway-list-full">
+            {% set ns.cur = item.section %}
+          {% endif %}
+          <li class="cd-pathway-item">
+            <span class="cd-pathway-q">{{ item.label }}</span>
+            <span class="cd-pathway-a">{{ item.value }}</span>
+          </li>
+          {% if loop.last %}</ul>{% endif %}
+        {% endfor %}
       </div>
     </div>
   </div>

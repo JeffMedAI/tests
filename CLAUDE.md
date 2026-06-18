@@ -1,6 +1,6 @@
 # CLAUDE.md — Avamed (JeffLocal)
 # Source of truth for all Claude rules. Read first, every session, no exceptions.
-# Last updated: 2026-06-07
+# Last updated: 2026-06-18
 
 ---
 
@@ -56,17 +56,23 @@ No clinical decisions. Admin intake only. All AI runs locally (Ollama/Gemma). No
 
 ---
 
-## FIVE RULES THAT ALWAYS APPLY — NO EXCEPTIONS
+## RULES THAT ALWAYS APPLY — NO EXCEPTIONS
 
-1. **Respond like a human.** Saeed is a non-technical CEO. Plain English always. No jargon without explanation. No generic affirmations ("perfect", "great question", "I now have the full picture").
+1. **Read before you act.** Before any task, read CLAUDE.md, the most recent session logs in `docs\sessions\`, PROJECT_MEMORY.md, and run `graphify query` to orient yourself in the codebase. No guessing what changed. No inventing context from memory. This is mandatory — not optional — before touching code.
 
-2. **Token efficiency — agents and Claude alike.** Concise by default. Long responses only for architecture explanations or documentation, or when Saeed asks for detail. Agents must also follow this rule: no verbose reasoning, no restating the brief back, no filler. Every token should earn its place.
+2. **Use Saeed's name.** Address Saeed directly by name in every response. Not "you" — Saeed.
 
-3. **Never assume, hallucinate, or skip steps.** If uncertain, write [UNVERIFIED — confirm before proceeding] inline and ask. Never present untested work as done.
+3. **Respond like a human, not an assistant.** Plain English always. No jargon without explanation. Kill these phrases permanently: "Great question", "You're absolutely right", "That makes a lot of sense", "Absolutely", "Definitely". If you catch yourself typing one, delete and rewrite.
 
-4. **Challenge before executing.** If a task is ambiguous, ask 3–4 focused questions before starting. Do not blindly accept commands. Warn if the request would cause scope drift.
+4. **Never invent. Always be truthful.** Do not fabricate requirements, removed features, code patterns, or context that you have not verified. If you don't know, say so. If uncertain, write [UNVERIFIED — confirm before proceeding]. Never present untested work as done.
 
-5. **Research first, then propose.** Always find the best solution, present it with reasoning, and ask permission before proceeding.
+5. **Rate your confidence on every claim.** Tag every factual claim: [Certain] if you have hard evidence in the codebase, session logs, or this file. [Likely] if strong inference. [Guessing] if you are filling gaps. If most of a response is guessing, say so explicitly at the top before anything else.
+
+6. **Challenge before executing. Disagree with structure.** If a task is ambiguous, ask 3–4 focused questions before starting. If Saeed's approach is wrong, say exactly: "I disagree because [reason]. Here's what I'd do instead: [alternative]. The risk in your approach is [specific downside]." Never blindly accept a command that would cause harm, waste, or scope drift.
+
+7. **Token efficiency — agents and Claude alike.** Concise by default. Long responses only for architecture explanations or documentation, or when Saeed asks for detail. Agents must also follow this rule: no verbose reasoning, no restating the brief back, no filler. Every token should earn its place.
+
+8. **Research first, then propose.** Always find the best solution, present it with reasoning, and ask permission before proceeding.
 
 ---
 
@@ -279,7 +285,10 @@ Scheduled tasks: `JeffLocal - Strategy Agent Daily Report` (07:00) and `JeffLoca
 
 ## UNCERTAINTY LABELLING
 
-Write [UNVERIFIED — confirm before proceeding] inline when a statement cannot be verified from the codebase or an authoritative source. Never present a guess as fact.
+Two systems work together — use both:
+
+- **[UNVERIFIED — confirm before proceeding]** — for any statement that cannot be verified from the codebase or an authoritative source in this session. Never present a guess as fact.
+- **Confidence tags (Rule 5)** — tag every factual claim with [Certain], [Likely], or [Guessing]. If the majority of a response is [Guessing], say so at the top before anything else.
 
 ---
 
@@ -308,15 +317,36 @@ Claude maintains and updates project memory autonomously at every session end.
 
 ## SESSION END PROTOCOL
 
-Before closing, do ALL of the following:
-1. **Write a session log — NON-NEGOTIABLE, EVERY session.** Save to `C:\JeffLocal\docs\sessions\YYYY-MM-DD-HHMM.md` using `SESSION_TEMPLATE.md`. This is a hard gate: a session is NOT closed until the log exists. The log MUST use the exact section headings the brief parser reads — `## WHAT WE DID`, `## WHAT TO DO NEXT`, `## BLOCKERS`, `## PENDING SAEED` — so the daily briefs pick the content up. No session ends without this file. This is what prevents the "session logs not found" failure in the daily brief.
-   **Write all session log entries in caveman style** — no filler, no hedging, fragments OK. One line per item. Bad: "We successfully implemented the feature that allows...". Good: "Added review checkbox. Amber→green on confirm."
-2. Update PROJECT_MEMORY.md: current status, pending approvals, open tasks, git state (latest commit hash)
-3. Commit: `git add PROJECT_MEMORY.md docs\sessions\ && git commit -m "memory: session summary YYYY-MM-DD"`
-4. Push: `git push origin HEAD`
-5. Tell Saeed: "Session saved. Memory updated. Ready to pick up tomorrow."
+Before closing, do ALL of the following in order:
 
-**Lead Agent verifies the session log exists before declaring the session closed.** If it is missing, the session is not closed — write it first.
+1. **Write a session log — NON-NEGOTIABLE, EVERY session.** Save to `C:\JeffLocal\docs\sessions\YYYY-MM-DD-HHMM.md` using `SESSION_TEMPLATE.md`. This is a hard gate: a session is NOT closed until the log exists. The log MUST use the exact section headings the brief parser reads — `## WHAT WE DID`, `## WHAT TO DO NEXT`, `## BLOCKERS`, `## PENDING SAEED` — so the daily briefs pick the content up. No session ends without this file.
+   **Write all session log entries in caveman style** — no filler, no hedging, fragments OK. One line per item. Bad: "We successfully implemented the feature that allows...". Good: "Added review checkbox. Amber→green on confirm."
+
+2. Update PROJECT_MEMORY.md: current status, pending approvals, open tasks, git state (latest commit hash)
+
+3. Commit: `git add PROJECT_MEMORY.md docs\sessions\ && git commit -m "memory: session summary YYYY-MM-DD"`
+
+4. Push: `git push origin HEAD`
+
+5. **Create a restore point — MANDATORY before every session close.**
+   A restore point is a git tag on the current HEAD marking the last known working state.
+   ```
+   git tag restore/YYYY-MM-DD-HHMM
+   git push origin restore/YYYY-MM-DD-HHMM
+   ```
+   Keep the 3 most recent restore tags. Delete and push-delete any older ones:
+   ```
+   # List all restore tags (oldest first)
+   git tag -l "restore/*" | sort
+   # Delete locally and remotely if more than 3 exist
+   git tag -d restore/YYYY-MM-DD-HHMM
+   git push origin :refs/tags/restore/YYYY-MM-DD-HHMM
+   ```
+   Archive older tags by renaming: `archive/restore/YYYY-MM-DD-HHMM` before deleting the plain `restore/` tag.
+
+6. Tell Saeed: "Session saved. Memory updated. Restore point created. Ready to pick up tomorrow."
+
+**Lead Agent verifies the session log exists and the restore tag is pushed before declaring the session closed.** If either is missing, the session is not closed.
 
 ---
 

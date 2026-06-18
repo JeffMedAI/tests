@@ -14,40 +14,108 @@ from app.main import filter_clause
 from app.models import format_display_timestamp, parse_call_timestamp_sort
 
 
-HANDOFF_DIR = DASHBOARD_ROOT.parent / "outputs" / "handoff_json"
+_BASE_HANDOFF = {
+    "call_timestamp": "2026-05-12T09:00:00Z",
+    "request_type": "prescription",
+    "normalized_input": {
+        "patient_name": "Test Patient",
+        "dob": "1970-01-01",
+        "postcode": "PR9 7LT",
+        "callback_number": "07111000000",
+    },
+    "verification_status": "matched",
+    "verification_reason": "test",
+    "priority": "routine",
+    "safe_to_queue": True,
+    "staff_review_required": False,
+    "red_flags_present": False,
+    "task_title": "Routine task",
+    "task_body": "Test task body",
+    "call_summary": "Routine request",
+    "raw_transcript": "Patient called about routine matter.",
+    "status": "New",
+}
 
 
-def test_importer_reads_rawmock_and_upserts_without_duplicates(tmp_path):
+def _write_handoff(handoff_dir: Path, call_id: str, **overrides) -> dict:
+    data = {**_BASE_HANDOFF, "call_id": call_id, **overrides}
+    path = handoff_dir / f"{call_id}_handoff.json"
+    path.write_text(json.dumps(data), encoding="utf-8")
+    return data
+
+
+def _seed_handoff_dir(handoff_dir: Path) -> list:
+    """Write 12 synthetic handoff JSON files to a temp directory."""
+    handoff_dir.mkdir(parents=True, exist_ok=True)
+    cases = []
+    cases.append(_write_handoff(handoff_dir, "TC-001-REPEAT-EXACT"))
+    cases.append(_write_handoff(
+        handoff_dir, "TC-006-URGENT-REDFLAG",
+        priority="999 Emergency",
+        safe_to_queue=False,
+        staff_review_required=True,
+        red_flags_present=True,
+        call_summary="Chest pain and breathlessness",
+        raw_transcript="Caller reports chest pain and breathlessness.",
+    ))
+    cases.append(_write_handoff(
+        handoff_dir, "TC-008-THIRD-PARTY-POSSIBLE",
+        verification_status="possible_match",
+        safe_to_queue=False,
+        staff_review_required=True,
+    ))
+    cases.append(_write_handoff(
+        handoff_dir, "TC-009-INSUFFICIENT-ID",
+        verification_status="insufficient_data",
+        safe_to_queue=False,
+        staff_review_required=True,
+    ))
+    cases.append(_write_handoff(
+        handoff_dir, "TC-011-NO-MATCH",
+        verification_status="no_match",
+        safe_to_queue=False,
+        staff_review_required=True,
+    ))
+    for i in [2, 3, 4, 5, 7, 10, 12]:
+        cases.append(_write_handoff(handoff_dir, f"TC-{i:03d}-ROUTINE"))
+    return cases
+
+
+def test_importer_reads_and_upserts_without_duplicates(tmp_path):
+    handoff_dir = tmp_path / "handoffs"
+    _seed_handoff_dir(handoff_dir)
     db_path = tmp_path / "dashboard.sqlite"
     with connect(db_path) as conn:
         init_db(conn)
-        first_count = import_handoffs(conn, HANDOFF_DIR)
-        second_count = import_handoffs(conn, HANDOFF_DIR)
-        case_count = conn.execute(
-            "SELECT COUNT(*) FROM cases WHERE call_id LIKE 'RAWMOCK-%'"
-        ).fetchone()[0]
+        first_count = import_handoffs(conn, handoff_dir)
+        second_count = import_handoffs(conn, handoff_dir)
+        case_count = conn.execute("SELECT COUNT(*) FROM cases").fetchone()[0]
 
     assert first_count >= 12
     assert second_count >= 12
     assert case_count == 12
 
 
-def test_importer_supports_pattern_filtered_rawmock_import(tmp_path):
+def test_importer_supports_pattern_filtered_import(tmp_path):
+    handoff_dir = tmp_path / "handoffs"
+    _seed_handoff_dir(handoff_dir)
     db_path = tmp_path / "dashboard.sqlite"
     with connect(db_path) as conn:
         init_db(conn)
-        count = import_handoffs(conn, HANDOFF_DIR, pattern="RAWMOCK*_handoff.json")
+        count = import_handoffs(conn, handoff_dir, pattern="TC*_handoff.json")
         case_count = conn.execute("SELECT COUNT(*) FROM cases").fetchone()[0]
 
     assert count == 12
     assert case_count == 12
 
 
-def test_filters_return_expected_rawmock_cases(tmp_path):
+def test_filters_return_expected_cases(tmp_path):
+    handoff_dir = tmp_path / "handoffs"
+    _seed_handoff_dir(handoff_dir)
     db_path = tmp_path / "dashboard.sqlite"
     with connect(db_path) as conn:
         init_db(conn)
-        import_handoffs(conn, HANDOFF_DIR)
+        import_handoffs(conn, handoff_dir)
 
         where, params = filter_clause("urgent_red_flags")
         urgent_ids = {
@@ -61,20 +129,19 @@ def test_filters_return_expected_rawmock_cases(tmp_path):
             for row in conn.execute(f"SELECT call_id FROM cases WHERE {where}", params).fetchall()
         }
 
-    assert "RAWMOCK-006-URGENT-REDFLAG" in urgent_ids
-    assert "RAWMOCK-008-THIRD-PARTY-POSSIBLE" in identity_ids
-    assert "RAWMOCK-009-INSUFFICIENT-ID" in identity_ids
-    assert "RAWMOCK-011-NO-MATCH" in identity_ids
+    assert "TC-006-URGENT-REDFLAG" in urgent_ids
+    assert "TC-008-THIRD-PARTY-POSSIBLE" in identity_ids
+    assert "TC-009-INSUFFICIENT-ID" in identity_ids
+    assert "TC-011-NO-MATCH" in identity_ids
 
 
 def test_reimport_updates_locked_fields_and_preserves_staff_fields(tmp_path):
-    db_path = tmp_path / "dashboard.sqlite"
     handoff_dir = tmp_path / "handoffs"
     handoff_dir.mkdir()
-    source = HANDOFF_DIR / "RAWMOCK-012-MESSY-MULTI-INTENT_handoff.json"
-    target = handoff_dir / source.name
-    shutil.copyfile(source, target)
+    data = _write_handoff(handoff_dir, "TC-012-MULTI-INTENT", request_type="admin")
+    target = handoff_dir / "TC-012-MULTI-INTENT_handoff.json"
 
+    db_path = tmp_path / "dashboard.sqlite"
     with connect(db_path) as conn:
         init_db(conn)
         import_handoffs(conn, handoff_dir)
@@ -92,12 +159,11 @@ def test_reimport_updates_locked_fields_and_preserves_staff_fields(tmp_path):
                 "2026-05-11T13:00:00+00:00",
                 "tester",
                 "Staff edited action needed",
-                "RAWMOCK-012-MESSY-MULTI-INTENT",
+                "TC-012-MULTI-INTENT",
             ),
         )
         conn.commit()
 
-    data = json.loads(target.read_text(encoding="utf-8-sig"))
     data["priority"] = "review_required"
     data["safe_to_queue"] = False
     data["staff_review_required"] = True
@@ -116,7 +182,7 @@ def test_reimport_updates_locked_fields_and_preserves_staff_fields(tmp_path):
                    staff_action, action_needed, source_file_mtime
             FROM cases WHERE call_id = ?
             """,
-            ("RAWMOCK-012-MESSY-MULTI-INTENT",),
+            ("TC-012-MULTI-INTENT",),
         ).fetchone()
 
     assert row["priority"] == "review_required"
@@ -132,25 +198,26 @@ def test_reimport_updates_locked_fields_and_preserves_staff_fields(tmp_path):
     assert row["source_file_mtime"]
 
 
-def test_rawmock_locked_fields_match_current_handoffs(tmp_path):
+def test_locked_fields_match_source_json(tmp_path):
+    handoff_dir = tmp_path / "handoffs"
+    cases_data = _seed_handoff_dir(handoff_dir)
     db_path = tmp_path / "dashboard.sqlite"
     with connect(db_path) as conn:
         init_db(conn)
-        import_handoffs(conn, HANDOFF_DIR)
+        import_handoffs(conn, handoff_dir)
         rows = {
             row["call_id"]: row
             for row in conn.execute(
                 """
                 SELECT call_id, request_type, priority, safe_to_queue,
                        staff_review_required, red_flags_present, verification_status
-                FROM cases WHERE call_id LIKE 'RAWMOCK-%'
+                FROM cases
                 """
             ).fetchall()
         }
 
     assert len(rows) == 12
-    for path in HANDOFF_DIR.glob("RAWMOCK*_handoff.json"):
-        data = json.loads(path.read_text(encoding="utf-8-sig"))
+    for data in cases_data:
         row = rows[data["call_id"]]
         assert row["request_type"] == data["request_type"]
         assert row["priority"] == data["priority"]
