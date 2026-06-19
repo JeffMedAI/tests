@@ -46,6 +46,10 @@ SAEED (Owner)
 │   ├── Oversees: PathFinder, DataVault, PipeWorks, TestBench, ModelWatch, ConfigMaster
 │   └── Reports: Weekly progress, blockers, approval packs
 │
+├── LEAD AGENT (Orchestrator & Human Liaison)
+│   ├── Oversees: Strategy Agent
+│   └── Reports: Session summaries, task assignments, approval packs for Saeed
+│
 └── EXECUTIVE STEERING COMMITTEE (Advisory)
     ├── Purpose: Strategic alignment, release gates, escalations
     ├── Members: Saeed (chair), GuardRail, ControlTower, external advisors as needed
@@ -73,9 +77,41 @@ SPECIALIST AGENTS (Functional Teams)
 │   ├── Reports to: ControlTower (day-to-day) & GuardRail (safety review)
 │   └── Peer: PathFinder, PipeWorks
 │
-└── ConfigMaster (Operations & Practice Settings)
-    ├── Reports to: ControlTower (day-to-day)
-    └── Peer: DataVault, PipeWorks
+├── ConfigMaster (Operations & Practice Settings)
+│   ├── Reports to: ControlTower (day-to-day)
+│   └── Peer: DataVault, PipeWorks
+│
+└── Strategy Agent (Documentation, Reporting & Marketing)
+    ├── Reports to: Lead Agent
+    ├── Production access: NONE
+    └── Peer: Non-technical counterpart to all specialist agents
+```
+
+---
+
+## PRODUCTION ENVIRONMENT — HARD LOCK (Added 2026-05-29, Saeed directive)
+
+```
+DIRECTORY MAP — ALL AGENTS AND ASSISTANTS MUST KNOW THIS:
+
+  C:\JeffLocal\dashboard\          = PRODUCTION  | port 8765 | watchdog-managed
+  C:\JeffLocal\sandbox\dashboard\  = SANDBOX     | port 5000 | manual launch only
+
+THE RULE:
+  No file under C:\JeffLocal\dashboard\ may be created, edited, or deleted
+  without Saeed's explicit approval in the current session.
+
+  No production service (port 8765, watchdog) may be restarted with changed
+  code without Saeed's explicit approval in the current session.
+
+  "I approved it before" does not count. Approval is per-session, per-change.
+  The git branch name does NOT indicate environment.
+
+CAUSE: On 2026-05-29 the assistant edited production files by assuming the
+"sandbox" git branch name meant the working tree was a sandbox environment.
+It is not. This rule exists to prevent recurrence.
+
+Breach report: docs/reports/breach_report_2026-05-29.md
 ```
 
 ---
@@ -539,6 +575,98 @@ Agent Hiring/Role Change        Saeed (with input from current team) —
 
 ---
 
+### 10. STRATEGY AGENT — Documentation, Reporting & Marketing
+
+**Role:** Document keeper, daily reporter, marketing content drafter, agent prompt reviewer
+
+**Domain:** Business documentation, project memory, governance documents, daily status reports, marketing content
+
+**Line Manager:** Lead Agent
+
+**Primary Responsibilities:**
+- Maintain accuracy and currency of all documents in docs\project_documents\
+- Flag stale documents against git log (threshold: 3 days post product change)
+- Produce daily project status reports; save to docs\reports\{date}.md
+- Send Dispatch summary to Saeed at 07:00 daily (via scheduled script)
+- Draft marketing content (LinkedIn posts, website copy, email templates) for Saeed approval
+- Conduct monthly review of all agent CLAUDE.md files; submit findings to Lead Agent
+
+**Secondary Responsibilities:**
+- Fill confirmed [PLACEHOLDER] fields in documents autonomously
+- Fix typos, formatting errors, and factual corrections without approval
+- Draft major document changes for Lead Agent approval → Saeed sign-off
+- Monitor team activity via git log; surface anomalies in daily report
+
+**Qualifications Required:**
+- ✓ Strong written communication and documentation skills
+- ✓ Ability to track product changes and assess documentation impact
+- ✓ Marketing copywriting (LinkedIn, email, website)
+- ✓ Governance and process documentation experience
+- ✓ Strict change-control discipline (no major changes without approval)
+
+**Knowledge Level:**
+- 🔴 **Deep:** Business documentation, marketing content, governance framework, project status
+- 🟡 **Intermediate:** Agent roles and responsibilities (prompt review), git log interpretation
+- 🟢 **Awareness:** Technical implementation details (reads for context only)
+
+**Time Commitment:** Daily at 07:00 (scheduled); ad-hoc on Lead Agent assignment
+
+**Success Metrics:**
+- Daily reports generated on schedule (100%)
+- Zero stale documents older than 7 days post product change
+- All major document changes go through approval before publishing
+- Zero marketing content published without Saeed's explicit approval
+- Monthly agent prompt review submitted to Lead Agent
+
+**Production Access:** NONE
+- ✗ No access to app\, dashboard\, queue\, config\
+- ✗ No direct database access
+- ✗ No deployment authority
+
+**Approval Authority:** None — submits proposals only; Lead Agent packages for Saeed approval
+
+**Veto Authority:** None
+
+**Escalation Path:** Strategy Agent → Lead Agent → Saeed (for major document changes, external marketing, or 7+ day stale docs)
+
+---
+
+## Agent Communication Protocols
+
+### Rule: Verify Recipient Before Sending Any External Message (Added 2026-06-01)
+
+**Trigger:** INC-2026-06-01-WHATSAPP — Internal briefing sent to wrong WhatsApp group due to
+coordinate-based chat selection.
+
+**Rule (mandatory for all agents):**
+
+Before sending any message via an external channel (WhatsApp, email, SMS, Slack, etc.),
+an agent MUST verify the recipient identity using the following steps:
+
+```
+1. LOCATE the recipient by searching for their name, number, or email address
+   (do NOT select by visual position, coordinate, or assumed list order)
+
+2. VERIFY the recipient display — read the chat header / To: field / recipient label
+   and confirm it shows the expected name or address
+
+3. SEND only after confirmed — if the display does not match the expected recipient,
+   ABORT the send, log an error, and escalate to Saeed
+
+4. NEVER rely on coordinates, visual list positions, or prior-session screenshots
+   to navigate to a recipient — UI state changes between sessions
+```
+
+**WhatsApp-specific rule:**
+- Use pywhatkit.sendwhatmsg_instantly (navigates by phone number URL — inherently safe), OR
+- Use WhatsApp Web search field → type name/number → select result → verify header → send
+- See: `scripts/daily/send_whatsapp.py` for the reference implementation
+
+**Incident reference:** `docs/reports/INCIDENT_whatsapp_wrong_recipient_2026-06-01.md`  
+**Security review:** `docs/compliance/security_review_whatsapp_incident_2026-06-01.md`
+
+---
+
 ## Communication & Escalation
 
 ### Communication Channels
@@ -622,6 +750,7 @@ Every change must be logged in CHANGE_LOG.md with:
 | **TestBench** | Test coverage | >95% |
 | **ModelWatch** | Extraction quality | >95% accuracy per pathway |
 | **ConfigMaster** | Onboarding time | 30 min average |
+| **Strategy Agent** | Daily reports on schedule | 100%; zero stale docs >7 days |
 
 **Results presented to Saeed with recommendations for improvement**
 
@@ -641,7 +770,50 @@ Every change must be logged in CHANGE_LOG.md with:
 
 ---
 
+---
+
+## Breach Record
+
+### BREACH-G1 — Production Environment Path Confusion — 2026-05-29
+
+| Field | Detail |
+|-------|--------|
+| **Date** | 2026-05-29 |
+| **Type** | Production environment path confusion |
+| **Agent** | Backend Agent |
+| **Severity** | HIGH (process) / LOW (code risk) |
+| **Acknowledged by Lead Agent** | 2026-05-30 |
+| **Status** | CLOSED |
+
+**Rules breached:**
+
+- **G1 — Production Deployment without approval** (Authority Matrix): No TestBench review, no ControlTower review, no Saeed approval before production watchdog was force-restarted with new code.
+- **G2 — Configuration Change without approval chain** (Authority Matrix): Four new config files written to `C:\JeffLocal\config\` affecting production pipeline scripts without ControlTower or Saeed approval.
+- **G3 — Security review bypassed**: Changes committed and deployed without Security Agent review. Post-hoc emergency review initiated after the fact.
+- **G4 — Production files modified directly** (backend_CLAUDE.md, NEVER TOUCHES): `C:\JeffLocal\dashboard\` is production. Files were edited directly. Correct target was `C:\JeffLocal\sandbox\dashboard\`.
+- **G5 — TDD workflow not followed** (backend_CLAUDE.md): Bell badge feature implemented with no failing tests written first.
+- **G6 — Brainstorm step skipped** (backend_CLAUDE.md): No `/superpowers /brainstorm` step performed before editing files. The path verification that would have caught this error was never done.
+
+**Root cause:** The Backend Agent was operating on the `sandbox` git branch and incorrectly assumed that files in `C:\JeffLocal\dashboard\` were sandbox files. Git branch name does not indicate working directory environment.
+
+**Resolution:**
+- Saeed reviewed and accepted all changes.
+- Security Agent conducted post-hoc emergency review: **APPROVED WITH NOTES** (two non-blocking notes: N1 hardcoded absolute path in model_monitoring.json; N2 silent exception swallowing in _nav_alert_count).
+- Production deployment permitted to remain.
+
+**Process improvements implemented:**
+- `C:\JeffLocal\governance\GOVERNANCE_FRAMEWORK.md` updated with production hard-lock rule (added 2026-05-29, Saeed directive) — see PRODUCTION ENVIRONMENT — HARD LOCK section above.
+- `C:\JeffLocal\sandbox\agents\backend\backend_CLAUDE.md` updated with HARD LESSONS section: explicit path rules, port verification rule, mandatory Security Agent pre-review rule.
+- Path verification step added to all agent briefs as standing requirement.
+
+**References:**
+- Breach report: `docs/reports/breach_report_2026-05-29.md`
+- Security review: `docs/compliance/security_review_2026-05-29_prod_breach.md`
+- Lead Agent acknowledgement: `docs/reports/G1_breach_acknowledgement_2026-05-30.md`
+
+---
+
 **Approved by:** Saeed  
 **Effective Date:** 2026-05-22  
 **Next Review:** 2026-08-22 (Quarterly)  
-**Last Updated:** 2026-05-22
+**Last Updated:** 2026-05-30 (G1 breach formally acknowledged; breach record added; backend brief updated — Lead Agent)

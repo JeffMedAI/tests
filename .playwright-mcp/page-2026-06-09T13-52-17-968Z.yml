@@ -1,0 +1,502 @@
+- generic [active] [ref=e1]:
+  - navigation [ref=e2]:
+    - generic [ref=e3]:
+      - link "A avamed" [ref=e4] [cursor=pointer]:
+        - /url: "#"
+        - generic [ref=e5]: A
+        - text: avamed
+      - list [ref=e6]:
+        - listitem [ref=e7]:
+          - link "How It Works" [ref=e8] [cursor=pointer]:
+            - /url: "#how"
+        - listitem [ref=e9]:
+          - link "Features" [ref=e10] [cursor=pointer]:
+            - /url: "#features"
+        - listitem [ref=e11]:
+          - link "Pricing" [ref=e12] [cursor=pointer]:
+            - /url: "#pricing"
+        - listitem [ref=e13]:
+          - link "Case Study" [ref=e14] [cursor=pointer]:
+            - /url: "#case-study"
+      - generic [ref=e15]:
+        - link "Practice Login" [ref=e16] [cursor=pointer]:
+          - /url: https://dashboard.app-avamed.uk
+        - link "Book a Demo →" [ref=e17] [cursor=pointer]:
+          - /url: "#demo"
+  - generic [ref=e18]:
+    - generic [ref=e19]:
+      - generic [ref=e20]: AI Triage for UK GP Surgeries
+      - heading "Your AI receptionist. On your premises. Patient data stays yours." [level=1] [ref=e22]:
+        - text: Your AI receptionist.
+        - text: On your premises.
+        - text: Patient data stays yours.
+      - paragraph [ref=e23]: Jeff handles patient calls, WhatsApp requests, and web forms — then delivers a prioritised task to your reception team within 90 seconds. No cloud. No data sharing. NHS-aligned.
+      - generic [ref=e24]:
+        - link "Book a Free Demo →" [ref=e25] [cursor=pointer]:
+          - /url: "#demo"
+        - link "See How It Works" [ref=e26] [cursor=pointer]:
+          - /url: "#how"
+      - generic [ref=e27]:
+        - generic [ref=e28]:
+          - img [ref=e29]
+          - text: On-premises only
+        - generic [ref=e31]:
+          - img [ref=e32]
+          - text: GDPR-ready
+        - generic [ref=e34]:
+          - img [ref=e35]
+          - text: Hostcomm UK partnership
+    - generic [ref=e38]:
+      - generic [ref=e39]:
+        - generic [ref=e44]: Avamed Dashboard — Reception
+        - generic [ref=e45]: LIVE
+      - generic [ref=e46]:
+        - generic [ref=e47]:
+          - generic [ref=e48]: "3"
+          - generic [ref=e49]: URGENT
+        - generic [ref=e50]:
+          - generic [ref=e51]: "12"
+          - generic [ref=e52]: ROUTINE
+        - generic [ref=e53]:
+          - generic [ref=e54]: "28"
+          - generic [ref=e55]: TODAY
+        - generic [ref=e56]:
+          - generic [ref=e57]: 91%
+          - generic [ref=e58]: ACCURACY
+      - generic [ref=e59]:
+        - generic [ref=e60]:
+          - generic [ref=e62]: D. Okoye
+          - generic [ref=e63]: Chest pain since yesterday morning
+          - generic [ref=e64]: URGENT
+        - generic [ref=e65]:
+          - generic [ref=e67]: M. Patel
+          - generic [ref=e68]: Repeat prescription — Metformin 500mg
+          - generic [ref=e69]: ROUTINE
+        - generic [ref=e70]:
+          - generic [ref=e72]: S. Ahmed
+          - generic [ref=e73]: Follow-up query after blood test results
+          - generic [ref=e74]: ROUTINE
+        - generic [ref=e75]:
+          - generic [ref=e77]: J. Wilson
+          - generic [ref=e78]: Sick note request for employer
+          - generic [ref=e79]: ADMIN
+  - generic [ref=e80]:
+    - generic [ref=e81]:
+      - generic [ref=e82]: The problem every GP surgery faces
+      - heading "Receptionists are doing the wrong job" [level=2] [ref=e83]
+    - generic [ref=e84]:
+      - generic [ref=e85]:
+        - generic [ref=e86]: 58%
+        - generic [ref=e87]: of GP calls are non-clinical admin
+        - generic [ref=e88]: Repeat prescriptions, appointments, test results — all handled by clinical staff who should be with patients.
+      - generic [ref=e89]:
+        - generic [ref=e90]: 23 min
+        - generic [ref=e91]: average patient wait time
+        - generic [ref=e92]: Patients give up or attend A&E for issues that could have been triaged and resolved remotely.
+      - generic [ref=e93]:
+        - generic [ref=e94]: £31k
+        - generic [ref=e95]: per year, per practice, wasted on call handling
+        - generic [ref=e96]: Reception time spent on tasks a trained AI can handle in seconds — freeing staff for what matters.
+  - generic [ref=e97]:
+    - generic [ref=e98]:
+      - generic [ref=e99]: The Jeff Workflow
+      - heading "From missed call to actioned task in under 90 seconds" [level=2] [ref=e100]:
+        - text: From missed call to actioned task
+        - text: in under 90 seconds
+      - paragraph [ref=e101]: Jeff handles phone calls, WhatsApp messages, and web form submissions — then delivers a prioritised, structured task to your reception team.
+    - generic [ref=e102]:
+      - generic [ref=e103]:
+        - generic [ref=e104]: STEP 01
+        - generic [ref=e105]: 📞
+        - generic [ref=e106]: Patient contacts the surgery
+        - paragraph [ref=e107]: By phone, WhatsApp message, or the practice web form. Jeff answers 24/7 — no hold music, no missed calls, no frustrated patients.
+        - generic [ref=e108]:
+          - generic [ref=e109]: Phone call answered instantly
+          - generic [ref=e111]: WhatsApp (coming soon)
+          - generic [ref=e113]: Practice web form
+      - generic [ref=e115]:
+        - generic [ref=e116]: STEP 02
+        - generic [ref=e117]: 🧠
+        - generic [ref=e118]: Jeff triages and extracts the information
+        - paragraph [ref=e119]: Locally-running AI extracts the reason for contact, matches the NHS record, and applies your safety rules — everything happens on your server.
+        - generic [ref=e120]:
+          - generic [ref=e121]: On-premises Ollama/Gemma model
+          - generic [ref=e123]: NHS record matching
+          - generic [ref=e125]: Safety rule engine
+      - generic [ref=e127]:
+        - generic [ref=e128]: STEP 03
+        - generic [ref=e129]: ✅
+        - generic [ref=e130]: Reception staff see a prioritised task
+        - paragraph [ref=e131]: Within 90 seconds, a structured card appears on the dashboard — patient name, reason for contact, priority level, and a guided 4-step action.
+        - generic [ref=e132]:
+          - generic [ref=e133]: Urgent / Routine / Admin priority
+          - generic [ref=e135]: Guided 4-step workflow
+          - generic [ref=e137]: Full audit trail for compliance
+  - generic [ref=e140]:
+    - generic [ref=e141]:
+      - generic [ref=e142]: ⚡ Coming Soon
+      - heading "WhatsApp intake — no phone queue required" [level=2] [ref=e143]:
+        - text: WhatsApp intake —
+        - text: no phone queue required
+      - paragraph [ref=e144]: Patients who don't want to wait on hold can message the surgery on WhatsApp. Jeff reads the message, triages it, and adds it to the same priority queue as phone calls. No extra work for reception.
+      - generic [ref=e145]:
+        - textbox "your@surgery.nhs.uk" [ref=e146]
+        - button "Notify me" [ref=e147] [cursor=pointer]
+    - generic [ref=e149]:
+      - generic [ref=e150]:
+        - generic [ref=e151]: 📞
+        - generic [ref=e152]:
+          - generic [ref=e153]: Southport GP Practice
+          - generic [ref=e154]: Powered by Jeff · Avamed
+      - generic [ref=e155]: Hi, I need to request a repeat prescription for my blood pressure tablets.
+      - generic [ref=e156]: 09:14
+      - generic [ref=e157]: Thanks for getting in touch. I've added your repeat prescription request to the queue — your GP will process it within 2 working days. Is there anything else I can help with?
+      - generic [ref=e158]: 09:14 ✓✓
+  - generic [ref=e160]:
+    - generic [ref=e161]:
+      - generic [ref=e162]: Data Security
+      - heading "Patient data never leaves the building" [level=2] [ref=e163]:
+        - text: Patient data never
+        - text: leaves the building
+      - paragraph [ref=e164]: Unlike cloud-based AI tools, Avamed runs entirely on hardware within the surgery premises. No patient information is sent to third-party servers, ever.
+      - generic [ref=e165]:
+        - generic [ref=e166]:
+          - generic [ref=e167]: 🔒
+          - generic [ref=e168]:
+            - generic [ref=e169]: On-premises processing
+            - generic [ref=e170]: Ollama runs locally on your server. Every AI inference happens inside the building — nothing sent to OpenAI, Azure, or any cloud.
+        - generic [ref=e171]:
+          - generic [ref=e172]: 📋
+          - generic [ref=e173]:
+            - generic [ref=e174]: GDPR-ready by design
+            - generic [ref=e175]: Automated 90-day data purge, full audit log in SQLite, and no patient data in version control.
+        - generic [ref=e176]:
+          - generic [ref=e177]: 🏥
+          - generic [ref=e178]:
+            - generic [ref=e179]: NHS-aligned governance
+            - generic [ref=e180]: DSPT, DTAC, and Cyber Essentials compliance in progress. DCB0129 clinical safety review underway.
+        - generic [ref=e181]:
+          - generic [ref=e182]: 🤝
+          - generic [ref=e183]:
+            - generic [ref=e184]: NHS Digital Marketplace partnership
+            - generic [ref=e185]: Voice AI provided by Hostcomm UK — listed on the NHS Digital Marketplace. Procurement-ready for ICB frameworks.
+    - generic [ref=e186]:
+      - paragraph [ref=e187]: DATA FLOW — ALL ON YOUR PREMISES
+      - generic [ref=e188]:
+        - generic [ref=e189]: 📞 Patient calls / messages
+        - generic [ref=e191]: ↓
+        - generic [ref=e192]: 🎙 Jeff (Hostcomm UK voice AI)
+        - generic [ref=e194]: ↓
+        - generic [ref=e195]: 🧠 Ollama / Gemma — runs on your server
+        - generic [ref=e196]: No internet connection required for AI inference
+        - generic [ref=e198]: ↓
+        - generic [ref=e199]: 📊 Reception Dashboard — prioritised task
+        - generic [ref=e200]: ✓ Zero patient data leaves the building
+  - generic [ref=e201]:
+    - generic [ref=e202]:
+      - generic [ref=e203]: Competitive Landscape
+      - heading "How Avamed stacks up" [level=2] [ref=e204]
+      - paragraph [ref=e205]: The only AI triage platform that combines phone, WhatsApp, and web — all processed on-premises.
+    - table [ref=e206]:
+      - rowgroup [ref=e207]:
+        - row "Feature Avamed (Jeff) Aire Logic Triage Babylon Health Klinik Access AccuRx" [ref=e208]:
+          - columnheader "Feature" [ref=e209]
+          - columnheader "Avamed (Jeff)" [ref=e210]
+          - columnheader "Aire Logic Triage" [ref=e211]
+          - columnheader "Babylon Health" [ref=e212]
+          - columnheader "Klinik Access" [ref=e213]
+          - columnheader "AccuRx" [ref=e214]
+      - rowgroup [ref=e215]:
+        - row "Phone call triage ✓ ✓ ✗ Web only SMS/web" [ref=e216]:
+          - cell "Phone call triage" [ref=e217]
+          - cell "✓" [ref=e218]
+          - cell "✓" [ref=e219]
+          - cell "✗" [ref=e220]
+          - cell "Web only" [ref=e221]
+          - cell "SMS/web" [ref=e222]
+        - row "WhatsApp intake ✓ COMING SOON ✗ ✗ ✗ ✗" [ref=e223]:
+          - cell "WhatsApp intake" [ref=e224]
+          - cell "✓ COMING SOON" [ref=e225]
+          - cell "✗" [ref=e226]
+          - cell "✗" [ref=e227]
+          - cell "✗" [ref=e228]
+          - cell "✗" [ref=e229]
+        - row "On-premises AI (no cloud) ✓ ✗ ✗ ✗ ✗" [ref=e230]:
+          - cell "On-premises AI (no cloud)" [ref=e231]
+          - cell "✓" [ref=e232]
+          - cell "✗" [ref=e233]
+          - cell "✗" [ref=e234]
+          - cell "✗" [ref=e235]
+          - cell "✗" [ref=e236]
+        - row "Guided staff workflow ✓ Basic ✗ ✓ Limited" [ref=e237]:
+          - cell "Guided staff workflow" [ref=e238]
+          - cell "✓" [ref=e239]
+          - cell "Basic" [ref=e240]
+          - cell "✗" [ref=e241]
+          - cell "✓" [ref=e242]
+          - cell "Limited" [ref=e243]
+        - row "NHS record matching ✓ ✓ Partial ✓ ✓" [ref=e244]:
+          - cell "NHS record matching" [ref=e245]
+          - cell "✓" [ref=e246]
+          - cell "✓" [ref=e247]
+          - cell "Partial" [ref=e248]
+          - cell "✓" [ref=e249]
+          - cell "✓" [ref=e250]
+        - row "No patient data to cloud ✓ ✗ ✗ ✗ ✗" [ref=e251]:
+          - cell "No patient data to cloud" [ref=e252]
+          - cell "✓" [ref=e253]
+          - cell "✗" [ref=e254]
+          - cell "✗" [ref=e255]
+          - cell "✗" [ref=e256]
+          - cell "✗" [ref=e257]
+        - row "NHS Digital Marketplace ✓ (via Hostcomm) ✓ ✗ ✓ ✓" [ref=e258]:
+          - cell "NHS Digital Marketplace" [ref=e259]
+          - cell "✓ (via Hostcomm)" [ref=e260]
+          - cell "✓" [ref=e261]
+          - cell "✗" [ref=e262]
+          - cell "✓" [ref=e263]
+          - cell "✓" [ref=e264]
+        - row "Starting price From £299/mo ~£500+/mo Enterprise only ~£400+/mo Free + add-ons" [ref=e265]:
+          - cell "Starting price" [ref=e266]
+          - cell "From £299/mo" [ref=e267]
+          - cell "~£500+/mo" [ref=e268]
+          - cell "Enterprise only" [ref=e269]
+          - cell "~£400+/mo" [ref=e270]
+          - cell "Free + add-ons" [ref=e271]
+  - generic [ref=e272]:
+    - generic [ref=e273]:
+      - generic [ref=e274]: Pricing
+      - heading "Simple pricing, no surprises" [level=2] [ref=e275]:
+        - text: Simple pricing,
+        - text: no surprises
+      - paragraph [ref=e276]: All plans include on-premises installation, GDPR compliance tools, and dedicated onboarding support.
+    - generic [ref=e277]:
+      - generic [ref=e278]:
+        - generic [ref=e279]:
+          - generic [ref=e280]: Starter
+          - generic [ref=e281]: Solo Practice
+        - generic [ref=e282]:
+          - generic [ref=e283]: £299
+          - generic [ref=e284]: /month
+        - paragraph [ref=e285]: Ideal for single-site GP surgeries with up to 5,000 registered patients.
+        - separator [ref=e286]
+        - list [ref=e287]:
+          - listitem [ref=e288]:
+            - generic [ref=e289]: ✓
+            - text: Up to 2 reception staff accounts
+          - listitem [ref=e290]:
+            - generic [ref=e291]: ✓
+            - text: 500 AI-handled calls per month
+          - listitem [ref=e292]:
+            - generic [ref=e293]: ✓
+            - text: Phone intake
+          - listitem [ref=e294]:
+            - generic [ref=e295]: ✓
+            - text: Priority triage dashboard
+          - listitem [ref=e296]:
+            - generic [ref=e297]: ✓
+            - text: GDPR audit log
+          - listitem [ref=e298]:
+            - generic [ref=e299]: ✓
+            - text: Email support
+        - link "Book a Demo" [ref=e301] [cursor=pointer]:
+          - /url: "#demo"
+      - generic [ref=e302]:
+        - generic [ref=e303]:
+          - generic [ref=e304]: Most Popular
+          - generic [ref=e305]: Practice
+        - generic [ref=e306]:
+          - generic [ref=e307]: £499
+          - generic [ref=e308]: /month
+        - paragraph [ref=e309]: For established practices with high call volumes and multiple staff.
+        - separator [ref=e310]
+        - list [ref=e311]:
+          - listitem [ref=e312]:
+            - generic [ref=e313]: ✓
+            - text: Unlimited staff accounts
+          - listitem [ref=e314]:
+            - generic [ref=e315]: ✓
+            - text: Unlimited AI-handled calls
+          - listitem [ref=e316]:
+            - generic [ref=e317]: ✓
+            - text: WhatsApp intake (on launch)
+          - listitem [ref=e318]:
+            - generic [ref=e319]: ✓
+            - text: Web form intake
+          - listitem [ref=e320]:
+            - generic [ref=e321]: ✓
+            - text: Guided workflow + staff onboarding
+          - listitem [ref=e322]:
+            - generic [ref=e323]: ✓
+            - text: Priority phone + email support
+        - link "Book a Demo →" [ref=e325] [cursor=pointer]:
+          - /url: "#demo"
+      - generic [ref=e326]:
+        - generic [ref=e327]:
+          - generic [ref=e328]: Enterprise
+          - generic [ref=e329]: Multi-Site
+        - generic [ref=e331]: Custom
+        - paragraph [ref=e332]: For GP federations, PCNs, and ICBs deploying across multiple sites.
+        - separator [ref=e333]
+        - list [ref=e334]:
+          - listitem [ref=e335]:
+            - generic [ref=e336]: ✓
+            - text: Multi-site deployment
+          - listitem [ref=e337]:
+            - generic [ref=e338]: ✓
+            - text: Centralised admin dashboard
+          - listitem [ref=e339]:
+            - generic [ref=e340]: ✓
+            - text: SLA-backed uptime guarantee
+          - listitem [ref=e341]:
+            - generic [ref=e342]: ✓
+            - text: NHS SBS Framework procurement
+          - listitem [ref=e343]:
+            - generic [ref=e344]: ✓
+            - text: Dedicated implementation manager
+          - listitem [ref=e345]:
+            - generic [ref=e346]: ✓
+            - text: Custom compliance reporting
+        - link "Talk to Us" [ref=e348] [cursor=pointer]:
+          - /url: "#demo"
+  - generic [ref=e349]:
+    - generic [ref=e350]:
+      - generic [ref=e351]: Early Results
+      - heading "What happens when a surgery goes live" [level=2] [ref=e352]
+    - generic [ref=e353]:
+      - generic [ref=e354]:
+        - generic [ref=e355]: "\"We were spending nearly three hours every morning just fielding calls that Jeff now handles automatically. Reception staff can finally focus on the patients in front of them — not the phone.\""
+        - generic [ref=e356]: Practice Manager
+        - generic [ref=e357]: Southport GP Practice — Pilot Site · North West England
+        - paragraph [ref=e358]: "* Practice name anonymised pending written consent"
+      - generic [ref=e359]:
+        - generic [ref=e360]:
+          - generic [ref=e361]: 68%
+          - generic [ref=e362]: reduction in call handling time
+        - generic [ref=e363]:
+          - generic [ref=e364]: 91%
+          - generic [ref=e365]: triage accuracy rate
+        - generic [ref=e366]:
+          - generic [ref=e367]: <90s
+          - generic [ref=e368]: average task delivery time
+  - generic [ref=e370]:
+    - generic [ref=e371]:
+      - generic [ref=e372]: Free demo
+      - heading "See Jeff in action at your surgery" [level=2] [ref=e373]:
+        - text: See Jeff in action
+        - text: at your surgery
+      - paragraph [ref=e374]: We'll set up a live demo at your premises — you watch Jeff handle a real call, triage it, and deliver the task to the dashboard. Takes 30 minutes. No commitment.
+      - generic [ref=e375]:
+        - generic [ref=e376]:
+          - generic [ref=e377]: ✓
+          - text: Live on your own hardware
+        - generic [ref=e378]:
+          - generic [ref=e379]: ✓
+          - text: Real call simulation with your staff
+        - generic [ref=e380]:
+          - generic [ref=e381]: ✓
+          - text: Full Q&A on compliance and data
+        - generic [ref=e382]:
+          - generic [ref=e383]: ✓
+          - text: No sales pressure — just a demo
+    - generic [ref=e385]:
+      - generic [ref=e386]: Book your free demo
+      - paragraph [ref=e387]: We'll be in touch within one working day.
+      - generic [ref=e388]:
+        - generic [ref=e389]:
+          - generic [ref=e390]: First name
+          - textbox "Sarah" [ref=e391]
+        - generic [ref=e392]:
+          - generic [ref=e393]: Last name
+          - textbox "Williams" [ref=e394]
+      - generic [ref=e395]:
+        - generic [ref=e396]: Surgery / Organisation name
+        - textbox "Riverside Medical Practice" [ref=e397]
+      - generic [ref=e398]:
+        - generic [ref=e399]: Email address
+        - textbox "sarah@riversidemedical.nhs.uk" [ref=e400]
+      - generic [ref=e401]:
+        - generic [ref=e402]: Phone number
+        - textbox "07700 000000" [ref=e403]
+      - button "Book My Free Demo →" [ref=e404] [cursor=pointer]
+      - paragraph [ref=e405]:
+        - text: We'll never share your details. You can unsubscribe at any time. By submitting you agree to our
+        - link "privacy policy" [ref=e406] [cursor=pointer]:
+          - /url: "#"
+        - text: .
+  - contentinfo [ref=e407]:
+    - generic [ref=e408]:
+      - generic [ref=e409]:
+        - generic [ref=e410]:
+          - generic [ref=e411]: A
+          - text: avamed
+        - paragraph [ref=e412]: AI triage for UK GP surgeries — powered by Jeff, delivered on your premises. Patient data never leaves the building.
+        - generic [ref=e413]:
+          - generic [ref=e414]: NHS-Aligned
+          - generic [ref=e415]: GDPR Ready
+          - generic [ref=e416]: On-Premises
+          - generic [ref=e417]: Hostcomm UK Partnership
+      - generic [ref=e418]:
+        - generic [ref=e419]: Product
+        - list [ref=e420]:
+          - listitem [ref=e421]:
+            - link "How It Works" [ref=e422] [cursor=pointer]:
+              - /url: "#how"
+          - listitem [ref=e423]:
+            - link "Features" [ref=e424] [cursor=pointer]:
+              - /url: "#features"
+          - listitem [ref=e425]:
+            - link "Pricing" [ref=e426] [cursor=pointer]:
+              - /url: "#pricing"
+          - listitem [ref=e427]:
+            - link "Case Study" [ref=e428] [cursor=pointer]:
+              - /url: "#case-study"
+          - listitem [ref=e429]:
+            - link "Roadmap" [ref=e430] [cursor=pointer]:
+              - /url: "#"
+      - generic [ref=e431]:
+        - generic [ref=e432]: Compliance
+        - list [ref=e433]:
+          - listitem [ref=e434]:
+            - link "GDPR Policy" [ref=e435] [cursor=pointer]:
+              - /url: "#"
+          - listitem [ref=e436]:
+            - link "DSPT Status" [ref=e437] [cursor=pointer]:
+              - /url: "#"
+          - listitem [ref=e438]:
+            - link "DTAC Assessment" [ref=e439] [cursor=pointer]:
+              - /url: "#"
+          - listitem [ref=e440]:
+            - link "Cyber Essentials" [ref=e441] [cursor=pointer]:
+              - /url: "#"
+          - listitem [ref=e442]:
+            - link "Data Processing Agreement" [ref=e443] [cursor=pointer]:
+              - /url: "#"
+      - generic [ref=e444]:
+        - generic [ref=e445]: Company
+        - list [ref=e446]:
+          - listitem [ref=e447]:
+            - link "About Avamed" [ref=e448] [cursor=pointer]:
+              - /url: "#"
+          - listitem [ref=e449]:
+            - link "Our Partners" [ref=e450] [cursor=pointer]:
+              - /url: "#"
+          - listitem [ref=e451]:
+            - link "NHS SBS Framework" [ref=e452] [cursor=pointer]:
+              - /url: "#"
+          - listitem [ref=e453]:
+            - link "Contact" [ref=e454] [cursor=pointer]:
+              - /url: "#"
+          - listitem [ref=e455]:
+            - link "Practice Login" [ref=e456] [cursor=pointer]:
+              - /url: https://dashboard.app-avamed.uk
+    - generic [ref=e457]:
+      - generic [ref=e458]: © 2026 Avamed. Built in the UK for UK GP surgeries.
+      - generic [ref=e459]:
+        - link "Privacy Policy" [ref=e460] [cursor=pointer]:
+          - /url: "#"
+        - link "Terms of Service" [ref=e461] [cursor=pointer]:
+          - /url: "#"
+        - link "Cookie Policy" [ref=e462] [cursor=pointer]:
+          - /url: "#"
+  - generic "Chat with us" [ref=e463] [cursor=pointer]: 💬

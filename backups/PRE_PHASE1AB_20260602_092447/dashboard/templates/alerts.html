@@ -1,0 +1,75 @@
+﻿{% extends "base.html" %}
+{% block title %}Alerts - JeffLocal{% endblock %}
+{% block content %}
+<div class="page-scroll">
+<section class="page-head">
+  <div>
+    <a href="/" class="back-link">Back to Dashboard</a>
+    <h1>Local Alert Log</h1>
+    <p class="muted">Read-only local alert events recorded from n8n workflows.</p>
+  </div>
+</section>
+
+<form class="alerts-filter" method="get" action="/alerts">
+  <label>
+    Severity
+    <select name="severity">
+      {% for option in severity_options %}
+      <option value="{{ option }}" {% if option == active_severity %}selected{% endif %}>{{ option|title }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>
+    Limit
+    <input name="limit" type="number" min="1" max="200" value="{{ limit }}">
+  </label>
+  <button type="submit">Apply</button>
+</form>
+
+{% if alerts %}
+<div class="panel alert-table-wrap">
+  <table class="alert-table">
+    <thead>
+      <tr>
+        <th>Timestamp</th>
+        <th>Severity</th>
+        <th>Alert Type</th>
+        <th>Message</th>
+        <th>First Call ID</th>
+        <th>First Patient</th>
+        <th>First Priority</th>
+        <th>Source Workflow</th>
+        <th>Acknowledgement</th>
+        <th>Dedupe Key</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for alert in alerts %}
+      <tr>
+        <td>{{ alert.timestamp_display }}</td>
+        <td><span class="badge {{ 'danger' if alert.severity == 'critical' else 'review' if alert.severity == 'warning' else 'neutral' }}">{{ alert.severity }}</span></td>
+        <td>{{ alert.alert_type }}</td>
+        <td>{{ alert.message }}</td>
+        <td>{{ alert.first_call_id }}</td>
+        <td>{{ alert.first_patient }}</td>
+        <td>{{ alert.first_priority }}</td>
+        <td>{{ alert.source_workflow }}</td>
+        <td>
+          {% if alert.acknowledged_at %}
+            {{ alert.acknowledged_at_display }} by {{ alert.acknowledged_by or "unknown" }} via {{ alert.acknowledgement_source or "local" }}
+          {% else %}
+            Unacknowledged
+          {% endif %}
+        </td>
+        <td class="dedupe-cell">{{ alert.dedupe_key }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p class="empty">No local alerts found for this filter.</p>
+{% endif %}
+</div>
+{% endblock %}
+

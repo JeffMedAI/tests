@@ -1,0 +1,64 @@
+﻿{% extends "base.html" %}
+{% block title %}Reports - JeffLocal{% endblock %}
+{% block content %}
+<div class="page-scroll">
+<section class="page-head app-header">
+  <div>
+    <span class="page-kicker">Reporting and trends</span>
+    <h1>Reports</h1>
+    <p class="muted">Daily and weekly metrics for pathways, safety queues, failed work, and staff activity.</p>
+  </div>
+  <form method="get" action="/reports" class="search-sort-form">
+    <label>Date range
+      <select name="range">
+        {% for option in date_range_options %}
+          <option value="{{ option.value }}" {% if option.value == active_date_range %}selected{% endif %}>{{ option.label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <button type="submit">Apply</button>
+  </form>
+</section>
+
+<section class="kpi-grid report-kpis">
+  {% for card in kpi_cards %}
+    <a class="kpi-card" href="{{ card.url }}">
+      <span>{{ card.label }}</span>
+      <strong>{{ card.value or "0" }}</strong>
+    </a>
+  {% endfor %}
+</section>
+
+<section class="insight-grid">
+  <div class="panel">
+    <div class="section-head"><h2>Pathway Volumes</h2><span class="muted">{{ active_date_range }}</span></div>
+    {% for item in request_type_breakdown %}
+      <a class="bar-row" href="{{ item.url }}">
+        <span class="bar-label">{{ item.label }}</span>
+        <span class="bar-count">{{ item.count }}</span>
+        <span class="bar-track"><span class="bar-fill" style="width: {{ item.width }}%"></span></span>
+      </a>
+    {% endfor %}
+  </div>
+  <div class="panel">
+    <div class="section-head"><h2>Staff Workload</h2><span class="muted">Team</span></div>
+    <div class="team-stats">
+      <span>Resolved <strong>{{ staff_activity.team.resolved_today }}</strong></span>
+      <span>In progress <strong>{{ staff_activity.team.in_progress }}</strong></span>
+      <span>Alerts ack <strong>{{ staff_activity.team.alerts_acknowledged }}</strong></span>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="section-head"><h2>Queue Trends</h2><span class="muted">Current</span></div>
+    <dl class="workload-list">
+      <dt>Incoming</dt><dd>{{ workload.queue_depth.incoming|default("n/a") }}</dd>
+      <dt>Encrypted raw</dt><dd>{{ workload.queue_depth.encrypted_raw|default("n/a") }}</dd>
+      <dt>Processed today</dt><dd>{{ workload.queue_depth.processed_today|default("n/a") }}</dd>
+      <dt>Failed</dt><dd>{{ workload.queue_depth.failed|default("n/a") }}</dd>
+      <dt>Deadletter</dt><dd>{{ workload.queue_depth.deadletter|default("n/a") }}</dd>
+    </dl>
+  </div>
+</section>
+</div>
+{% endblock %}
+

@@ -14,6 +14,11 @@ def connect(db_path: Path | None = None) -> sqlite3.Connection:
     path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(path)
     conn.row_factory = sqlite3.Row
+    # Performance pragmas: WAL mode for concurrent reads, tuned cache and sync
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA synchronous=NORMAL")
+    conn.execute("PRAGMA cache_size=-8000")   # 8 MB page cache
+    conn.execute("PRAGMA temp_store=MEMORY")
     return conn
 
 
@@ -233,6 +238,18 @@ def init_db(conn: sqlite3.Connection) -> None:
     for column in ("acknowledged_at", "acknowledged_by", "acknowledgement_source"):
         if column not in alert_columns:
             conn.execute(f"ALTER TABLE alert_events ADD COLUMN {column} TEXT")
+    # ── Performance indexes (idempotent) ──────────────────────────────────────
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_cases_status ON cases (status)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_cases_call_timestamp_sort ON cases (call_timestamp_sort DESC)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_cases_verification_status ON cases (verification_status)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_cases_red_flags_present ON cases (red_flags_present)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_cases_status_ts ON cases (status, call_timestamp_sort DESC)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_audit_call_id ON audit_events (call_id)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_audit_timestamp ON audit_events (timestamp)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions (token)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions (expires_at)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions (user_id)")
+
     staff_count = conn.execute("SELECT COUNT(*) FROM staff_users").fetchone()[0]
     if staff_count == 0:
         from datetime import datetime, timezone

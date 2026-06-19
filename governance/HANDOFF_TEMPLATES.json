@@ -1,0 +1,99 @@
+{
+  "version": "1.0",
+  "date": "2026-06-18",
+  "description": "Template structure for JEIE-1 handoff JSON produced by the pipeline for each call. Fields marked locked are set by deterministic code. Fields marked llm are produced by Ollama/Gemma and are display-only.",
+
+  "envelope_format": "JEIE-1",
+  "encryption": "RSA-OAEP-256 + AES-256-GCM",
+  "signature": "HMAC-SHA256",
+  "key_id": "jefflocal-rsa-test-001",
+
+  "handoff_schema": {
+    "call_id": { "type": "string", "required": true, "set_by": "pipeline", "example": "JEFF-20260618-120000-001" },
+    "timestamp": { "type": "string", "format": "ISO8601", "required": true, "set_by": "pipeline" },
+
+    "normalized_input": {
+      "request_type": { "type": "string", "set_by": "llm", "display_only": true },
+      "stated_request": { "type": "string", "set_by": "llm", "display_only": true },
+      "postcode": { "type": "string", "set_by": "voice_agent" },
+      "callback_number": { "type": "string", "set_by": "voice_agent" }
+    },
+
+    "identity": {
+      "name_stated": { "type": "string", "set_by": "voice_agent" },
+      "dob_stated": { "type": "string", "format": "YYYY-MM-DD", "set_by": "voice_agent" },
+      "caller_for": { "type": "string", "values": ["self", "someone_else", "carer"], "set_by": "voice_agent" },
+      "caller_name": { "type": "string", "set_by": "voice_agent", "condition": "caller_for != self" },
+      "caller_relationship": { "type": "string", "set_by": "voice_agent", "condition": "caller_for != self" }
+    },
+
+    "patient_match": {
+      "verification_status": { "type": "string", "set_by": "deterministic", "LOCKED": true },
+      "verification_reason": { "type": "string", "set_by": "deterministic", "LOCKED": true },
+      "matched_patient_name": { "type": "string", "set_by": "deterministic", "LOCKED": true },
+      "matched_patient_ref": { "type": "string", "set_by": "deterministic", "LOCKED": true },
+      "emis_number": { "type": "string", "set_by": "deterministic", "LOCKED": true },
+      "nhs_number": { "type": "string", "set_by": "deterministic", "LOCKED": true },
+      "dob": { "type": "string", "set_by": "deterministic", "LOCKED": true },
+      "top_candidate_name": { "type": "string", "set_by": "deterministic", "LOCKED": true }
+    },
+
+    "urgency_assessment": {
+      "urgency_level": { "type": "string", "set_by": "voice_agent + deterministic override" },
+      "red_flags_mentioned": { "type": "array", "items": "string", "set_by": "voice_agent" },
+      "red_flags_present": { "type": "boolean", "set_by": "deterministic", "LOCKED": true },
+      "emergency_advice_given": { "type": "boolean", "set_by": "voice_agent" }
+    },
+
+    "pipeline_output": {
+      "priority": { "type": "string", "set_by": "deterministic", "LOCKED": true },
+      "safe_to_queue": { "type": "boolean", "set_by": "deterministic", "LOCKED": true },
+      "staff_review_required": { "type": "boolean", "set_by": "deterministic", "LOCKED": true },
+      "task_title": { "type": "string", "set_by": "llm", "display_only": true },
+      "task_body": { "type": "string", "set_by": "llm", "display_only": true },
+      "staff_task_title": { "type": "string", "set_by": "llm", "display_only": true },
+      "staff_task_body": { "type": "string", "set_by": "llm", "display_only": true },
+      "ai_summary": { "type": "string", "set_by": "llm", "display_only": true },
+      "patient_record_note": { "type": "string", "set_by": "llm", "display_only": true },
+      "call_summary": { "type": "string", "set_by": "llm", "display_only": true },
+      "action_needed": { "type": "string", "set_by": "llm", "display_only": true },
+      "extraction_confidence": { "type": "string", "set_by": "deterministic" },
+      "handoff_confidence": { "type": "string", "set_by": "deterministic" }
+    },
+
+    "voice_agent": {
+      "agent_id": { "type": "string", "set_by": "voice_agent" },
+      "session_id": { "type": "string", "set_by": "voice_agent" },
+      "call_duration_seconds": { "type": "integer", "set_by": "voice_agent" },
+      "caller_sentiment": { "type": "string", "set_by": "voice_agent" },
+      "caller_difficulty": { "type": "string", "set_by": "voice_agent" },
+      "transcript_quality": { "type": "string", "set_by": "voice_agent" }
+    },
+
+    "raw_transcript": { "type": "string", "min_length": 500, "set_by": "voice_agent" },
+    "pathway_responses": { "type": "object", "set_by": "voice_agent", "schema": "see config/pathways.json" }
+  },
+
+  "per_pathway_templates": {
+    "prescription": {
+      "task_title_template": "Prescription request: {medications_requested or new_medication_symptom}",
+      "staff_task_template": "Patient requests {prescription_type} prescription. {pharmacy_first_note if applicable}. Identity: {verification_status}."
+    },
+    "referral": {
+      "task_title_template": "Referral {referral_type}: {hospital_name or 'new request'}",
+      "staff_task_template": "Patient {referral_type} referral. {doctor_already_discussed note if new}. GP to review."
+    },
+    "sick_note": {
+      "task_title_template": "Sick note request: {note_type}, {duration_requested}",
+      "staff_task_template": "Patient requests {note_type} sick note for {duration_requested}. GP authorisation required."
+    },
+    "test_result": {
+      "task_title_template": "Test result enquiry: {test_type}",
+      "staff_task_template": "Patient enquiring about {test_type} result (approx {approx_test_date}). Assign to responsible clinician."
+    },
+    "admin": {
+      "task_title_template": "Admin: {admin_reason}",
+      "staff_task_template": "Admin contact: {admin_reason}. {callback_needed note}."
+    }
+  }
+}

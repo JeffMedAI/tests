@@ -1,0 +1,1596 @@
+{% extends "base.html" %}
+{% block title %}{% if show_requests %}Requests{% else %}Dashboard{% endif %} - JeffLocal{% endblock %}
+
+{% block topbar_search %}
+{% if show_requests %}
+<form class="topbar-search-form" action="/requests" method="get">
+  <input type="hidden" name="filter" value="{{ active_filter|default('open') }}">
+  <input type="hidden" name="request_type" value="{{ active_request_type|default('') }}">
+  <input class="topbar-search" type="search" name="q" value="{{ search_query|default('') }}"
+         placeholder="Search patients, NHS, DOB, call ID…" aria-label="Search requests" autocomplete="off">
+</form>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+{% set service_data = services_status|default(none) %}
+
+{# ── ANALYTICS SIDEBAR ────────────────────────────────────────────── #}
+<aside class="analytics-sidebar" id="analytics-sidebar">
+  <div class="sidebar-hd">
+    <span class="sidebar-hd-title">Analytics</span>
+    <button class="sidebar-toggle" id="sidebar-toggle-btn" aria-label="Toggle sidebar" title="Collapse sidebar">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      <span class="sidebar-alert-badge{% if not urgent_attention.red_flags or urgent_attention.red_flags == 0 %} is-hidden{% endif %}"
+            id="sidebar-alert-badge"
+            aria-label="{{ urgent_attention.red_flags }} critical issue{{ 's' if urgent_attention.red_flags != 1 else '' }}"
+            title="{{ urgent_attention.red_flags }} critical issue{{ 's' if urgent_attention.red_flags != 1 else '' }} — click to expand sidebar"
+      >{{ urgent_attention.red_flags if urgent_attention.red_flags else '' }}</span>
+    </button>
+  </div>
+
+  <div class="sidebar-period">
+    <div class="period-tabs">
+      <a href="/requests?range=today" class="period-tab {% if active_date_range == 'today' %}active{% endif %}">Today</a>
+      <a href="/requests?range=week"  class="period-tab {% if active_date_range == 'week'  %}active{% endif %}">Week</a>
+      <a href="/requests?range=all"   class="period-tab {% if active_date_range == 'all'   %}active{% endif %}">All</a>
+    </div>
+  </div>
+
+  <div class="sidebar-body">
+
+    {# ── QUICK STATUS ONLY (removed duplicate KPI cards) ── #}
+
+    {# ── Queue status ── #}
+    {% if queue_status_card is defined %}
+    <div class="analytics-card" title="Quick Status" data-metric=" · {{ queue_status_card.open }} open">
+      <div class="card-collapsed-icon" title="Quick Status">📊</div>
+      <div class="card-full-content"></div>
+      <div class="sidebar-section-hd">📊 Quick Status</div>
+      <div class="analytics-row">
+        <span class="ar-label"><span class="ar-dot blue"></span>Open</span>
+        <span class="ar-value">{{ queue_status_card.open }}</span>
+      </div>
+      <div class="analytics-row">
+        <span class="ar-label"><span class="ar-dot danger"></span>Overdue</span>
+        <span class="ar-value {{ 'danger-text' if queue_status_card.overdue else '' }}">{{ queue_status_card.overdue }}</span>
+      </div>
+      <div class="analytics-row">
+        <span class="ar-label"><span class="ar-dot green"></span>Resolved Today</span>
+        <span class="ar-value">{{ queue_status_card.resolved_today }}</span>
+      </div>
+      <div class="analytics-row">
+        <span class="ar-label"><span class="ar-dot danger"></span>Critical</span>
+        <span class="ar-value {{ 'danger-text' if queue_status_card.red_flags else '' }}">{{ queue_status_card.red_flags }}</span>
+      </div>
+    </div>
+    {% endif %}
+
+    {# ── Critical Issues alert card ── #}
+    {% if urgent_attention.red_flags > 0 %}
+    <a class="red-flag-card" href="{{ filter_links[1].url if filter_links|length > 1 else '/requests?filter=urgent_red_flags' }}">
+      <span class="rf-icon">⚠️</span>
+      <div class="rf-body">
+        <span class="rf-label">Critical Issues</span>
+        <span class="rf-value">{{ urgent_attention.red_flags }}</span>
+        <span class="rf-sub">Needs immediate attention</span>
+      </div>
+      <span class="rf-value-coll">{{ urgent_attention.red_flags }}</span>
+    </a>
+    {% else %}
+    <div class="analytics-card sidebar-card-clear">
+      <span class="sidebar-card-clear-label">✓ All Clear</span>
+      <span class="sidebar-card-clear-sub">No critical issues</span>
+    </div>
+    {% endif %}
+
+    {# ── Staff Workload (live) ── #}
+    <div class="analytics-card" title="Staff Workload" id="staff-workload-card" data-metric=" · {{ staff_workload_list|length }} staff">
+      <div class="card-collapsed-icon">👥</div>
+      <div class="sidebar-section-hd">
+        Staff Workload
+        <span id="staff-workload-refresh-ts" class="sidebar-card-ts"></span>
+      </div>
+      <div id="staff-workload-list">
+        {# Seeded with server-side data; refreshed by JS every 60s #}
+        {% for su in staff_workload_list|default([]) %}
+        <div class="staff-workload-row">
+          <span class="staff-workload-name" title="{{ su.name }}">{{ su.name }}</span>
+          <span class="staff-workload-pills">
+            <span class="swp swp-open"   title="Open cases">{{ su.open }}</span>
+            <span class="swp swp-active" title="In progress">{{ su.in_progress }}</span>
+            <span class="swp swp-done"   title="Resolved today">{{ su.resolved_today }}</span>
+          </span>
+        </div>
+        {% else %}
+        <div class="analytics-row ar-row--muted">Loading…</div>
+        {% endfor %}
+      </div>
+      <div class="analytics-row sidebar-legend-row">
+        <span class="ar-label sidebar-legend-label">
+          <span class="ar-dot legend-open"></span>Open
+          <span class="ar-dot legend-active"></span>Active
+          <span class="ar-dot legend-done"></span>Done
+        </span>
+      </div>
+    </div>
+
+    {# ── Call analytics ── #}
+    {% if call_analytics_card is defined %}
+    <div class="analytics-card" title="Call Analytics" data-metric=" · {{ call_analytics_card.total_calls }} calls">
+      <div class="card-collapsed-icon">📞</div>
+      <div class="sidebar-section-hd">Call Analytics</div>
+      <div class="analytics-row">
+        <span class="ar-label">Total Calls</span>
+        <span class="ar-value">{{ call_analytics_card.total_calls }}</span>
+      </div>
+      <div class="analytics-row">
+        <span class="ar-label">Dropped</span>
+        <span class="ar-value">{{ call_analytics_card.dropped }}</span>
+      </div>
+      <div class="analytics-row">
+        <span class="ar-label">Safe to Queue</span>
+        <span class="ar-value">{{ call_analytics_card.safe_to_queue }}</span>
+      </div>
+      <div class="analytics-row">
+        <span class="ar-label">Success Rate</span>
+        <span class="ar-value success">{{ call_analytics_card.success_rate }}%</span>
+      </div>
+      {% if call_analytics_card.avg_turnaround %}
+      <div class="analytics-row">
+        <span class="ar-label">Avg Response Time</span>
+        <span class="ar-value" title="Average response time in minutes: {{ call_analytics_card.avg_turnaround }}">
+          {% set hours = call_analytics_card.avg_turnaround // 60 %}
+          {% if hours > 24 %}
+            {{ (hours // 24) }}d {{ (hours % 24) }}h
+          {% elif hours > 0 %}
+            {{ hours }}h {{ (call_analytics_card.avg_turnaround % 60) }}m
+          {% else %}
+            {{ call_analytics_card.avg_turnaround }} min
+          {% endif %}
+        </span>
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    {# ── Live workload ── #}
+    <div class="analytics-card" title="Live Workload" data-metric=" · {{ workload_card.incoming }} queued">
+      <div class="card-collapsed-icon">⚙️</div>
+      <div class="sidebar-section-hd">Live Workload</div>
+      <div class="analytics-row">
+        <span class="ar-label"><span class="ar-dot blue"></span>Incoming Queue</span>
+        <span class="ar-value">{{ workload_card.incoming }}</span>
+      </div>
+      <div class="analytics-row">
+        <span class="ar-label"><span class="ar-dot amber"></span>Awaiting</span>
+        <span class="ar-value">{{ workload_card.awaiting_processing }}</span>
+      </div>
+      <div class="analytics-row">
+        <span class="ar-label"><span class="ar-dot green"></span>Processed Today</span>
+        <span class="ar-value">{{ workload_card.processed_today }}</span>
+      </div>
+      {% if workload_card.failed %}
+      <div class="analytics-row">
+        <span class="ar-label"><span class="ar-dot danger"></span>Failed</span>
+        <span class="ar-value">{{ workload_card.failed }}</span>
+      </div>
+      {% endif %}
+    </div>
+
+    {# Request Mix removed from sidebar (see main dashboard area) #}
+
+  </div>{# end sidebar-body #}
+</aside>
+
+{# ── MAIN CONTENT ────────────────────────────────────────────────── #}
+<main class="app-main">
+
+  {% if show_demo_banner %}
+  <div class="demo-banner" role="status">
+    <strong>DEMO / TEST DATA MODE</strong>
+    <span>No real patient data. Google push disabled for test runs.</span>
+  </div>
+  {% endif %}
+
+  {# ════════════════════════════════════════════════════════════════
+     DASHBOARD OVERVIEW
+     ════════════════════════════════════════════════════════════════ #}
+  {% if show_dashboard_overview %}
+  <div class="dashboard-scroll">
+
+    <section class="page-head">
+      <div>
+        <span class="page-kicker">JeffLocal Reception Dashboard</span>
+        <h1>📊 Today's Overview</h1>
+        <p class="muted">Check critical issues, workload status, and team performance at a glance.</p>
+      </div>
+      <div class="header-actions">
+        <span class="status-pill"><i class="health-dot {{ system_health.dashboard.state }}"></i>System {{ system_health.dashboard.label }}</span>
+        <span class="header-meta">Updated {{ page_updated_at|display_ts }}</span>
+        <button type="button" data-refresh-services-button>Refresh</button>
+      </div>
+    </section>
+
+    <section class="urgent-panel" aria-label="Urgent Attention">
+      <div>
+        <h2>⚠️ Urgent Attention</h2>
+        {% if urgent_attention.latest %}
+          <p>{{ urgent_attention.latest.alert_type }}: {{ urgent_attention.latest.message }}</p>
+        {% else %}
+          <p>✓ No critical issues detected</p>
+        {% endif %}
+      </div>
+      {% if urgent_attention.red_flags > 0 or urgent_attention.staff_review > 0 or urgent_attention.identity_checks > 0 %}
+      <div class="urgent-counts">
+        {% if urgent_attention.red_flags > 0 %}<a href="{{ filter_links[1].url }}"><span>🚨 Critical Issues</span><strong>{{ urgent_attention.red_flags }}</strong></a>{% endif %}
+        {% if urgent_attention.staff_review > 0 %}<a href="{{ filter_links[2].url }}"><span>👁️ Cases Needing Review</span><strong>{{ urgent_attention.staff_review }}</strong></a>{% endif %}
+        {% if urgent_attention.identity_checks > 0 %}<a href="{{ filter_links[3].url }}"><span>🪪 Identity Issues</span><strong>{{ urgent_attention.identity_checks }}</strong></a>{% endif %}
+      </div>
+      <div class="urgent-actions">
+        <a class="button-link danger-link" href="{{ filter_links[1].url }}">→ View Issues</a>
+        {% if urgent_attention.latest %}
+          <button type="button" id="urgent-ack-button" data-alert-id="{{ urgent_attention.latest.alert_id }}">Acknowledge</button>
+        {% endif %}
+      </div>
+      {% endif %}
+    </section>
+
+    <section class="kpi-grid" aria-label="Today's Key Metrics">
+      {% for card in kpi_cards %}
+        <a class="kpi-card" href="{{ card.url }}" title="Click to view details">
+          <span>{{ card.label }}</span>
+          <strong>{{ card.value if card.value is not none else "n/a" }}</strong>
+          <small style="opacity: 0.6; font-size: 0.75em;">→ View</small>
+        </a>
+      {% endfor %}
+      <div class="kpi-card system-health-card" aria-label="System Status" style="opacity: 0.9;">
+        <span>System Status</span>
+        <div class="health-list">
+          <div data-service-key="dashboard"><i class="health-dot {{ system_health.dashboard.state }}"></i>Dashboard <strong>{{ system_health.dashboard.label }}</strong></div>
+          <div data-service-key="n8n"><i class="health-dot {{ system_health.n8n.state }}"></i>Workflows <strong>{{ system_health.n8n.label }}</strong></div>
+          <div data-service-key="voice_agent"><i class="health-dot {{ system_health.voice_agent.state }}"></i>Voice Agent <strong>{{ system_health.voice_agent.label }}</strong></div>
+        </div>
+      </div>
+    </section>
+
+    {# ── Priority / Status Distribution Strip ── #}
+    {% set strip_open = urgent_attention.staff_review|default(0) %}
+    {% set strip_red = urgent_attention.red_flags|default(0) %}
+    {% set strip_resolved = kpi_cards[4].value|default(0) if kpi_cards|length > 4 else 0 %}
+    {% set strip_safe = (kpi_cards[0].value|default(0)|int) - strip_open - strip_red %}
+    {% set strip_total = (strip_safe + strip_open + strip_red + strip_resolved) or 1 %}
+    <section class="priority-strip-panel" aria-label="Case status distribution">
+      <div class="priority-strip-hd">
+        <h2>Status Distribution</h2>
+        <span class="muted">{{ active_date_range_label }}</span>
+      </div>
+      <div class="priority-strip" title="Case status breakdown">
+        <div class="priority-strip-seg safe"     style="flex: {{ [strip_safe, 0]|max }}"></div>
+        <div class="priority-strip-seg review"   style="flex: {{ [strip_open, 0]|max }}"></div>
+        <div class="priority-strip-seg danger"   style="flex: {{ [strip_red, 0]|max }}"></div>
+        <div class="priority-strip-seg resolved" style="flex: {{ [strip_resolved, 0]|max }}"></div>
+      </div>
+      <div class="priority-strip-legend">
+        <span class="strip-legend-item"><span class="strip-dot safe"></span>Routine open ({{ [strip_safe, 0]|max }})</span>
+        <span class="strip-legend-item"><span class="strip-dot review"></span>Needs review ({{ strip_open }})</span>
+        <span class="strip-legend-item"><span class="strip-dot danger"></span>Critical ({{ strip_red }})</span>
+        <span class="strip-legend-item"><span class="strip-dot resolved"></span>Resolved today ({{ strip_resolved }})</span>
+      </div>
+    </section>
+
+    <section class="insight-grid three-up" aria-label="Dashboard insights">
+      <div class="panel compact-panel request-mix-card" aria-label="Request Mix">
+        <div class="section-head">
+          <h2>Request Mix</h2>
+          <span class="muted">{{ active_date_range_label }}</span>
+        </div>
+        {% for item in visible_request_mix %}
+          <a class="bar-row" href="{{ item.url }}">
+            <span class="bar-label">{{ item.label }}</span>
+            <span class="bar-count">{{ item.count }}</span>
+            <span class="bar-track"><span class="bar-fill" style="width:{{ item.width }}%"></span></span>
+          </a>
+        {% else %}
+          <p class="muted">No requests in this range.</p>
+        {% endfor %}
+      </div>
+
+      <div class="panel compact-panel" aria-label="Staff Workload">
+        <div class="section-head">
+          <h2>Staff Workload</h2>
+          <span class="muted">Team Activity</span>
+        </div>
+        <div class="team-stats compact-stats">
+          <span>Resolved <strong>{{ staff_activity.team.resolved_today }}</strong></span>
+          <span>In progress <strong>{{ staff_activity.team.in_progress }}</strong></span>
+          <span>Alerts ack <strong>{{ staff_activity.team.alerts_acknowledged }}</strong></span>
+        </div>
+        {% if staff_activity.rows %}
+        <table class="staff-workload-table">
+          <thead><tr><th>Staff</th><th>Open</th><th>Resolved</th><th>Alerts</th></tr></thead>
+          <tbody>
+          {% for row in staff_activity.rows %}
+            <tr>
+              <td><span class="staff-name-cell"><span class="staff-avatar-sm" title="{{ row.staff_name }}">{{ row.staff_name[0]|upper }}</span>{{ row.staff_name }}</span></td>
+              <td>{{ row.assigned_open }}</td>
+              <td>{{ row.resolved_today }}</td>
+              <td>{{ row.alerts_acknowledged }}</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+          <p class="muted">No staff workload data yet.</p>
+        {% endif %}
+      </div>
+
+      <div class="panel compact-panel" aria-label="Live Workload">
+        <div class="section-head">
+          <h2>Live Workload</h2>
+          <span class="workload-state">{{ workload_card.status }}</span>
+        </div>
+        <dl class="workload-list">
+          <dt>Status</dt><dd>{{ workload_card.status }}</dd>
+          <dt>Incoming Queue</dt><dd>{{ workload_card.incoming }}</dd>
+          <dt>Awaiting Processing</dt><dd>{{ workload_card.awaiting_processing }}</dd>
+          <dt>Active Processing</dt><dd>{{ workload_card.active_processing }}</dd>
+          <dt>Processed Today</dt><dd>{{ workload_card.processed_today }}</dd>
+          <dt>Failed</dt><dd>{{ workload_card.failed }}</dd>
+          <dt>Failed Safety Queue</dt><dd>{{ workload_card.failed_safety_queue }}</dd>
+          <dt>Last checked</dt><dd>{{ workload_card.last_checked }}</dd>
+        </dl>
+      </div>
+    </section>
+
+  </div>{# end dashboard-scroll #}
+  {% endif %}
+
+  {# ════════════════════════════════════════════════════════════════
+     REQUESTS LIST
+     ════════════════════════════════════════════════════════════════ #}
+  {% if show_requests %}
+  <div class="requests-wrapper">
+
+    {# Sticky filter toolbar #}
+    <div class="sticky-toolbar">
+      {% if action_notice %}
+        <p class="notice-banner" role="status">{{ action_notice }}</p>
+      {% endif %}
+
+      {# Status filter tabs + collapse toggle #}
+      <div class="filter-tab-row">
+        {% for item in filter_links %}
+          <a href="{{ item.url }}" class="filter-tab {% if item.value == active_filter %}active{% endif %}">
+            {{ item.label|title }}{% if item.count is not none %}<span class="tab-count">{{ item.count }}</span>{% endif %}
+          </a>
+        {% endfor %}
+        <button type="button" class="filter-collapse-btn is-collapsed" id="filter-collapse-btn" aria-expanded="false" aria-controls="filter-collapsible-area">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
+          <span class="filter-collapse-label">Filters</span>
+          <i class="collapse-arrow">▾</i>
+        </button>
+      </div>
+
+      {# Collapsible: type chips + search form #}
+      <div class="filter-collapsible is-collapsed" id="filter-collapsible-area">
+
+      {# Request type chips #}
+      <div class="type-chip-row">
+        <span class="chip-label">Type:</span>
+        <a href="{{ all_request_types_url }}" class="type-chip all-types {% if not active_request_type %}active{% endif %}">All Types</a>
+        {% for item in request_type_links %}
+          <a href="{{ item.url }}" class="type-chip {{ item.value }} {% if item.value == active_request_type %}active{% endif %}">{{ item.label }}</a>
+        {% endfor %}
+      </div>
+
+      {# Advanced filter form #}
+      <form method="get" action="/requests" class="search-sort-form filter-bar">
+        <input type="hidden" name="filter" value="{{ active_filter }}">
+        <input type="hidden" name="request_type" value="{{ active_request_type }}">
+        <label>Search
+          <input name="q" value="{{ search_query }}" placeholder="Patient, DOB, NHS, call ID, postcode…">
+        </label>
+        <label>Sort by
+          <select name="sort">
+            {% for option in sort_options %}
+              <option value="{{ option.value }}" {% if option.value == active_sort %}selected{% endif %}>{{ option.label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>Date range
+          <select name="range">
+            {% for option in date_range_options %}
+              <option value="{{ option.value }}" {% if option.value == active_date_range %}selected{% endif %}>{{ option.label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>Per page
+          <select name="page_size">
+            {% for size in [20, 50, 100] %}
+              <option value="{{ size }}" {% if size == pagination.page_size %}selected{% endif %}>{{ size }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <button type="submit">Apply</button>
+        <a class="button-link secondary-page reset-filter-link" href="{{ reset_filters_url }}">Reset</a>
+      </form>
+
+      </div>{# end filter-collapsible #}
+
+      {# Active filter chips + result count #}
+      <div class="filter-support-row">
+        <div class="active-filter-chips" aria-label="Active filters">
+          <span class="filter-chip">{{ active_filter_label|title }}</span>
+          <span class="filter-chip">{{ active_date_range_label }}</span>
+          {% if active_request_type_label %}<span class="filter-chip">{{ active_request_type_label }}</span>{% endif %}
+          {% if search_query %}<span class="filter-chip">Search: {{ search_query }}</span>{% endif %}
+          <a href="{{ reset_filters_url }}" aria-label="Clear filters">Clear filters</a>
+        </div>
+        <span class="muted">Showing {{ pagination.start }}–{{ pagination.end }} of {{ pagination.total }}</span>
+      </div>
+    </div>{# end sticky-toolbar #}
+
+    {# Batch toolbar #}
+    <div class="batch-toolbar panel">
+      <div>
+        <strong><span id="batch-selected-count" data-selected-count>0</span> selected</strong>
+        <p class="muted" id="batch-status-message">Bulk actions apply to selected cases on this page only.</p>
+      </div>
+      <div class="selection-controls">
+        <button type="button" id="select-visible-button" data-select-all-visible {% if current_staff and current_staff.role == "readonly" %}disabled title="Read-only staff cannot update cases."{% endif %}>Select all visible</button>
+        <button type="button" id="clear-selection-button" data-clear-selection disabled>Clear selection</button>
+      </div>
+      <div class="bulk-actions">
+        <button type="button" id="bulk-assign-button" data-bulk-action-button data-bulk-action="assign_to_me" disabled>Assign to me</button>
+        <button type="button" id="bulk-review-button" data-bulk-action-button data-bulk-action="start_review" disabled>Start review</button>
+        <button type="button" id="batch-resolve-button" data-batch-resolve-button data-bulk-action-button data-bulk-action="resolve_eligible_only" disabled title="Resolve eligible routine matched safe cases; unsafe cases are skipped.">Resolve eligible only</button>
+      </div>
+    </div>
+
+    {# ── Requests body: card list + detail panel side-by-side ── #}
+    <div class="requests-body">
+
+      {# Card list + pagination #}
+      <div class="case-list-scroll" aria-label="Patient requests">
+        {% for case in cases %}
+        <article
+          class="request-card {% if case.is_emergency %}emergency{% elif case.identity_review_required %}identity-row{% elif case.staff_review_required %}review-row{% endif %} {% if case.is_resolved %}resolved-row{% endif %}"
+          id="case-{{ case.call_id }}"
+          data-case-row>
+
+          {# Checkbox #}
+          <label class="batch-select card-check" data-no-toggle aria-label="Select {{ case.call_id }} for bulk actions">
+            <input type="checkbox"
+                   class="case-select"
+                   value="{{ case.call_id }}"
+                   data-case-checkbox
+                   data-call-id="{{ case.call_id }}"
+                   data-request-type="{{ case.request_type }}"
+                   data-priority="{{ case.priority }}"
+                   data-red-flag="{{ 'true' if case.red_flags_present else 'false' }}"
+                   data-safe-to-queue="{{ 'true' if case.safe_to_queue else 'false' }}"
+                   data-staff-review="{{ 'true' if case.staff_review_required else 'false' }}"
+                   data-verification="{{ case.verification_status }}"
+                   data-status="{{ case.status }}"
+                   data-patient="{{ case.patient_name }}"
+                   data-callback="{{ case.callback_number }}"
+                   {% if current_staff and current_staff.role == "readonly" %}disabled title="Read-only staff cannot update cases."{% endif %}>
+          </label>
+
+          {# Top: badges + patient info + time #}
+          <div class="card-top" style="padding-left:26px">
+            <div class="card-top-left">
+              <div class="card-badges">
+                <span class="badge {{ case.request_type }}">{{ case.request_type_label }}</span>
+                {% for chip in case.summary_chips %}
+                  <span class="badge {{ chip.class }}"{% if chip.tooltip %} title="{{ chip.tooltip }}"{% endif %}>{{ chip.label }}</span>
+                {% endfor %}
+              </div>
+              <div class="card-patient">
+                {{ case.patient_name or "Name not captured" }}{% if case.gender %} · {{ case.gender }}{% endif %}
+              </div>
+              <div class="card-meta">
+                <span class="card-meta-item">DOB {{ case.dob_display or "n/a" }}{% if case.age_label %} · {{ case.age_label }}{% endif %}</span>
+                <span class="card-meta-item">NHS {{ case.nhs_number or "n/a" }}</span>
+                {% if case.emis_number or case.matched_patient_ref %}
+                  <span class="card-meta-item">EMIS {{ case.emis_number or case.matched_patient_ref }}</span>
+                {% endif %}
+                <span class="card-meta-item">📱 {{ case.callback_number_display or "n/a" }}</span>
+              </div>
+            </div>
+            <div class="card-time">
+              <span class="card-received">{{ case.time_display or case.timestamp_display }}</span>
+              {% if case.age_label_short %}
+                <span class="card-age {{ case.age_class }}">{{ case.age_label_short }}</span>
+              {% elif case.duration_label %}
+                <span class="card-age">{{ case.duration_label }}</span>
+              {% endif %}
+            </div>
+          </div>
+
+          {# Summary #}
+          {% if case.call_summary_short %}
+            <p class="card-summary">{{ case.call_summary_short }}</p>
+          {% endif %}
+          {% if case.processing_output_missing %}
+            <p class="warning-inline">Processing output missing — staff review required.</p>
+          {% endif %}
+
+          {# Footer: status + assigned + actions #}
+          <div class="card-footer">
+            <div class="card-footer-left">
+              <span class="badge {{ case.primary_status_class }}">{{ case.primary_status_label }}</span>
+              {% if case.is_resolved and case.resolved_at_display %}
+                <span class="resolved-info">{{ case.resolved_at_display }}{% if case.resolved_by_display %} by {{ case.resolved_by_display }}{% endif %}{% if case.turnaround_minutes_display %} ({{ case.turnaround_minutes_display }}){% endif %}</span>
+              {% else %}
+                <span class="card-assigned">{{ case.assigned_to or "Unassigned" }}</span>
+              {% endif %}
+              <span class="call-id">{{ case.call_id }}</span>
+            </div>
+            <div class="card-footer-right">
+              {% if case.is_resolved %}
+              <form method="post" action="/case/{{ case.call_id }}/quick_action" data-no-toggle>
+                <input type="hidden" name="action" value="reopen">
+                <input type="hidden" name="return_url" value="{{ current_list_url }}">
+                <button type="submit" class="btn-sm" {% if current_staff and current_staff.role == "readonly" %}disabled title="Read-only staff cannot update cases."{% endif %}>Reopen</button>
+              </form>
+              {% elif case.requires_individual_review %}
+              <form method="post" action="/case/{{ case.call_id }}/quick_action" data-no-toggle>
+                <input type="hidden" name="action" value="start_review">
+                <input type="hidden" name="return_url" value="{{ current_list_url }}">
+                <button type="submit" class="btn-sm" {% if current_staff and current_staff.role == "readonly" %}disabled title="Read-only staff cannot update cases."{% endif %}>Start Review</button>
+              </form>
+              {% else %}
+              <form method="post" action="/case/{{ case.call_id }}/quick_action" data-no-toggle>
+                <input type="hidden" name="action" value="resolve">
+                <input type="hidden" name="return_url" value="{{ current_list_url }}">
+                <input type="hidden" name="outcome_notes" value="{{ case.outcome_notes or '' }}">
+                <input type="hidden" name="resolved_by" value="{{ case.resolved_by or '' }}">
+                <button type="submit" class="btn-sm" {% if current_staff and current_staff.role == "readonly" %}disabled title="Read-only staff cannot update cases."{% endif %}>Resolve</button>
+              </form>
+              {% endif %}
+              <a class="button-link secondary-page btn-sm" href="/case/{{ case.call_id }}?return_url={{ current_list_url|urlencode }}" data-no-toggle>View</a>
+            </div>
+          </div>
+
+        </article>
+        {% else %}
+          <div class="empty">No cases found for this filter.</div>
+        {% endfor %}
+
+        {# Pagination lives inside the scrollable list #}
+        <nav class="pagination-bar panel" aria-label="Pagination">
+          <span>Showing {{ pagination.start }}–{{ pagination.end }} of {{ pagination.total }}</span>
+          <span>Page {{ pagination.page }} of {{ pagination.total_pages }}</span>
+          <div>
+            <a class="button-link secondary-page {% if not pagination.has_previous %}disabled-link{% endif %}" href="{{ pagination.previous_url }}">Previous</a>
+            <a class="button-link secondary-page {% if not pagination.has_next %}disabled-link{% endif %}" href="{{ pagination.next_url }}">Next</a>
+          </div>
+        </nav>
+      </div>{# end case-list-scroll #}
+
+      {# ── Detail panel ── #}
+      <div class="detail-panel is-hidden" id="detail-panel" aria-label="Case detail panel" aria-live="polite">
+
+        {# Placeholder — shown when no case is selected #}
+        <div class="detail-panel-placeholder" id="panel-placeholder">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+          <p>Select a request to view details</p>
+        </div>
+
+        {# Populated state — shown after fetch #}
+        <div class="panel-populated" id="panel-populated" hidden>
+
+          <div class="panel-hd">
+            <div class="panel-hd-top">
+              <div class="panel-badge-row" id="panel-badge-row"></div>
+              <button class="panel-close" id="panel-close-btn" aria-label="Close detail panel">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+            <div class="panel-patient-name" id="panel-patient-name"></div>
+            <div class="panel-patient-meta" id="panel-patient-meta"></div>
+          </div>
+
+          <div class="panel-actions">
+            <div class="panel-actions-row">
+              <button class="panel-btn" id="panel-btn-call" title="Call patient">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.39 2 2 0 0 1 3.58 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.54a16 16 0 0 0 6.29 6.29l.92-.92a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                Call
+              </button>
+              <button class="panel-btn" id="panel-btn-sms" title="SMS patient (coming soon)" disabled style="opacity:0.45;cursor:not-allowed">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                SMS
+              </button>
+              <button class="panel-btn" id="panel-btn-gp" title="GP workflow (coming soon)" disabled style="opacity:0.45;cursor:not-allowed">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                Send to GP
+              </button>
+            </div>
+            <button class="panel-btn full start-review" id="panel-btn-start-review" hidden>Start Review First</button>
+            <button class="panel-btn full escalate" id="panel-btn-escalate">Escalate Urgent</button>
+            <button class="panel-btn full resolve" id="panel-btn-resolve" data-panel-action="resolve">Mark as Resolved</button>
+          </div>
+
+          <nav class="panel-tabs" aria-label="Case panel sections">
+            <button class="panel-tab active" data-panel-tab="summary">Summary</button>
+            <button class="panel-tab" data-panel-tab="triage">Triage</button>
+            <button class="panel-tab" data-panel-tab="transcript">Transcript</button>
+          </nav>
+
+          <div class="panel-body">
+
+            {# Summary tab #}
+            <div data-panel-content="summary">
+              <div class="panel-section-hd">AI Summary</div>
+              <p class="panel-text" id="panel-ai-summary"></p>
+              <div class="panel-redflag-box" id="panel-redflag-box" hidden>
+                <div class="panel-redflag-title">⚠ Red Flag Warning</div>
+                <div class="panel-redflag-body" id="panel-redflag-body"></div>
+              </div>
+              <div id="panel-suggested" hidden>
+                <div class="panel-section-hd">Suggested Actions</div>
+                <ul class="panel-suggested-list" id="panel-suggested-list"></ul>
+              </div>
+            </div>
+
+            {# Triage tab #}
+            <div data-panel-content="triage" hidden>
+              <div class="panel-section-hd" id="panel-triage-hd">Pathway Q&amp;A</div>
+              <ul class="panel-pathway-list" id="panel-pathway-list"></ul>
+              <p class="panel-text muted" id="panel-pathway-empty" hidden>No pathway data captured for this call.</p>
+            </div>
+
+            {# Transcript tab #}
+            <div data-panel-content="transcript" hidden>
+              <div class="panel-section-hd">Transcript Preview</div>
+              <p class="panel-text panel-transcript-excerpt" id="panel-transcript-excerpt"></p>
+              <a class="panel-btn full" id="panel-view-full" href="#">View Full Case</a>
+            </div>
+
+          </div>{# end panel-body #}
+        </div>{# end panel-populated #}
+      </div>{# end detail-panel #}
+
+    </div>{# end requests-body #}
+
+  </div>{# end requests-wrapper #}
+  {% endif %}
+
+</main>
+
+{# ── MODALS ──────────────────────────────────────────────────────── #}
+<div class="modal-backdrop" id="alert-modal" hidden>
+  <section class="alert-modal" role="dialog" aria-modal="true" aria-labelledby="alert-modal-title">
+    <div class="section-head">
+      <div>
+        <h2 id="alert-modal-title">Operational Alert</h2>
+        <p class="muted">Local acknowledgement only.</p>
+      </div>
+      <span class="badge danger" id="alert-modal-severity"></span>
+    </div>
+    <dl class="mini-grid">
+      <dt>Alert Type</dt><dd id="alert-modal-type"></dd>
+      <dt>Message</dt><dd id="alert-modal-message"></dd>
+      <dt>First Call ID</dt><dd id="alert-modal-call"></dd>
+      <dt>First Patient</dt><dd id="alert-modal-patient"></dd>
+      <dt>First Priority</dt><dd id="alert-modal-priority"></dd>
+      <dt>Source Workflow</dt><dd id="alert-modal-source"></dd>
+      <dt>Timestamp</dt><dd id="alert-modal-timestamp"></dd>
+    </dl>
+    <p class="warning" id="alert-modal-error" hidden></p>
+    <button type="button" id="alert-modal-ok">OK</button>
+  </section>
+</div>
+
+<div class="modal-backdrop" id="batch-modal" hidden>
+  <section class="alert-modal" role="dialog" aria-modal="true" aria-labelledby="batch-modal-title">
+    <h2 id="batch-modal-title">Resolve selected cases?</h2>
+    <p id="batch-modal-message"></p>
+    <label>Outcome note
+      <textarea id="batch-outcome-note" rows="3">Batch resolved after staff review in JeffLocal dashboard.</textarea>
+    </label>
+    <p class="warning" id="batch-modal-error" hidden></p>
+    <div class="modal-actions">
+      <button type="button" id="batch-confirm-button">OK</button>
+      <button type="button" class="secondary-button" id="batch-cancel-button">Cancel</button>
+    </div>
+  </section>
+</div>
+
+<div class="modal-backdrop" id="cd-action-error-modal" hidden>
+  <section class="alert-modal" role="dialog" aria-modal="true" aria-labelledby="cd-action-error-title">
+    <h2 id="cd-action-error-title">Action Failed</h2>
+    <p id="cd-action-error-message"></p>
+    <button type="button" id="cd-action-error-ok">OK</button>
+  </section>
+</div>
+
+{# ── SCRIPTS ─────────────────────────────────────────────────────── #}
+<script>
+  // Sidebar collapse toggle with localStorage persistence
+  (function () {
+    var sidebar = document.getElementById('analytics-sidebar');
+    var btn = document.getElementById('sidebar-toggle-btn');
+    if (!sidebar || !btn) return;
+    var key = 'jefflocal_sidebar_collapsed';
+    // Load saved state from localStorage (persists across sessions)
+    if (localStorage.getItem(key) === 'true') {
+      sidebar.classList.add('is-collapsed');
+    }
+    btn.addEventListener('click', function () {
+      var isCollapsed = sidebar.classList.toggle('is-collapsed');
+      localStorage.setItem(key, isCollapsed);
+    });
+  })();
+
+  // Service health refresh
+  function serviceLabel(status) {
+    return (status || 'unknown').replaceAll('_', ' ').replace(/\b\w/g, function (c) { return c.toUpperCase(); });
+  }
+
+  function updateServicePanel(data) {
+    var services = data.services || {};
+    Object.entries(services).forEach(function (_ref) {
+      var key = _ref[0], service = _ref[1];
+      var card = document.querySelector('[data-service-key="' + key + '"]');
+      if (!card) return;
+      var dot   = card.querySelector('.health-dot');
+      var label = card.querySelector('strong');
+      if (dot) {
+        var status = service.status || 'unknown';
+        var state  = ['online', 'test_ready'].includes(status) ? 'good'
+                   : status === 'offline'        ? 'bad'
+                   : status === 'not_configured' ? 'idle'
+                   : 'warn';
+        dot.className = 'health-dot ' + state;
+      }
+      if (label) label.textContent = serviceLabel(service.status);
+    });
+  }
+
+  document.querySelectorAll('[data-refresh-services-button]').forEach(function (refreshButton) {
+    refreshButton.addEventListener('click', async function () {
+      refreshButton.disabled = true;
+      refreshButton.textContent = 'Checking…';
+      try {
+        var response = await fetch('/api/services/refresh', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ start_missing: false })
+        });
+        updateServicePanel(await response.json());
+      } catch {
+        refreshButton.title = 'Service status refresh failed.';
+      } finally {
+        refreshButton.disabled = false;
+        refreshButton.textContent = 'Refresh';
+      }
+    });
+  });
+
+  // Urgent alert acknowledge
+  document.getElementById('urgent-ack-button')?.addEventListener('click', async function (event) {
+    var button  = event.currentTarget;
+    var alertId = button.dataset.alertId;
+    if (!alertId) return;
+    button.disabled = true;
+    try {
+      var response = await fetch('/api/alerts/' + encodeURIComponent(alertId) + '/acknowledge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      });
+      if (!response.ok) throw new Error('Acknowledgement failed.');
+      button.textContent = 'Acknowledged';
+    } catch {
+      button.textContent = 'Try Again';
+      button.disabled = false;
+    }
+  });
+
+  {% if show_requests %}
+  // ── Filter collapse toggle ───────────────────────────────────────
+  (function () {
+    var btn        = document.getElementById('filter-collapse-btn');
+    var area       = document.getElementById('filter-collapsible-area');
+    var label      = btn ? btn.querySelector('.filter-collapse-label') : null;
+    var storageKey = 'jefflocal.filter.collapsed';
+    if (!btn || !area) return;
+
+    function applyState(collapsed, save) {
+      area.classList.toggle('is-collapsed', collapsed);
+      btn.classList.toggle('is-collapsed', collapsed);
+      btn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+      if (label) label.textContent = collapsed ? 'Filters' : 'Filters';
+      if (save) localStorage.setItem(storageKey, collapsed ? '1' : '0');
+    }
+
+    // Restore saved state, defaulting to collapsed if not set
+    var savedState = localStorage.getItem(storageKey);
+    var defaultCollapsed = savedState !== null ? savedState === '1' : true;
+    applyState(defaultCollapsed, false);
+
+    btn.addEventListener('click', function () {
+      applyState(!area.classList.contains('is-collapsed'), true);
+    });
+  })();
+
+  // ── Batch selection ──────────────────────────────────────────────
+  var selectionContext = JSON.stringify({
+    filter: '{{ active_filter }}',
+    q: '{{ search_query }}',
+    requestType: '{{ active_request_type }}',
+    range: '{{ active_date_range }}',
+    sort: '{{ active_sort }}',
+    page: '{{ pagination.page }}',
+    pageSize: '{{ pagination.page_size }}'
+  });
+  var selectionContextKey = 'jefflocal.selection.context';
+  var selectionKey = 'jefflocal.selection.' + selectionContext;
+  var previousSelectionContext = sessionStorage.getItem(selectionContextKey);
+  var statusMessage = document.getElementById('batch-status-message');
+  var readonlyStaff = '{{ current_staff.role if current_staff else "staff" }}' === 'readonly';
+  var selectedCallIds = new Set();
+  var selectionClearedNotice = false;
+
+  if (previousSelectionContext && previousSelectionContext !== selectionContext) {
+    Object.keys(sessionStorage).filter(function (k) { return k.startsWith('jefflocal.selection.'); }).forEach(function (k) { sessionStorage.removeItem(k); });
+    selectionClearedNotice = true;
+    if (statusMessage) statusMessage.textContent = 'Selection cleared because filters changed.';
+  }
+  sessionStorage.setItem(selectionContextKey, selectionContext);
+
+  function visibleCaseBoxes()      { return Array.from(document.querySelectorAll('[data-case-checkbox]')); }
+  function selectableVisibleBoxes() { return visibleCaseBoxes().filter(function (b) { return !b.disabled; }); }
+  function visibleSelectedCallIds() {
+    var visibleIds = new Set(selectableVisibleBoxes().map(function (b) { return b.dataset.callId; }));
+    return Array.from(selectedCallIds).filter(function (id) { return visibleIds.has(id); });
+  }
+
+  function loadStoredSelection() {
+    try {
+      var stored = JSON.parse(sessionStorage.getItem(selectionKey) || '[]');
+      selectedCallIds.clear();
+      var visibleIds = new Set(selectableVisibleBoxes().map(function (b) { return b.dataset.callId; }));
+      stored.forEach(function (id) { if (visibleIds.has(id)) selectedCallIds.add(id); });
+    } catch { selectedCallIds.clear(); }
+  }
+
+  function saveSelection() {
+    sessionStorage.setItem(selectionKey, JSON.stringify(visibleSelectedCallIds()));
+  }
+
+  function renderSelectionState() {
+    var selected = new Set(visibleSelectedCallIds());
+    visibleCaseBoxes().forEach(function (box) {
+      box.checked = selected.has(box.dataset.callId) && !box.disabled;
+      var card = box.closest('.request-card');
+      if (card) card.classList.toggle('selected', box.checked);
+    });
+    updateBatchToolbar();
+  }
+
+  function updateBatchToolbar() {
+    var selectedIds = visibleSelectedCallIds();
+    var countEl = document.querySelector('[data-selected-count]');
+    if (countEl) countEl.textContent = selectedIds.length;
+    var disabled = selectedIds.length === 0 || readonlyStaff;
+    document.querySelectorAll('[data-bulk-action-button]').forEach(function (btn) {
+      btn.disabled = disabled;
+      btn.dataset.valid = disabled ? 'false' : 'true';
+    });
+    if (statusMessage) {
+      statusMessage.textContent = readonlyStaff
+        ? 'Read-only staff cannot update cases.'
+        : selectedIds.length
+          ? selectedIds.length + ' selected. Resolve eligible only will skip unsafe cases.'
+          : selectionClearedNotice
+            ? 'Selection cleared because filters changed.'
+            : 'Bulk actions apply to selected cases on this page only.';
+    }
+    var selectVisible  = document.getElementById('select-visible-button');
+    var clearSelection = document.getElementById('clear-selection-button');
+    if (selectVisible)  selectVisible.disabled  = readonlyStaff || selectableVisibleBoxes().length === 0;
+    if (clearSelection) clearSelection.disabled = selectedIds.length === 0;
+  }
+
+  loadStoredSelection();
+  renderSelectionState();
+
+  document.querySelectorAll('.case-select').forEach(function (box) {
+    box.addEventListener('change', function () {
+      if (box.checked && !box.disabled) {
+        selectedCallIds.add(box.dataset.callId);
+      } else {
+        selectedCallIds.delete(box.dataset.callId);
+      }
+      saveSelection();
+      selectionClearedNotice = false;
+      renderSelectionState();
+    });
+  });
+
+  document.getElementById('select-visible-button')?.addEventListener('click', function () {
+    selectableVisibleBoxes().forEach(function (box) { selectedCallIds.add(box.dataset.callId); });
+    saveSelection();
+    selectionClearedNotice = false;
+    renderSelectionState();
+  });
+
+  document.getElementById('clear-selection-button')?.addEventListener('click', function () {
+    selectableVisibleBoxes().forEach(function (box) { selectedCallIds.delete(box.dataset.callId); });
+    sessionStorage.removeItem(selectionKey);
+    selectionClearedNotice = false;
+    renderSelectionState();
+  });
+
+  document.querySelectorAll('[data-bulk-action-button]').forEach(function (button) {
+    button.addEventListener('click', function () {
+      if (button.disabled) return;
+      var action = button.dataset.bulkAction;
+      var label = action === 'assign_to_me' ? 'Assign selected cases to me?'
+                : action === 'start_review'  ? 'Start review for selected cases?'
+                : 'Resolve eligible selected cases and skip unsafe cases?';
+      document.getElementById('batch-modal').dataset.bulkAction = action;
+      document.getElementById('batch-modal-message').textContent = label;
+      document.getElementById('batch-modal-error').hidden = true;
+      document.getElementById('batch-modal').hidden = false;
+    });
+  });
+
+  document.getElementById('batch-cancel-button')?.addEventListener('click', function () {
+    document.getElementById('batch-modal').hidden = true;
+  });
+
+  document.getElementById('batch-confirm-button')?.addEventListener('click', async function () {
+    var button = document.getElementById('batch-confirm-button');
+    var error  = document.getElementById('batch-modal-error');
+    var action = document.getElementById('batch-modal').dataset.bulkAction || 'resolve_eligible_only';
+    button.disabled = true;
+    try {
+      var response = await fetch('/api/cases/bulk-action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          call_ids: visibleSelectedCallIds(),
+          action,
+          note: document.getElementById('batch-outcome-note').value,
+          allow_demo_user: true
+        })
+      });
+      var data = await response.json();
+      if (!response.ok) throw new Error(data.detail?.message || data.detail || 'Bulk action failed');
+      document.getElementById('batch-status-message').textContent = data.message || 'Bulk action complete.';
+      sessionStorage.removeItem(selectionKey);
+      window.setTimeout(function () { window.location.reload(); }, 600);
+    } catch (err) {
+      error.textContent = err.message || 'Bulk action failed.';
+      error.hidden = false;
+    } finally {
+      button.disabled = false;
+    }
+  });
+
+  // ── Detail panel ──────────────────────────────────────────────────
+  (function () {
+    var panel        = document.getElementById('detail-panel');
+    var placeholder  = document.getElementById('panel-placeholder');
+    var populated    = document.getElementById('panel-populated');
+    var closeBtn     = document.getElementById('panel-close-btn');
+    var activePanelCallId = null;
+
+    if (!panel) return;
+
+    function escHtml(str) {
+      return String(str || '')
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function metaCell(label, value, extraClass) {
+      return '<span class="panel-meta-label">' + escHtml(label) + '</span>'
+           + '<span class="panel-meta-value ' + (extraClass || '') + '">' + escHtml(value) + '</span>';
+    }
+
+    function switchTab(target) {
+      document.querySelectorAll('[data-panel-tab]').forEach(function (t) {
+        t.classList.toggle('active', t.dataset.panelTab === target);
+      });
+      document.querySelectorAll('[data-panel-content]').forEach(function (c) {
+        c.hidden = c.dataset.panelContent !== target;
+      });
+    }
+
+    function renderPanel(data) {
+      // Badge row
+      var badgeRow = document.getElementById('panel-badge-row');
+      var badges = [];
+      if (data.red_flags_present) badges.push('<span class="badge danger">RED FLAG</span>');
+      if (data.priority && data.priority !== 'routine' && data.priority !== 'normal') {
+        badges.push('<span class="badge danger">' + escHtml(data.priority) + '</span>');
+      }
+      if (data.request_type_label) {
+        badges.push('<span class="badge ' + escHtml(data.request_type || '') + '">' + escHtml(data.request_type_label) + '</span>');
+      }
+      badgeRow.innerHTML = badges.join('');
+
+      // Patient name
+      document.getElementById('panel-patient-name').textContent = data.patient_name || 'Name not captured';
+
+      // Meta grid
+      var ageClass = data.age_class ? 'age-' + data.age_class : '';
+      document.getElementById('panel-patient-meta').innerHTML = [
+        metaCell('DOB',      data.dob_display        || data.dob              || 'n/a'),
+        metaCell('NHS',      data.nhs_number        || 'n/a'),
+        metaCell('Phone',    data.callback_number_display || data.callback_number || 'n/a'),
+        metaCell('EMIS',     data.emis_number       || 'n/a'),
+        metaCell('Received', data.time_display || data.timestamp_display || 'n/a'),
+        metaCell('Call age', data.age_label_short   || data.age_label || 'n/a', ageClass),
+      ].join('');
+
+      // AI summary
+      document.getElementById('panel-ai-summary').textContent =
+        data.ai_summary || data.call_summary_short || 'No summary available.';
+
+      // Red flag box
+      var rfBox = document.getElementById('panel-redflag-box');
+      if (data.red_flags_present) {
+        rfBox.hidden = false;
+        document.getElementById('panel-redflag-body').textContent =
+          data.open_details || 'Red flag indicators detected. Immediate review required.';
+      } else {
+        rfBox.hidden = true;
+      }
+
+      // Suggested actions — prefer API-provided list, fallback to task body
+      var suggestedSection = document.getElementById('panel-suggested');
+      var suggestedList    = document.getElementById('panel-suggested-list');
+      var actions = (Array.isArray(data.suggested_actions) && data.suggested_actions.length)
+        ? data.suggested_actions
+        : (data.staff_task_body || '').split('\n').map(function(l){return l.trim();}).filter(Boolean).slice(0, 5);
+      if (actions.length) {
+        suggestedSection.hidden = false;
+        suggestedList.innerHTML = actions.map(function (l) {
+          return '<li class="panel-suggested-item">' + escHtml(l) + '</li>';
+        }).join('');
+      } else {
+        suggestedSection.hidden = true;
+      }
+
+      // Triage tab — pathway Q&A
+      var pathwayList  = document.getElementById('panel-pathway-list');
+      var pathwayEmpty = document.getElementById('panel-pathway-empty');
+      var triageHd     = document.getElementById('panel-triage-hd');
+      var items = Array.isArray(data.pathway_items) ? data.pathway_items : [];
+      if (triageHd) triageHd.textContent = (data.request_type_label || 'Pathway') + ' — Q&A';
+      if (pathwayList) {
+        pathwayList.innerHTML = '';
+        items.forEach(function (item) {
+          var li = document.createElement('li');
+          li.className = 'panel-pathway-item';
+          li.innerHTML = '<span class="panel-pathway-q">' + (item.label || '') + '</span>'
+                       + '<span class="panel-pathway-a">' + (item.value || '') + '</span>';
+          pathwayList.appendChild(li);
+        });
+      }
+      if (pathwayEmpty) pathwayEmpty.hidden = items.length > 0;
+
+      // Resolve button state + start-review gate
+      var resolveBtn    = document.getElementById('panel-btn-resolve');
+      var startRevBtn   = document.getElementById('panel-btn-start-review');
+      var needsReviewFirst = !data.is_resolved && data.requires_individual_review
+                            && (data.status || '').toLowerCase() !== 'in progress';
+      if (resolveBtn) {
+        if (data.is_resolved) {
+          resolveBtn.textContent = 'Reopen';
+          resolveBtn.className   = 'panel-btn full reopen';
+          resolveBtn.dataset.panelAction = 'reopen';
+          resolveBtn.disabled = false;
+          resolveBtn.title = '';
+        } else if (needsReviewFirst) {
+          resolveBtn.textContent = 'Mark as Resolved';
+          resolveBtn.className   = 'panel-btn full resolve needs-review-blocked';
+          resolveBtn.dataset.panelAction = 'resolve';
+          resolveBtn.disabled = true;
+          resolveBtn.title = 'Start review first before resolving';
+        } else {
+          resolveBtn.textContent = 'Mark as Resolved';
+          resolveBtn.className   = 'panel-btn full resolve';
+          resolveBtn.dataset.panelAction = 'resolve';
+          resolveBtn.disabled = false;
+          resolveBtn.title = '';
+        }
+        resolveBtn.dataset.callId = data.call_id;
+      }
+      if (startRevBtn) {
+        startRevBtn.hidden = data.is_resolved || !needsReviewFirst;
+        startRevBtn.dataset.callId = data.call_id;
+      }
+
+      // Escalate button
+      var escalateBtn = document.getElementById('panel-btn-escalate');
+      if (escalateBtn) escalateBtn.dataset.callId = data.call_id;
+
+      // Transcript excerpt
+      var excerptEl = document.getElementById('panel-transcript-excerpt');
+      if (excerptEl) {
+        var excerpt = (data.transcript_excerpt || '').trim();
+        excerptEl.textContent = excerpt
+          ? excerpt + (data.transcript_excerpt && data.transcript_excerpt.length >= 400 ? '…' : '')
+          : 'No transcript captured for this call.';
+        excerptEl.classList.toggle('muted', !excerpt);
+      }
+
+      // View full link — include return_url so Back button works from case detail
+      var viewFull = document.getElementById('panel-view-full');
+      if (viewFull) viewFull.href = '/case/' + encodeURIComponent(data.call_id)
+        + '?return_url=' + encodeURIComponent(window.location.pathname + window.location.search);
+
+      // Call button
+      var callBtn = document.getElementById('panel-btn-call');
+      if (callBtn) {
+        callBtn.onclick = data.callback_number
+          ? function () { window.location.href = 'tel:' + data.callback_number; }
+          : null;
+        callBtn.disabled = !data.callback_number;
+      }
+    }
+
+    function openPanel(callId) {
+      // Mark selected card
+      document.querySelectorAll('.request-card.panel-open').forEach(function (c) {
+        c.classList.remove('panel-open');
+      });
+      var activeCard = document.getElementById('case-' + callId);
+      if (activeCard) activeCard.classList.add('panel-open');
+
+      // Show panel in loading state
+      panel.classList.remove('is-hidden');
+      if (placeholder) placeholder.hidden = true;
+      if (populated) {
+        populated.hidden = false;
+        document.getElementById('panel-patient-name').textContent = 'Loading…';
+        document.getElementById('panel-badge-row').innerHTML = '';
+        document.getElementById('panel-patient-meta').innerHTML = '';
+        document.getElementById('panel-ai-summary').textContent = '';
+        document.getElementById('panel-redflag-box').hidden = true;
+        document.getElementById('panel-suggested').hidden = true;
+      }
+
+      activePanelCallId = callId;
+
+      // Switch to Summary tab
+      switchTab('summary');
+
+      // Fetch case data
+      fetch('/api/cases/' + encodeURIComponent(callId))
+        .then(function (r) {
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          return r.json();
+        })
+        .then(function (data) {
+          if (activePanelCallId !== callId) return; // stale
+          renderPanel(data);
+        })
+        .catch(function () {
+          if (activePanelCallId !== callId) return;
+          document.getElementById('panel-patient-name').textContent = 'Failed to load case.';
+        });
+    }
+
+    function closePanel() {
+      panel.classList.add('is-hidden');
+      if (placeholder) placeholder.hidden = false;
+      if (populated)  populated.hidden  = true;
+      document.querySelectorAll('.request-card.panel-open').forEach(function (c) {
+        c.classList.remove('panel-open');
+      });
+      // Reset inline confirm state
+      var resolveBtn = document.getElementById('panel-btn-resolve');
+      if (resolveBtn) { resolveBtn.classList.remove('confirming'); clearTimeout(_resolveConfirmTimer); }
+      activePanelCallId = null;
+    }
+
+    // Close button
+    if (closeBtn) closeBtn.addEventListener('click', closePanel);
+
+    // Tab switching
+    document.querySelectorAll('[data-panel-tab]').forEach(function (tab) {
+      tab.addEventListener('click', function () { switchTab(tab.dataset.panelTab); });
+    });
+
+    // Card click → open panel (same card click closes; different card opens)
+    var caseListScroll = document.querySelector('.case-list-scroll');
+    if (caseListScroll) {
+      caseListScroll.addEventListener('click', function (event) {
+        if (event.target.closest('[data-no-toggle]')) return;
+        if (event.target.closest('form'))   return;
+        if (event.target.closest('button')) return;
+        if (event.target.closest('a'))      return;
+        var card = event.target.closest('[data-case-row]');
+        if (!card) return;
+        var callId = card.id.replace(/^case-/, '');
+        if (!callId) return;
+        if (callId === activePanelCallId) {
+          closePanel();
+        } else {
+          openPanel(callId);
+        }
+      });
+    }
+
+    // Toast notification
+    function showToast(msg, type) {
+      var t = document.createElement('div');
+      t.className = 'app-toast ' + (type || 'success');
+      t.textContent = msg;
+      document.body.appendChild(t);
+      requestAnimationFrame(function () { t.classList.add('visible'); });
+      setTimeout(function () {
+        t.classList.remove('visible');
+        setTimeout(function () { t.remove(); }, 300);
+      }, 3200);
+    }
+
+    function showActionError(msg) {
+      document.getElementById('cd-action-error-message').textContent = msg || 'Action failed. Please try again.';
+      document.getElementById('cd-action-error-modal').hidden = false;
+    }
+    document.getElementById('cd-action-error-ok')?.addEventListener('click', function () {
+      document.getElementById('cd-action-error-modal').hidden = true;
+    });
+
+    // Update the open-tab count badge after a resolve/reopen
+    function adjustTabCount(delta) {
+      var openTab = document.querySelector('.filter-tab[href*="filter=open"]')
+                 || document.querySelector('.filter-tab.active');
+      var badge = openTab && openTab.querySelector('.tab-count');
+      if (badge) {
+        var n = parseInt(badge.textContent, 10);
+        if (!isNaN(n)) badge.textContent = Math.max(0, n + delta);
+      }
+    }
+
+    // Start Review button — marks case In Progress, unlocks resolve
+    document.getElementById('panel-btn-start-review')?.addEventListener('click', async function () {
+      var btn    = this;
+      var callId = btn.dataset.callId || activePanelCallId;
+      if (!callId) return;
+      btn.disabled = true;
+      btn.textContent = 'Starting review…';
+      try {
+        var res = await fetch('/api/cases/' + encodeURIComponent(callId) + '/action', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({action: 'start_review'})
+        });
+        if (!res.ok) throw new Error('Failed');
+        // Re-fetch the panel so resolve unlocks
+        fetch('/api/cases/' + encodeURIComponent(callId))
+          .then(function (r) { return r.json(); })
+          .then(function (data) { renderPanel(data); });
+        showToast('Review started — you can now resolve this case.');
+        // Update the card row badge if visible
+        var card = document.getElementById('case-' + callId);
+        if (card) {
+          var statusBadge = card.querySelector('.badge.open, .badge.new, [data-status]');
+          if (statusBadge) statusBadge.textContent = 'In Review';
+        }
+      } catch {
+        btn.disabled = false;
+        btn.textContent = 'Start Review First';
+        showToast('Could not start review. Try again.', 'error');
+      }
+    });
+
+    // Resolve / Reopen from panel — inline two-step confirm for resolve (no modal)
+    var _resolveConfirmTimer = null;
+    document.getElementById('panel-btn-resolve')?.addEventListener('click', async function () {
+      var btn    = this;
+      var callId = btn.dataset.callId || activePanelCallId;
+      var action = btn.dataset.panelAction || 'resolve';
+      if (!callId) return;
+
+      // Two-step inline confirm for resolve only
+      if (action === 'resolve' && !btn.classList.contains('confirming')) {
+        btn.classList.add('confirming');
+        btn.textContent = '✓ Confirm resolve?';
+        clearTimeout(_resolveConfirmTimer);
+        _resolveConfirmTimer = setTimeout(function () {
+          if (btn.classList.contains('confirming')) {
+            btn.classList.remove('confirming');
+            btn.textContent = 'Mark as Resolved';
+          }
+        }, 3000);
+        return;
+      }
+      btn.classList.remove('confirming');
+      clearTimeout(_resolveConfirmTimer);
+
+      var original = action === 'resolve' ? 'Mark as Resolved' : 'Reopen';
+      btn.disabled = true;
+      btn.textContent = action === 'resolve' ? 'Resolving…' : 'Reopening…';
+      try {
+        var res = await fetch('/api/cases/' + encodeURIComponent(callId) + '/action', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({action: action})
+        });
+        var data = await res.json();
+        if (!res.ok) {
+          showActionError(data.detail || 'Action failed. Please open the full case to resolve.');
+          btn.disabled = false;
+          btn.textContent = original;
+          return;
+        }
+        if (action === 'resolve') {
+          // Remove card from worklist without page reload
+          var card = document.getElementById('case-' + callId);
+          var patientName = card ? (card.querySelector('.card-patient') || {}).textContent : callId;
+          if (card) card.remove();
+          // Update open-tab count
+          adjustTabCount(-1);
+          // Flip panel to reopen state
+          btn.textContent = 'Reopen';
+          btn.className = 'panel-btn full reopen';
+          btn.dataset.panelAction = 'reopen';
+          btn.disabled = false;
+          btn.title = '';
+          // Hide start-review button
+          var startRevBtn2 = document.getElementById('panel-btn-start-review');
+          if (startRevBtn2) startRevBtn2.hidden = true;
+          // Show resolved note in panel
+          var rfBox = document.getElementById('panel-redflag-box');
+          if (rfBox) rfBox.hidden = true;
+          var summaryEl = document.getElementById('panel-ai-summary');
+          if (summaryEl) summaryEl.textContent = (data.ai_summary || summaryEl.textContent);
+          showToast((patientName ? patientName.trim() + ' ' : '') + 'resolved ✓');
+        } else {
+          // Reopen: restore card in list on next navigation
+          btn.textContent = 'Mark as Resolved';
+          btn.className = 'panel-btn full resolve';
+          btn.dataset.panelAction = 'resolve';
+          btn.disabled = false;
+          adjustTabCount(+1);
+          showToast('Case reopened for review.');
+        }
+      } catch {
+        btn.disabled = false;
+        btn.textContent = original;
+        showActionError('Network error. Please reload and try again.');
+      }
+    });
+
+    // Escalate Urgent — AJAX then navigate to full case
+    document.getElementById('panel-btn-escalate')?.addEventListener('click', async function () {
+      var callId = this.dataset.callId || activePanelCallId;
+      if (!callId) return;
+      var btn = this;
+      var original = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = 'Escalating…';
+      try {
+        var res = await fetch('/api/cases/' + encodeURIComponent(callId) + '/action', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({action: 'escalate'})
+        });
+        if (res.ok) {
+          var card = document.getElementById('case-' + callId);
+          if (card) {
+            var statusChip = card.querySelector('.case-status-chip, .status-chip, [data-status]');
+            if (statusChip) statusChip.textContent = 'Escalated';
+          }
+          showToast('Case escalated — opening full case view…', 'warn');
+        }
+      } catch { /* navigate anyway */ }
+      setTimeout(function () { window.location.href = '/case/' + encodeURIComponent(callId); }, 800);
+    });
+
+    // SMS button (placeholder)
+    document.getElementById('panel-btn-sms')?.addEventListener('click', function () {
+      var callId = activePanelCallId;
+      if (callId) window.location.href = '/case/' + encodeURIComponent(callId);
+    });
+
+    // Send to GP (placeholder → full case view)
+    document.getElementById('panel-btn-gp')?.addEventListener('click', function () {
+      var callId = activePanelCallId;
+      if (callId) window.location.href = '/case/' + encodeURIComponent(callId);
+    });
+
+  })();
+  {% endif %}
+
+  // ── Alert modal ────────────────────────────────────────────────
+  async function loadModalAlert() {
+    try {
+      var response = await fetch('/api/alerts/unacknowledged?modal_only=true&limit=1');
+      if (!response.ok) return;
+      var data  = await response.json();
+      var alert = (data.alerts || [])[0];
+      if (!alert) return;
+      var modal = document.getElementById('alert-modal');
+      modal.dataset.alertId = alert.alert_id;
+      document.getElementById('alert-modal-severity').textContent  = alert.severity || '';
+      document.getElementById('alert-modal-type').textContent      = alert.alert_type || '';
+      document.getElementById('alert-modal-message').textContent   = alert.message || '';
+      document.getElementById('alert-modal-call').textContent      = alert.first_call_id || '';
+      document.getElementById('alert-modal-patient').textContent   = alert.first_patient || '';
+      document.getElementById('alert-modal-priority').textContent  = alert.first_priority || '';
+      document.getElementById('alert-modal-source').textContent    = alert.source_workflow || '';
+      document.getElementById('alert-modal-timestamp').textContent = alert.timestamp_display || alert.timestamp || '';
+      modal.hidden = false;
+    } catch { return; }
+  }
+
+  document.getElementById('alert-modal-ok')?.addEventListener('click', async function () {
+    var modal   = document.getElementById('alert-modal');
+    var alertId = modal.dataset.alertId;
+    var error   = document.getElementById('alert-modal-error');
+    if (!alertId) { modal.hidden = true; return; }
+    try {
+      var response = await fetch('/api/alerts/' + encodeURIComponent(alertId) + '/acknowledge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      });
+      if (!response.ok) throw new Error('Acknowledgement failed.');
+      modal.hidden = true;
+    } catch {
+      error.textContent = 'Could not acknowledge locally. You can continue using the dashboard.';
+      error.hidden = false;
+    }
+  });
+
+  loadModalAlert();
+
+  // ── Audio notifications ─────────────────────────────────────────
+  // Beep plays ONLY on: (1) new case imported, (2) service health alert.
+  // No ambient 30-second polling audio.
+
+  function _makeAudioCtx() {
+    return new (window.AudioContext || window.webkitAudioContext)();
+  }
+
+  /** Pleasant double-beep: fired when new cases arrive via import. */
+  function playNewCaseBeep() {
+    try {
+      var ctx = _makeAudioCtx();
+      function tone(freq, startT, dur) {
+        var osc = ctx.createOscillator();
+        var g   = ctx.createGain();
+        osc.connect(g); g.connect(ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, startT);
+        g.gain.setValueAtTime(0.15, startT);
+        g.gain.exponentialRampToValueAtTime(0.001, startT + dur);
+        osc.start(startT); osc.stop(startT + dur);
+      }
+      tone(880, ctx.currentTime,       0.18);
+      tone(1100, ctx.currentTime + 0.22, 0.18);
+      setTimeout(function () { ctx.close(); }, 700);
+    } catch (_) {}
+  }
+
+  /** Urgent triple-pulse: fired when a service is detected as down. */
+  function playServiceDownAlarm() {
+    try {
+      var ctx = _makeAudioCtx();
+      [0, 0.28, 0.56].forEach(function (offset) {
+        var osc = ctx.createOscillator();
+        var g   = ctx.createGain();
+        osc.connect(g); g.connect(ctx.destination);
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(440, ctx.currentTime + offset);
+        g.gain.setValueAtTime(0.10, ctx.currentTime + offset);
+        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + offset + 0.20);
+        osc.start(ctx.currentTime + offset);
+        osc.stop(ctx.currentTime + offset + 0.22);
+      });
+      setTimeout(function () { ctx.close(); }, 1200);
+    } catch (_) {}
+  }
+
+  // ── AJAX import with audio feedback ────────────────────────────
+  var _importBtn = document.getElementById('topbar-import-btn');
+  if (_importBtn) {
+    _importBtn.addEventListener('click', async function (e) {
+      e.preventDefault();
+      _importBtn.disabled = true;
+      _importBtn.textContent = 'Importing…';
+      try {
+        var r = await fetch('/api/import', { method: 'POST' });
+        if (!r.ok) throw new Error('Import failed');
+        var d = await r.json();
+        if (d.imported > 0) {
+          playNewCaseBeep();
+          showToast(d.imported + ' new case' + (d.imported > 1 ? 's' : '') + ' imported', 'success');
+          setTimeout(function () { window.location.reload(); }, 1000);
+        } else {
+          showToast('No new cases found', 'info');
+        }
+      } catch (_) {
+        showToast('Import failed — check logs', 'error');
+      } finally {
+        _importBtn.disabled = false;
+        _importBtn.textContent = 'Import';
+      }
+    });
+  }
+
+  // ── Service health poll — every 10 minutes ───────────────────────
+  // Fires alarm ONLY if a service is reported down. No audio for normal polling.
+  var _knownServiceDown = false;
+
+  async function checkServiceHealth() {
+    try {
+      var r = await fetch('/api/health');
+      if (!r.ok) {
+        if (!_knownServiceDown) {
+          playServiceDownAlarm();
+          showToast('⚠ Dashboard health check failed', 'error');
+          _knownServiceDown = true;
+        }
+        return;
+      }
+      var d = await r.json();
+      var allOk = d.ok && d.checks && d.checks.dashboard && d.checks.database;
+      if (!allOk && !_knownServiceDown) {
+        playServiceDownAlarm();
+        showToast('⚠ System health issue detected — check service status', 'error');
+        _knownServiceDown = true;
+      } else if (allOk) {
+        _knownServiceDown = false;
+      }
+    } catch (_) {
+      if (!_knownServiceDown) {
+        playServiceDownAlarm();
+        showToast('⚠ Cannot reach dashboard health endpoint', 'error');
+        _knownServiceDown = true;
+      }
+    }
+  }
+
+  checkServiceHealth();
+  setInterval(checkServiceHealth, 600000); // every 10 minutes
+
+  // ── Live staff workload widget refresh ─────────────────────────
+  async function refreshStaffWorkload() {
+    try {
+      var r = await fetch('/api/staff-workload');
+      if (!r.ok) return;
+      var d = await r.json();
+      if (!d.ok || !d.staff) return;
+      var list = document.getElementById('staff-workload-list');
+      var ts   = document.getElementById('staff-workload-refresh-ts');
+      if (!list) return;
+      var html = '';
+      d.staff.forEach(function (s) {
+        html += '<div class="staff-workload-row">' +
+          '<span class="staff-workload-name" title="' + (s.name||'') + '">' + (s.name||'—') + '</span>' +
+          '<span class="staff-workload-pills">' +
+          '<span class="swp swp-open"   title="Open cases">' + s.open + '</span>' +
+          '<span class="swp swp-active" title="In progress">' + s.in_progress + '</span>' +
+          '<span class="swp swp-done"   title="Resolved today">' + s.resolved_today + '</span>' +
+          '</span></div>';
+      });
+      if (!html) html = '<div class="analytics-row ar-row--muted">No staff found</div>';
+      list.innerHTML = html;
+      // Update collapsed tooltip metric
+      var card = document.getElementById('staff-workload-card');
+      if (card) card.dataset.metric = ' · ' + d.staff.length + ' staff';
+      if (ts) {
+        var now = new Date();
+        ts.textContent = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+      }
+    } catch (_) {}
+  }
+
+  refreshStaffWorkload();
+  setInterval(refreshStaffWorkload, 60000); // every 60 seconds
+</script>
+{% endblock %}
+                                                                         

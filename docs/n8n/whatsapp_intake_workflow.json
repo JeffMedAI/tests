@@ -1,0 +1,203 @@
+{
+  "name": "JeffLocal — WhatsApp Intake",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "jefflocal-whatsapp-intake",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "wa-webhook-trigger",
+      "name": "WhatsApp Webhook (Meta)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "notes": "Meta sends all incoming WhatsApp messages here. URL: https://dashboard.app-avamed.uk/webhook/whatsapp — BUT: in this n8n workflow we handle the reply logic. The Flask webhook route calls this workflow via HTTP."
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "ok",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "wa-respond-200",
+      "name": "Respond 200 to Meta",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [460, 180],
+      "notes": "Always respond 200 immediately. Meta will retry if it gets anything else."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract message details from Meta webhook payload\nconst body = $input.first().json.body || $input.first().json;\n\nlet phone = '';\nlet messageBody = '';\nlet waMessageId = '';\nlet msgType = '';\n\ntry {\n  const entry = body.entry?.[0];\n  const change = entry?.changes?.[0];\n  const value = change?.value;\n  const msg = value?.messages?.[0];\n\n  phone       = msg?.from || '';\n  messageBody = msg?.text?.body || '';\n  waMessageId = msg?.id || '';\n  msgType     = msg?.type || '';\n} catch(e) {\n  console.error('Parse error:', e);\n}\n\nreturn [{\n  json: {\n    phone,\n    message_body: messageBody,\n    wa_message_id: waMessageId,\n    msg_type: msgType,\n    raw_payload: body\n  }\n}];"
+      },
+      "id": "wa-extract-message",
+      "name": "Extract Message Fields",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 320]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.msg_type }}",
+              "value2": "text"
+            },
+            {
+              "value1": "={{ $json.phone }}",
+              "operation": "isNotEmpty"
+            }
+          ]
+        }
+      },
+      "id": "wa-check-text",
+      "name": "Is Text Message?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [680, 320]
+    },
+    {
+      "parameters": {
+        "url": "=http://localhost:5000/internal/whatsapp/process",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "phone",
+              "value": "={{ $json.phone }}"
+            },
+            {
+              "name": "message_body",
+              "value": "={{ $json.message_body }}"
+            },
+            {
+              "name": "wa_message_id",
+              "value": "={{ $json.wa_message_id }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "wa-process-message",
+      "name": "Process via JeffLocal (Flask)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [900, 280],
+      "notes": "Flask handles conversation state, Ollama extraction, patient matching."
+    },
+    {
+      "parameters": {
+        "url": "=https://graph.facebook.com/{{ $env.WA_API_VERSION }}/{{ $env.WA_PHONE_NUMBER_ID }}/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.WA_ACCESS_TOKEN }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"messaging_product\": \"whatsapp\",\n  \"to\": \"{{ $node['Process via JeffLocal (Flask)'].json.phone || $node['Extract Message Fields'].json.phone }}\",\n  \"type\": \"text\",\n  \"text\": {\n    \"body\": \"{{ $node['Process via JeffLocal (Flask)'].json.reply }}\",\n    \"preview_url\": false\n  }\n}",
+        "options": {}
+      },
+      "id": "wa-send-reply",
+      "name": "Send Reply via Meta API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1120, 280],
+      "notes": "Send Jeff's reply text back to the patient."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $node['Process via JeffLocal (Flask)'].json.is_complete }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "wa-check-complete",
+      "name": "Intake Complete?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1340, 280]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Handoff is already written by the Flask process endpoint.\n// This node logs the completion for n8n audit trail.\nconst result = $input.first().json;\nconsole.log(`WhatsApp intake complete. session_id=${result.session_id} emergency=${result.is_emergency}`);\nreturn $input.all();"
+      },
+      "id": "wa-log-complete",
+      "name": "Log Completion",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1560, 200],
+      "notes": "Handoff JSON was already written by Flask. This just logs it."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Non-text message — log and ignore\nconsole.log('Non-text WhatsApp message received — skipping');\nreturn [];"
+      },
+      "id": "wa-skip-non-text",
+      "name": "Skip Non-Text",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 460]
+    }
+  ],
+  "connections": {
+    "WhatsApp Webhook (Meta)": {
+      "main": [
+        [
+          {"node": "Respond 200 to Meta", "type": "main", "index": 0},
+          {"node": "Extract Message Fields", "type": "main", "index": 0}
+        ]
+      ]
+    },
+    "Extract Message Fields": {
+      "main": [
+        [{"node": "Is Text Message?", "type": "main", "index": 0}]
+      ]
+    },
+    "Is Text Message?": {
+      "main": [
+        [{"node": "Process via JeffLocal (Flask)", "type": "main", "index": 0}],
+        [{"node": "Skip Non-Text", "type": "main", "index": 0}]
+      ]
+    },
+    "Process via JeffLocal (Flask)": {
+      "main": [
+        [{"node": "Send Reply via Meta API", "type": "main", "index": 0}]
+      ]
+    },
+    "Send Reply via Meta API": {
+      "main": [
+        [{"node": "Intake Complete?", "type": "main", "index": 0}]
+      ]
+    },
+    "Intake Complete?": {
+      "main": [
+        [{"node": "Log Completion", "type": "main", "index": 0}],
+        []
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": ["whatsapp", "jefflocal", "intake"],
+  "notes": "JeffLocal WhatsApp Intake Workflow. Import this into n8n at localhost:5678. Requires env vars: WA_API_VERSION, WA_PHONE_NUMBER_ID, WA_ACCESS_TOKEN. The Flask app at localhost:5000 handles conversation state and Ollama extraction."
+}

@@ -1,0 +1,139 @@
+E2E CALL FLOW TEST — Stage 3 Re-run Report
+Date: 2026-05-31
+Agent: Test Agent
+Reference: tests/run_e2e_callflow_test.py, tests/run_e2e_stage3.ps1
+
+═══════════════════════════════════════════════════════════════════════════════
+EXECUTIVE SUMMARY
+═══════════════════════════════════════════════════════════════════════════════
+
+Stage 3 SQLite fix: VERIFIED ✓ — 16/16 checks PASS in isolation test
+Full 5-stage E2E:   BLOCKED — pipeline gap (n8n not writing handoff JSON to DB)
+                    Cannot run full E2E from Linux CI; requires Windows + live services
+
+═══════════════════════════════════════════════════════════════════════════════
+THE FIX — Stage 3 SQLite Direct Query
+═══════════════════════════════════════════════════════════════════════════════
+
+Previous behaviour: Stage 3 called GET /api/cases/{id} per case. This endpoint
+requires a valid session cookie. The test runner has no session, so the server
+returned HTTP 302 → /login. Stage 3 treated that as "case not found".
+
+Fix applied (in tests/run_e2e_callflow_test.py):
+  - Added _db_query() helper using sqlite3 directly
+  - Stage 3 now queries dashboard/data/dashboard.sqlite with a LIKE pattern
+  - No auth required. Works even when dashboard is behind auth middleware.
+
+Fix verified: 16/16 Stage 3 assertion checks PASS against seeded mock data.
+All 10 cases found, all field-level checks correct:
+  - REDFLAG: red_flags_present=True ✓
+  - IDENTITY-MISMATCH: staff_review_required=True ✓
+  - LOW-CONFIDENCE: handoff_confidence < 0.72 floor ✓
+  - EMERGENCY-ESCALATION: red_flags_present=True ✓
+
+═══════════════════════════════════════════════════════════════════════════════
+LAST FULL RUN — 2026-05-29 22:51:03
+═══════════════════════════════════════════════════════════════════════════════
+
+Log: logs/e2e_callflow_20260529-225103.json
+
+Stage 1 — Pre-flight:         8/8  PASS ✓
+  Dashboard /api/health        200 OK
+  n8n port 5678                responding
+  Ollama /api/tags             200 OK
+  Cloudflare tunnel            running
+  Config files (×4)            all present
+
+Stage 2 — Inject 10 calls:    1/1  PASS ✓
+  n8n webhook (jefflocal-test-intake)  HTTP 200 accepted
+
+Stage 3 — Case verification:  0/10 FAIL ✗
+  All 10 cases: "DB match: not found"
+  Root cause: n8n receives webhook but does NOT write handoff JSON to
+  outputs/handoff_json/. Cases never reach the DB. SQLite fix is correct
+  but there is nothing to query.
+
+Stage 4 — Watchdog re-check:  4/4  PASS ✓
+  Dashboard still healthy      200 OK
+  n8n still responding         OK
+  Ollama still responding      200 OK
+  Watchdog log                 clean
+
+Overall: 14/24 passed. FAIL.
+
+═══════════════════════════════════════════════════════════════════════════════
+PIPELINE GAP — BLOCKER FOR STAGE 3 END-TO-END
+═══════════════════════════════════════════════════════════════════════════════
+
+Status in PROJECT_MEMORY: "n8n workflow not writing handoff JSON"
+Rank 4 open task: "E2E pipeline gap (n8n→DB) — Backend Agent"
+
+The problem: n8n receives the E2E batch webhook (Stage 2 passes), but the
+n8n workflow does not produce handoff JSON files in outputs/handoff_json/.
+Without those files, import_handoffs() finds nothing to import, and Stage 3
+finds 0 cases in the DB.
+
+This is a Backend Agent / n8n workflow configuration task. Test Agent cannot
+fix it. Until fixed, Stage 3 will fail every full E2E run.
+
+Required fix (Backend Agent):
+  - Inspect n8n workflow: jefflocal-test-intake
+  - Confirm it calls the Ollama processing pipeline
+  - Confirm it writes *_handoff.json files to C:\JeffLocal\outputs\handoff_json\
+  - Verify with test: ls outputs\handoff_json\E2E-* after Stage 2
+
+═══════════════════════════════════════════════════════════════════════════════
+STAGE 3 ISOLATION TEST OUTPUT
+═══════════════════════════════════════════════════════════════════════════════
+
+Run: python3 isolation test (see below)
+RUN_TS: 20260531-120000
+DB: /tmp/e2e_stage3_test.sqlite (copy of production schema)
+Seeded: 10 mock E2E cases covering all 10 call labels
+
+✓ Dashboard /api/sync (bypassed)  [SQLite-fix under test; no live dashboard required]
+  DB query returned : 10 rows
+✓ All 10 E2E cases present in DB  [found 10/10]
+✓ Case found: PRESCRIPTION  [DB: E2E-20260531-120000-01-PRESCRIPTION]
+✓ Case found: SICKNOTE  [DB: E2E-20260531-120000-02-SICKNOTE]
+✓ Case found: REFERRAL  [DB: E2E-20260531-120000-03-REFERRAL]
+✓ Case found: TEST-RESULT  [DB: E2E-20260531-120000-04-TEST-RESULT]
+✓ Case found: REDFLAG  [DB: E2E-20260531-120000-05-REDFLAG]
+✓   REDFLAG: red_flags_present=True  [got 1]
+✓ Case found: IDENTITY-MISMATCH  [DB: E2E-20260531-120000-06-IDENTITY-MISMATCH]
+✓   IDENTITY-MISMATCH: staff_review_required=True  [got 1]
+✓ Case found: ADMIN  [DB: E2E-20260531-120000-07-ADMIN]
+✓ Case found: LOW-CONFIDENCE  [DB: E2E-20260531-120000-08-LOW-CONFIDENCE]
+✓   LOW-CONFIDENCE: confidence below floor (<0.72)  [confidence=0.55]
+✓ Case found: MULTI-INTENT  [DB: E2E-20260531-120000-09-MULTI-INTENT]
+✓ Case found: EMERGENCY-ESCALATION  [DB: E2E-20260531-120000-10-EMERGENCY-ESCALATION]
+✓   EMERGENCY-ESCALATION: red_flags_present=True (stroke)  [got 1]
+
+PASS  16/16 Stage 3 checks passed
+
+═══════════════════════════════════════════════════════════════════════════════
+SECURITY AGENT REVIEW — E2E TEST CODE
+═══════════════════════════════════════════════════════════════════════════════
+VERDICT: APPROVED — no issues
+
+_db_query() (Stage 3 SQLite fix):
+  - Read-only: SELECT only, no INSERT/UPDATE/DELETE
+  - Parameterised query: uses ? placeholder, immune to SQL injection
+  - Scoped to test DB: uses production DB only for reading case metadata
+  - No credentials: sqlite3 file access, no auth tokens passed
+  - No PII logged: only call_id and flag fields are printed
+  - Isolation test cleanup: DELETE executed on /tmp copy, not production DB
+
+cleanup_e2e_cases() (optional --cleanup flag):
+  - Deletes only rows matching 'E2E-%' pattern
+  - Runs only when --cleanup flag passed explicitly
+  - Acceptable: E2E test data is mock, not real patient data
+
+═══════════════════════════════════════════════════════════════════════════════
+NEXT ACTIONS REQUIRED
+═══════════════════════════════════════════════════════════════════════════════
+
+  1. [Backend Agent]  Fix n8n workflow to write handoff JSON — BLOCKING Stage 3
+  2. [Test Agent]     Re-run full 5-stage E2E on Windows after Backend fix
+  3. [Test Agent]     Move E2E runner to scheduled daily test once pipeline fixed
+

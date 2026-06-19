@@ -26,6 +26,7 @@ data/patient_lookup/
 data/test_inputs/
 
 # Local secrets / config
+.mcp.json
 config/local_secrets.json
 config/*secret*
 config/*token*
@@ -34,7 +35,15 @@ config/*key*
 *.pem
 
 # Backups / restore packs may contain sensitive data
+# NOTE: graphify also reads this file (falls back to .gitignore when no
+# .graphifyignore exists) — keeping historical snapshots here stops them
+# polluting the code graph with duplicate copies of live files.
 backup/
+backups/
+
+# Decommissioned sandbox (removed 2026-06-07) — orphaned venv + sqlite only.
+# Kept out of git + the code graph; do not resurrect.
+sandbox/
 
 # OS/editor
 .DS_Store
@@ -48,3 +57,5 @@ Thumbs.db
 # Temp / test working dirs
 .tmp/
 JeffLocal.tmppytest/
+
+n8n API key.txt

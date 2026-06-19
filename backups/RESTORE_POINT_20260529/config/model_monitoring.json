@@ -1,0 +1,37 @@
+{
+  "version": "1.0",
+  "confidence_floor": 0.72,
+  "fallback_threshold": 0.72,
+  "fallback_model": "gemma4:e4b",
+  "alert_thresholds": {
+    "low_confidence": 0.70,
+    "critical_confidence": 0.50,
+    "slow_response_seconds": 25,
+    "failure_rate_percent": 10
+  },
+  "per_pathway_thresholds": {
+    "prescription": 0.72,
+    "sick_note": 0.72,
+    "referral": 0.72,
+    "test_result": 0.72,
+    "appointment_redirect": 0.70,
+    "admin": 0.70,
+    "unknown": 0.65,
+    "needs_review": 0.65
+  },
+  "red_flag_keywords": [
+    "chest pain",
+    "difficulty breathing",
+    "999",
+    "emergency",
+    "collapse",
+    "unconscious",
+    "stroke",
+    "severe bleeding"
+  ],
+  "alert_escalation": {
+    "on_confidence_below_floor": "mark_pending_review",
+    "on_hard_failure": "deadletter_and_alert",
+    "on_red_flag_keyword": "immediate_staff_alert"
+  },
+  "monitoring_log_dir": "${JEFFLOCAL_ROOT}\\logs\\model_monitoring

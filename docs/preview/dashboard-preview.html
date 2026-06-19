@@ -1,0 +1,1644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Avamed Dashboard — Preview</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    /* ═══════════════════════════════════════════════════════════
+       AVAMED CLARITY — Design Tokens
+       Edit tokens here to reskin the entire dashboard.
+       ═══════════════════════════════════════════════════════════ */
+    :root {
+      /* Brand */
+      --navy:          #0B3D6B;
+      --navy-deep:     #072D52;
+      --navy-light:    #1A5490;
+      --teal:          #00A896;
+      --teal-soft:     #E6F7F5;
+      --teal-mid:      #00897B;
+
+      /* Surface */
+      --bg:            #F4F6FA;
+      --panel:         #FFFFFF;
+      --border:        #E5E7EB;
+      --border-mid:    #D1D5DB;
+
+      /* Text */
+      --ink:           #111827;
+      --ink-mid:       #374151;
+      --ink-soft:      #6B7280;
+      --ink-faint:     #9CA3AF;
+
+      /* Semantic */
+      --danger:        #D5281B;
+      --danger-soft:   #FEF2F1;
+      --danger-border: rgba(213,40,27,0.2);
+      --warning:       #B45309;
+      --warning-soft:  #FEF3C7;
+      --warning-border:rgba(180,83,9,0.2);
+      --success:       #00703C;
+      --success-soft:  #ECFDF5;
+      --amber:         #D97706;
+      --nhs-blue:      #005EB8;
+
+      /* Typography */
+      --font-display:  'Plus Jakarta Sans', 'Segoe UI', system-ui, sans-serif;
+      --font-body:     'Inter', 'Segoe UI', system-ui, sans-serif;
+      --font-mono:     'JetBrains Mono', 'Courier New', monospace;
+
+      /* Shadows */
+      --shadow-xs:     0 1px 3px rgba(11,61,107,0.06);
+      --shadow-sm:     0 2px 8px rgba(11,61,107,0.08);
+      --shadow-md:     0 4px 20px rgba(11,61,107,0.10);
+      --shadow-lg:     0 8px 32px rgba(11,61,107,0.14);
+
+      /* Layout */
+      --nav-w:         64px;
+      --topbar-h:      56px;
+      --ribbon-h:      52px;
+      --detail-w:      420px;
+      --analytics-w:   224px;
+
+      /* Radii */
+      --r-sm:          6px;
+      --r-md:          10px;
+      --r-lg:          16px;
+    }
+
+    /* ─── RESET ──────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; overflow: hidden; }
+    body {
+      font-family: var(--font-body);
+      background: var(--bg);
+      color: var(--ink);
+      -webkit-font-smoothing: antialiased;
+    }
+    button { font-family: var(--font-body); cursor: pointer; }
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border-mid); border-radius: 2px; }
+
+    /* ─── APP SHELL ──────────────────────────────────────────── */
+    .app { display: flex; flex-direction: column; height: 100vh; }
+
+    /* ═══════════════════════════════════════════════════════════
+       TOPBAR
+       ═══════════════════════════════════════════════════════════ */
+    .topbar {
+      height: var(--topbar-h);
+      background: var(--navy);
+      display: flex;
+      align-items: center;
+      flex-shrink: 0;
+      z-index: 60;
+    }
+    .topbar-logo {
+      width: var(--nav-w);
+      height: var(--topbar-h);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      border-right: 1px solid rgba(255,255,255,0.08);
+    }
+    .logo-mark {
+      width: 34px; height: 34px;
+      background: var(--teal);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-display);
+      font-weight: 800; font-size: 17px; color: white;
+    }
+    .topbar-center {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      gap: 14px;
+    }
+    .topbar-brand-name {
+      font-family: var(--font-display);
+      font-size: 15px; font-weight: 700; color: white;
+    }
+    .topbar-practice {
+      font-size: 12px; color: rgba(255,255,255,0.4);
+    }
+    .topbar-divider {
+      width: 1px; height: 20px;
+      background: rgba(255,255,255,0.1);
+    }
+    /* Health dot */
+    .health-pill {
+      display: flex; align-items: center; gap: 6px;
+      padding: 4px 11px;
+      background: rgba(255,255,255,0.07);
+      border-radius: 20px;
+    }
+    .health-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: #34D399;
+      animation: pulse-health 2s infinite;
+    }
+    @keyframes pulse-health {
+      0%,100% { box-shadow: 0 0 0 0 rgba(52,211,153,0.5); }
+      50%      { box-shadow: 0 0 0 4px rgba(52,211,153,0); }
+    }
+    .health-label { font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.7); }
+    /* Date */
+    .topbar-date {
+      font-size: 12px; color: rgba(255,255,255,0.35); font-weight: 500;
+    }
+    .topbar-right {
+      display: flex; align-items: center; gap: 10px;
+      padding-right: 16px;
+      flex-shrink: 0;
+    }
+    /* Import button */
+    .import-btn {
+      display: flex; align-items: center; gap: 6px;
+      padding: 6px 14px;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: var(--r-sm);
+      font-size: 12px; font-weight: 700;
+      color: rgba(255,255,255,0.85);
+      transition: background 0.15s;
+    }
+    .import-btn:hover { background: rgba(255,255,255,0.18); }
+    /* Command hint */
+    .cmd-hint {
+      display: flex; align-items: center; gap: 6px;
+      padding: 4px 10px;
+      background: rgba(255,255,255,0.06);
+      border-radius: var(--r-sm);
+      font-size: 11px; color: rgba(255,255,255,0.35);
+    }
+    kbd {
+      padding: 1px 4px;
+      background: rgba(255,255,255,0.12);
+      border-radius: 3px;
+      font-family: var(--font-mono);
+      font-size: 10px; color: rgba(255,255,255,0.55);
+    }
+    /* Alerts icon */
+    .topbar-icon-btn {
+      width: 34px; height: 34px;
+      border-radius: var(--r-sm);
+      background: transparent;
+      border: none;
+      color: rgba(255,255,255,0.55);
+      display: flex; align-items: center; justify-content: center;
+      position: relative;
+      transition: background 0.15s, color 0.15s;
+    }
+    .topbar-icon-btn:hover { background: rgba(255,255,255,0.1); color: white; }
+    .icon-badge {
+      position: absolute;
+      top: 3px; right: 3px;
+      width: 14px; height: 14px;
+      background: var(--danger);
+      border-radius: 50%;
+      font-size: 8px; font-weight: 800; color: white;
+      display: flex; align-items: center; justify-content: center;
+      border: 1.5px solid var(--navy);
+    }
+    /* Staff avatars */
+    .staff-avatars { display: flex; }
+    .staff-av {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      border: 2px solid var(--navy);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px; font-weight: 700; color: white;
+      margin-left: -5px;
+      position: relative;
+    }
+    .staff-av:first-child { margin-left: 0; }
+    .av-online::after {
+      content: '';
+      position: absolute;
+      bottom: 0; right: 0;
+      width: 7px; height: 7px;
+      background: #34D399;
+      border-radius: 50%;
+      border: 1.5px solid var(--navy);
+    }
+    /* Profile */
+    .profile-btn {
+      display: flex; align-items: center; gap: 7px;
+      padding: 4px 8px;
+      border-radius: var(--r-sm);
+      background: transparent; border: none;
+      color: rgba(255,255,255,0.8);
+      transition: background 0.15s;
+    }
+    .profile-btn:hover { background: rgba(255,255,255,0.08); }
+    .profile-av {
+      width: 28px; height: 28px;
+      background: var(--teal);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700; color: white;
+    }
+    .profile-name { font-size: 13px; font-weight: 600; }
+
+    /* ═══════════════════════════════════════════════════════════
+       URGENT ALERT BANNER  (shown when red flags / reviews exist)
+       ═══════════════════════════════════════════════════════════ */
+    .urgent-banner {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 20px 10px calc(var(--nav-w) + 16px);
+      background: rgba(213,40,27,0.1);
+      border-bottom: 2px solid rgba(213,40,27,0.25);
+      font-size: 13px;
+      flex-shrink: 0;
+    }
+    .urgent-banner-icon { font-size: 15px; flex-shrink: 0; }
+    .urgent-banner-text { color: #7c0b07; font-weight: 600; }
+    .urgent-banner-link {
+      color: var(--danger);
+      font-weight: 700;
+      text-decoration: underline;
+      cursor: pointer;
+    }
+    .urgent-banner-spacer { flex: 1; }
+    .urgent-banner-ack {
+      padding: 5px 14px;
+      border: 1.5px solid var(--danger);
+      border-radius: var(--r-sm);
+      background: white;
+      color: var(--danger);
+      font-size: 12px; font-weight: 700;
+      transition: all 0.15s;
+    }
+    .urgent-banner-ack:hover { background: var(--danger); color: white; }
+
+    /* ═══════════════════════════════════════════════════════════
+       PRIORITY RIBBON
+       ═══════════════════════════════════════════════════════════ */
+    .priority-ribbon {
+      height: var(--ribbon-h);
+      background: linear-gradient(90deg, var(--navy-deep) 0%, #0D4A80 100%);
+      display: flex;
+      align-items: stretch;
+      flex-shrink: 0;
+      padding-left: var(--nav-w);
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .ribbon-stat {
+      display: flex; align-items: center; gap: 10px;
+      padding: 0 22px;
+      border-right: 1px solid rgba(255,255,255,0.08);
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .ribbon-stat:hover { background: rgba(255,255,255,0.05); }
+    .ribbon-stat.active { background: rgba(255,255,255,0.07); }
+    .r-val {
+      font-family: var(--font-display);
+      font-size: 24px; font-weight: 800; line-height: 1;
+    }
+    .r-urgent  { color: #FF6B6B; }
+    .r-review  { color: #FCD34D; }
+    .r-routine { color: #93C5FD; }
+    .r-done    { color: #6EE7B7; }
+    .r-label {
+      font-size: 9.5px; font-weight: 700; letter-spacing: 0.08em;
+      color: rgba(255,255,255,0.4); text-transform: uppercase;
+    }
+    .r-sub { font-size: 11px; font-weight: 500; color: rgba(255,255,255,0.55); margin-top: 1px; }
+    .ribbon-spacer { flex: 1; }
+    .ribbon-period {
+      display: flex; align-items: center;
+      gap: 2px;
+      padding: 0 16px;
+    }
+    .period-btn {
+      padding: 4px 11px;
+      border-radius: 20px;
+      border: none;
+      background: transparent;
+      font-size: 11px; font-weight: 700;
+      color: rgba(255,255,255,0.35);
+      transition: all 0.15s;
+    }
+    .period-btn.active {
+      background: rgba(255,255,255,0.12);
+      color: rgba(255,255,255,0.85);
+    }
+    .period-btn:hover { color: rgba(255,255,255,0.7); }
+
+    /* ═══════════════════════════════════════════════════════════
+       BODY ROW
+       ═══════════════════════════════════════════════════════════ */
+    .body-row {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* ─── LEFT NAV RAIL ──────────────────────────────────────── */
+    .nav-rail {
+      width: var(--nav-w);
+      background: var(--navy);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 10px 0;
+      gap: 3px;
+      flex-shrink: 0;
+      border-right: 1px solid rgba(255,255,255,0.07);
+    }
+    .nav-item {
+      width: 42px; height: 42px;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      color: rgba(255,255,255,0.38);
+      transition: background 0.15s, color 0.15s;
+      position: relative;
+      cursor: pointer;
+    }
+    .nav-item:hover { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.75); }
+    .nav-item.active { background: var(--teal); color: white; }
+    .nav-tip {
+      position: absolute;
+      left: calc(100% + 8px); top: 50%;
+      transform: translateY(-50%);
+      background: var(--navy-deep);
+      color: white;
+      font-size: 11px; font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 5px;
+      white-space: nowrap;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.15s;
+      z-index: 200;
+    }
+    .nav-item:hover .nav-tip { opacity: 1; }
+    .nav-badge {
+      position: absolute;
+      top: 5px; right: 5px;
+      min-width: 15px; height: 15px;
+      background: var(--danger);
+      border-radius: 8px;
+      font-size: 8px; font-weight: 800; color: white;
+      display: flex; align-items: center; justify-content: center;
+      padding: 0 3px;
+    }
+    .nav-spacer { flex: 1; }
+    .nav-divider {
+      width: 32px; height: 1px;
+      background: rgba(255,255,255,0.08);
+      margin: 4px 0;
+    }
+
+    /* ─── MAIN CONTENT AREA ──────────────────────────────────── */
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-width: 0;
+    }
+
+    /* Filter / sub-header */
+    .filter-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 16px;
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .filter-tabs {
+      display: flex;
+      gap: 3px;
+      background: var(--bg);
+      padding: 3px;
+      border-radius: var(--r-sm);
+    }
+    .f-tab {
+      padding: 5px 12px;
+      border-radius: 4px;
+      font-size: 12px; font-weight: 600;
+      color: var(--ink-soft);
+      cursor: pointer;
+      border: none; background: transparent;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .f-tab.active { background: var(--panel); color: var(--navy); box-shadow: var(--shadow-xs); }
+    .f-tab.tab-urgent.active  { color: var(--danger); }
+    .f-tab.tab-review.active  { color: var(--warning); }
+    .filter-spacer { flex: 1; }
+    .search-box {
+      display: flex; align-items: center; gap: 7px;
+      padding: 6px 12px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--r-sm);
+      font-size: 12px; color: var(--ink-soft);
+      width: 200px;
+    }
+    .sort-btn {
+      display: flex; align-items: center; gap: 5px;
+      padding: 6px 12px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--r-sm);
+      font-size: 12px; font-weight: 500; color: var(--ink-mid);
+    }
+    .analytics-toggle-btn {
+      display: flex; align-items: center; gap: 5px;
+      padding: 6px 12px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--r-sm);
+      font-size: 12px; font-weight: 600; color: var(--navy);
+      transition: all 0.15s;
+    }
+    .analytics-toggle-btn.active {
+      background: var(--teal-soft);
+      border-color: var(--teal);
+      color: var(--teal-mid);
+    }
+
+    /* KPI cards */
+    .kpi-row {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 10px;
+      padding: 12px 16px;
+      flex-shrink: 0;
+      background: var(--bg);
+    }
+    .kpi-card {
+      background: var(--panel);
+      border-radius: var(--r-md);
+      padding: 14px 16px;
+      display: flex; flex-direction: column; gap: 5px;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-xs);
+      position: relative;
+      overflow: hidden;
+    }
+    .kpi-card::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+    }
+    .kpi-card.k-danger::after   { background: var(--danger); }
+    .kpi-card.k-warning::after  { background: var(--amber); }
+    .kpi-card.k-navy::after     { background: var(--navy-light); }
+    .kpi-card.k-success::after  { background: var(--success); }
+    .kpi-card.k-teal::after     { background: var(--teal); }
+    .kpi-lbl {
+      font-size: 10px; font-weight: 700; letter-spacing: 0.06em;
+      text-transform: uppercase; color: var(--ink-faint);
+    }
+    .kpi-val {
+      font-family: var(--font-display);
+      font-size: 28px; font-weight: 800; line-height: 1;
+      color: var(--navy);
+    }
+    .kpi-card.k-danger .kpi-val { color: var(--danger); }
+    .kpi-card.k-warning .kpi-val { color: var(--warning); }
+    .kpi-meta {
+      font-size: 11px; color: var(--ink-soft);
+      display: flex; align-items: center; gap: 4px;
+    }
+    .delta-up   { color: var(--success); font-weight: 600; }
+    .delta-down { color: var(--danger); font-weight: 600; }
+    .delta-warn { color: var(--warning); font-weight: 600; }
+
+    /* Queue */
+    .queue-wrap {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0 16px 16px;
+    }
+    .queue-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0 5px;
+    }
+    .queue-table thead th {
+      padding: 8px 12px;
+      text-align: left;
+      font-size: 10px; font-weight: 700; letter-spacing: 0.06em;
+      text-transform: uppercase; color: var(--ink-faint);
+      position: sticky; top: 0;
+      background: var(--bg);
+    }
+    .q-row {
+      background: var(--panel);
+      border-radius: var(--r-md);
+      cursor: pointer;
+      transition: box-shadow 0.15s, transform 0.15s;
+    }
+    .q-row:hover { box-shadow: var(--shadow-md); transform: translateX(2px); }
+    .q-row.selected {
+      box-shadow: 0 0 0 2px var(--teal), var(--shadow-md);
+      transform: translateX(2px);
+    }
+    .q-row.redflag { border-left: 3px solid var(--danger); }
+    .q-row td {
+      padding: 11px 12px;
+      font-size: 13px;
+      vertical-align: middle;
+    }
+    .q-row td:first-child { border-radius: var(--r-md) 0 0 var(--r-md); padding-left: 14px; }
+    .q-row td:last-child  { border-radius: 0 var(--r-md) var(--r-md) 0; }
+
+    /* Priority cell */
+    .pri-cell { display: flex; align-items: center; gap: 7px; width: 120px; }
+    .pri-dot {
+      width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+    }
+    .dot-urgent  { background: var(--danger); box-shadow: 0 0 0 3px rgba(213,40,27,0.15); }
+    .dot-review  { background: var(--amber); }
+    .dot-routine { background: var(--nhs-blue); }
+    .dot-admin   { background: var(--ink-soft); }
+    .dot-done    { background: var(--success); }
+    .pri-lbl { font-size: 10.5px; font-weight: 700; letter-spacing: 0.04em; }
+    .lbl-urgent  { color: var(--danger); }
+    .lbl-review  { color: var(--warning); }
+    .lbl-routine { color: var(--navy-light); }
+    .lbl-admin   { color: var(--ink-soft); }
+    .lbl-done    { color: var(--success); }
+
+    /* Red flag icon */
+    .rf-icon {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 16px; height: 16px;
+      background: var(--danger);
+      border-radius: 3px;
+      font-size: 9px; color: white;
+      margin-left: 4px;
+      vertical-align: middle;
+    }
+
+    .patient-name { font-weight: 600; color: var(--navy); }
+    .patient-id   { font-size: 10.5px; color: var(--ink-faint); font-family: var(--font-mono); margin-top: 2px; }
+    .reason-cell  { color: var(--ink-mid); max-width: 240px; font-size: 12.5px; }
+    .channel-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-size: 11px; font-weight: 600;
+      background: var(--bg); color: var(--ink-soft);
+    }
+    .time-cell { font-size: 11px; color: var(--ink-soft); white-space: nowrap; }
+    .assigned-cell { font-size: 11px; color: var(--ink-soft); }
+    .status-badge {
+      padding: 3px 9px;
+      border-radius: 20px;
+      font-size: 10.5px; font-weight: 700;
+    }
+    .s-new      { background: rgba(213,40,27,0.1);  color: var(--danger); }
+    .s-open     { background: rgba(11,61,107,0.08); color: var(--navy); }
+    .s-review   { background: var(--warning-soft);  color: var(--warning); }
+    .s-waiting  { background: rgba(0,94,184,0.08);  color: var(--nhs-blue); }
+    .s-progress { background: rgba(0,168,150,0.1);  color: var(--teal-mid); }
+    .s-done     { background: var(--success-soft);  color: var(--success); }
+    .s-identity { background: #FEF3C7; color: #92400E; }
+
+    .act-btn {
+      padding: 6px 12px;
+      background: var(--teal);
+      color: white;
+      border: none; border-radius: var(--r-sm);
+      font-size: 11px; font-weight: 700;
+      transition: background 0.15s;
+      white-space: nowrap;
+    }
+    .act-btn:hover { background: var(--teal-mid); }
+    .act-btn.sec {
+      background: transparent;
+      color: var(--ink-soft);
+      border: 1px solid var(--border);
+    }
+
+    /* ─── RIGHT ANALYTICS SIDEBAR ────────────────────────────── */
+    .analytics-sidebar {
+      width: var(--analytics-w);
+      background: var(--panel);
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      flex-shrink: 0;
+      padding: 0;
+    }
+    .analytics-sidebar.is-hidden { display: none; }
+    .sidebar-section {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .sidebar-section:last-child { border-bottom: none; }
+    .ss-title {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 10px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      color: var(--ink-faint);
+      margin-bottom: 12px;
+    }
+    .ss-row {
+      display: flex; align-items: center;
+      justify-content: space-between;
+      padding: 5px 0;
+      font-size: 12px;
+    }
+    .ss-label {
+      display: flex; align-items: center; gap: 6px;
+      color: var(--ink-soft);
+    }
+    .ss-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+    .sd-blue   { background: var(--nhs-blue); }
+    .sd-amber  { background: var(--amber); }
+    .sd-green  { background: var(--success); }
+    .sd-red    { background: var(--danger); }
+    .sd-navy   { background: var(--navy); }
+    .sd-teal   { background: var(--teal); }
+    .ss-val {
+      font-weight: 700; font-size: 13px; color: var(--navy);
+    }
+    .ss-val.danger  { color: var(--danger); }
+    .ss-val.success { color: var(--success); }
+    .ss-val.warning { color: var(--warning); }
+
+    /* Staff workload rows */
+    .staff-row-sidebar {
+      display: flex; align-items: center; gap: 0;
+      padding: 5px 0;
+      justify-content: space-between;
+    }
+    .staff-row-name {
+      font-size: 12px; font-weight: 600; color: var(--navy);
+      flex: 1; min-width: 0;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .staff-pills { display: flex; gap: 4px; }
+    .swp {
+      padding: 2px 7px;
+      border-radius: 10px;
+      font-size: 10px; font-weight: 700;
+    }
+    .swp-open   { background: rgba(11,61,107,0.08); color: var(--navy); }
+    .swp-active { background: rgba(0,168,150,0.1);  color: var(--teal-mid); }
+    .swp-done   { background: var(--success-soft);  color: var(--success); }
+    .swp-legend {
+      display: flex; gap: 8px;
+      font-size: 10px; color: var(--ink-faint);
+      margin-top: 8px;
+    }
+    .swp-legend-item { display: flex; align-items: center; gap: 3px; }
+
+    /* Refresh ts */
+    .ss-refresh {
+      font-size: 10px; color: var(--ink-faint); margin-top: 8px;
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       CASE DETAIL PANEL
+       ═══════════════════════════════════════════════════════════ */
+    .detail-panel {
+      width: var(--detail-w);
+      background: var(--panel);
+      border-left: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      overflow: hidden; flex-shrink: 0;
+      box-shadow: -4px 0 20px rgba(11,61,107,0.08);
+    }
+
+    /* Next Step Banner */
+    .ns-banner {
+      display: flex; align-items: flex-start; gap: 10px;
+      padding: 12px 16px;
+      border-bottom: 1px solid transparent;
+      flex-shrink: 0;
+    }
+    .ns-banner.ns-red    { background: rgba(213,40,27,0.08); border-color: rgba(213,40,27,0.2); }
+    .ns-banner.ns-amber  { background: var(--warning-soft); border-color: var(--warning-border); }
+    .ns-banner.ns-green  { background: var(--success-soft); border-color: rgba(0,112,60,0.2); }
+    .ns-banner.ns-blue   { background: rgba(0,94,184,0.06); border-color: rgba(0,94,184,0.2); }
+    .ns-banner.ns-grey   { background: var(--bg); border-color: var(--border); }
+    .ns-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+    .ns-body {}
+    .ns-heading {
+      font-size: 12.5px; font-weight: 700;
+      margin-bottom: 2px;
+    }
+    .ns-banner.ns-red   .ns-heading { color: #7c0b07; }
+    .ns-banner.ns-amber .ns-heading { color: #7a3000; }
+    .ns-banner.ns-green .ns-heading { color: #14532d; }
+    .ns-banner.ns-blue  .ns-heading { color: var(--navy); }
+    .ns-sub { font-size: 11px; color: var(--ink-soft); line-height: 1.45; }
+    .ns-dismiss {
+      margin-left: auto;
+      background: transparent; border: none;
+      color: var(--ink-faint); font-size: 16px;
+      padding: 2px; line-height: 1;
+      flex-shrink: 0;
+    }
+
+    /* Progress stepper */
+    .cd-stepper {
+      display: flex; align-items: center;
+      padding: 10px 16px;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      gap: 0;
+      overflow-x: auto;
+      flex-shrink: 0;
+    }
+    .cd-step {
+      display: flex; align-items: center; gap: 5px;
+      flex-shrink: 0;
+    }
+    .cd-bubble {
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      border: 2px solid var(--border-mid);
+      background: var(--panel);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px; font-weight: 700; color: var(--ink-faint);
+      flex-shrink: 0;
+      transition: all 0.2s;
+    }
+    .cd-lbl {
+      font-size: 11px; font-weight: 500; color: var(--ink-faint);
+      white-space: nowrap;
+    }
+    .cd-connector {
+      flex: 1; min-width: 20px; max-width: 48px;
+      height: 2px;
+      background: var(--border);
+      margin: 0 6px;
+    }
+    .cd-step.is-done .cd-bubble {
+      background: var(--success); border-color: var(--success); color: white;
+    }
+    .cd-step.is-done .cd-lbl { color: var(--ink-mid); }
+    .cd-step.is-done ~ .cd-connector { background: var(--success); }
+    .cd-step.is-active .cd-bubble {
+      background: var(--teal); border-color: var(--teal); color: white;
+      box-shadow: 0 0 0 3px var(--teal-soft);
+    }
+    .cd-step.is-active .cd-lbl { color: var(--teal-mid); font-weight: 700; }
+
+    /* Panel header */
+    .panel-hd {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .panel-hd-title {
+      font-family: var(--font-display);
+      font-size: 15px; font-weight: 700; color: var(--navy);
+    }
+    .panel-hd-right { display: flex; align-items: center; gap: 8px; }
+    .urgent-tag {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 3px 9px;
+      background: var(--danger-soft);
+      border: 1px solid var(--danger-border);
+      border-radius: 20px;
+      font-size: 10.5px; font-weight: 700; color: var(--danger);
+    }
+    .up-pulse {
+      width: 6px; height: 6px;
+      background: var(--danger); border-radius: 50%;
+      animation: up 1s infinite;
+    }
+    @keyframes up { 0%,100%{opacity:1} 50%{opacity:.3} }
+    .panel-close {
+      width: 26px; height: 26px;
+      border-radius: 5px; border: none;
+      background: var(--bg); color: var(--ink-soft);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px;
+    }
+
+    /* Panel body */
+    .panel-body {
+      flex: 1; overflow-y: auto;
+      padding: 16px;
+      display: flex; flex-direction: column; gap: 16px;
+    }
+
+    /* Patient block */
+    .pat-block {
+      background: var(--bg);
+      border-radius: var(--r-md);
+      padding: 14px;
+    }
+    .pat-header {
+      display: flex; align-items: center; gap: 11px;
+      margin-bottom: 12px;
+    }
+    .pat-av-lg {
+      width: 42px; height: 42px;
+      border-radius: 50%;
+      background: var(--navy); color: white;
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-display);
+      font-size: 15px; font-weight: 700; flex-shrink: 0;
+    }
+    .pat-name {
+      font-family: var(--font-display);
+      font-size: 16px; font-weight: 700; color: var(--navy);
+    }
+    .pat-sub { font-size: 11.5px; color: var(--ink-soft); margin-top: 2px; }
+    .pat-fields {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .f-lbl { font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-faint); margin-bottom: 2px; }
+    .f-val { font-size: 12.5px; font-weight: 500; color: var(--ink); }
+    .f-val.mono { font-family: var(--font-mono); font-size: 11.5px; }
+
+    /* AI summary block */
+    .ai-block {
+      background: linear-gradient(135deg, rgba(11,61,107,0.04) 0%, rgba(0,168,150,0.04) 100%);
+      border: 1px solid rgba(0,168,150,0.15);
+      border-radius: var(--r-md);
+      padding: 14px;
+    }
+    .ai-hd {
+      display: flex; align-items: center; gap: 8px;
+      margin-bottom: 9px;
+    }
+    .ai-icon {
+      width: 22px; height: 22px;
+      background: var(--teal); border-radius: 5px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px;
+    }
+    .ai-hd-title { font-size: 11.5px; font-weight: 700; color: var(--navy); }
+    .ai-hd-sub   { font-size: 10px; color: var(--ink-faint); }
+    .ai-reason   { font-size: 13px; line-height: 1.55; color: var(--ink-mid); margin-bottom: 10px; }
+    .ai-tags     { display: flex; gap: 5px; flex-wrap: wrap; }
+    .ai-tag {
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 10.5px; font-weight: 600;
+      background: var(--panel); color: var(--navy);
+      border: 1px solid var(--border);
+    }
+    .ai-conf {
+      display: flex; align-items: center; gap: 7px;
+      margin-top: 10px; padding-top: 10px;
+      border-top: 1px solid rgba(0,168,150,0.12);
+    }
+    .conf-lbl { font-size: 10.5px; color: var(--ink-soft); }
+    .conf-bar  { flex: 1; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+    .conf-fill { height: 100%; background: var(--teal); border-radius: 2px; }
+    .conf-val  { font-size: 10.5px; font-weight: 700; color: var(--teal-mid); }
+
+    /* Workflow stepper */
+    .wf-title {
+      font-size: 10px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      color: var(--ink-faint); margin-bottom: 12px;
+    }
+    .steps { display: flex; flex-direction: column; }
+    .step { display: flex; gap: 12px; position: relative; }
+    .step:not(:last-child)::after {
+      content: '';
+      position: absolute;
+      left: 13px; top: 28px; bottom: 0;
+      width: 2px; background: var(--border);
+    }
+    .step.done::after { background: var(--teal); }
+    .step-ind {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      font-size: 12px; font-weight: 700;
+      z-index: 1; position: relative;
+    }
+    .step.done    .step-ind { background: var(--teal);  color: white; }
+    .step.active  .step-ind { background: var(--navy);  color: white; }
+    .step.pending .step-ind { background: var(--bg); border: 2px solid var(--border); color: var(--ink-faint); }
+    .step-content { flex: 1; padding-bottom: 18px; }
+    .step-lbl {
+      font-size: 12.5px; font-weight: 700; color: var(--navy); margin-bottom: 3px;
+    }
+    .step.pending .step-lbl { color: var(--ink-soft); }
+    .step-desc { font-size: 11.5px; color: var(--ink-soft); line-height: 1.5; }
+    .step-done-note {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 10.5px; color: var(--teal-mid); font-weight: 600;
+      background: var(--teal-soft); padding: 2px 7px; border-radius: 4px;
+      margin-top: 4px;
+    }
+    .emis-row {
+      margin-top: 8px; padding: 9px 12px;
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: var(--r-sm);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .emis-info { font-size: 11.5px; }
+    .emis-link { font-size: 11.5px; font-weight: 700; color: var(--teal-mid); cursor: pointer; text-decoration: underline; }
+    .action-choices {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 7px; margin-top: 9px;
+    }
+    .ac {
+      padding: 9px 10px;
+      border-radius: var(--r-sm);
+      border: 1.5px solid var(--border);
+      font-size: 11.5px; font-weight: 600; color: var(--navy);
+      text-align: center; cursor: pointer;
+      transition: all 0.15s; background: var(--panel);
+    }
+    .ac:hover  { border-color: var(--teal); color: var(--teal); }
+    .ac.sel    { border-color: var(--teal); background: var(--teal-soft); color: var(--teal-mid); }
+
+    /* Panel footer */
+    .panel-foot {
+      padding: 12px 16px;
+      border-top: 1px solid var(--border);
+      display: flex; gap: 8px;
+      flex-shrink: 0;
+    }
+    .confirm-btn {
+      flex: 1; padding: 11px;
+      background: var(--teal); color: white;
+      border: none; border-radius: var(--r-sm);
+      font-size: 13px; font-weight: 700;
+      transition: background 0.15s;
+    }
+    .confirm-btn:hover { background: var(--teal-mid); }
+    .defer-btn {
+      padding: 11px 16px;
+      background: transparent; color: var(--ink-soft);
+      border: 1.5px solid var(--border);
+      border-radius: var(--r-sm);
+      font-size: 12px; font-weight: 600;
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       INFO GAP TOAST  (bottom-right, dismissible)
+       ═══════════════════════════════════════════════════════════ */
+    .gap-toast {
+      position: fixed;
+      bottom: 20px; right: 20px;
+      width: 320px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--warning);
+      border-radius: var(--r-md);
+      box-shadow: var(--shadow-lg);
+      padding: 14px 16px;
+      z-index: 300;
+    }
+    .gap-toast-hd {
+      display: flex; align-items: center; gap: 8px;
+      margin-bottom: 8px;
+    }
+    .gap-toast-title { font-size: 13px; font-weight: 700; color: var(--navy); flex: 1; }
+    .gap-toast-close { background: transparent; border: none; color: var(--ink-faint); font-size: 16px; }
+    .gap-toast-list {
+      list-style: none;
+      display: flex; flex-direction: column; gap: 5px;
+      margin-bottom: 10px;
+    }
+    .gap-toast-list li {
+      font-size: 12px; color: var(--ink-mid);
+      display: flex; align-items: center; gap: 6px;
+    }
+    .gap-toast-list li::before { content: '•'; color: var(--warning); font-size: 16px; }
+    .gap-toast-actions { display: flex; gap: 8px; }
+    .gap-btn {
+      padding: 6px 14px;
+      border-radius: var(--r-sm);
+      font-size: 12px; font-weight: 700;
+      border: none; cursor: pointer;
+    }
+    .gap-btn-dismiss  { background: var(--bg); color: var(--ink-mid); }
+    .gap-btn-view     { background: var(--navy); color: white; }
+
+    /* Demo banner */
+    .demo-banner {
+      text-align: center;
+      padding: 6px 16px;
+      background: #FEF3C7;
+      border-bottom: 1px solid #FDE68A;
+      font-size: 11px; font-weight: 700; color: #92400E;
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+
+<!-- ════════════════════════════════════════════════════════════
+     DEMO BANNER  (toggle visibility for sandbox/demo mode)
+     ════════════════════════════════════════════════════════════ -->
+<div class="demo-banner">
+  ⚠ DEMO / TEST DATA MODE — No real patient data. Testing and development only.
+</div>
+
+<!-- ════════════════════════════════════════════════════════════
+     TOPBAR
+     ════════════════════════════════════════════════════════════ -->
+<div class="topbar">
+  <div class="topbar-logo">
+    <div class="logo-mark">A</div>
+  </div>
+  <div class="topbar-center">
+    <div>
+      <div class="topbar-brand-name">Avamed</div>
+      <div class="topbar-practice">Churchtown Medical · Reception</div>
+    </div>
+    <div class="topbar-divider"></div>
+    <div class="health-pill">
+      <div class="health-dot"></div>
+      <span class="health-label">Jeff Online</span>
+    </div>
+    <div class="topbar-date" id="topbar-date">Monday 9 June 2026</div>
+  </div>
+  <div class="topbar-right">
+    <div class="cmd-hint"><kbd>/</kbd> Search or command</div>
+    <button class="import-btn" title="Pull new handoff files into the dashboard">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="8 17 12 21 16 17"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"/></svg>
+      Import
+    </button>
+    <button class="topbar-icon-btn" title="Alerts">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      <div class="icon-badge">2</div>
+    </button>
+    <div class="staff-avatars">
+      <div class="staff-av av-online" style="background:#5B69A3">SJ</div>
+      <div class="staff-av av-online" style="background:#A35B6C">KP</div>
+      <div class="staff-av" style="background:#5B8FA3;opacity:0.55">MR</div>
+    </div>
+    <button class="profile-btn">
+      <div class="profile-av">SJ</div>
+      <span class="profile-name">Sarah J.</span>
+    </button>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════
+     URGENT ALERT BANNER
+     (shown when red flags / identity issues / review needed)
+     ════════════════════════════════════════════════════════════ -->
+<div class="urgent-banner">
+  <span class="urgent-banner-icon">🚨</span>
+  <span class="urgent-banner-text">Urgent attention required —</span>
+  <span class="urgent-banner-link">2 red flags</span>
+  &nbsp;·&nbsp;
+  <span class="urgent-banner-link">1 identity check needed</span>
+  &nbsp;·&nbsp;
+  <span class="urgent-banner-link">1 needs review</span>
+  &nbsp;·&nbsp;
+  <a class="urgent-banner-link" style="text-decoration:none;font-weight:800">View all →</a>
+  <div class="urgent-banner-spacer"></div>
+  <button class="urgent-banner-ack">Acknowledge</button>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════
+     PRIORITY RIBBON + PERIOD FILTER
+     ════════════════════════════════════════════════════════════ -->
+<div class="priority-ribbon">
+  <div class="ribbon-stat active">
+    <div class="r-val r-urgent" id="r-urgent">2</div>
+    <div><div class="r-label">Red Flags</div><div class="r-sub">Immediate</div></div>
+  </div>
+  <div class="ribbon-stat">
+    <div class="r-val r-review" id="r-review">1</div>
+    <div><div class="r-label">Review Needed</div><div class="r-sub">Staff check</div></div>
+  </div>
+  <div class="ribbon-stat">
+    <div class="r-val r-routine" id="r-routine">11</div>
+    <div><div class="r-label">Routine</div><div class="r-sub">In queue</div></div>
+  </div>
+  <div class="ribbon-stat">
+    <div class="r-val r-done" id="r-done">28</div>
+    <div><div class="r-label">Completed</div><div class="r-sub">Today</div></div>
+  </div>
+  <div class="ribbon-stat">
+    <div class="r-val" style="color:rgba(255,255,255,0.7)">91%</div>
+    <div><div class="r-label">Accuracy</div><div class="r-sub">AI triage</div></div>
+  </div>
+  <div class="ribbon-spacer"></div>
+  <div class="ribbon-period">
+    <button class="period-btn active" onclick="setPeriod(this)">Today</button>
+    <button class="period-btn" onclick="setPeriod(this)">Week</button>
+    <button class="period-btn" onclick="setPeriod(this)">All</button>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════
+     BODY ROW
+     ════════════════════════════════════════════════════════════ -->
+<div class="body-row">
+
+  <!-- LEFT NAV RAIL -->
+  <nav class="nav-rail">
+    <div class="nav-item active">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+      <div class="nav-badge">3</div>
+      <div class="nav-tip">Queue</div>
+    </div>
+    <div class="nav-item">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <div class="nav-tip">Patients</div>
+    </div>
+    <div class="nav-item">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <div class="nav-tip">Staff</div>
+    </div>
+    <div class="nav-divider"></div>
+    <div class="nav-item">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="18" y="3" width="4" height="18"/><rect x="10" y="8" width="4" height="13"/><rect x="2" y="13" width="4" height="8"/></svg>
+      <div class="nav-tip">Reports</div>
+    </div>
+    <div class="nav-item">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      <div class="nav-tip">Alerts</div>
+    </div>
+    <div class="nav-spacer"></div>
+    <div class="nav-item">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      <div class="nav-tip">Settings</div>
+    </div>
+  </nav>
+
+  <!-- MAIN CONTENT -->
+  <div class="main">
+    <!-- Filter bar -->
+    <div class="filter-bar">
+      <div class="filter-tabs">
+        <button class="f-tab tab-urgent active">🔴 Red Flags (2)</button>
+        <button class="f-tab tab-review">⚠ Review (1)</button>
+        <button class="f-tab">All (14)</button>
+        <button class="f-tab">Routine</button>
+        <button class="f-tab">Completed</button>
+      </div>
+      <div class="filter-spacer"></div>
+      <div class="search-box">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        Search patients...
+      </div>
+      <div class="sort-btn">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="18" x2="11" y2="18"/></svg>
+        Priority ↓
+      </div>
+      <button class="analytics-toggle-btn active" onclick="toggleAnalytics(this)">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="18" y="3" width="4" height="18"/><rect x="10" y="8" width="4" height="13"/><rect x="2" y="13" width="4" height="8"/></svg>
+        Analytics
+      </button>
+    </div>
+
+    <!-- KPI cards (5 cards matching current system metrics) -->
+    <div class="kpi-row">
+      <div class="kpi-card k-danger">
+        <div class="kpi-lbl">Red Flags</div>
+        <div class="kpi-val" id="kpi-rf">2</div>
+        <div class="kpi-meta"><span class="delta-down">↑ 2</span> vs yesterday</div>
+      </div>
+      <div class="kpi-card k-warning">
+        <div class="kpi-lbl">Needs Review</div>
+        <div class="kpi-val" id="kpi-rv">1</div>
+        <div class="kpi-meta"><span class="delta-warn">⚠</span> Staff check required</div>
+      </div>
+      <div class="kpi-card k-navy">
+        <div class="kpi-lbl">Calls Today</div>
+        <div class="kpi-val" id="kpi-calls">42</div>
+        <div class="kpi-meta"><span class="delta-up">↑ 18%</span> vs last Mon</div>
+      </div>
+      <div class="kpi-card k-success">
+        <div class="kpi-lbl">Resolved Today</div>
+        <div class="kpi-val" id="kpi-res">28</div>
+        <div class="kpi-meta"><span class="delta-up">91%</span> success rate</div>
+      </div>
+      <div class="kpi-card k-teal">
+        <div class="kpi-lbl">Avg Response Time</div>
+        <div class="kpi-val">67s</div>
+        <div class="kpi-meta"><span class="delta-up">↓ 12s</span> faster this wk</div>
+      </div>
+    </div>
+
+    <!-- Queue table -->
+    <div class="queue-wrap">
+      <table class="queue-table">
+        <thead>
+          <tr>
+            <th>Priority</th>
+            <th>Patient</th>
+            <th>Reason for Contact</th>
+            <th>Via</th>
+            <th>Received</th>
+            <th>Assigned</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- ROW 1 — RED FLAG, SELECTED -->
+          <tr class="q-row redflag selected">
+            <td><div class="pri-cell"><div class="pri-dot dot-urgent"></div><span class="pri-lbl lbl-urgent">URGENT</span><span class="rf-icon">🚨</span></div></td>
+            <td><div class="patient-name">D. Okoye</div><div class="patient-id">NHS 485 234 7821</div></td>
+            <td class="reason-cell">Chest pain since yesterday, worse on movement</td>
+            <td><span class="channel-badge">📞 Phone</span></td>
+            <td class="time-cell">09:41</td>
+            <td class="assigned-cell">Sarah J.</td>
+            <td><span class="status-badge s-new">NEW</span></td>
+            <td><button class="act-btn">Action →</button></td>
+          </tr>
+          <!-- ROW 2 — RED FLAG -->
+          <tr class="q-row redflag">
+            <td><div class="pri-cell"><div class="pri-dot dot-urgent"></div><span class="pri-lbl lbl-urgent">URGENT</span><span class="rf-icon">🚨</span></div></td>
+            <td><div class="patient-name">R. Thompson</div><div class="patient-id">NHS 512 901 3347</div></td>
+            <td class="reason-cell">Child (8yrs) fever 39.8°C — not eating 2 days</td>
+            <td><span class="channel-badge">📞 Phone</span></td>
+            <td class="time-cell">10:12</td>
+            <td class="assigned-cell">—</td>
+            <td><span class="status-badge s-new">NEW</span></td>
+            <td><button class="act-btn">Action →</button></td>
+          </tr>
+          <!-- ROW 3 — NEEDS REVIEW (staff_review_required) -->
+          <tr class="q-row">
+            <td><div class="pri-cell"><div class="pri-dot dot-review"></div><span class="pri-lbl lbl-review">REVIEW</span></div></td>
+            <td><div class="patient-name">F. Nkosi</div><div class="patient-id">NHS 329 445 0098</div></td>
+            <td class="reason-cell">Shortness of breath — AI incomplete, manual check needed</td>
+            <td><span class="channel-badge">🌐 Web</span></td>
+            <td class="time-cell">11:58</td>
+            <td class="assigned-cell">Karen P.</td>
+            <td><span class="status-badge s-review">NEEDS REVIEW</span></td>
+            <td><button class="act-btn">Action →</button></td>
+          </tr>
+          <!-- ROW 4 — IDENTITY CHECK -->
+          <tr class="q-row">
+            <td><div class="pri-cell"><div class="pri-dot" style="background:#92400E"></div><span class="pri-lbl" style="color:#92400E">IDENTITY</span></div></td>
+            <td><div class="patient-name">A. Karim</div><div class="patient-id">NHS — not matched</div></td>
+            <td class="reason-cell">Appointment request — patient not found in EMIS</td>
+            <td><span class="channel-badge">📞 Phone</span></td>
+            <td class="time-cell">12:34</td>
+            <td class="assigned-cell">—</td>
+            <td><span class="status-badge s-identity">ID CHECK</span></td>
+            <td><button class="act-btn">Verify →</button></td>
+          </tr>
+          <!-- ROW 5 — IN PROGRESS -->
+          <tr class="q-row">
+            <td><div class="pri-cell"><div class="pri-dot dot-routine"></div><span class="pri-lbl lbl-routine">ROUTINE</span></div></td>
+            <td><div class="patient-name">M. Patel</div><div class="patient-id">NHS 601 238 5514</div></td>
+            <td class="reason-cell">Repeat prescription — Metformin 500mg</td>
+            <td><span class="channel-badge">📞 Phone</span></td>
+            <td class="time-cell">08:22</td>
+            <td class="assigned-cell">Karen P.</td>
+            <td><span class="status-badge s-progress">IN PROGRESS</span></td>
+            <td><button class="act-btn sec">Review</button></td>
+          </tr>
+          <!-- ROW 6 — WAITING FOR GP -->
+          <tr class="q-row">
+            <td><div class="pri-cell"><div class="pri-dot dot-routine"></div><span class="pri-lbl lbl-routine">ROUTINE</span></div></td>
+            <td><div class="patient-name">S. Ahmed</div><div class="patient-id">NHS 773 501 2290</div></td>
+            <td class="reason-cell">Follow-up after blood test — waiting for GP review</td>
+            <td><span class="channel-badge">📞 Phone</span></td>
+            <td class="time-cell">09:05</td>
+            <td class="assigned-cell">Sarah J.</td>
+            <td><span class="status-badge s-waiting">WAITING GP</span></td>
+            <td><button class="act-btn sec">Review</button></td>
+          </tr>
+          <!-- ROW 7 — ADMIN -->
+          <tr class="q-row">
+            <td><div class="pri-cell"><div class="pri-dot dot-admin"></div><span class="pri-lbl lbl-admin">ADMIN</span></div></td>
+            <td><div class="patient-name">J. Wilson</div><div class="patient-id">NHS 448 302 7761</div></td>
+            <td class="reason-cell">Sick note request — back pain, 2 weeks</td>
+            <td><span class="channel-badge">🌐 Web</span></td>
+            <td class="time-cell">13:30</td>
+            <td class="assigned-cell">—</td>
+            <td><span class="status-badge s-open">OPEN</span></td>
+            <td><button class="act-btn sec">Review</button></td>
+          </tr>
+          <!-- ROW 8 — RESOLVED -->
+          <tr class="q-row" style="opacity:0.5">
+            <td><div class="pri-cell"><div class="pri-dot dot-done"></div><span class="pri-lbl lbl-done">DONE</span></div></td>
+            <td><div class="patient-name">L. Kowalski</div><div class="patient-id">NHS 381 772 4403</div></td>
+            <td class="reason-cell">Annual medication review appointment</td>
+            <td><span class="channel-badge">📞 Phone</span></td>
+            <td class="time-cell">08:03</td>
+            <td class="assigned-cell">Sarah J.</td>
+            <td><span class="status-badge s-done">RESOLVED</span></td>
+            <td><button class="act-btn sec">View</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div><!-- end .main -->
+
+  <!-- RIGHT ANALYTICS SIDEBAR -->
+  <div class="analytics-sidebar" id="analytics-sidebar">
+
+    <!-- Call Analytics -->
+    <div class="sidebar-section">
+      <div class="ss-title">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.39 2 2 0 0 1 3.58 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6.29 6.29l.92-.92a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+        Call Analytics
+      </div>
+      <div class="ss-row"><span class="ss-label"><span class="ss-dot sd-navy"></span>Total Calls</span><span class="ss-val">42</span></div>
+      <div class="ss-row"><span class="ss-label"><span class="ss-dot sd-red"></span>Dropped</span><span class="ss-val danger">3</span></div>
+      <div class="ss-row"><span class="ss-label"><span class="ss-dot sd-teal"></span>Safe to Queue</span><span class="ss-val">39</span></div>
+      <div class="ss-row"><span class="ss-label"><span class="ss-dot sd-green"></span>Success Rate</span><span class="ss-val success">91%</span></div>
+      <div class="ss-row"><span class="ss-label">Avg Response</span><span class="ss-val">67 sec</span></div>
+    </div>
+
+    <!-- Live Workload -->
+    <div class="sidebar-section">
+      <div class="ss-title">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="3"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2"/></svg>
+        Live Workload
+      </div>
+      <div class="ss-row"><span class="ss-label"><span class="ss-dot sd-blue"></span>Incoming Queue</span><span class="ss-val">5</span></div>
+      <div class="ss-row"><span class="ss-label"><span class="ss-dot sd-amber"></span>Awaiting Process</span><span class="ss-val warning">2</span></div>
+      <div class="ss-row"><span class="ss-label"><span class="ss-dot sd-green"></span>Processed Today</span><span class="ss-val">38</span></div>
+      <div class="ss-row"><span class="ss-label"><span class="ss-dot sd-red"></span>Failed / Deadletter</span><span class="ss-val danger">1</span></div>
+      <div class="ss-refresh">Updated 14:07 · auto-refreshes 60s</div>
+    </div>
+
+    <!-- Queue Status -->
+    <div class="sidebar-section">
+      <div class="ss-title">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="18" y="3" width="4" height="18"/><rect x="10" y="8" width="4" height="13"/><rect x="2" y="13" width="4" height="8"/></svg>
+        Queue Status
+      </div>
+      <div class="ss-row"><span class="ss-label"><span class="ss-dot sd-blue"></span>Open</span><span class="ss-val">14</span></div>
+      <div class="ss-row"><span class="ss-label"><span class="ss-dot sd-red"></span>Overdue (&gt;2hr SLA)</span><span class="ss-val danger">1</span></div>
+      <div class="ss-row"><span class="ss-label"><span class="ss-dot sd-green"></span>Resolved Today</span><span class="ss-val">28</span></div>
+      <div class="ss-row"><span class="ss-label"><span class="ss-dot sd-red"></span>Critical (Red Flags)</span><span class="ss-val danger">2</span></div>
+    </div>
+
+    <!-- Staff Workload -->
+    <div class="sidebar-section">
+      <div class="ss-title">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+        Staff Workload
+      </div>
+      <div class="staff-row-sidebar">
+        <span class="staff-row-name">Sarah J.</span>
+        <div class="staff-pills">
+          <span class="swp swp-open">4</span>
+          <span class="swp swp-active">2</span>
+          <span class="swp swp-done">12</span>
+        </div>
+      </div>
+      <div class="staff-row-sidebar">
+        <span class="staff-row-name">Karen P.</span>
+        <div class="staff-pills">
+          <span class="swp swp-open">3</span>
+          <span class="swp swp-active">1</span>
+          <span class="swp swp-done">9</span>
+        </div>
+      </div>
+      <div class="staff-row-sidebar" style="opacity:0.45">
+        <span class="staff-row-name">Mike R. <small>(away)</small></span>
+        <div class="staff-pills">
+          <span class="swp swp-open">0</span>
+          <span class="swp swp-active">0</span>
+          <span class="swp swp-done">7</span>
+        </div>
+      </div>
+      <div class="swp-legend">
+        <div class="swp-legend-item"><span class="swp swp-open" style="padding:1px 5px;font-size:9px">0</span>Open</div>
+        <div class="swp-legend-item"><span class="swp swp-active" style="padding:1px 5px;font-size:9px">0</span>Active</div>
+        <div class="swp-legend-item"><span class="swp swp-done" style="padding:1px 5px;font-size:9px">0</span>Done</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CASE DETAIL PANEL — D. Okoye (urgent red flag, selected) -->
+  <div class="detail-panel">
+
+    <!-- Next Step Banner — RED (red flag + urgent) -->
+    <div class="ns-banner ns-red">
+      <span class="ns-icon">🚨</span>
+      <div class="ns-body">
+        <div class="ns-heading">RED FLAG — Contact patient or GP immediately before processing</div>
+        <div class="ns-sub">Do not process through standard workflow until clinical review is complete.</div>
+      </div>
+      <button class="ns-dismiss">✕</button>
+    </div>
+
+    <!-- Progress Stepper -->
+    <div class="cd-stepper">
+      <div class="cd-step is-done">
+        <div class="cd-bubble">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <span class="cd-lbl">Received</span>
+      </div>
+      <div class="cd-connector" style="background:var(--success)"></div>
+      <div class="cd-step is-active">
+        <div class="cd-bubble">2</div>
+        <span class="cd-lbl">Reviewed</span>
+      </div>
+      <div class="cd-connector"></div>
+      <div class="cd-step">
+        <div class="cd-bubble">3</div>
+        <span class="cd-lbl">In Progress</span>
+      </div>
+      <div class="cd-connector"></div>
+      <div class="cd-step">
+        <div class="cd-bubble">4</div>
+        <span class="cd-lbl">Resolved</span>
+      </div>
+    </div>
+
+    <!-- Panel header -->
+    <div class="panel-hd">
+      <div class="panel-hd-title">D. Okoye — Case Detail</div>
+      <div class="panel-hd-right">
+        <div class="urgent-tag"><div class="up-pulse"></div>Red Flag</div>
+        <button class="panel-close">✕</button>
+      </div>
+    </div>
+
+    <!-- Panel body -->
+    <div class="panel-body">
+
+      <!-- Patient block -->
+      <div class="pat-block">
+        <div class="pat-header">
+          <div class="pat-av-lg">DO</div>
+          <div>
+            <div class="pat-name">D. Okoye</div>
+            <div class="pat-sub">Male · 52 yrs · DOB 14 Mar 1974</div>
+          </div>
+        </div>
+        <div class="pat-fields">
+          <div><div class="f-lbl">NHS Number</div><div class="f-val mono">485 234 7821</div></div>
+          <div><div class="f-lbl">Registered</div><div class="f-val">Apr 2009</div></div>
+          <div><div class="f-lbl">GP</div><div class="f-val">Dr. S. Rahman</div></div>
+          <div><div class="f-lbl">Last Contact</div><div class="f-val">22 May 2026</div></div>
+        </div>
+      </div>
+
+      <!-- AI summary -->
+      <div class="ai-block">
+        <div class="ai-hd">
+          <div class="ai-icon">🧠</div>
+          <div>
+            <div class="ai-hd-title">Jeff's Triage Summary</div>
+            <div class="ai-hd-sub">Extracted 09:41 · Ollama/Gemma4 · on-premises</div>
+          </div>
+        </div>
+        <div class="ai-reason">Patient reports chest pain since yesterday morning — "tight pressure" across chest, worsening on movement, no improvement with rest. No cardiac history on record. Current smoker. Duration &gt;24hrs.</div>
+        <div class="ai-tags">
+          <span class="ai-tag">Chest pain</span>
+          <span class="ai-tag">Cardiac risk</span>
+          <span class="ai-tag">Smoker</span>
+          <span class="ai-tag">&gt;24hr duration</span>
+        </div>
+        <div class="ai-conf">
+          <span class="conf-lbl">AI confidence</span>
+          <div class="conf-bar"><div class="conf-fill" style="width:88%"></div></div>
+          <span class="conf-val">88%</span>
+        </div>
+      </div>
+
+      <!-- Guided Workflow Stepper -->
+      <div>
+        <div class="wf-title">Guided Workflow</div>
+        <div class="steps">
+          <div class="step done">
+            <div class="step-ind">✓</div>
+            <div class="step-content">
+              <div class="step-lbl">Read reason for contact</div>
+              <div class="step-done-note">✓ Jeff summary reviewed</div>
+            </div>
+          </div>
+          <div class="step active">
+            <div class="step-ind">2</div>
+            <div class="step-content">
+              <div class="step-lbl">Check patient record in EMIS</div>
+              <div class="step-desc">Verify history, medications, and flags before deciding action.</div>
+              <div class="emis-row">
+                <div>
+                  <div class="emis-info" style="font-weight:600;color:var(--navy);font-size:12px">D. Okoye · NHS 485 234 7821</div>
+                  <div class="emis-info" style="font-size:11px;color:var(--ink-soft)">No cardiac history on record</div>
+                </div>
+                <span class="emis-link">Open EMIS →</span>
+              </div>
+            </div>
+          </div>
+          <div class="step pending">
+            <div class="step-ind">3</div>
+            <div class="step-content">
+              <div class="step-lbl">Choose action</div>
+              <div class="action-choices">
+                <div class="ac sel">📅 Emergency appt</div>
+                <div class="ac">📞 GP callback</div>
+                <div class="ac">🏥 999 / A&E</div>
+                <div class="ac">✉ SMS patient</div>
+              </div>
+            </div>
+          </div>
+          <div class="step pending">
+            <div class="step-ind">4</div>
+            <div class="step-content">
+              <div class="step-lbl">Confirm &amp; close</div>
+              <div class="step-desc">Add outcome note — stored in audit log for compliance.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- end panel-body -->
+
+    <div class="panel-foot">
+      <button class="confirm-btn">Confirm Action →</button>
+      <button class="defer-btn">Defer</button>
+    </div>
+  </div>
+
+</div><!-- end body-row -->
+</div><!-- end app -->
+
+<!-- ════════════════════════════════════════════════════════════
+     INFO GAP TOAST
+     (shown when AI extraction has missing fields)
+     ════════════════════════════════════════════════════════════ -->
+<div class="gap-toast" id="gap-toast">
+  <div class="gap-toast-hd">
+    <span class="gap-toast-title">⚠ Information gaps detected</span>
+    <button class="gap-toast-close" onclick="document.getElementById('gap-toast').style.display='none'">✕</button>
+  </div>
+  <ul class="gap-toast-list">
+    <li>Patient DOB not confirmed by caller</li>
+    <li>Medication name unclear — transcript ambiguous</li>
+  </ul>
+  <div class="gap-toast-actions">
+    <button class="gap-btn gap-btn-dismiss" onclick="document.getElementById('gap-toast').style.display='none'">Dismiss</button>
+    <button class="gap-btn gap-btn-view">View Transcript</button>
+  </div>
+</div>
+
+<script>
+  // Count-up
+  function countUp(id, target, ms) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const start = performance.now();
+    const tick = (t) => {
+      const p = Math.min((t - start) / ms, 1);
+      el.textContent = Math.round(target * (1 - Math.pow(1 - p, 3)));
+      if (p < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }
+  setTimeout(() => {
+    countUp('r-urgent', 2, 600);
+    countUp('r-review', 1, 500);
+    countUp('r-routine', 11, 800);
+    countUp('r-done', 28, 1000);
+    countUp('kpi-rf', 2, 600);
+    countUp('kpi-rv', 1, 500);
+    countUp('kpi-calls', 42, 1200);
+    countUp('kpi-res', 28, 1000);
+  }, 200);
+
+  // Period tabs
+  function setPeriod(btn) {
+    document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+
+  // Filter tabs
+  document.querySelectorAll('.f-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.f-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+    });
+  });
+
+  // Analytics sidebar toggle
+  function toggleAnalytics(btn) {
+    const sidebar = document.getElementById('analytics-sidebar');
+    sidebar.classList.toggle('is-hidden');
+    btn.classList.toggle('active');
+  }
+
+  // Live date
+  document.getElementById('topbar-date').textContent =
+    new Date().toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+</script>
+</body>
+</html>

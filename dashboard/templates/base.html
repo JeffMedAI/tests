@@ -3,97 +3,209 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}JeffLocal Staff Dashboard{% endblock %}</title>
-  <link rel="stylesheet" href="{{ url_for('static', path='/dashboard.css') }}?v=2">
+  <title>{% block title %}{{ practice_name | default('Avamed') }} Staff Dashboard{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="{{ url_for('static', path='/dashboard.css') }}?v=11">
   {% block head %}{% endblock %}
 </head>
 <body>
 
-  {# ── TOP BAR ────────────────────────────────────────────────────── #}
-  <header class="topbar">
-    <div class="topbar-brand">
-      <span class="brand-mark">JL</span>
-      <div>
-        <div class="topbar-org">JeffLocal</div>
-        <div class="topbar-date" id="topbar-date"></div>
-      </div>
+  {# ── C5: Skip link ───────────────────────────────────────────────── #}
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+
+  {# ── SANDBOX BANNER ─────────────────────────────────────────────── #}
+  {% if environment == 'sandbox' %}
+  <div class="sandbox-banner" role="alert" aria-label="Sandbox environment notice">
+    <span class="sandbox-banner-icon">⚠</span>
+    <span class="sandbox-banner-text">SANDBOX — {{ practice_name }} — Not for live patient use. Testing and development only.</span>
+    <span class="sandbox-banner-icon">⚠</span>
+  </div>
+  {% endif %}
+
+  {# ── MAIN TOPBAR NAV (R1: moved from sidebar) ────────────────────── #}
+  <header class="main-topbar" role="banner">
+    <div class="main-topbar-brand">
+      <span class="main-topbar-logo">{{ (practice_short_code | default('JL'))[:2] }}</span>
+      <span class="main-topbar-name">{{ practice_name | default('Avamed') }}</span>
     </div>
-
-    <nav class="topbar-nav" aria-label="Main navigation">
-      <a href="/"         class="topbar-nav-link {% if active_nav|default('dashboard') == 'dashboard' %}active{% endif %}">Dashboard</a>
-      <a href="/requests" class="topbar-nav-link {% if active_nav|default('') == 'requests' %}active{% endif %}">Requests</a>
-      <a href="/patients" class="topbar-nav-link {% if active_nav|default('') == 'patients' %}active{% endif %}">Patients</a>
-      <a href="/staff"    class="topbar-nav-link {% if active_nav|default('') == 'staff' %}active{% endif %}">Staff</a>
-      <a href="/reports"  class="topbar-nav-link {% if active_nav|default('') == 'reports' %}active{% endif %}">Reports</a>
-      <a href="/settings" class="topbar-nav-link {% if active_nav|default('') == 'settings' %}active{% endif %}">Settings</a>
+    <nav class="main-topbar-nav" aria-label="Main navigation">
+      <a href="/"         class="main-nav-link {% if active_nav|default('dashboard') == 'dashboard' %}active{% endif %}">
+        <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </a>
+      <a href="/requests" class="main-nav-link {% if active_nav|default('') == 'requests' %}active{% endif %}">
+        <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        Requests
+      </a>
+      <a href="/patients" class="main-nav-link {% if active_nav|default('') == 'patients' %}active{% endif %}">
+        <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        Patients
+      </a>
+      <a href="/staff"    class="main-nav-link {% if active_nav|default('') == 'staff' %}active{% endif %}">
+        <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Staff
+      </a>
+      <a href="/reports"  class="main-nav-link {% if active_nav|default('') == 'reports' %}active{% endif %}">
+        <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        Reports
+      </a>
+      <a href="/settings" class="main-nav-link {% if active_nav|default('') == 'settings' %}active{% endif %}">
+        <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M19.07 19.07l-1.41-1.41M4.93 19.07l1.41-1.41M12 2v2M12 20v2M2 12h2M20 12h2"/></svg>
+        Settings
+      </a>
     </nav>
-
-    <div class="topbar-center">{% block topbar_search %}{% endblock %}</div>
-
-    <div class="topbar-actions">
+    <div class="main-topbar-actions">
       {% if active_nav in ['dashboard', 'requests'] %}
       <button id="topbar-import-btn" class="topbar-import-btn" type="button" title="Pull new handoff files into the dashboard">Import</button>
       {% endif %}
+      <span class="topbar-search-hint" aria-hidden="true">Press <kbd>/</kbd> to search</span>
+      <button id="pipeline-dot" class="pipeline-dot" aria-label="Pipeline status" title="Pipeline: checking…" type="button" aria-live="polite"></button>
       <a href="/alerts" class="topbar-icon-btn" title="View Alerts" aria-label="Alerts">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
       </a>
-
-      <div class="topbar-divider"></div>
-
-      <div class="topbar-user" id="topbar-user-menu-wrap">
-        <a href="/profile" class="topbar-user-link" title="Your profile">
-          <div class="topbar-user-info">
-            <span class="topbar-user-name">
-              {%- if current_staff is defined and current_staff and not current_staff.demo_fallback -%}
-                {{ current_staff.display_name }}
-              {%- else -%}
-                demo_user
-              {%- endif -%}
-            </span>
-            <span class="topbar-user-role">
-              {%- if current_staff is defined and current_staff -%}
-                {{ current_staff.role|title }}
-              {%- else -%}
-                Staff
-              {%- endif -%}
-            </span>
-          </div>
-          <div class="avatar" aria-hidden="true">
-            {%- if current_staff is defined and current_staff and current_staff.display_name -%}
-              {{ current_staff.display_name[0]|upper }}
-            {%- else -%}U{%- endif -%}
-          </div>
-        </a>
-        <a href="/logout" class="topbar-signout-btn" title="Sign out">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-        </a>
-      </div>
+      <a href="/profile" class="topbar-user-link" title="Your profile">
+        <div class="main-topbar-avatar" aria-hidden="true">
+          {%- if current_staff is defined and current_staff and current_staff.display_name -%}
+            {{ current_staff.display_name[0]|upper }}
+          {%- else -%}U{%- endif -%}
+        </div>
+        <span class="main-topbar-username">
+          {%- if current_staff is defined and current_staff and not current_staff.demo_fallback -%}
+            {{ current_staff.display_name }}
+          {%- else -%}demo_user{%- endif -%}
+        </span>
+      </a>
+      <a href="/logout" class="topbar-signout-btn" title="Sign out" aria-label="Sign out">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      </a>
     </div>
   </header>
 
-  {# ── APP BODY ────────────────────────────────────────────────────── #}
+  {# ── APP BODY (sidebar + main) ─────────────────────────────────── #}
   <div class="app-body">
-    {% block content %}{% endblock %}
+
+    {# ── SIDEBAR — analytics only (nav moved to main-topbar) ────────── #}
+    <aside class="analytics-sidebar" id="analytics-sidebar">
+      <div class="sidebar-hd">
+        {% block sidebar_header %}
+        <span class="sidebar-hd-title">
+          <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><rect x="18" y="3" width="4" height="18"/><rect x="10" y="8" width="4" height="13"/><rect x="2" y="13" width="4" height="8"/></svg>
+          Analytics
+        </span>
+        <button class="sidebar-toggle" id="sidebar-toggle-btn" aria-label="Toggle analytics sidebar" title="Collapse analytics">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        {% endblock %}
+      </div>
+
+      {# ── Per-page analytics content injected here ───────────────── #}
+      {% block sidebar_content %}{% endblock %}
+
+    </aside>
+
+    {# ── MAIN CONTENT ─────────────────────────────────────────────── #}
+    <div id="main-content" style="display:contents">{% block content %}{% endblock %}</div>
+  </div>
+
+  {# ── H4: Mobile hamburger — opens sidebar on small screens ─────── #}
+  <button class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Open navigation menu" aria-expanded="false" aria-controls="analytics-sidebar">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+
+  {# ── INFO GAP TOAST — shown on case detail pages when clarification needed #}
+  <div id="jefflocal-gap-toast"
+       class="jl-gap-toast"
+       role="alert"
+       aria-live="assertive"
+       aria-atomic="true"
+       hidden>
+    <div class="jl-gap-toast-hd">
+      <span class="jl-gap-toast-title">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-2px;margin-right:5px"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Information gaps detected
+      </span>
+      <button class="jl-gap-toast-close"
+              type="button"
+              aria-label="Dismiss information gap notification"
+              id="jefflocal-gap-toast-close">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <ul class="jl-gap-toast-list" id="jefflocal-gap-toast-list"></ul>
+    <div class="jl-gap-toast-actions">
+      <button type="button" class="jl-gap-toast-btn" id="jefflocal-gap-toast-dismiss">Dismiss</button>
+      <button type="button" class="jl-gap-toast-btn jl-gap-toast-btn-secondary" id="jefflocal-gap-toast-transcript">View transcript</button>
+    </div>
+    <div class="jl-gap-toast-timer" id="jefflocal-gap-toast-timer"></div>
   </div>
 
   {# ── SHARED SCRIPTS ──────────────────────────────────────────────── #}
   <script>
-    // Sidebar collapse toggle with localStorage persistence (fallback for non-dashboard pages)
+    // Sidebar collapse toggle — responsive-aware with mobile overlay backdrop
     (function () {
       var sidebarEl = document.getElementById('analytics-sidebar');
       var toggleBtn = document.getElementById('sidebar-toggle-btn');
-      if (!sidebarEl || !toggleBtn) return;
+      var mobileBtn = document.getElementById('mobile-menu-btn');
+      if (!sidebarEl) return;
+
       var key = 'jefflocal_sidebar_collapsed';
-      if (localStorage.getItem(key) === 'true') {
-        sidebarEl.classList.add('is-collapsed');
+
+      // Create backdrop for mobile tap-outside dismiss
+      var backdrop = document.createElement('div');
+      backdrop.className = 'sidebar-backdrop';
+      backdrop.setAttribute('aria-hidden', 'true');
+      document.body.appendChild(backdrop);
+
+      function isMobile() { return window.innerWidth < 600; }
+
+      function setCollapsed(collapsed) {
+        sidebarEl.classList.toggle('is-collapsed', collapsed);
+        backdrop.classList.toggle('is-visible', !collapsed && isMobile());
+        if (!isMobile()) {
+          localStorage.setItem(key, collapsed);
+        }
+        // H4: sync mobile hamburger aria-expanded
+        if (mobileBtn) {
+          mobileBtn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+          mobileBtn.setAttribute('aria-label', collapsed ? 'Open navigation menu' : 'Close navigation menu');
+        }
       }
-      if (!toggleBtn._sidebarListenerAdded) {
+
+      // On load: mobile → always collapsed; desktop/tablet → restore preference
+      if (isMobile()) {
+        setCollapsed(true);
+      } else if (localStorage.getItem(key) === 'true') {
+        setCollapsed(true);
+      }
+
+      // Sidebar internal toggle button
+      if (toggleBtn && !toggleBtn._sidebarListenerAdded) {
         toggleBtn.addEventListener('click', function () {
-          var isCollapsed = sidebarEl.classList.toggle('is-collapsed');
-          localStorage.setItem(key, isCollapsed);
+          setCollapsed(!sidebarEl.classList.contains('is-collapsed'));
         });
         toggleBtn._sidebarListenerAdded = true;
       }
+
+      // H4: Mobile hamburger button
+      if (mobileBtn && !mobileBtn._sidebarListenerAdded) {
+        mobileBtn.addEventListener('click', function () {
+          setCollapsed(!sidebarEl.classList.contains('is-collapsed'));
+        });
+        mobileBtn._sidebarListenerAdded = true;
+      }
+
+      // Backdrop tap → collapse sidebar
+      backdrop.addEventListener('click', function () {
+        setCollapsed(true);
+      });
+
+      // On resize: if crossing mobile boundary, fix state
+      window.addEventListener('resize', function () {
+        if (!isMobile()) {
+          backdrop.classList.remove('is-visible');
+        }
+      });
     })();
 
     // Live date in top bar
@@ -171,11 +283,10 @@
         var btn = form.querySelector('button[type="submit"]');
         if (btn && !btn.disabled) {
           var originalText = btn.textContent;
-          btn.textContent = '⏳ Loading...';
+          btn.textContent = 'Loading…';
           btn.disabled = true;
           btn.classList.add('btn-loading');
-          // Re-enable after 3 seconds if something went wrong
-          setTimeout(function() {
+          setTimeout(function () {
             btn.textContent = originalText;
             btn.disabled = false;
             btn.classList.remove('btn-loading');
@@ -183,7 +294,327 @@
         }
       }
     });
+
+    // ── L1: Keyboard shortcuts ───────────────────────────────────────
+    (function () {
+      var SHORTCUTS = [
+        { key: '/', desc: 'Focus search' },
+        { key: 'Escape', desc: 'Close modal / clear focus' },
+        { key: '?', desc: 'Show keyboard shortcuts' },
+      ];
+
+      document.addEventListener('keydown', function (e) {
+        var tag = (document.activeElement || {}).tagName || '';
+        var inInput = ['INPUT', 'TEXTAREA', 'SELECT'].includes(tag);
+
+        // '/' → handled by command palette (capture listener below)
+
+        // Escape → close dialogs, clear focus
+        if (e.key === 'Escape') {
+          var modal = document.querySelector('[role="dialog"]:not([hidden])');
+          if (modal) { modal.remove(); return; }
+          if (inInput) { document.activeElement.blur(); }
+        }
+
+        // '?' → show shortcuts help
+        if (e.key === '?' && !inInput) {
+          var existing = document.getElementById('kbd-shortcuts-modal');
+          if (existing) { existing.remove(); return; }
+          var overlay = document.createElement('div');
+          overlay.id = 'kbd-shortcuts-modal';
+          overlay.setAttribute('role', 'dialog');
+          overlay.setAttribute('aria-modal', 'true');
+          overlay.setAttribute('aria-label', 'Keyboard shortcuts');
+          overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9000;display:flex;align-items:center;justify-content:center;';
+          var box = document.createElement('div');
+          box.style.cssText = 'background:#fff;border-radius:12px;padding:24px 28px;max-width:360px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.3);';
+          box.innerHTML = '<h2 style="font-size:16px;font-weight:700;margin-bottom:16px">Keyboard Shortcuts</h2>' +
+            SHORTCUTS.map(function(s) {
+              return '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f0f0f0;font-size:13px">' +
+                '<kbd style="background:#f3f4f6;border:1px solid #d1d5db;border-radius:4px;padding:2px 7px;font-family:monospace;font-size:12px">' + s.key + '</kbd>' +
+                '<span style="color:#6b7280">' + s.desc + '</span></div>';
+            }).join('') +
+            '<button onclick="document.getElementById(\'kbd-shortcuts-modal\').remove()" style="margin-top:16px;padding:8px 20px;background:var(--brand-navy);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;width:100%">Close (Esc)</button>';
+          overlay.appendChild(box);
+          overlay.addEventListener('click', function(ev) { if (ev.target === overlay) overlay.remove(); });
+          document.body.appendChild(overlay);
+          box.querySelector('button').focus();
+        }
+      });
+    })();
   </script>
   {% block scripts %}{% endblock %}
+
+  {# ── Info Gap Toast JS — must run AFTER child block sets data attrs ── #}
+  <script>
+    // jefflocalInitGapToast is called from case_detail after data attrs are set,
+    // or runs automatically here as a fallback (no-op if data attrs not present).
+    function jefflocalInitGapToast() {
+      var toast = document.getElementById('jefflocal-gap-toast');
+      if (!toast) return;
+
+      var callId  = toast.dataset.callId;
+      var items   = [];
+      try { items = JSON.parse(toast.dataset.gapItems || '[]'); } catch (_) {}
+      var hasClar = toast.dataset.clarification === 'true';
+
+      if (!callId || (!hasClar && !items.length)) return;
+
+      var key = 'jefflocal.gaptoast.' + callId;
+      if (sessionStorage.getItem(key) === 'dismissed') return;
+
+      // Populate missing-info list
+      var list = document.getElementById('jefflocal-gap-toast-list');
+      if (list && !list.dataset.populated) {
+        list.dataset.populated = '1';
+        if (items.length) {
+          items.forEach(function (item) {
+            var li = document.createElement('li');
+            li.textContent = item;
+            list.appendChild(li);
+          });
+        } else {
+          var li = document.createElement('li');
+          li.textContent = 'Some patient information could not be captured from the call.';
+          list.appendChild(li);
+        }
+      }
+
+      var autoTimer;
+      var timerBar = document.getElementById('jefflocal-gap-toast-timer');
+
+      function dismissToast() {
+        sessionStorage.setItem(key, 'dismissed');
+        toast.classList.remove('is-visible');
+        setTimeout(function () { toast.hidden = true; }, 380);
+        clearTimeout(autoTimer);
+      }
+
+      function showToast() {
+        toast.hidden = false;
+        requestAnimationFrame(function () {
+          requestAnimationFrame(function () {
+            toast.classList.add('is-visible');
+            if (timerBar) {
+              requestAnimationFrame(function () { timerBar.classList.add('is-running'); });
+            }
+            autoTimer = setTimeout(dismissToast, 12000);
+          });
+        });
+      }
+
+      var closeBtn      = document.getElementById('jefflocal-gap-toast-close');
+      var dismissBtn    = document.getElementById('jefflocal-gap-toast-dismiss');
+      var transcriptBtn = document.getElementById('jefflocal-gap-toast-transcript');
+
+      if (closeBtn)      closeBtn.addEventListener('click', dismissToast);
+      if (dismissBtn)    dismissBtn.addEventListener('click', dismissToast);
+      if (transcriptBtn) {
+        transcriptBtn.addEventListener('click', function () {
+          dismissToast();
+          var convTab = document.querySelector('[data-cd-tab="conversation"]');
+          if (convTab) { convTab.click(); convTab.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+        });
+      }
+
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && toast.classList.contains('is-visible')) {
+          dismissToast();
+        }
+      });
+
+      setTimeout(showToast, 1500);
+    }
+  </script>
+
+  {# ── COMMAND PALETTE (Task 6) ───────────────────────────────────── #}
+  <div id="cmd-palette-overlay" class="cmd-palette-overlay" role="dialog" aria-modal="true" aria-label="Command palette" hidden>
+    <div class="cmd-palette-box" id="cmd-palette-box">
+      <div class="cmd-palette-search-row">
+        <svg class="cmd-palette-icon" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="cmd-palette-input" class="cmd-palette-input" type="search" placeholder="Search patients, cases, or actions…" autocomplete="off" aria-label="Search" aria-controls="cmd-palette-results" aria-autocomplete="list">
+      </div>
+      <ul id="cmd-palette-results" class="cmd-palette-results" role="listbox" aria-label="Search results"></ul>
+      <div class="cmd-palette-footer">
+        <span><kbd>↑↓</kbd> Navigate</span>
+        <span><kbd>↵</kbd> Select</span>
+        <span><kbd>Esc</kbd> Close</span>
+      </div>
+    </div>
+  </div>
+
+  {# ── PIPELINE DOT + COMMAND PALETTE JS ─────────────────────────── #}
+  <script>
+    /**
+     * Updates the pipeline status dot in the topbar by polling /api/health.
+     * States: healthy (teal), degraded (amber), down (red).
+     */
+    (function initPipelineDot() {
+      var dot = document.getElementById('pipeline-dot');
+      if (!dot) return;
+
+      function applyStatus(status) {
+        dot.className = 'pipeline-dot pipeline-dot--' + status;
+        var labels = { healthy: 'Pipeline: healthy', degraded: 'Pipeline: degraded', down: 'Pipeline: down' };
+        dot.title = labels[status] || 'Pipeline: unknown';
+        dot.setAttribute('aria-label', dot.title);
+      }
+
+      function poll() {
+        fetch('/api/health', { credentials: 'same-origin' })
+          .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+          .then(function (data) {
+            var checks = data.checks || {};
+            var vals = Object.values(checks);
+            if (vals.length === 0 || vals.every(function (v) { return v; })) {
+              applyStatus('healthy');
+            } else if (vals.some(function (v) { return v; })) {
+              applyStatus('degraded');
+            } else {
+              applyStatus('down');
+            }
+          })
+          .catch(function () { applyStatus('down'); });
+      }
+
+      poll();
+      setInterval(poll, 60000);
+    })();
+
+    /**
+     * Command palette — opens on '/', closes on Escape, navigates with arrow keys.
+     * Fetches results from /api/search?q= and renders them as a listbox.
+     */
+    (function initCommandPalette() {
+      var overlay = document.getElementById('cmd-palette-overlay');
+      var input   = document.getElementById('cmd-palette-input');
+      var results = document.getElementById('cmd-palette-results');
+      if (!overlay || !input || !results) return;
+
+      var activeIdx = -1;
+      var debounceTimer = null;
+      var quickActions = [
+        { type: 'action', label: 'Go to Queue',    url: '/requests' },
+        { type: 'action', label: 'Go to Dashboard', url: '/' },
+        { type: 'action', label: 'Go to Reports',  url: '/reports' },
+        { type: 'action', label: 'Go to Settings', url: '/settings' },
+      ];
+
+      function openPalette() {
+        overlay.hidden = false;
+        requestAnimationFrame(function () {
+          overlay.classList.add('is-open');
+          input.value = '';
+          renderItems(quickActions);
+          input.focus();
+        });
+      }
+
+      function closePalette() {
+        overlay.classList.remove('is-open');
+        setTimeout(function () { overlay.hidden = true; results.innerHTML = ''; activeIdx = -1; }, 200);
+      }
+
+      /**
+       * Renders an array of result items into the listbox.
+       * @param {Array<{type:string,label:string,url:string}>} items
+       */
+      function renderItems(items) {
+        activeIdx = -1;
+        results.innerHTML = '';
+        if (!items || !items.length) {
+          var empty = document.createElement('li');
+          empty.className = 'cmd-palette-empty';
+          empty.textContent = 'No results found';
+          results.appendChild(empty);
+          return;
+        }
+        items.forEach(function (item, i) {
+          var li = document.createElement('li');
+          li.className = 'cmd-palette-item';
+          li.setAttribute('role', 'option');
+          li.setAttribute('aria-selected', 'false');
+          li.dataset.url = item.url;
+          li.dataset.idx = i;
+          var typeSpan = document.createElement('span');
+          typeSpan.className = 'cmd-palette-type cmd-palette-type--' + item.type;
+          typeSpan.textContent = item.type;
+          var labelSpan = document.createElement('span');
+          labelSpan.className = 'cmd-palette-label';
+          labelSpan.textContent = item.label;
+          li.appendChild(typeSpan);
+          li.appendChild(labelSpan);
+          li.addEventListener('mouseenter', function () { setActive(i); });
+          li.addEventListener('click', function () { navigate(item.url); });
+          results.appendChild(li);
+        });
+      }
+
+      function setActive(idx) {
+        var items = results.querySelectorAll('.cmd-palette-item');
+        if (activeIdx >= 0 && items[activeIdx]) {
+          items[activeIdx].classList.remove('is-active');
+          items[activeIdx].setAttribute('aria-selected', 'false');
+        }
+        activeIdx = idx;
+        if (activeIdx >= 0 && items[activeIdx]) {
+          items[activeIdx].classList.add('is-active');
+          items[activeIdx].setAttribute('aria-selected', 'true');
+          items[activeIdx].scrollIntoView({ block: 'nearest' });
+          input.setAttribute('aria-activedescendant', items[activeIdx].id || '');
+        }
+      }
+
+      function navigate(url) {
+        if (url) { closePalette(); window.location.href = url; }
+      }
+
+      /** Fetches search results from /api/search for the given query string. */
+      function fetchResults(q) {
+        fetch('/api/search?q=' + encodeURIComponent(q), { credentials: 'same-origin' })
+          .then(function (r) { return r.ok ? r.json() : Promise.reject(); })
+          .then(function (data) { renderItems(data.results || []); })
+          .catch(function () { renderItems([]); });
+      }
+
+      input.addEventListener('input', function () {
+        clearTimeout(debounceTimer);
+        var q = input.value.trim();
+        if (!q) { renderItems(quickActions); return; }
+        debounceTimer = setTimeout(function () { fetchResults(q); }, 180);
+      });
+
+      overlay.addEventListener('keydown', function (e) {
+        var items = results.querySelectorAll('.cmd-palette-item');
+        var total = items.length;
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          setActive(Math.min(activeIdx + 1, total - 1));
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          setActive(Math.max(activeIdx - 1, 0));
+        } else if (e.key === 'Enter') {
+          e.preventDefault();
+          if (activeIdx >= 0 && items[activeIdx]) navigate(items[activeIdx].dataset.url);
+        } else if (e.key === 'Escape') {
+          closePalette();
+        }
+      });
+
+      overlay.addEventListener('click', function (e) {
+        if (e.target === overlay) closePalette();
+      });
+
+      // Override the '/' global shortcut to open command palette instead
+      document.addEventListener('keydown', function (e) {
+        var tag = (document.activeElement || {}).tagName || '';
+        var inInput = ['INPUT', 'TEXTAREA', 'SELECT'].includes(tag);
+        if (e.key === '/' && !inInput && !e.ctrlKey && !e.metaKey) {
+          e.preventDefault();
+          if (overlay.hidden) { openPalette(); } else { closePalette(); }
+        }
+      }, true);
+    })();
+  </script>
 </body>
 </html>

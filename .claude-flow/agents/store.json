@@ -1,0 +1,18 @@
+{
+  "agents": {
+    "agent-1780392657173-6jayap": {
+      "agentId": "agent-1780392657173-6jayap",
+      "agentType": "coder",
+      "status": "idle",
+      "health": 1,
+      "taskCount": 0,
+      "config": {
+        "provider": "anthropic"
+      },
+      "createdAt": "2026-06-02T09:30:57.173Z",
+      "model": "sonnet",
+      "modelRoutedBy": "default"
+    }
+  },
+  "version": "3.0.0"
+}

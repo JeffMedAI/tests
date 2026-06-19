@@ -1,0 +1,278 @@
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - generic [ref=e5]: A
+    - generic [ref=e6]:
+      - generic [ref=e7]:
+        - generic [ref=e8]: Avamed
+        - generic [ref=e9]: Churchtown Medical · Reception
+      - 'generic "Jeff pipeline: all systems operational" [ref=e10] [cursor=pointer]':
+        - generic [ref=e12]: Jeff Online
+    - generic [ref=e13]:
+      - generic [ref=e14] [cursor=pointer]:
+        - generic [ref=e15]: /
+        - text: Search or command
+      - generic "Staff online" [ref=e16]:
+        - generic [ref=e17]: SJ
+        - generic [ref=e18]: KP
+        - generic [ref=e19]: MR
+      - generic [ref=e20] [cursor=pointer]:
+        - generic [ref=e21]: SJ
+        - generic [ref=e22]: Sarah J.
+  - generic [ref=e23]:
+    - generic [ref=e24] [cursor=pointer]:
+      - generic [ref=e25]: "3"
+      - generic [ref=e26]:
+        - generic [ref=e27]: Urgent
+        - generic [ref=e28]: Need action now
+    - generic [ref=e29] [cursor=pointer]:
+      - generic [ref=e30]: "11"
+      - generic [ref=e31]:
+        - generic [ref=e32]: Routine
+        - generic [ref=e33]: In queue
+    - generic [ref=e34] [cursor=pointer]:
+      - generic [ref=e35]: "28"
+      - generic [ref=e36]:
+        - generic [ref=e37]: Completed
+        - generic [ref=e38]: Today
+    - generic [ref=e39] [cursor=pointer]:
+      - generic [ref=e40]: 91%
+      - generic [ref=e41]:
+        - generic [ref=e42]: Accuracy
+        - generic [ref=e43]: AI triage
+    - generic [ref=e45]: Monday 9 June 2026 · 14:07
+  - generic [ref=e46]:
+    - navigation [ref=e47]:
+      - generic "Queue" [ref=e48] [cursor=pointer]:
+        - img [ref=e49]
+        - generic [ref=e50]: "3"
+        - generic: Queue
+      - generic "Patients" [ref=e51] [cursor=pointer]:
+        - img [ref=e52]
+        - generic: Patients
+      - generic "Staff" [ref=e57] [cursor=pointer]:
+        - img [ref=e58]
+        - generic: Staff
+      - generic "Reports" [ref=e61] [cursor=pointer]:
+        - img [ref=e62]
+        - generic: Reports
+      - generic "Alerts" [ref=e66] [cursor=pointer]:
+        - img [ref=e67]
+        - generic: Alerts
+      - generic "Settings" [ref=e70] [cursor=pointer]:
+        - img [ref=e71]
+        - generic: Settings
+    - generic [ref=e74]:
+      - generic [ref=e75]:
+        - generic [ref=e76]:
+          - button "🔴 Urgent (3)" [ref=e77] [cursor=pointer]
+          - button "All (14)" [ref=e78] [cursor=pointer]
+          - button "Routine (11)" [ref=e79] [cursor=pointer]
+          - button "Completed" [ref=e80] [cursor=pointer]
+        - generic [ref=e81]:
+          - img [ref=e82]
+          - text: Search patients...
+        - generic [ref=e85] [cursor=pointer]:
+          - img [ref=e86]
+          - text: Priority ↓
+      - generic [ref=e87]:
+        - generic [ref=e88]:
+          - generic [ref=e89]: Urgent Open
+          - generic [ref=e90]: "3"
+          - generic [ref=e91]:
+            - generic [ref=e92]: ↑ 2
+            - text: from yesterday
+        - generic [ref=e93]:
+          - generic [ref=e94]: Calls Handled Today
+          - generic [ref=e95]: "42"
+          - generic [ref=e96]:
+            - generic [ref=e97]: ↑ 18%
+            - text: vs last Monday
+        - generic [ref=e98]:
+          - generic [ref=e99]: Avg Triage Time
+          - generic [ref=e100]: 67s
+          - generic [ref=e101]:
+            - generic [ref=e102]: ↓ 12s
+            - text: faster this week
+        - generic [ref=e103]:
+          - generic [ref=e104]: Overdue
+          - generic [ref=e105]: "1"
+          - generic [ref=e106]: ⚠ Exceeds 2hr SLA
+      - table [ref=e108]:
+        - rowgroup [ref=e109]:
+          - row "Priority Patient Reason for Contact Via Received Status" [ref=e110]:
+            - columnheader "Priority" [ref=e111]
+            - columnheader "Patient" [ref=e112]
+            - columnheader "Reason for Contact" [ref=e113]
+            - columnheader "Via" [ref=e114]
+            - columnheader "Received" [ref=e115]
+            - columnheader "Status" [ref=e116]
+            - columnheader [ref=e117]
+        - rowgroup [ref=e118]:
+          - row "URGENT D. Okoye NHS 485 234 7821 Chest pain since yesterday morning, worse on movement 📞 Phone 09:41 NEW Action →" [ref=e119] [cursor=pointer]:
+            - cell "URGENT" [ref=e120]:
+              - generic [ref=e123]: URGENT
+            - cell "D. Okoye NHS 485 234 7821" [ref=e124]:
+              - generic [ref=e125]: D. Okoye
+              - generic [ref=e126]: NHS 485 234 7821
+            - cell "Chest pain since yesterday morning, worse on movement" [ref=e127]
+            - cell "📞 Phone" [ref=e128]:
+              - generic [ref=e129]: 📞 Phone
+            - cell "09:41" [ref=e130]
+            - cell "NEW" [ref=e131]
+            - cell "Action →" [ref=e132]:
+              - button "Action →" [ref=e133]
+          - row "URGENT R. Thompson NHS 512 901 3347 Child (8yrs) with fever 39.8°C — not eating for 2 days 📞 Phone 10:12 NEW Action →" [ref=e134] [cursor=pointer]:
+            - cell "URGENT" [ref=e135]:
+              - generic [ref=e138]: URGENT
+            - cell "R. Thompson NHS 512 901 3347" [ref=e139]:
+              - generic [ref=e140]: R. Thompson
+              - generic [ref=e141]: NHS 512 901 3347
+            - cell "Child (8yrs) with fever 39.8°C — not eating for 2 days" [ref=e142]
+            - cell "📞 Phone" [ref=e143]:
+              - generic [ref=e144]: 📞 Phone
+            - cell "10:12" [ref=e145]
+            - cell "NEW" [ref=e146]
+            - cell "Action →" [ref=e147]:
+              - button "Action →" [ref=e148]
+          - row "URGENT F. Nkosi NHS 329 445 0098 Shortness of breath, possible allergic reaction 🌐 Web 11:58 OPEN Action →" [ref=e149] [cursor=pointer]:
+            - cell "URGENT" [ref=e150]:
+              - generic [ref=e153]: URGENT
+            - cell "F. Nkosi NHS 329 445 0098" [ref=e154]:
+              - generic [ref=e155]: F. Nkosi
+              - generic [ref=e156]: NHS 329 445 0098
+            - cell "Shortness of breath, possible allergic reaction" [ref=e157]
+            - cell "🌐 Web" [ref=e158]:
+              - generic [ref=e159]: 🌐 Web
+            - cell "11:58" [ref=e160]
+            - cell "OPEN" [ref=e161]
+            - cell "Action →" [ref=e162]:
+              - button "Action →" [ref=e163]
+          - row "ROUTINE M. Patel NHS 601 238 5514 Repeat prescription — Metformin 500mg, 3-month supply 📞 Phone 08:22 OPEN Review" [ref=e164] [cursor=pointer]:
+            - cell "ROUTINE" [ref=e165]:
+              - generic [ref=e168]: ROUTINE
+            - cell "M. Patel NHS 601 238 5514" [ref=e169]:
+              - generic [ref=e170]: M. Patel
+              - generic [ref=e171]: NHS 601 238 5514
+            - cell "Repeat prescription — Metformin 500mg, 3-month supply" [ref=e172]
+            - cell "📞 Phone" [ref=e173]:
+              - generic [ref=e174]: 📞 Phone
+            - cell "08:22" [ref=e175]
+            - cell "OPEN" [ref=e176]
+            - cell "Review" [ref=e177]:
+              - button "Review" [ref=e178]
+          - row "ROUTINE S. Ahmed NHS 773 501 2290 Follow-up query after blood test results from last week 📞 Phone 09:05 OPEN Review" [ref=e179] [cursor=pointer]:
+            - cell "ROUTINE" [ref=e180]:
+              - generic [ref=e183]: ROUTINE
+            - cell "S. Ahmed NHS 773 501 2290" [ref=e184]:
+              - generic [ref=e185]: S. Ahmed
+              - generic [ref=e186]: NHS 773 501 2290
+            - cell "Follow-up query after blood test results from last week" [ref=e187]
+            - cell "📞 Phone" [ref=e188]:
+              - generic [ref=e189]: 📞 Phone
+            - cell "09:05" [ref=e190]
+            - cell "OPEN" [ref=e191]
+            - cell "Review" [ref=e192]:
+              - button "Review" [ref=e193]
+          - row "ADMIN J. Wilson NHS 448 302 7761 Sick note request for employer — back pain, 2 weeks 🌐 Web 13:30 OPEN Review" [ref=e194] [cursor=pointer]:
+            - cell "ADMIN" [ref=e195]:
+              - generic [ref=e198]: ADMIN
+            - cell "J. Wilson NHS 448 302 7761" [ref=e199]:
+              - generic [ref=e200]: J. Wilson
+              - generic [ref=e201]: NHS 448 302 7761
+            - cell "Sick note request for employer — back pain, 2 weeks" [ref=e202]
+            - cell "🌐 Web" [ref=e203]:
+              - generic [ref=e204]: 🌐 Web
+            - cell "13:30" [ref=e205]
+            - cell "OPEN" [ref=e206]
+            - cell "Review" [ref=e207]:
+              - button "Review" [ref=e208]
+          - row "DONE L. Kowalski NHS 381 772 4403 Appointment request — annual medication review 📞 Phone 08:03 DONE View" [ref=e209] [cursor=pointer]:
+            - cell "DONE" [ref=e210]:
+              - generic [ref=e213]: DONE
+            - cell "L. Kowalski NHS 381 772 4403" [ref=e214]:
+              - generic [ref=e215]: L. Kowalski
+              - generic [ref=e216]: NHS 381 772 4403
+            - cell "Appointment request — annual medication review" [ref=e217]
+            - cell "📞 Phone" [ref=e218]:
+              - generic [ref=e219]: 📞 Phone
+            - cell "08:03" [ref=e220]
+            - cell "DONE" [ref=e221]
+            - cell "View" [ref=e222]:
+              - button "View" [ref=e223]
+    - generic [ref=e224]:
+      - generic [ref=e225]:
+        - generic [ref=e226]: Case Detail
+        - generic [ref=e227]:
+          - generic [ref=e228]: Urgent
+          - button "✕" [ref=e230] [cursor=pointer]
+      - generic [ref=e231]:
+        - generic [ref=e232]:
+          - generic [ref=e233]:
+            - generic [ref=e234]: DO
+            - generic [ref=e235]:
+              - generic [ref=e236]: D. Okoye
+              - generic [ref=e237]: Male · 52 yrs · DOB 14 Mar 1974
+          - generic [ref=e238]:
+            - generic [ref=e239]:
+              - generic [ref=e240]: NHS Number
+              - generic [ref=e241]: 485 234 7821
+            - generic [ref=e242]:
+              - generic [ref=e243]: Registered Since
+              - generic [ref=e244]: Apr 2009
+            - generic [ref=e245]:
+              - generic [ref=e246]: GP
+              - generic [ref=e247]: Dr. S. Rahman
+            - generic [ref=e248]:
+              - generic [ref=e249]: Last Contact
+              - generic [ref=e250]: 22 May 2026
+        - generic [ref=e251]:
+          - generic [ref=e252]:
+            - generic [ref=e253]: 🧠
+            - generic [ref=e254]:
+              - generic [ref=e255]: Jeff's Triage Summary
+              - generic [ref=e256]: Extracted 09:41 · Ollama/Gemma4 · on-premises
+          - generic [ref=e257]: Patient reports chest pain that began yesterday morning, describing it as a "tight pressure" across the chest. Pain worsens with movement and has not improved with rest. No known cardiac history on record. Patient is a current smoker.
+          - generic [ref=e258]:
+            - generic [ref=e259]: Chest pain
+            - generic [ref=e260]: Cardiac risk
+            - generic [ref=e261]: Smoker
+            - generic [ref=e262]: ≥24hrs duration
+          - generic [ref=e263]:
+            - generic [ref=e264]: AI confidence
+            - generic [ref=e267]: 88%
+        - generic [ref=e268]:
+          - generic [ref=e269]: Guided Workflow
+          - generic [ref=e270]:
+            - generic [ref=e271]:
+              - generic [ref=e272]: ✓
+              - generic [ref=e273]:
+                - generic [ref=e274]: Read the reason for contact
+                - generic [ref=e275]: ✓ Jeff summary reviewed
+            - generic [ref=e276]:
+              - generic [ref=e277]: "2"
+              - generic [ref=e278]:
+                - generic [ref=e279]: Check patient record in EMIS
+                - generic [ref=e280]: Verify patient history, current medications, and any relevant flags before deciding action.
+                - generic [ref=e281]:
+                  - generic [ref=e282]:
+                    - generic [ref=e283]: D. Okoye · NHS 485 234 7821
+                    - generic [ref=e284]: No cardiac history on record
+                  - generic [ref=e285] [cursor=pointer]: Open EMIS →
+            - generic [ref=e286]:
+              - generic [ref=e287]: "3"
+              - generic [ref=e288]:
+                - generic [ref=e289]: Choose an action
+                - generic [ref=e290]: Select what should happen next for this patient.
+                - generic [ref=e291]:
+                  - generic [ref=e292] [cursor=pointer]: 📅 Emergency appointment
+                  - generic [ref=e293] [cursor=pointer]: 📞 GP callback
+                  - generic [ref=e294] [cursor=pointer]: 🏥 999 / A&E referral
+                  - generic [ref=e295] [cursor=pointer]: ✉ Send SMS
+            - generic [ref=e296]:
+              - generic [ref=e297]: "4"
+              - generic [ref=e298]:
+                - generic [ref=e299]: Confirm and close
+                - generic [ref=e300]: Add a note and mark this case as actioned. Stored in the audit log.
+      - generic [ref=e301]:
+        - button "Confirm Action →" [ref=e302] [cursor=pointer]
+        - button "Defer" [ref=e303] [cursor=pointer]

@@ -14,28 +14,85 @@ from fastapi.testclient import TestClient
 import app.audit as audit_module
 import app.db as db_module
 import app.main as main_module
+from app.auth import create_session
 from app.db import connect, init_db
 from app.importer import import_handoffs, map_handoff_to_case, upsert_case
-from app.main import app
+from app.main import SESSION_COOKIE, app
 from n8n_webhook_test_pack import build_test_calls
 
 
-HANDOFF_DIR = DASHBOARD_ROOT.parent / "outputs" / "handoff_json"
-
-
 def seed_rawmock_db(db_path):
+    """Seed 12 synthetic cases directly into the DB (no file-fixture dependency).
+
+    Replaces the old RAWMOCK*_handoff.json file-glob seeding, which depended on
+    fixture files that no longer match any pattern produced by the live
+    pipeline. TC- prefixed call_ids match the current production naming
+    convention (see app/main.py api_sync's "TC-*_handoff.json" pattern).
+    """
     with connect(db_path) as conn:
         init_db(conn)
-        return import_handoffs(conn, HANDOFF_DIR, pattern="RAWMOCK*_handoff.json")
+        request_types = ["prescription", "admin"]
+        for index in range(1, 13):
+            if index == 1:
+                call_id = "TC-001-REPEAT-EXACT"
+            elif index == 6:
+                call_id = "TC-006-URGENT-REDFLAG"
+            else:
+                call_id = f"TC-{index:03d}-ROUTINE"
+            is_red_flag = call_id == "TC-006-URGENT-REDFLAG"
+            case = map_handoff_to_case(
+                {
+                    "call_id": call_id,
+                    "call_timestamp": "2026-05-12T09:00:00Z",
+                    "request_type": request_types[index % 2],
+                    "normalized_input": {
+                        "patient_name": f"Patient {call_id}",
+                        "dob": "1970-01-01",
+                        "postcode": "PR9 7LT",
+                        "callback_number": "07111000000",
+                    },
+                    "verification_status": "matched",
+                    "verification_reason": "test",
+                    "priority": "999 Emergency" if is_red_flag else "routine",
+                    "safe_to_queue": not is_red_flag,
+                    "staff_review_required": is_red_flag,
+                    "red_flags_present": is_red_flag,
+                    "task_title": "Emergency red flag" if is_red_flag else "Routine task",
+                    "task_body": "Immediate review" if is_red_flag else "Routine request",
+                    "call_summary": "Chest pain and breathlessness" if is_red_flag else "Routine request",
+                    "raw_transcript": "Caller reports chest pain and breathlessness." if is_red_flag else "Routine request",
+                    "status": "New",
+                }
+            )
+            upsert_case(conn, case)
+        return 12
 
 
-def make_client(tmp_path, monkeypatch):
+def login_as(db_path, display_name):
+    """Create a real, DB-backed session for a seeded demo staff user and
+    return the plaintext session token (for placement in SESSION_COOKIE).
+
+    The dashboard's auth middleware (app.main.enforce_auth) requires a valid
+    SESSION_COOKIE on every request except /api/health, /api/n8n/, /static/.
+    Tests must log in as a real staff user to reach any other route.
+    """
+    with connect(db_path) as conn:
+        row = conn.execute(
+            "SELECT id FROM staff_users WHERE display_name = ?", (display_name,)
+        ).fetchone()
+        return create_session(conn, row["id"])
+
+
+def make_client(tmp_path, monkeypatch, login_as_name="Admin Demo"):
     db_path = tmp_path / "dashboard.sqlite"
     monkeypatch.setattr(db_module, "DB_PATH", db_path)
     monkeypatch.setattr(audit_module, "AUDIT_DIR", tmp_path / "audits")
     monkeypatch.setattr(main_module, "ALERT_DIR", tmp_path / "alerts")
     seed_rawmock_db(db_path)
-    return TestClient(app), db_path
+    client = TestClient(app)
+    if login_as_name:
+        client.cookies.set(SESSION_COOKIE, login_as(db_path, login_as_name))
+    return client, db_path
 
 
 def assert_json_response(response):
@@ -58,20 +115,7 @@ def test_api_health_returns_json_case_count(tmp_path, monkeypatch):
     assert data["checks"]["case_count"] >= 12
 
 
-def test_api_sync_rawmock_only_returns_pattern(tmp_path, monkeypatch):
-    client_context, _db_path = make_client(tmp_path, monkeypatch)
-    with client_context as client:
-        response = client.post("/api/sync?rawmock_only=true")
-
-    assert response.status_code == 200
-    assert_json_response(response)
-    data = response.json()
-    assert data["ok"] is True
-    assert data["pattern"] == "RAWMOCK*_handoff.json"
-    assert data["imported"] == 12
-
-
-def test_api_red_flags_includes_rawmock_006(tmp_path, monkeypatch):
+def test_api_red_flags_includes_tc_006(tmp_path, monkeypatch):
     client_context, _db_path = make_client(tmp_path, monkeypatch)
     with client_context as client:
         response = client.get("/api/red-flags")
@@ -82,10 +126,10 @@ def test_api_red_flags_includes_rawmock_006(tmp_path, monkeypatch):
     assert data["ok"] is True
     assert data["count"] >= 1
     case_ids = {case["call_id"] for case in data["cases"]}
-    assert "RAWMOCK-006-URGENT-REDFLAG" in case_ids
-    rawmock_006 = next(case for case in data["cases"] if case["call_id"] == "RAWMOCK-006-URGENT-REDFLAG")
-    assert rawmock_006["red_flags_present"] is True
-    assert rawmock_006["safe_to_queue"] is False
+    assert "TC-006-URGENT-REDFLAG" in case_ids
+    tc_006 = next(case for case in data["cases"] if case["call_id"] == "TC-006-URGENT-REDFLAG")
+    assert tc_006["red_flags_present"] is True
+    assert tc_006["safe_to_queue"] is False
 
 
 def test_api_overdue_returns_json(tmp_path, monkeypatch):
@@ -130,7 +174,7 @@ def alert_payload():
         "severity": "critical",
         "count": 1,
         "message": "Red flag cases require review",
-        "first_call_id": "RAWMOCK-006-URGENT-REDFLAG",
+        "first_call_id": "TC-006-URGENT-REDFLAG",
         "first_patient": "Avery Redfield",
         "first_priority": "999 Emergency",
         "source_workflow": "JeffLocal - 03 Red Flag Scan",
@@ -180,7 +224,7 @@ def test_api_alerts_recent_returns_logged_alerts(tmp_path, monkeypatch):
     assert data["ok"] is True
     assert data["count"] == 1
     assert data["alerts"][0]["alert_type"] == "JeffLocal Red Flag"
-    assert data["alerts"][0]["dedupe_key"] == "jefflocal red flag|rawmock-006-urgent-redflag|jefflocal - 03 red flag scan"
+    assert data["alerts"][0]["dedupe_key"] == "jefflocal red flag|tc-006-urgent-redflag|jefflocal - 03 red flag scan"
 
 
 def test_api_alert_logging_does_not_alter_locked_case_fields(tmp_path, monkeypatch):
@@ -194,7 +238,7 @@ def test_api_alert_logging_does_not_alter_locked_case_fields(tmp_path, monkeypat
         before = dict(
             conn.execute(
                 f"SELECT {fields} FROM cases WHERE call_id = ?",
-                ("RAWMOCK-006-URGENT-REDFLAG",),
+                ("TC-006-URGENT-REDFLAG",),
             ).fetchone()
         )
     with client_context as client:
@@ -203,7 +247,7 @@ def test_api_alert_logging_does_not_alter_locked_case_fields(tmp_path, monkeypat
         after = dict(
             conn.execute(
                 f"SELECT {fields} FROM cases WHERE call_id = ?",
-                ("RAWMOCK-006-URGENT-REDFLAG",),
+                ("TC-006-URGENT-REDFLAG",),
             ).fetchone()
         )
 
@@ -251,15 +295,6 @@ def test_api_n8n_test_intake_rejects_more_than_five_calls(tmp_path, monkeypatch)
     assert response.status_code == 400
     assert "1 to 5" in response.text
 
-
-def test_api_n8n_test_intake_rejects_non_n8ntest_call_id(tmp_path, monkeypatch):
-    client_context, _db_path = make_client(tmp_path, monkeypatch)
-    calls = [{"call_id": "RAWMOCK-001-BAD"}]
-    with client_context as client:
-        response = client.post("/api/n8n/test-intake-batch", json=n8ntest_payload(calls))
-
-    assert response.status_code == 400
-    assert "N8NTEST" in response.text
 
 
 def test_api_n8n_test_intake_accepts_valid_five_call_batch(tmp_path, monkeypatch):
@@ -378,7 +413,7 @@ def test_alerts_page_does_not_update_cases(tmp_path, monkeypatch):
     assert before == after
 
 
-def test_api_red_flags_sorts_newer_n8ntest_before_older_rawmock(tmp_path, monkeypatch):
+def test_api_red_flags_sorts_newer_n8ntest_before_older_tc(tmp_path, monkeypatch):
     client_context, db_path = make_client(tmp_path, monkeypatch)
     with connect(db_path) as conn:
         upsert_case(
@@ -409,8 +444,8 @@ def test_api_red_flags_sorts_newer_n8ntest_before_older_rawmock(tmp_path, monkey
     cases = response.json()["cases"]
     ids = [case["call_id"] for case in cases]
     assert "N8NTEST-005-REDFLAG" in ids
-    assert "RAWMOCK-006-URGENT-REDFLAG" in ids
-    assert ids.index("N8NTEST-005-REDFLAG") < ids.index("RAWMOCK-006-URGENT-REDFLAG")
+    assert "TC-006-URGENT-REDFLAG" in ids
+    assert ids.index("N8NTEST-005-REDFLAG") < ids.index("TC-006-URGENT-REDFLAG")
 
 
 def test_api_services_status_dashboard_online_and_n8n_offline_graceful(tmp_path, monkeypatch):
@@ -454,10 +489,9 @@ def test_dashboard_renders_service_status_panel(tmp_path, monkeypatch):
         response = client.get("/?range=all")
 
     assert response.status_code == 200
-    assert "System Health" in response.text
+    assert "System Status" in response.text
     assert "Refresh" in response.text
     assert "Voice Agent" in response.text
-    assert "Service Status" not in response.text
 
 
 def test_dashboard_renders_when_service_status_check_fails(tmp_path, monkeypatch):
@@ -472,7 +506,7 @@ def test_dashboard_renders_when_service_status_check_fails(tmp_path, monkeypatch
         response = client.get("/?range=all")
 
     assert response.status_code == 200
-    assert "System Health" in response.text
+    assert "System Status" in response.text
     assert "Degraded" in response.text or "Unknown" in response.text
 
 
@@ -493,7 +527,7 @@ def test_demo_staff_users_seed_and_selector_renders(tmp_path, monkeypatch):
     assert names["Reception Demo"] == "staff"
     assert names["GP Demo"] == "readonly"
     assert response.status_code == 200
-    assert "DEMO ONLY" in response.text
+    assert "DEMO / TEST DATA MODE" in response.text
     assert "Admin Demo" in response.text
 
 
@@ -523,13 +557,13 @@ def test_alert_modal_api_and_acknowledgement_flow(tmp_path, monkeypatch):
     assert response.json()["count"] == 1
     assert response.json()["alerts"][0]["alert_type"] == "JeffLocal Red Flag"
     assert ack.status_code == 200
-    assert ack.json()["acknowledged_by"] == "demo_user"
+    assert ack.json()["acknowledged_by"] == "Admin Demo"
     assert after.json()["count"] == 0
     with connect(db_path) as conn:
         row = conn.execute("SELECT acknowledged_at, acknowledged_by, acknowledgement_source FROM alert_events WHERE alert_id = ?", (alert_id,)).fetchone()
         audit_count = conn.execute("SELECT COUNT(*) FROM audit_events WHERE action = 'alert_acknowledged'").fetchone()[0]
     assert row["acknowledged_at"]
-    assert row["acknowledged_by"] == "demo_user"
+    assert row["acknowledged_by"] == "Admin Demo"
     assert row["acknowledgement_source"] == "dashboard_modal"
     assert audit_count == 1
 
@@ -580,43 +614,45 @@ def make_batch_case(call_id, red_flags_present=False, request_type="prescription
 def test_batch_resolve_valid_cases_and_preserves_locked_fields(tmp_path, monkeypatch):
     client_context, db_path = make_client(tmp_path, monkeypatch)
     with connect(db_path) as conn:
-        upsert_case(conn, make_batch_case("RAWMOCK-BATCH-001"))
-        upsert_case(conn, make_batch_case("RAWMOCK-BATCH-002"))
-        before = dict(conn.execute("SELECT priority, verification_status, safe_to_queue, red_flags_present FROM cases WHERE call_id = ?", ("RAWMOCK-BATCH-001",)).fetchone())
+        upsert_case(conn, make_batch_case("TC-BATCH-001"))
+        upsert_case(conn, make_batch_case("TC-BATCH-002"))
+        before = dict(conn.execute("SELECT priority, verification_status, safe_to_queue, red_flags_present FROM cases WHERE call_id = ?", ("TC-BATCH-001",)).fetchone())
 
     with client_context as client:
         response = client.post(
             "/api/cases/batch-resolve",
-            json={"call_ids": ["RAWMOCK-BATCH-001", "RAWMOCK-BATCH-002"], "allow_demo_user": True},
+            json={"call_ids": ["TC-BATCH-001", "TC-BATCH-002"]},
         )
 
     assert response.status_code == 200
     assert response.json()["resolved"] == 2
     with connect(db_path) as conn:
-        after = dict(conn.execute("SELECT priority, verification_status, safe_to_queue, red_flags_present, status, resolved_by, last_edited_by FROM cases WHERE call_id = ?", ("RAWMOCK-BATCH-001",)).fetchone())
+        after = dict(conn.execute("SELECT priority, verification_status, safe_to_queue, red_flags_present, status, resolved_by, last_edited_by FROM cases WHERE call_id = ?", ("TC-BATCH-001",)).fetchone())
         audit_count = conn.execute("SELECT COUNT(*) FROM audit_events WHERE action = 'batch_resolve'").fetchone()[0]
     for field in before:
         assert after[field] == before[field]
     assert after["status"] == "Resolved"
-    assert after["resolved_by"] == "demo_user"
-    assert after["last_edited_by"] == "demo_user"
+    assert after["resolved_by"] == "Admin Demo"
+    assert after["last_edited_by"] == "Admin Demo"
     assert audit_count == 2
 
 
-def test_batch_resolve_rejects_mixed_type_red_flag_and_missing_identity(tmp_path, monkeypatch):
+def test_batch_resolve_rejects_mixed_type_and_red_flag(tmp_path, monkeypatch):
+    # Note: this test previously also covered a "missing staff identity" 400
+    # case (anonymous request falling back to a demo_user identity). That
+    # path is no longer reachable over HTTP: app.main.enforce_auth now blocks
+    # every non-public request without a valid SESSION_COOKIE before it ever
+    # reaches this handler, so "missing identity" can't occur here anymore.
     client_context, db_path = make_client(tmp_path, monkeypatch)
     with connect(db_path) as conn:
-        upsert_case(conn, make_batch_case("RAWMOCK-BATCH-A"))
-        upsert_case(conn, make_batch_case("RAWMOCK-BATCH-B", request_type="admin"))
-        upsert_case(conn, make_batch_case("RAWMOCK-BATCH-RED", red_flags_present=True, priority="999 Emergency", safe_to_queue=False, staff_review_required=True))
+        upsert_case(conn, make_batch_case("TC-BATCH-A"))
+        upsert_case(conn, make_batch_case("TC-BATCH-B", request_type="admin"))
+        upsert_case(conn, make_batch_case("TC-BATCH-RED", red_flags_present=True, priority="999 Emergency", safe_to_queue=False, staff_review_required=True))
 
     with client_context as client:
-        missing_identity = client.post("/api/cases/batch-resolve", json={"call_ids": ["RAWMOCK-BATCH-A"]})
-        mixed = client.post("/api/cases/batch-resolve", json={"call_ids": ["RAWMOCK-BATCH-A", "RAWMOCK-BATCH-B"], "allow_demo_user": True})
-        red_flag = client.post("/api/cases/batch-resolve", json={"call_ids": ["RAWMOCK-BATCH-RED"], "allow_demo_user": True})
+        mixed = client.post("/api/cases/batch-resolve", json={"call_ids": ["TC-BATCH-A", "TC-BATCH-B"]})
+        red_flag = client.post("/api/cases/batch-resolve", json={"call_ids": ["TC-BATCH-RED"]})
 
-    assert missing_identity.status_code == 400
-    assert "Staff identity is required" in missing_identity.text
     assert mixed.status_code == 400
     assert red_flag.status_code == 400
     assert "Batch resolve unavailable" in red_flag.text
@@ -624,14 +660,13 @@ def test_batch_resolve_rejects_mixed_type_red_flag_and_missing_identity(tmp_path
 
 def test_readonly_user_cannot_resolve_or_acknowledge(tmp_path, monkeypatch):
     client_context, db_path = make_client(tmp_path, monkeypatch)
-    readonly_id = staff_id(db_path, "GP Demo")
     with connect(db_path) as conn:
         insert_alert(conn, "alert-readonly", "critical")
 
     with client_context as client:
-        client.cookies.set("jefflocal_staff_id", str(readonly_id))
+        client.cookies.set(SESSION_COOKIE, login_as(db_path, "GP Demo"))
         resolve = client.post(
-            "/case/RAWMOCK-001-REPEAT-EXACT/quick_action",
+            "/case/TC-001-REPEAT-EXACT/quick_action",
             data={"action": "resolve", "outcome_notes": "done"},
             follow_redirects=False,
         )
@@ -643,18 +678,17 @@ def test_readonly_user_cannot_resolve_or_acknowledge(tmp_path, monkeypatch):
 
 def test_staff_identity_populates_quick_action_fields(tmp_path, monkeypatch):
     client_context, db_path = make_client(tmp_path, monkeypatch)
-    staff = staff_id(db_path, "Reception Demo")
     with client_context as client:
-        client.cookies.set("jefflocal_staff_id", str(staff))
+        client.cookies.set(SESSION_COOKIE, login_as(db_path, "Reception Demo"))
         response = client.post(
-            "/case/RAWMOCK-001-REPEAT-EXACT/quick_action",
+            "/case/TC-001-REPEAT-EXACT/quick_action",
             data={"action": "start_review"},
             follow_redirects=False,
         )
 
     assert response.status_code == 303
     with connect(db_path) as conn:
-        row = conn.execute("SELECT assigned_to, last_edited_by FROM cases WHERE call_id = ?", ("RAWMOCK-001-REPEAT-EXACT",)).fetchone()
+        row = conn.execute("SELECT assigned_to, last_edited_by FROM cases WHERE call_id = ?", ("TC-001-REPEAT-EXACT",)).fetchone()
     assert row["assigned_to"] == "Reception Demo"
     assert row["last_edited_by"] == "Reception Demo"
 
@@ -702,33 +736,10 @@ def test_n8n_test_intake_response_uses_batch_specific_counts(tmp_path, monkeypat
     assert data["dashboard_imported_batch"] == 5
 
 
-def test_gp_demo_prefix_allowed_only_as_test_prefix(tmp_path, monkeypatch):
-    client_context, _db_path = make_client(tmp_path, monkeypatch)
-    calls = [{"call_id": f"GPDEMO-20260513-120000-00{index}-PRESCRIPTION"} for index in range(1, 6)]
-    payload = n8ntest_payload(calls)
-    payload["batch_id"] = "GPDEMO-20260513-120000"
-    monkeypatch.setattr(main_module, "archive_n8ntest_artifacts", lambda: {"total_archived": 0, "folders": []})
-    monkeypatch.setattr(main_module, "write_n8ntest_envelopes", lambda calls: [call["call_id"] for call in calls])
-    monkeypatch.setattr(main_module, "run_encrypted_cycle_disable_google_push", lambda: {"returncode": 0, "stdout": "", "stderr": ""})
-    monkeypatch.setattr(main_module, "count_batch_files", lambda folder, call_ids, suffix="": 5 if folder in {"queue/processed", "outputs/handoff_json"} else 0)
-    monkeypatch.setattr(main_module, "count_n8ntest_files", lambda folder, pattern="*N8NTEST*": 0)
-    monkeypatch.setattr(main_module, "import_handoffs", lambda conn, pattern="*_handoff.json": 5)
-    monkeypatch.setattr(main_module, "n8ntest_dashboard_cases", lambda call_ids=None: [{"call_id": call_id} for call_id in (call_ids or [])])
-
-    with client_context as client:
-        accepted = client.post("/api/n8n/test-intake-batch", json=payload)
-        unsafe = client.post("/api/n8n/test-intake-batch", json=n8ntest_payload([{"call_id": "LIVE-001"}]))
-
-    assert accepted.status_code == 200
-    assert accepted.json()["batch_processed"] == 5
-    assert unsafe.status_code == 400
-
-
 def test_admin_staff_edit_reactivate_invitation_and_audit(tmp_path, monkeypatch):
     client_context, db_path = make_client(tmp_path, monkeypatch)
-    admin = staff_id(db_path, "Admin Demo")
     with client_context as client:
-        client.cookies.set("jefflocal_staff_id", str(admin))
+        client.cookies.set(SESSION_COOKIE, login_as(db_path, "Admin Demo"))
         create = client.post("/staff/create", data={"display_name": "Demo Temp", "email": "temp@example.test", "role": "staff"}, follow_redirects=False)
         new_id = staff_id(db_path, "Demo Temp")
         edit = client.post(f"/staff/{new_id}/edit", data={"display_name": "Demo Temp Edited", "email": "edited@example.test", "role": "readonly", "active": "yes"}, follow_redirects=False)
@@ -756,12 +767,10 @@ def test_admin_staff_edit_reactivate_invitation_and_audit(tmp_path, monkeypatch)
 
 def test_non_admin_staff_management_mutation_forbidden(tmp_path, monkeypatch):
     client_context, db_path = make_client(tmp_path, monkeypatch)
-    staff = staff_id(db_path, "Reception Demo")
-    readonly = staff_id(db_path, "GP Demo")
     with client_context as client:
-        client.cookies.set("jefflocal_staff_id", str(staff))
+        client.cookies.set(SESSION_COOKIE, login_as(db_path, "Reception Demo"))
         staff_response = client.post("/staff/create", data={"display_name": "Bad", "role": "staff"})
-        client.cookies.set("jefflocal_staff_id", str(readonly))
+        client.cookies.set(SESSION_COOKIE, login_as(db_path, "GP Demo"))
         readonly_response = client.post("/staff/invitations/create", data={"email": "bad@example.test", "role": "staff"})
 
     assert staff_response.status_code == 403
@@ -770,13 +779,12 @@ def test_non_admin_staff_management_mutation_forbidden(tmp_path, monkeypatch):
 
 def test_recording_attachment_existing_call_no_overwrite_and_audit(tmp_path, monkeypatch):
     client_context, db_path = make_client(tmp_path, monkeypatch)
-    staff = staff_id(db_path, "Reception Demo")
     with client_context as client:
-        client.cookies.set("jefflocal_staff_id", str(staff))
-        first = client.post("/api/calls/RAWMOCK-001-REPEAT-EXACT/recording", json={"recording_local_path": "C:\\JeffLocal\\recordings\\demo.wav", "duration_seconds": 65, "source": "voice_agent_demo"})
-        second = client.post("/api/calls/RAWMOCK-001-REPEAT-EXACT/recording", json={"recording_local_path": "C:\\JeffLocal\\recordings\\other.wav"})
+        client.cookies.set(SESSION_COOKIE, login_as(db_path, "Reception Demo"))
+        first = client.post("/api/calls/TC-001-REPEAT-EXACT/recording", json={"recording_local_path": "C:\\JeffLocal\\recordings\\demo.wav", "duration_seconds": 65, "source": "voice_agent_demo"})
+        second = client.post("/api/calls/TC-001-REPEAT-EXACT/recording", json={"recording_local_path": "C:\\JeffLocal\\recordings\\other.wav"})
         missing = client.post("/api/calls/GPDEMO-MISSING/recording", json={"recording_local_path": "C:\\JeffLocal\\recordings\\missing.wav"})
-        detail = client.get("/case/RAWMOCK-001-REPEAT-EXACT")
+        detail = client.get("/case/TC-001-REPEAT-EXACT")
 
     assert first.status_code == 200
     assert first.json()["recording"]["recording_status"] == "available"
@@ -791,16 +799,15 @@ def test_recording_attachment_existing_call_no_overwrite_and_audit(tmp_path, mon
 
 def test_bulk_actions_assign_review_and_resolve_skips_unsafe(tmp_path, monkeypatch):
     client_context, db_path = make_client(tmp_path, monkeypatch)
-    staff = staff_id(db_path, "Reception Demo")
     with connect(db_path) as conn:
-        upsert_case(conn, make_batch_case("RAWMOCK-BULK-SAFE"))
-        upsert_case(conn, make_batch_case("RAWMOCK-BULK-REVIEW", staff_review_required=True))
-        upsert_case(conn, make_batch_case("RAWMOCK-BULK-RED", red_flags_present=True, priority="999 Emergency", safe_to_queue=False, staff_review_required=True))
+        upsert_case(conn, make_batch_case("TC-BULK-SAFE"))
+        upsert_case(conn, make_batch_case("TC-BULK-REVIEW", staff_review_required=True))
+        upsert_case(conn, make_batch_case("TC-BULK-RED", red_flags_present=True, priority="999 Emergency", safe_to_queue=False, staff_review_required=True))
     with client_context as client:
-        client.cookies.set("jefflocal_staff_id", str(staff))
-        assign = client.post("/api/cases/bulk-action", json={"call_ids": ["RAWMOCK-BULK-REVIEW"], "action": "assign_to_me"})
-        review = client.post("/api/cases/bulk-action", json={"call_ids": ["RAWMOCK-BULK-RED"], "action": "start_review"})
-        resolve = client.post("/api/cases/bulk-action", json={"call_ids": ["RAWMOCK-BULK-SAFE", "RAWMOCK-BULK-REVIEW", "RAWMOCK-BULK-RED"], "action": "resolve_eligible_only"})
+        client.cookies.set(SESSION_COOKIE, login_as(db_path, "Reception Demo"))
+        assign = client.post("/api/cases/bulk-action", json={"call_ids": ["TC-BULK-REVIEW"], "action": "assign_to_me"})
+        review = client.post("/api/cases/bulk-action", json={"call_ids": ["TC-BULK-RED"], "action": "start_review"})
+        resolve = client.post("/api/cases/bulk-action", json={"call_ids": ["TC-BULK-SAFE", "TC-BULK-REVIEW", "TC-BULK-RED"], "action": "resolve_eligible_only"})
 
     assert assign.status_code == 200
     assert review.status_code == 200

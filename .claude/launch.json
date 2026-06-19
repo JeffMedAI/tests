@@ -1,0 +1,27 @@
+﻿{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "dashboard",
+      "runtimeExecutable": "C:\\JeffLocal\\dashboard\\.venv\\Scripts\\python.exe",
+      "runtimeArgs": ["-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", "8765"],
+      "cwd": "C:\\JeffLocal\\dashboard",
+      "port": 8765
+    },
+    {
+      "name": "agent-diagram",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "7654", "--directory", "docs/agent-diagram"],
+      "cwd": "C:\\JeffLocal",
+      "port": 7654
+    }
+  ,
+    {
+      "name": "landing-preview",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "3456", "--directory", "docs/preview"],
+      "cwd": "C:\\JeffLocal",
+      "port": 3456
+    }
+  ]
+}

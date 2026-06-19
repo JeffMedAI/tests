@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JeffLocal — Cleanup Plan & E2E Workflow</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #0f1117; color: #e2e8f0; padding: 32px 20px; }
+  h1 { text-align: center; font-size: 20px; font-weight: 700; color: #f8fafc; margin-bottom: 4px; letter-spacing: 1px; }
+  .subtitle { text-align: center; font-size: 12px; color: #64748b; margin-bottom: 36px; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 4px; max-width: 1100px; margin: 0 auto 24px; }
+  .tab { padding: 8px 18px; border-radius: 8px 8px 0 0; font-size: 13px; font-weight: 600; cursor: pointer; background: #1e293b; color: #64748b; border: 1px solid #334155; border-bottom: none; }
+  .tab.active { background: #1e293b; color: #f8fafc; border-color: #475569; border-bottom-color: #1e293b; }
+  .panel { display: none; max-width: 1100px; margin: 0 auto; }
+  .panel.active { display: block; }
+
+  /* Cards */
+  .section { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 20px 24px; margin-bottom: 20px; }
+  .section-title { font-size: 13px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 14px; }
+  .red { color: #ef4444; }
+  .green { color: #22c55e; }
+  .amber { color: #f59e0b; }
+  .blue { color: #3b82f6; }
+  .purple { color: #a855f7; }
+
+  /* Directory tree */
+  .tree { font-family: 'Consolas', monospace; font-size: 12px; line-height: 1.9; }
+  .tree .keep { color: #22c55e; }
+  .tree .remove { color: #ef4444; text-decoration: line-through; opacity: 0.7; }
+  .tree .move { color: #f59e0b; }
+  .tree .new { color: #3b82f6; }
+  .tree .dim { color: #475569; }
+  .tree .indent1 { padding-left: 20px; }
+  .tree .indent2 { padding-left: 40px; }
+  .tree .indent3 { padding-left: 60px; }
+
+  /* Legend */
+  .legend { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 16px; font-size: 11px; }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; }
+
+  /* Grid */
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+  /* E2E flow */
+  .flow { display: flex; flex-direction: column; gap: 0; }
+  .flow-step {
+    display: flex; align-items: flex-start; gap: 16px;
+    padding: 14px 16px; border-radius: 10px;
+    background: #0f172a; border: 1px solid #334155; position: relative;
+  }
+  .flow-step::after {
+    content: '↓'; position: absolute; bottom: -18px; left: 50%;
+    transform: translateX(-50%); color: #475569; font-size: 18px; z-index: 1;
+  }
+  .flow-step:last-child::after { display: none; }
+  .flow-gap { height: 20px; }
+  .step-num {
+    width: 28px; height: 28px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; flex-shrink: 0; margin-top: 1px;
+  }
+  .step-body { flex: 1; }
+  .step-title { font-size: 13px; font-weight: 700; margin-bottom: 3px; }
+  .step-desc { font-size: 11px; color: #94a3b8; line-height: 1.5; }
+  .step-path { font-family: monospace; font-size: 10px; color: #64748b; margin-top: 4px; background: #1e293b; padding: 2px 6px; border-radius: 4px; display: inline-block; }
+  .step-tag { font-size: 10px; padding: 2px 7px; border-radius: 4px; font-weight: 600; display: inline-block; margin-top: 4px; }
+
+  /* Security flags */
+  .flag { background: #3b1a1a; border: 1px solid #ef4444; border-radius: 8px; padding: 12px 16px; margin-bottom: 10px; }
+  .flag-title { font-size: 12px; font-weight: 700; color: #ef4444; margin-bottom: 4px; }
+  .flag-desc { font-size: 11px; color: #fca5a5; line-height: 1.5; }
+
+  /* Removal table */
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { text-align: left; padding: 8px 12px; background: #0f172a; color: #64748b; font-weight: 600; letter-spacing: 0.5px; border-bottom: 1px solid #334155; }
+  td { padding: 8px 12px; border-bottom: 1px solid #1e293b; vertical-align: top; line-height: 1.5; }
+  tr:hover td { background: #1a2332; }
+  .badge { font-size: 10px; padding: 2px 7px; border-radius: 4px; font-weight: 700; white-space: nowrap; }
+  .badge-red { background: #3b1a1a; color: #ef4444; }
+  .badge-amber { background: #2d1f00; color: #f59e0b; }
+  .badge-green { background: #0a2010; color: #22c55e; }
+
+  /* Config comparison */
+  .config-card { background: #0f172a; border-radius: 8px; padding: 14px; font-family: monospace; font-size: 11px; line-height: 1.7; }
+  .config-key { color: #7dd3fc; }
+  .config-val { color: #86efac; }
+  .config-old { color: #ef4444; }
+  .config-note { color: #64748b; font-size: 10px; font-style: italic; }
+</style>
+</head>
+<body>
+
+<h1>JEFFLOCAL — DIRECTORY CLEANUP & E2E WORKFLOW</h1>
+<p class="subtitle">Review before any files are moved or deleted — Saeed's approval required</p>
+
+<div class="tabs">
+  <div class="tab active" onclick="show('cleanup')">🗑️ Cleanup Plan</div>
+  <div class="tab" onclick="show('structure')">📁 New Structure</div>
+  <div class="tab" onclick="show('e2e')">⚡ E2E Workflow</div>
+  <div class="tab" onclick="show('config')">⚙️ Ollama & n8n Config</div>
+  <div class="tab" onclick="show('security')">🛡️ Security Flags</div>
+</div>
+
+<!-- TAB 1: CLEANUP PLAN -->
+<div id="tab-cleanup" class="panel active">
+
+  <div class="section">
+    <div class="section-title red">What Will Be Removed (Awaiting Your Approval)</div>
+    <table>
+      <tr>
+        <th>Path</th>
+        <th>What It Is</th>
+        <th>Why Remove</th>
+        <th>Action</th>
+      </tr>
+      <tr>
+        <td><code>sandbox/</code></td>
+        <td>Duplicate dashboard, config, queue, agents. Port 5000.</td>
+        <td>Decision made: no more parallel sandbox directory. Work happens on git branches. The sandbox SQLite contains historical audit logs — archive first.</td>
+        <td><span class="badge badge-red">ARCHIVE THEN DELETE</span></td>
+      </tr>
+      <tr>
+        <td><code>production/</code></td>
+        <td>Contains only a README.md</td>
+        <td>Empty directory, confusing name — actual production is <code>dashboard/</code></td>
+        <td><span class="badge badge-red">DELETE</span></td>
+      </tr>
+      <tr>
+        <td><code>JeffLocaltmppytest-pre/</code><br><code>JeffLocaltmppytest-tmp/</code><br><code>JeffLocaltmppytest-tmp2/</code><br><code>pytest-tmp/</code></td>
+        <td>Leftover temp directories from pytest runs</td>
+        <td>Stale test artefacts. No useful content.</td>
+        <td><span class="badge badge-red">DELETE</span></td>
+      </tr>
+      <tr>
+        <td><code>.tmp/</code></td>
+        <td>Temporary working files</td>
+        <td>Stale</td>
+        <td><span class="badge badge-red">DELETE</span></td>
+      </tr>
+      <tr>
+        <td><code>.playwright-mcp/</code></td>
+        <td>26 Playwright session snapshots (.yml files)</td>
+        <td>Session captures from June 2026. Not needed.</td>
+        <td><span class="badge badge-red">DELETE</span></td>
+      </tr>
+      <tr>
+        <td><code>PyWhatKit_DB.txt</code></td>
+        <td>WhatsApp session file created by PyWhatKit</td>
+        <td>Leftover from a library test. Not needed.</td>
+        <td><span class="badge badge-red">DELETE</span></td>
+      </tr>
+      <tr>
+        <td><code>n8n API key.txt</code></td>
+        <td>Plaintext n8n API key in the root folder</td>
+        <td>Security risk. Key is already in <code>.mcp.json</code> (and should be rotated). Must not exist as a loose file in root.</td>
+        <td><span class="badge badge-red">DELETE + ROTATE KEY</span></td>
+      </tr>
+      <tr>
+        <td><code>check_button.ps1</code><br><code>check_button.py</code></td>
+        <td>One-off debug scripts</td>
+        <td>Loose files with no clear purpose. Created May 2026.</td>
+        <td><span class="badge badge-amber">REVIEW THEN DELETE</span></td>
+      </tr>
+      <tr>
+        <td><code>session</code> (empty file)<br><code>1</code> (empty file)</td>
+        <td>Leftover empty files in root</td>
+        <td>No content, no purpose</td>
+        <td><span class="badge badge-red">DELETE</span></td>
+      </tr>
+      <tr>
+        <td><code>COMPLETE_HANDOFF_FOR_EMAIL.zip</code></td>
+        <td>Old zip from May 2026</td>
+        <td>Likely superseded. Check if needed before deleting.</td>
+        <td><span class="badge badge-amber">REVIEW THEN DELETE</span></td>
+      </tr>
+      <tr>
+        <td><code>backup/</code> and <code>backups/</code></td>
+        <td>Two separate backup directories</td>
+        <td>Consolidate to one. Review contents before merging.</td>
+        <td><span class="badge badge-amber">CONSOLIDATE</span></td>
+      </tr>
+      <tr>
+        <td><code>dashboard/app/_backup_20260607-1426/</code><br><code>dashboard/templates/_backup_20260607/</code></td>
+        <td>In-place backups from last session's template work</td>
+        <td>Superseded by git history. Keep in git, delete the directories.</td>
+        <td><span class="badge badge-red">DELETE</span></td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="section">
+    <div class="section-title amber">What Will Be Kept (No Change)</div>
+    <table>
+      <tr><th>Path</th><th>Purpose</th></tr>
+      <tr><td><code>dashboard/</code></td><td>Production app — FastAPI, SQLite, templates. Port 8765. Watchdog-managed.</td></tr>
+      <tr><td><code>config/</code></td><td>4 config files (model_settings, pathways, routing_rules, model_monitoring) — exist in production. ✅</td></tr>
+      <tr><td><code>queue/</code></td><td>Live intake queue — encrypted_raw → incoming → processing → processed/failed/deadletter</td></tr>
+      <tr><td><code>outputs/</code></td><td>Handoff JSON output from pipeline</td></tr>
+      <tr><td><code>scripts/</code></td><td>PowerShell pipeline scripts (process_queue.ps1, call_ollama.ps1, etc.)</td></tr>
+      <tr><td><code>agents/</code></td><td>Agent briefing files (*_CLAUDE.md) — created this session</td></tr>
+      <tr><td><code>docs/</code></td><td>Session logs, reports, agent diagram, this cleanup plan</td></tr>
+      <tr><td><code>logs/</code></td><td>Audit logs and system logs</td></tr>
+      <tr><td><code>tests/</code></td><td>Test fixtures and send scripts</td></tr>
+      <tr><td><code>CLAUDE.md, AGENT_TEAM_CHARTER.md, GOVERNANCE.md, REPORTING.md, CHANGELOG.md</code></td><td>Governance framework — created this session</td></tr>
+      <tr><td><code>PROJECT_MEMORY.md</code></td><td>Project state document</td></tr>
+    </table>
+  </div>
+
+  <div class="section">
+    <div class="section-title blue">Important: Config Files in Sandbox (Need Migration)</div>
+    <p style="font-size:12px; color:#94a3b8; line-height:1.7;">
+      The 4 missing config files listed as PE-01 to PE-04 blockers in CLAUDE.md <strong style="color:#22c55e">already exist</strong> in
+      <code>sandbox/code/config/</code> — but they use the wrong model (<code>llama3.2</code> instead of <code>gemma4:e2b</code>).
+      The production <code>config/</code> directory already has its own correct versions of these files.
+      <strong style="color:#22c55e">PE-01 to PE-04 are NOT blockers — they already exist in production config.</strong>
+      This needs to be updated in CLAUDE.md.
+    </p>
+  </div>
+
+</div>
+
+<!-- TAB 2: NEW STRUCTURE -->
+<div id="tab-structure" class="panel">
+  <div class="section">
+    <div class="section-title green">Clean Folder Structure (After Approved Cleanup)</div>
+    <div class="legend">
+      <div class="legend-item"><div class="dot" style="background:#22c55e"></div> Keep</div>
+      <div class="legend-item"><div class="dot" style="background:#3b82f6"></div> Claude/governance files</div>
+      <div class="legend-item"><div class="dot" style="background:#f59e0b"></div> Pipeline</div>
+      <div class="legend-item"><div class="dot" style="background:#a855f7"></div> Data</div>
+    </div>
+    <div class="tree">
+      <div class="keep">C:\JeffLocal\</div>
+      <div class="keep indent1">├── dashboard/                   <span class="dim">← PRODUCTION app (port 8765, watchdog-managed)</span></div>
+      <div class="keep indent2">│   ├── app/                     <span class="dim">← FastAPI, auth, importer, audit</span></div>
+      <div class="keep indent2">│   ├── templates/               <span class="dim">← Jinja2 HTML templates</span></div>
+      <div class="keep indent2">│   ├── static/                  <span class="dim">← CSS</span></div>
+      <div class="keep indent2">│   ├── data/dashboard.sqlite    <span class="dim">← Live database</span></div>
+      <div class="keep indent2">│   └── tests/                   <span class="dim">← pytest unit + integration tests</span></div>
+      <div class="keep indent1">│</div>
+      <div class="keep indent1">├── config/                      <span class="dim">← All 4 pipeline config files (✅ exist)</span></div>
+      <div class="keep indent2">│   ├── model_settings.json      <span class="dim">← Ollama model config (gemma4:e2b)</span></div>
+      <div class="keep indent2">│   ├── pathways.json</div>
+      <div class="keep indent2">│   ├── routing_rules.json</div>
+      <div class="keep indent2">│   └── model_monitoring.json</div>
+      <div class="keep indent1">│</div>
+      <div class="keep indent1">├── queue/                       <span class="dim">← Intake queue stages</span></div>
+      <div class="keep indent2">│   ├── encrypted_raw/</div>
+      <div class="keep indent2">│   ├── incoming/</div>
+      <div class="keep indent2">│   ├── processing/</div>
+      <div class="keep indent2">│   ├── processed/</div>
+      <div class="keep indent2">│   ├── failed/</div>
+      <div class="keep indent2">│   └── deadletter/              <span class="dim">← 5 items awaiting replay tooling</span></div>
+      <div class="keep indent1">│</div>
+      <div class="keep indent1">├── outputs/handoff_json/        <span class="dim">← Processed handoff JSON (pipeline output)</span></div>
+      <div class="keep indent1">├── scripts/                     <span class="dim">← PowerShell pipeline (process_queue.ps1, etc.)</span></div>
+      <div class="keep indent1">├── logs/                        <span class="dim">← Audit logs, system logs</span></div>
+      <div class="keep indent1">├── tests/                       <span class="dim">← Test fixtures and send scripts</span></div>
+      <div class="keep indent1">├── agents/                      <span class="dim">← Agent briefing files (*_CLAUDE.md)</span></div>
+      <div class="keep indent1">├── docs/                        <span class="dim">← Session logs, reports, diagrams</span></div>
+      <div class="keep indent1">├── backup/                      <span class="dim">← Single consolidated backup location</span></div>
+      <div class="keep indent1">│</div>
+      <div class="keep indent1">├── CLAUDE.md                    <span class="dim">← Rules (read every session)</span></div>
+      <div class="keep indent1">├── PROJECT_MEMORY.md            <span class="dim">← Current project state</span></div>
+      <div class="keep indent1">├── AGENT_TEAM_CHARTER.md</div>
+      <div class="keep indent1">├── GOVERNANCE.md</div>
+      <div class="keep indent1">├── REPORTING.md</div>
+      <div class="keep indent1">└── CHANGELOG.md</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title amber">What Is Gone</div>
+    <div class="tree">
+      <div class="remove indent1">sandbox/                         ← archived and removed</div>
+      <div class="remove indent1">production/                      ← empty, removed</div>
+      <div class="remove indent1">JeffLocaltmppytest-*/            ← test temp dirs removed</div>
+      <div class="remove indent1">pytest-tmp/                      ← removed</div>
+      <div class="remove indent1">.tmp/                            ← removed</div>
+      <div class="remove indent1">.playwright-mcp/                 ← removed</div>
+      <div class="remove indent1">n8n API key.txt                  ← removed (key rotated)</div>
+      <div class="remove indent1">PyWhatKit_DB.txt                 ← removed</div>
+      <div class="remove indent1">session (empty file)             ← removed</div>
+      <div class="remove indent1">1 (empty file)                   ← removed</div>
+      <div class="remove indent1">check_button.*                   ← removed after review</div>
+      <div class="remove indent1">dashboard/app/_backup_*/         ← removed (in git already)</div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 3: E2E WORKFLOW -->
+<div id="tab-e2e" class="panel">
+  <div class="section">
+    <div class="section-title blue">End-to-End: Patient Call → Reception Action</div>
+    <div class="flow">
+
+      <div class="flow-step">
+        <div class="step-num" style="background:#1e3a5f; color:#3b82f6;">1</div>
+        <div class="step-body">
+          <div class="step-title">Patient calls the surgery</div>
+          <div class="step-desc">Jeff (Hostcomm UK voice AI) answers. Captures the reason for the call in plain language. Jeff does NOT make any clinical decisions — it only records what the patient says.</div>
+          <div class="step-tag" style="background:#1e293b; color:#64748b;">EXTERNAL — Hostcomm UK</div>
+        </div>
+      </div>
+      <div class="flow-gap"></div>
+
+      <div class="flow-step">
+        <div class="step-num" style="background:#1a2e1a; color:#22c55e;">2</div>
+        <div class="step-body">
+          <div class="step-title">Encrypted intake arrives</div>
+          <div class="step-desc">Jeff sends the transcript as an encrypted JSON payload via n8n webhook. n8n (port 5678, webhook path: <code>jefflocal-test-intake</code>) receives it and writes it to the queue.</div>
+          <div class="step-path">queue/encrypted_raw/</div>
+        </div>
+      </div>
+      <div class="flow-gap"></div>
+
+      <div class="flow-step">
+        <div class="step-num" style="background:#2d1f00; color:#f59e0b;">3</div>
+        <div class="step-body">
+          <div class="step-title">Pipeline processes the transcript</div>
+          <div class="step-desc">PowerShell pipeline decrypts, validates HMAC signature, then calls Ollama/Gemma (<code>gemma4:e2b</code>) to extract structured data from the patient's words. Fallback to <code>gemma4:e4b</code> if confidence &lt; 0.72.</div>
+          <div class="step-path">scripts/process_queue.ps1 → scripts/call_ollama.ps1</div>
+        </div>
+      </div>
+      <div class="flow-gap"></div>
+
+      <div class="flow-step">
+        <div class="step-num" style="background:#3b1a1a; color:#ef4444;">4</div>
+        <div class="step-body">
+          <div class="step-title">Deterministic safety layer</div>
+          <div class="step-desc">All LLM output is VERIFIED by deterministic code. The following fields are ALWAYS set by code — NEVER by the AI: <strong style="color:#fca5a5">priority, matched_patient_name, EMIS number, NHS number, date of birth, verification_status, safe_to_queue.</strong></div>
+          <div class="step-path">scripts/evaluate_model_output.ps1 → scripts/build_handoff.ps1</div>
+          <div class="step-tag" style="background:#3b1a1a; color:#ef4444;">🛡️ SAFETY GATE</div>
+        </div>
+      </div>
+      <div class="flow-gap"></div>
+
+      <div class="flow-step">
+        <div class="step-num" style="background:#1a2e1a; color:#22c55e;">5</div>
+        <div class="step-body">
+          <div class="step-title">Handoff JSON written</div>
+          <div class="step-desc">Verified task written as a structured JSON file. Contains: patient reference, reason, priority, safe_to_queue flag, and metadata.</div>
+          <div class="step-path">outputs/handoff_json/</div>
+        </div>
+      </div>
+      <div class="flow-gap"></div>
+
+      <div class="flow-step">
+        <div class="step-num" style="background:#1e293b; color:#a855f7;">6</div>
+        <div class="step-body">
+          <div class="step-title">Dashboard importer picks it up</div>
+          <div class="step-desc">The dashboard background importer polls <code>outputs/handoff_json/</code> every few seconds. Imports verified tasks into SQLite. Each task is tagged with <code>practice_id</code> for multi-tenancy isolation.</div>
+          <div class="step-path">dashboard/app/importer.py → dashboard/data/dashboard.sqlite</div>
+        </div>
+      </div>
+      <div class="flow-gap"></div>
+
+      <div class="flow-step">
+        <div class="step-num" style="background:#1e3a5f; color:#3b82f6;">7</div>
+        <div class="step-body">
+          <div class="step-title">Reception staff action the task</div>
+          <div class="step-desc">Staff log in to the dashboard at <strong>https://dashboard.app-avamed.uk</strong>. They see prioritised tasks, click through to case detail, mark as actioned. Audit log captures every action with timestamp and user.</div>
+          <div class="step-path">dashboard/ → Port 8765 → Cloudflare tunnel → dashboard.app-avamed.uk</div>
+          <div class="step-tag" style="background:#1e3a5f; color:#3b82f6;">LIVE PRODUCTION</div>
+        </div>
+      </div>
+      <div class="flow-gap"></div>
+
+      <div class="flow-step">
+        <div class="step-num" style="background:#231040; color:#a855f7;">8</div>
+        <div class="step-body">
+          <div class="step-title">Adding a new practice (multi-tenancy)</div>
+          <div class="step-desc">New practice = one database row. No new server, no new codebase, no new deployment. Practice gets login credentials and is visible only to their own staff via <code>practice_id</code> isolation on all queries.</div>
+          <div class="step-tag" style="background:#231040; color:#a855f7;">ONE SYSTEM, MANY PRACTICES</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title green">Development Workflow (No More Sandbox Directory)</div>
+    <div class="tree" style="line-height:2.2;">
+      <div class="keep">1. Create a git feature branch</div>
+      <div class="keep indent1">git checkout -b feature/your-change-name</div>
+      <div class="keep" style="margin-top:8px;">2. Make changes on the branch</div>
+      <div class="keep indent1">Edit files in C:\JeffLocal\dashboard\ (on the branch)</div>
+      <div class="keep" style="margin-top:8px;">3. Test locally (run dashboard on the branch)</div>
+      <div class="keep indent1">python -m uvicorn app.main:app --port 8765</div>
+      <div class="keep" style="margin-top:8px;">4. Get approval</div>
+      <div class="keep indent1">Security Agent review → Lead Agent approval pack → Saeed: "approved"</div>
+      <div class="keep" style="margin-top:8px;">5. Merge and deploy</div>
+      <div class="keep indent1">Merge to main → watchdog picks up the new version</div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 4: CONFIG -->
+<div id="tab-config" class="panel">
+
+  <div class="section">
+    <div class="section-title green">Ollama — Current Production Config (✅ Correct)</div>
+    <div class="config-card">
+      <span class="config-note">C:\JeffLocal\config\model_settings.json</span><br>
+      {<br>
+      &nbsp;&nbsp;<span class="config-key">"model_name"</span>: <span class="config-val">"gemma4:e2b"</span>,  <span class="config-note">← PRIMARY model (correct)</span><br>
+      &nbsp;&nbsp;<span class="config-key">"fallback_model"</span>: <span class="config-val">"gemma4:e4b"</span>,  <span class="config-note">← fallback if confidence &lt; 0.72</span><br>
+      &nbsp;&nbsp;<span class="config-key">"temperature"</span>: <span class="config-val">0.1</span>,  <span class="config-note">← low = deterministic extraction</span><br>
+      &nbsp;&nbsp;<span class="config-key">"timeout_seconds"</span>: <span class="config-val">30</span>,<br>
+      &nbsp;&nbsp;<span class="config-key">"confidence_floor"</span>: <span class="config-val">0.72</span>,<br>
+      &nbsp;&nbsp;<span class="config-key">"ollama_endpoint"</span>: <span class="config-val">"http://localhost:11434"</span>,<br>
+      &nbsp;&nbsp;<span class="config-key">"max_retries"</span>: <span class="config-val">2</span><br>
+      }
+    </div>
+    <p style="font-size:11px; color:#94a3b8; margin-top:10px;">
+      ⚠️ The sandbox config had <span class="config-old">llama3.2</span> — that is the wrong model. Production config uses <code>gemma4:e2b</code> which is correct per CLAUDE.md safety rules.
+      Do not overwrite production config with sandbox config.
+    </p>
+  </div>
+
+  <div class="section">
+    <div class="section-title green">n8n — Current Config (✅ Connected)</div>
+    <div class="config-card">
+      <span class="config-note">C:\JeffLocal\.mcp.json (n8n entry)</span><br>
+      {<br>
+      &nbsp;&nbsp;<span class="config-key">"N8N_API_URL"</span>: <span class="config-val">"http://localhost:5678/api/v1"</span>,<br>
+      &nbsp;&nbsp;<span class="config-key">"N8N_API_KEY"</span>: <span class="config-val">"eyJhbGci... [JWT]"</span>  <span class="config-note">← key present and active</span><br>
+      }
+    </div>
+    <p style="font-size:11px; color:#f59e0b; margin-top:10px;">
+      ⚠️ n8n webhook path must be <code>jefflocal-test-intake</code>. The API key in .mcp.json is the same key as the plaintext <code>n8n API key.txt</code> file in root.
+      Once that file is deleted, rotate the key so the old one cannot be used if it was ever exposed.
+    </p>
+  </div>
+
+  <div class="section">
+    <div class="section-title amber">Config Files — Status</div>
+    <table>
+      <tr><th>File</th><th>Exists in production config/?</th><th>Status</th></tr>
+      <tr><td><code>model_settings.json</code></td><td>✅ Yes</td><td><span class="badge badge-green">READY</span></td></tr>
+      <tr><td><code>pathways.json</code></td><td>✅ Yes</td><td><span class="badge badge-green">READY</span></td></tr>
+      <tr><td><code>routing_rules.json</code></td><td>✅ Yes</td><td><span class="badge badge-green">READY</span></td></tr>
+      <tr><td><code>model_monitoring.json</code></td><td>✅ Yes</td><td><span class="badge badge-green">READY</span></td></tr>
+    </table>
+    <p style="font-size:11px; color:#22c55e; margin-top:10px;">
+      ✅ PE-01 to PE-04 are NOT blockers. All 4 config files exist in <code>C:\JeffLocal\config\</code>. CLAUDE.md should be updated to reflect this.
+    </p>
+  </div>
+</div>
+
+<!-- TAB 5: SECURITY FLAGS -->
+<div id="tab-security" class="panel">
+
+  <div class="flag">
+    <div class="flag-title">🚨 CRITICAL — Plaintext API Key in Root Directory</div>
+    <div class="flag-desc">
+      <code>C:\JeffLocal\n8n API key.txt</code> contains the live n8n JWT API key in plain text.
+      This file must be deleted. Once deleted, the key must be rotated in n8n (Settings → API → revoke + generate new)
+      and the new key updated in <code>.mcp.json</code>.
+      Check git history to confirm this file was never committed — if it was, treat the key as compromised regardless.
+    </div>
+  </div>
+
+  <div class="flag">
+    <div class="flag-title">⚠️ Check .mcp.json is in .gitignore</div>
+    <div class="flag-desc">
+      <code>C:\JeffLocal\.mcp.json</code> contains the n8n API key. If this file is tracked by git,
+      the key has been pushed to GitHub and is in the repo history. Confirm it is listed in <code>.gitignore</code>
+      and has never been committed. If it has been committed, rotate the key immediately.
+    </div>
+  </div>
+
+  <div class="flag">
+    <div class="flag-title">⚠️ Sandbox SQLite Contains Audit Logs (Real Session Data)</div>
+    <div class="flag-desc">
+      <code>sandbox/logs/audits/</code> contains 7 audit log files from real sessions (May–June 2026).
+      Before the sandbox directory is deleted, these logs should be archived to <code>C:\JeffLocal\logs\audits\</code>
+      so the audit trail is preserved for GDPR compliance.
+    </div>
+  </div>
+
+  <div class="flag">
+    <div class="flag-title">⚠️ Sandbox SQLite Database May Contain Patient Data</div>
+    <div class="flag-desc">
+      <code>sandbox/dashboard/data/dashboard.sqlite</code> was a working database and may contain
+      test patient records. Before deletion, confirm it contains only test/mock data.
+      If any real patient data exists, it must be GDPR-purged before the file is deleted.
+    </div>
+  </div>
+
+  <div class="section" style="margin-top:20px;">
+    <div class="section-title green">What Is Already Correct</div>
+    <ul style="font-size:12px; color:#94a3b8; line-height:2; padding-left:16px;">
+      <li>Production config uses <code>gemma4:e2b</code> — correct model, low temperature (0.1)</li>
+      <li>n8n MCP is configured and pointing to localhost:5678</li>
+      <li>All 4 pipeline config files exist in <code>config/</code></li>
+      <li>Ollama endpoint is correct: <code>http://localhost:11434</code></li>
+      <li>GDPR 90-day purge script exists: <code>scripts/purge_old_data.ps1</code></li>
+    </ul>
+  </div>
+</div>
+
+<script>
+function show(tab) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>
+
+</body>
+</html>

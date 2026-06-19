@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Avamed Agent Team Structure</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: #0f1117;
+    color: #e2e8f0;
+    min-height: 100vh;
+    padding: 40px 20px;
+  }
+  h1 {
+    text-align: center;
+    font-size: 22px;
+    font-weight: 700;
+    color: #f8fafc;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+  }
+  .subtitle {
+    text-align: center;
+    font-size: 13px;
+    color: #64748b;
+    margin-bottom: 40px;
+    letter-spacing: 0.5px;
+  }
+
+  .diagram {
+    max-width: 960px;
+    margin: 0 auto;
+    position: relative;
+  }
+
+  /* Cards */
+  .card {
+    border-radius: 12px;
+    padding: 14px 18px;
+    text-align: center;
+    position: relative;
+  }
+  .card .role { font-size: 11px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; opacity: 0.7; margin-bottom: 4px; }
+  .card .name { font-size: 15px; font-weight: 700; }
+  .card .desc { font-size: 11px; opacity: 0.65; margin-top: 4px; line-height: 1.4; }
+
+  /* Saeed */
+  .saeed-row { display: flex; justify-content: center; margin-bottom: 0; }
+  .saeed {
+    background: linear-gradient(135deg, #1e3a5f 0%, #1a4a7a 100%);
+    border: 2px solid #3b82f6;
+    width: 220px;
+    box-shadow: 0 0 24px rgba(59,130,246,0.3);
+  }
+
+  /* Connectors */
+  .connector-v {
+    width: 2px;
+    background: #334155;
+    margin: 0 auto;
+  }
+  .connector-h {
+    height: 2px;
+    background: #334155;
+  }
+  .connector-veto {
+    border: 1.5px dashed #ef4444;
+    opacity: 0.6;
+  }
+
+  /* Security row */
+  .security-row {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 40px;
+    margin-bottom: 0;
+  }
+  .security {
+    background: linear-gradient(135deg, #3b1a1a 0%, #5c1f1f 100%);
+    border: 2px solid #ef4444;
+    width: 200px;
+    box-shadow: 0 0 18px rgba(239,68,68,0.25);
+  }
+  .veto-label {
+    font-size: 10px;
+    color: #ef4444;
+    text-align: center;
+    font-weight: 700;
+    letter-spacing: 1px;
+    margin-top: 4px;
+  }
+  .lead {
+    background: linear-gradient(135deg, #1a2e1a 0%, #1e3d1e 100%);
+    border: 2px solid #22c55e;
+    width: 200px;
+    box-shadow: 0 0 18px rgba(34,197,94,0.2);
+  }
+
+  /* Middle bridge */
+  .bridge {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0;
+    position: relative;
+  }
+  .bridge-line {
+    flex: 1;
+    height: 2px;
+    background: #334155;
+    max-width: 100px;
+  }
+
+  /* Specialist agents */
+  .agents-row {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-top: 0;
+  }
+  .agent {
+    background: #1e293b;
+    border: 1.5px solid #334155;
+    width: 138px;
+    transition: transform 0.15s, border-color 0.15s;
+  }
+  .agent:hover {
+    transform: translateY(-3px);
+    border-color: #475569;
+  }
+  .agent.marketing {
+    border-color: #a855f7;
+    background: linear-gradient(135deg, #1a1030 0%, #231040 100%);
+  }
+  .agent.strategy {
+    border-color: #6366f1;
+    background: linear-gradient(135deg, #0f1030 0%, #181840 100%);
+  }
+  .agent.strategy .role, .agent.marketing .role { opacity: 0.8; }
+
+  /* Spacing helpers */
+  .gap8 { height: 8px; }
+  .gap16 { height: 16px; }
+  .gap24 { height: 24px; }
+  .gap32 { height: 32px; }
+
+  /* Icons */
+  .icon { font-size: 20px; margin-bottom: 4px; display: block; }
+
+  /* Veto path indicator */
+  .veto-section {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    margin: 8px 0;
+  }
+  .veto-dash {
+    border-top: 2px dashed #ef4444;
+    width: 60px;
+    opacity: 0.5;
+  }
+  .veto-text {
+    font-size: 10px;
+    color: #ef4444;
+    font-weight: 600;
+    letter-spacing: 0.8px;
+    opacity: 0.8;
+  }
+
+  /* Legend */
+  .legend {
+    max-width: 960px;
+    margin: 40px auto 0;
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+    justify-content: center;
+    border-top: 1px solid #1e293b;
+    padding-top: 20px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    color: #94a3b8;
+  }
+  .legend-line {
+    width: 28px;
+    height: 2px;
+  }
+  .legend-line.solid { background: #334155; }
+  .legend-line.veto { border-top: 2px dashed #ef4444; }
+  .legend-line.coord { border-top: 2px dotted #a855f7; }
+
+  /* Coord line between strategy and marketing */
+  .coord-row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0;
+    margin-top: 6px;
+  }
+
+  /* Approval note */
+  .approval-note {
+    max-width: 600px;
+    margin: 0 auto;
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 10px;
+    padding: 14px 20px;
+    font-size: 12px;
+    color: #94a3b8;
+    line-height: 1.7;
+  }
+  .approval-note strong { color: #e2e8f0; }
+  .approval-note .chain {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+    font-size: 11px;
+  }
+  .chain-step {
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 6px;
+    padding: 4px 10px;
+    color: #cbd5e1;
+  }
+  .chain-arrow { color: #475569; }
+</style>
+</head>
+<body>
+
+<h1>AVAMED — AGENT TEAM STRUCTURE</h1>
+<p class="subtitle">Governance hierarchy · Authority levels · Approval chain</p>
+
+<div class="diagram">
+
+  <!-- SAEED -->
+  <div class="saeed-row">
+    <div class="card saeed">
+      <span class="icon">👤</span>
+      <div class="role">Human Controller</div>
+      <div class="name">SAEED</div>
+      <div class="desc">Final approver on all decisions<br>Non-technical CEO</div>
+    </div>
+  </div>
+
+  <div class="gap8"></div>
+  <div style="width:2px;height:28px;background:#334155;margin:0 auto;"></div>
+  <div class="gap8"></div>
+
+  <!-- SECURITY + LEAD row -->
+  <div class="security-row">
+
+    <!-- Security -->
+    <div style="text-align:center;">
+      <div class="card security">
+        <span class="icon">🛡️</span>
+        <div class="role">Independent Veto Authority</div>
+        <div class="name">SECURITY AGENT</div>
+        <div class="desc">GuardRail · NHS compliance<br>Can block any change</div>
+      </div>
+      <div class="veto-label">⬆ REPORTS DIRECT TO SAEED</div>
+    </div>
+
+    <!-- Lead -->
+    <div style="text-align:center;">
+      <div class="card lead">
+        <span class="icon">🎯</span>
+        <div class="role">Chief Coordinator</div>
+        <div class="name">LEAD AGENT</div>
+        <div class="desc">Session owner · Saeed's contact<br>Approval packs</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Veto dotted line indicator -->
+  <div class="veto-section">
+    <div class="veto-dash"></div>
+    <div class="veto-text">⟵ SECURITY VETO COVERS ALL AGENTS ⟶</div>
+    <div class="veto-dash"></div>
+  </div>
+
+  <!-- Vertical connector down from Lead -->
+  <div style="width:2px;height:24px;background:#334155;margin:0 auto;"></div>
+
+  <!-- Horizontal bar + vertical drops -->
+  <div style="position:relative;max-width:880px;margin:0 auto;">
+    <!-- Horizontal line -->
+    <div style="height:2px;background:#334155;width:100%;"></div>
+    <!-- 7 vertical drops -->
+    <div style="display:flex;justify-content:space-around;">
+      <div style="width:2px;height:24px;background:#334155;"></div>
+      <div style="width:2px;height:24px;background:#334155;"></div>
+      <div style="width:2px;height:24px;background:#334155;"></div>
+      <div style="width:2px;height:24px;background:#334155;"></div>
+      <div style="width:2px;height:24px;background:#334155;"></div>
+      <div style="width:2px;height:24px;background:#334155;"></div>
+      <div style="width:2px;height:24px;background:#334155;"></div>
+    </div>
+  </div>
+
+  <!-- AGENT CARDS -->
+  <div class="agents-row">
+
+    <div class="card agent">
+      <span class="icon">⚙️</span>
+      <div class="role">Backend</div>
+      <div class="name">BACKEND AGENT</div>
+      <div class="desc">Python · FastAPI · Pipeline · Auth</div>
+    </div>
+
+    <div class="card agent">
+      <span class="icon">🖥️</span>
+      <div class="role">Frontend</div>
+      <div class="name">FRONTEND AGENT</div>
+      <div class="desc">Dashboard UI · Jinja2 · Staff UX</div>
+    </div>
+
+    <div class="card agent">
+      <span class="icon">🗄️</span>
+      <div class="role">Database</div>
+      <div class="name">DATABASE AGENT</div>
+      <div class="desc">SQLite · Migrations · GDPR purge</div>
+    </div>
+
+    <div class="card agent">
+      <span class="icon">🧪</span>
+      <div class="role">Quality Gate</div>
+      <div class="name">TEST AGENT</div>
+      <div class="desc">pytest · Playwright · Definition of done</div>
+    </div>
+
+    <div class="card agent">
+      <span class="icon">🚀</span>
+      <div class="role">DevOps</div>
+      <div class="name">DEVOPS AGENT</div>
+      <div class="desc">Deploy · Git · Watchdog · Onboarding</div>
+    </div>
+
+    <div class="card agent strategy">
+      <span class="icon">📊</span>
+      <div class="role">Strategy</div>
+      <div class="name">STRATEGY AGENT</div>
+      <div class="desc">Docs · Procurement · NHS SBS</div>
+    </div>
+
+    <div class="card agent marketing">
+      <span class="icon">📣</span>
+      <div class="role">Marketing</div>
+      <div class="name">MARKETING AGENT</div>
+      <div class="desc">Brand · Website · Outreach · Collateral</div>
+    </div>
+
+  </div>
+
+  <!-- Coord line between Strategy and Marketing -->
+  <div style="max-width:880px;margin:8px auto 0;display:flex;justify-content:flex-end;padding-right:0;">
+    <div style="display:flex;align-items:center;gap:6px;margin-right:10px;">
+      <div style="font-size:10px;color:#818cf8;letter-spacing:0.8px;">↔ COORDINATE ON BRAND &amp; COMMERCIAL STRATEGY</div>
+    </div>
+  </div>
+
+  <div class="gap32"></div>
+
+  <!-- Approval chain -->
+  <div class="approval-note">
+    <strong>Standard Approval Chain</strong>
+    <div class="chain">
+      <div class="chain-step">Agent implements</div>
+      <div class="chain-arrow">→</div>
+      <div class="chain-step">🛡️ Security review <span style="color:#ef4444">(if safety-sensitive)</span></div>
+      <div class="chain-arrow">→</div>
+      <div class="chain-step">🎯 Lead Agent pack</div>
+      <div class="chain-arrow">→</div>
+      <div class="chain-step">👤 Saeed: <strong>"approved"</strong></div>
+    </div>
+    <div style="margin-top:10px;font-size:11px;">
+      <span style="color:#22c55e;">●</span> Bug fix autonomy exception: Security + Lead approve → CHANGELOG entry → Saeed notified next briefing &nbsp;|&nbsp;
+      <span style="color:#ef4444;">●</span> Security Agent veto is independent — Saeed cannot override without documented written reason
+    </div>
+  </div>
+
+</div>
+
+<!-- Legend -->
+<div class="legend">
+  <div class="legend-item">
+    <div class="legend-line solid"></div>
+    Reports to / managed by
+  </div>
+  <div class="legend-item">
+    <div class="legend-line veto"></div>
+    Security veto authority (all agents)
+  </div>
+  <div class="legend-item">
+    <span style="color:#3b82f6;font-size:14px;">■</span> Human Controller
+  </div>
+  <div class="legend-item">
+    <span style="color:#ef4444;font-size:14px;">■</span> Independent Veto
+  </div>
+  <div class="legend-item">
+    <span style="color:#22c55e;font-size:14px;">■</span> Coordinator
+  </div>
+  <div class="legend-item">
+    <span style="color:#6366f1;font-size:14px;">■</span> Strategy / Commercial
+  </div>
+  <div class="legend-item">
+    <span style="color:#a855f7;font-size:14px;">■</span> Marketing / Brand
+  </div>
+</div>
+
+</body>
+</html>

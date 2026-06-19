@@ -1,0 +1,1702 @@
+﻿JEFFLOCAL CURRENT WORKING STATE REPORT
+Created: 2026-05-18 11:59:30
+
+=== GIT ===
+?? docs/state_reports/
+
+1084906 (HEAD -> main, origin/main) Create JeffLocal dashboard-era restore point
+0a96ccc Add complete JeffLocal source for Claude review
+5c283b0 Implement JeffLocal dashboard and staff handoff upgrades
+66e2a5f Add JeffLocal README and end-to-end test requirements
+646df45 Add end-to-end test requirements documentation
+cfd86f4 Add documentation for LLM vs Rules Responsibility
+3da91e6 Create review prompt for JeffLocal implementation
+d7a2357 Add Codex build prompt for JeffLocal project
+ea46201 Initial commit
+
+origin	https://github.com/JeffMedAI/tests.git (fetch)
+origin	https://github.com/JeffMedAI/tests.git (push)
+
+
+=== TOP LEVEL STRUCTURE ===
+
+Mode   Name          LastWriteTime      
+----   ----          -------------      
+d--h-- .git          18/05/2026 11:59:30
+d----- .pytest_cache 15/05/2026 16:59:37
+d----- app           15/05/2026 17:00:20
+d----- backup        18/05/2026 11:33:40
+d----- config        18/05/2026 11:48:51
+d----- dashboard     15/05/2026 16:38:09
+d----- data          18/05/2026 11:48:51
+d----- docs          18/05/2026 11:59:30
+d----- logs          18/05/2026 11:28:47
+d----- outputs       18/05/2026 11:48:51
+d----- queue         18/05/2026 11:48:51
+d----- scripts       18/05/2026 11:48:51
+d----- tests         15/05/2026 16:59:36
+-a---- .gitignore    18/05/2026 11:53:44
+-a---- README.md     15/05/2026 15:32:13
+
+
+
+
+=== APP FILES ===
+
+FullName                                                                            LastWriteTime      
+--------                                                                            -------------      
+C:\JeffLocal\app\__pycache__\build_raw_intake_row.cpython-314.pyc                   18/05/2026 11:48:51
+C:\JeffLocal\app\__pycache__\decrypt_encrypted_raw.cpython-314.pyc                  18/05/2026 11:48:51
+C:\JeffLocal\app\__pycache__\receive_encrypted_intake.cpython-314.pyc               18/05/2026 11:48:51
+C:\JeffLocal\app\__pycache__\send_20_live_lookup_direct_to_queue.cpython-314.pyc    18/05/2026 11:48:51
+C:\JeffLocal\app\__pycache__\send_20_live_lookup_verification_calls.cpython-314.pyc 18/05/2026 11:48:51
+C:\JeffLocal\app\__pycache__\send_5_live_lookup_direct_to_queue.cpython-314.pyc     18/05/2026 11:48:51
+C:\JeffLocal\app\__pycache__\send_5_pathway_quality_direct_to_queue.cpython-314.pyc 18/05/2026 11:48:51
+C:\JeffLocal\app\archive_queue_item.ps1                                             15/04/2026 12:30:30
+C:\JeffLocal\app\build_handoff.ps1                                                  15/05/2026 14:44:12
+C:\JeffLocal\app\build_raw_intake_row.py                                            11/05/2026 12:35:51
+C:\JeffLocal\app\call_ollama.ps1                                                    15/05/2026 14:44:05
+C:\JeffLocal\app\classify_request.ps1                                               15/04/2026 12:29:50
+C:\JeffLocal\app\common.ps1                                                         15/04/2026 12:56:19
+C:\JeffLocal\app\decrypt_encrypted_raw.py                                           14/05/2026 16:41:00
+C:\JeffLocal\app\detect_flags.ps1                                                   15/04/2026 12:58:32
+C:\JeffLocal\app\evaluate_model_output.ps1                                          15/04/2026 13:41:03
+C:\JeffLocal\app\generate_staff_summary.ps1                                         15/04/2026 12:57:58
+C:\JeffLocal\app\modules\Jeff.Common.ps1                                            11/05/2026 11:55:26
+C:\JeffLocal\app\modules\Jeff.Emergency.ps1                                         13/05/2026 16:49:43
+C:\JeffLocal\app\modules\Jeff.Handoff.ps1                                           11/05/2026 12:59:24
+C:\JeffLocal\app\modules\Jeff.PatientMatch.ps1                                      08/05/2026 16:58:58
+C:\JeffLocal\app\modules\Jeff.RequestType.ps1                                       08/05/2026 17:06:25
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                                      15/05/2026 14:49:27
+C:\JeffLocal\app\modules\Jeff.Validation.ps1                                        08/05/2026 16:53:43
+C:\JeffLocal\app\poll_encrypted_intake_queue.ps1                                    11/05/2026 12:32:19
+C:\JeffLocal\app\process_queue.ps1                                                  14/05/2026 16:54:01
+C:\JeffLocal\app\push_to_google_sheet.ps1                                           15/04/2026 14:50:04
+C:\JeffLocal\app\receive_encrypted_intake.py                                        11/05/2026 11:58:33
+C:\JeffLocal\app\replay_deadletter_envelope.ps1                                     14/05/2026 15:59:00
+C:\JeffLocal\app\run_encrypted_intake_cycle.ps1                                     11/05/2026 13:09:35
+C:\JeffLocal\app\run_intake.ps1                                                     11/05/2026 11:56:16
+C:\JeffLocal\app\Run-MockTest-V5.ps1                                                20/04/2026 15:19:50
+C:\JeffLocal\app\send_20_live_lookup_direct_to_queue.py                             11/05/2026 12:09:25
+C:\JeffLocal\app\send_5_live_lookup_direct_to_queue.py                              11/05/2026 12:09:25
+C:\JeffLocal\app\send_fresh_encrypted_test.py                                       14/05/2026 16:47:35
+C:\JeffLocal\app\setup_test_keys.py                                                 05/05/2026 11:18:23
+C:\JeffLocal\app\validate_payload.ps1                                               15/04/2026 12:28:37
+
+
+
+
+=== DASHBOARD SOURCE FILES ===
+
+FullName                                                                                 LastWriteTime      
+--------                                                                                 -------------      
+C:\JeffLocal\dashboard\app\__init__.py                                                   11/05/2026 14:19:56
+C:\JeffLocal\dashboard\app\__pycache__\__init__.cpython-314.pyc                          18/05/2026 11:48:51
+C:\JeffLocal\dashboard\app\__pycache__\audit.cpython-314.pyc                             18/05/2026 11:48:51
+C:\JeffLocal\dashboard\app\__pycache__\db.cpython-314.pyc                                18/05/2026 11:48:51
+C:\JeffLocal\dashboard\app\__pycache__\importer.cpython-314.pyc                          18/05/2026 11:48:51
+C:\JeffLocal\dashboard\app\__pycache__\main.cpython-314.pyc                              18/05/2026 11:48:51
+C:\JeffLocal\dashboard\app\__pycache__\models.cpython-314.pyc                            18/05/2026 11:48:51
+C:\JeffLocal\dashboard\app\audit.py                                                      11/05/2026 14:16:34
+C:\JeffLocal\dashboard\app\db.py                                                         13/05/2026 14:32:38
+C:\JeffLocal\dashboard\app\importer.py                                                   13/05/2026 14:37:31
+C:\JeffLocal\dashboard\app\main.py                                                       15/05/2026 16:07:14
+C:\JeffLocal\dashboard\app\models.py                                                     13/05/2026 14:36:50
+C:\JeffLocal\dashboard\README.md                                                         11/05/2026 14:20:29
+C:\JeffLocal\dashboard\requirements.txt                                                  11/05/2026 14:20:01
+C:\JeffLocal\dashboard\run_dashboard.ps1                                                 14/05/2026 12:43:52
+C:\JeffLocal\dashboard\static\dashboard.css                                              15/05/2026 15:59:06
+C:\JeffLocal\dashboard\templates\alerts.html                                             13/05/2026 13:54:10
+C:\JeffLocal\dashboard\templates\base.html                                               15/05/2026 15:56:22
+C:\JeffLocal\dashboard\templates\case_detail.html                                        14/05/2026 11:13:23
+C:\JeffLocal\dashboard\templates\index.html                                              15/05/2026 15:58:56
+C:\JeffLocal\dashboard\templates\patients.html                                           15/05/2026 15:56:45
+C:\JeffLocal\dashboard\templates\reports.html                                            15/05/2026 15:56:55
+C:\JeffLocal\dashboard\templates\settings.html                                           15/05/2026 15:57:01
+C:\JeffLocal\dashboard\templates\staff.html                                              15/05/2026 16:07:24
+C:\JeffLocal\dashboard\tests\__pycache__\test_api_endpoints.cpython-314-pytest-8.4.2.pyc 18/05/2026 11:48:51
+C:\JeffLocal\dashboard\tests\__pycache__\test_api_endpoints.cpython-314-pytest-9.0.3.pyc 15/05/2026 16:59:36
+C:\JeffLocal\dashboard\tests\__pycache__\test_importer.cpython-314-pytest-8.4.2.pyc      18/05/2026 11:48:51
+C:\JeffLocal\dashboard\tests\__pycache__\test_importer.cpython-314-pytest-9.0.3.pyc      15/05/2026 16:59:37
+C:\JeffLocal\dashboard\tests\__pycache__\test_locked_fields.cpython-314-pytest-8.4.2.pyc 18/05/2026 11:48:51
+C:\JeffLocal\dashboard\tests\__pycache__\test_locked_fields.cpython-314-pytest-9.0.3.pyc 15/05/2026 16:59:37
+C:\JeffLocal\dashboard\tests\__pycache__\test_render_pages.cpython-314.pyc               18/05/2026 11:48:51
+C:\JeffLocal\dashboard\tests\__pycache__\test_render_pages.cpython-314-pytest-8.4.2.pyc  18/05/2026 11:48:51
+C:\JeffLocal\dashboard\tests\__pycache__\test_render_pages.cpython-314-pytest-9.0.3.pyc  15/05/2026 16:59:37
+C:\JeffLocal\dashboard\tests\diagnose_dashboard_data_integrity.py                        11/05/2026 14:52:21
+C:\JeffLocal\dashboard\tests\test_api_endpoints.py                                       15/05/2026 16:04:31
+C:\JeffLocal\dashboard\tests\test_importer.py                                            13/05/2026 14:45:22
+C:\JeffLocal\dashboard\tests\test_locked_fields.py                                       11/05/2026 15:48:51
+C:\JeffLocal\dashboard\tests\test_render_pages.py                                        15/05/2026 16:01:13
+
+
+
+
+=== DASHBOARD DATA STATE ===
+
+FullName                                     Length LastWriteTime      
+--------                                     ------ -------------      
+C:\JeffLocal\dashboard\data\dashboard.sqlite 995328 18/05/2026 11:48:51
+
+
+
+
+=== QUEUE STATE ===
+incoming : 1 files
+processing : 1 files
+processed : 1 files
+failed : 1 files
+deadletter : 1 files
+
+=== LATEST AUDIT LOGS ===
+
+FullName                                                  LastWriteTime       Length
+--------                                                  -------------       ------
+C:\JeffLocal\logs\audits\dashboard_audit_2026-05-18.jsonl 18/05/2026 09:56:23  30045
+C:\JeffLocal\logs\audits\dashboard_audit_2026-05-15.jsonl 15/05/2026 17:02:18   7245
+
+
+
+
+=== GOOGLE PUSH GUARDS ===
+
+LineNumber Line                                                                                                        
+---------- ----                                                                                                        
+         2     [switch]$DisableGooglePush,                                                                             
+         4     [switch]$NoGooglePush,                                                                                  
+       265         no_google_push         = [bool]($NoGooglePush -or $DisableGooglePush -or                            
+           $env:JEFFLOCAL_DISABLE_GOOGLE_PUSH -eq "1")                                                                 
+       345 elseif ($NoGooglePush) {                                                                                    
+       346     Write-Host "Google push disabled by -NoGooglePush for this run."                                        
+       728         elseif ($NoGooglePush) {                                                                            
+       731         elseif ($DisableGooglePush -or $env:JEFFLOCAL_DISABLE_GOOGLE_PUSH -eq "1") {                        
+       741                 google_push_skipped_reason = $googlePushSkippedReason                                       
+       748                 Write-Host "Google push skipped due to -NoGooglePush."                                      
+       757         elseif ($appSettings.google_sheet_enabled -eq $true) {                                              
+       782                 google_push_skipped_reason = "google_sheet_disabled"                                        
+
+
+
+
+=== REQUEST TYPE / PATHWAY REFERENCES ===
+
+Path                                                              LineNumber Line                                      
+----                                                              ---------- ----                                      
+C:\JeffLocal\app\build_handoff.ps1                                       179     $pathwayResponses =                   
+                                                                             Get-SafePropertyValue -Object $Call -Name 
+                                                                             "pathway_responses" -Default $null        
+C:\JeffLocal\app\build_handoff.ps1                                       180     $identityResponses =                  
+                                                                             Get-SafePropertyValue -Object             
+                                                                             $pathwayResponses -Name "identity"        
+                                                                             -Default $null                            
+C:\JeffLocal\app\build_handoff.ps1                                       279     $workflow = Get-SafePropertyValue     
+                                                                             -Object $Call -Name "workflow" -Default   
+                                                                             "unknown"                                 
+C:\JeffLocal\app\build_handoff.ps1                                       281         (Get-SafePropertyValue -Object    
+                                                                             $Call -Name "request_type"),              
+C:\JeffLocal\app\build_handoff.ps1                                       282         (Get-SafePropertyValue -Object    
+                                                                             $callNormalizedInput -Name                
+                                                                             "request_type"),                          
+C:\JeffLocal\app\build_handoff.ps1                                       283         (Get-SafePropertyValue -Object    
+                                                                             $pathwayResponses -Name                   
+                                                                             "selected_pathway"),                      
+C:\JeffLocal\app\build_handoff.ps1                                       284         "admin"                           
+C:\JeffLocal\app\build_handoff.ps1                                       418         PathwayResponses =                
+                                                                             $pathwayResponses                         
+C:\JeffLocal\app\build_handoff.ps1                                       434         -PathwayResponses                 
+                                                                             $pathwayResponses `                       
+C:\JeffLocal\app\build_handoff.ps1                                       472         workflow = $workflow              
+C:\JeffLocal\app\build_handoff.ps1                                       473         request_type = $requestType       
+C:\JeffLocal\app\build_handoff.ps1                                       487             request_type = $requestType   
+C:\JeffLocal\app\build_handoff.ps1                                       491         pathway_responses =               
+                                                                             $pathwayResponses                         
+C:\JeffLocal\app\call_ollama.ps1                                          11 You are assisting a GP practice reception 
+                                                                             workflow by reading a GP surgery phone    
+                                                                             call transcript for a local workflow      
+                                                                             processor.                                
+C:\JeffLocal\app\call_ollama.ps1                                          16 - You may suggest request_type and        
+                                                                             selected_pathway.                         
+C:\JeffLocal\app\call_ollama.ps1                                          21 - Write for busy reception/admin staff    
+                                                                             who need to understand the request within 
+                                                                             3 seconds.                                
+C:\JeffLocal\app\call_ollama.ps1                                          24 - Include patient name if stated, request 
+                                                                             type, medication/item/request detail if   
+                                                                             stated, and important issue such as       
+                                                                             urgent, callback refused, caller acting   
+                                                                             for someone else, unclear DOB, or missing 
+                                                                             details.                                  
+C:\JeffLocal\app\call_ollama.ps1                                          33 "Abdel Boumnijel requests repeat          
+                                                                             prescription for amlodipine; callback     
+                                                                             number provided."                         
+C:\JeffLocal\app\call_ollama.ps1                                          34 "Dorothy Bridge's daughter requests       
+                                                                             repeat prescription; caller is acting on  
+                                                                             patient's behalf."                        
+C:\JeffLocal\app\call_ollama.ps1                                          35 "Julie Chadwick requests repeat           
+                                                                             prescription but callback number was not  
+                                                                             confirmed."                               
+C:\JeffLocal\app\call_ollama.ps1                                          36 "Caller requests prescription but patient 
+                                                                             identity details are incomplete."         
+C:\JeffLocal\app\call_ollama.ps1                                          39 "The caller contacted the surgery         
+                                                                             regarding a prescription request and      
+                                                                             provided some information."               
+C:\JeffLocal\app\call_ollama.ps1                                          41 "Repeat prescription request."            
+C:\JeffLocal\app\call_ollama.ps1                                          60   "request_type": "",                     
+C:\JeffLocal\app\call_ollama.ps1                                          61   "selected_pathway": "",                 
+C:\JeffLocal\app\call_ollama.ps1                                          72     "emergency_advice_given": false,      
+C:\JeffLocal\app\call_ollama.ps1                                          77   "pathway_responses": {                  
+C:\JeffLocal\app\call_ollama.ps1                                          78     "prescription": {                     
+C:\JeffLocal\app\call_ollama.ps1                                          79       "prescription_type": "",            
+C:\JeffLocal\app\call_ollama.ps1                                          84     "sick_note": {                        
+C:\JeffLocal\app\call_ollama.ps1                                          85       "request_type": "",                 
+C:\JeffLocal\app\call_ollama.ps1                                          91     "referral": {                         
+C:\JeffLocal\app\call_ollama.ps1                                          92       "referral_type": "",                
+C:\JeffLocal\app\call_ollama.ps1                                         106     "admin": {                            
+C:\JeffLocal\app\call_ollama.ps1                                         107       "admin_reason": "",                 
+C:\JeffLocal\app\call_ollama.ps1                                         114 request_type and selected_pathway may be  
+                                                                             suggested by the model, but deterministic 
+                                                                             local code makes final routing,           
+                                                                             validation, and patient verification      
+                                                                             decisions.                                
+C:\JeffLocal\app\call_ollama.ps1                                         119 request_type_hint: $($Call.request_type)  
+C:\JeffLocal\app\decrypt_encrypted_raw.py                                 42     "workflow",                           
+C:\JeffLocal\app\decrypt_encrypted_raw.py                                 43     "request_type",                       
+C:\JeffLocal\app\decrypt_encrypted_raw.py                                547     if normalized.get("workflow") in      
+                                                                             (None, "") and request.get("workflow")    
+                                                                             not in (None, ""):                        
+C:\JeffLocal\app\decrypt_encrypted_raw.py                                548         normalized["workflow"] =          
+                                                                             request["workflow"]                       
+C:\JeffLocal\app\decrypt_encrypted_raw.py                                549     if normalized.get("request_type") in  
+                                                                             (None, "") and                            
+                                                                             request.get("request_type") not in (None, 
+                                                                             ""):                                      
+C:\JeffLocal\app\decrypt_encrypted_raw.py                                550         normalized["request_type"] =      
+                                                                             request["request_type"]                   
+C:\JeffLocal\app\decrypt_encrypted_raw.py                                622 def ensure_mixed_workflow_compatibility(pa
+                                                                             yload: dict[str, Any]) -> dict[str, Any]: 
+C:\JeffLocal\app\decrypt_encrypted_raw.py                                625     payload.setdefault("workflow",        
+                                                                             payload.get("workflow", "unknown"))       
+C:\JeffLocal\app\decrypt_encrypted_raw.py                                626     payload.setdefault("request_type",    
+                                                                             payload.get("request_type",               
+                                                                             "unknown_request"))                       
+C:\JeffLocal\app\decrypt_encrypted_raw.py                                661         return                            
+                                                                             ensure_mixed_workflow_compatibility(inner)
+C:\JeffLocal\app\decrypt_encrypted_raw.py                                665             "Could not apply mixed        
+                                                                             workflow compatibility normalization",    
+C:\JeffLocal\app\decrypt_encrypted_raw.py                                837                     "workflow":           
+                                                                             inner.get("workflow", ""),                
+C:\JeffLocal\app\decrypt_encrypted_raw.py                                838                     "request_type":       
+                                                                             inner.get("request_type", ""),            
+C:\JeffLocal\app\decrypt_encrypted_raw.py                                873                 "workflow":               
+                                                                             inner.get("workflow", ""),                
+C:\JeffLocal\app\decrypt_encrypted_raw.py                                874                 "request_type":           
+                                                                             inner.get("request_type", ""),            
+C:\JeffLocal\app\detect_flags.ps1                                         26         $uncertainFields +=               
+                                                                             "request_type_initial_response"           
+C:\JeffLocal\app\detect_flags.ps1                                         43         $priority = "urgent_review"       
+C:\JeffLocal\app\evaluate_model_output.ps1                                51     "workflow",                           
+C:\JeffLocal\app\evaluate_model_output.ps1                                52     "request_type",                       
+C:\JeffLocal\app\generate_staff_summary.ps1                               15     $summaryParts += "Caller requested a  
+                                                                             prescription for $medText."               
+C:\JeffLocal\app\process_queue.ps1                                        15 . "C:\JeffLocal\app\modules\Jeff.Emergency
+                                                                             .ps1"                                     
+C:\JeffLocal\app\process_queue.ps1                                       477         $pathwayResponses =               
+                                                                             Get-ObjectPropertyValue -Object $call     
+                                                                             -Name "pathway_responses" -Default $null  
+C:\JeffLocal\app\process_queue.ps1                                       478         $identityResponses =              
+                                                                             Get-ObjectPropertyValue -Object           
+                                                                             $pathwayResponses -Name "identity"        
+                                                                             -Default $null                            
+C:\JeffLocal\app\process_queue.ps1                                       479         $prescriptionResponses =          
+                                                                             Get-ObjectPropertyValue -Object           
+                                                                             $pathwayResponses -Name "prescription"    
+                                                                             -Default $null                            
+C:\JeffLocal\app\process_queue.ps1                                       480         $urgencyAssessment =              
+                                                                             Get-ObjectPropertyValue -Object           
+                                                                             $pathwayResponses -Name                   
+                                                                             "urgency_assessment" -Default $null       
+C:\JeffLocal\app\process_queue.ps1                                       514             (Get-ObjectPropertyValue      
+                                                                             -Object $prescriptionResponses -Name      
+                                                                             "pharmacy")                               
+C:\JeffLocal\app\process_queue.ps1                                       521             (Get-ObjectPropertyValue      
+                                                                             -Object $pathwayResponses -Name           
+                                                                             "caller_for"),                            
+C:\JeffLocal\app\process_queue.ps1                                       553             (Get-ObjectPropertyValue      
+                                                                             -Object $prescriptionResponses -Name      
+                                                                             "medications_requested" -Default @())     
+C:\JeffLocal\app\process_queue.ps1                                       588             (Get-ObjectPropertyValue      
+                                                                             -Object $call -Name "request_type"),      
+C:\JeffLocal\app\process_queue.ps1                                       589             (Get-ObjectPropertyValue      
+                                                                             -Object $callNormalizedInput -Name        
+                                                                             "request_type"),                          
+C:\JeffLocal\app\process_queue.ps1                                       590             (Get-ObjectPropertyValue      
+                                                                             -Object $pathwayResponses -Name           
+                                                                             "selected_pathway")                       
+C:\JeffLocal\app\process_queue.ps1                                       600         $pathwayText = ""                 
+C:\JeffLocal\app\process_queue.ps1                                       601         if ($null -ne $pathwayResponses) {
+C:\JeffLocal\app\process_queue.ps1                                       603                 $pathwayText =            
+                                                                             $pathwayResponses | ConvertTo-Json -Depth 
+                                                                             30 -Compress                              
+C:\JeffLocal\app\process_queue.ps1                                       606                 $pathwayText =            
+                                                                             [string]$pathwayResponses                 
+C:\JeffLocal\app\process_queue.ps1                                       610         $selectedPathway =                
+                                                                             [string](Get-ObjectPropertyValue -Object  
+                                                                             $pathwayResponses -Name                   
+                                                                             "selected_pathway" -Default "")           
+C:\JeffLocal\app\process_queue.ps1                                       613             (Get-ObjectPropertyValue      
+                                                                             -Object $callNormalizedInput -Name        
+                                                                             "request_type"),                          
+C:\JeffLocal\app\process_queue.ps1                                       614             $selectedPathway,             
+C:\JeffLocal\app\process_queue.ps1                                       620             $pathwayText                  
+C:\JeffLocal\app\process_queue.ps1                                       623         $requestType = if (-not [string]::
+                                                                             IsNullOrWhiteSpace($selectedPathway)) {   
+C:\JeffLocal\app\process_queue.ps1                                       624             Normalize-JeffRequestType     
+                                                                             $selectedPathway                          
+C:\JeffLocal\app\process_queue.ps1                                       630         Set-ObjectPropertyValue -Object   
+                                                                             $call -Name "request_type" -Value         
+                                                                             $requestType                              
+C:\JeffLocal\app\process_queue.ps1                                       632         Set-ObjectPropertyValue -Object   
+                                                                             $normalizedInput -Name "request_type"     
+                                                                             -Value $requestType                       
+C:\JeffLocal\app\process_queue.ps1                                       636             Set-ObjectPropertyValue       
+                                                                             -Object $callNormalizedInput -Name        
+                                                                             "request_type" -Value $requestType        
+C:\JeffLocal\app\process_queue.ps1                                       640         Write-Host "Canonical             
+                                                                             request_type: $callId $requestSubtype ->  
+                                                                             $requestType"                             
+C:\JeffLocal\app\process_queue.ps1                                       670             $normalizedInput.urgency_note 
+                                                                             -match "(?i)\burgent\b|\bsame\s*day\b|\bto
+                                                                             day\b|\brun\s*out\b|\brunning\s*out\b|\bno
+                                                                             \s*medication\b"                          
+C:\JeffLocal\app\process_queue.ps1                                       672             $flags.priority =             
+                                                                             "urgent_review"                           
+C:\JeffLocal\app\process_queue.ps1                                       687 $emergencyArgs = @{                       
+C:\JeffLocal\app\process_queue.ps1                                       698 $emergencyOverrideApplied =               
+                                                                             Invoke-JeffEmergencyOverride              
+                                                                             @emergencyArgs                            
+C:\JeffLocal\app\process_queue.ps1                                       700 if ($emergencyOverrideApplied) {          
+C:\JeffLocal\app\process_queue.ps1                                       701     Write-Host "Emergency red-flag        
+                                                                             override applied: $callId"                
+C:\JeffLocal\app\Run-MockTest-V5.ps1                                      46         workflow              =           
+                                                                             "prescription"                            
+C:\JeffLocal\app\Run-MockTest-V5.ps1                                      47         request_type          =           
+                                                                             "prescription"                            
+C:\JeffLocal\app\run_intake.ps1                                           89 $pathwayResponses = Get-LlmValue -Object  
+                                                                             $llmData -Name "pathway_responses"        
+                                                                             -Default $null                            
+C:\JeffLocal\app\run_intake.ps1                                           90 $prescriptionResponses = Get-LlmValue     
+                                                                             -Object $pathwayResponses -Name           
+                                                                             "prescription" -Default $null             
+C:\JeffLocal\app\run_intake.ps1                                           92 $selectedPathway = [string](Get-LlmValue  
+                                                                             -Object $llmData -Name "selected_pathway" 
+                                                                             -Default "")                              
+C:\JeffLocal\app\run_intake.ps1                                           93 $requestType = [string](Get-LlmValue      
+                                                                             -Object $llmData -Name "request_type"     
+                                                                             -Default $selectedPathway)                
+C:\JeffLocal\app\run_intake.ps1                                           94 $medicationsRequested = Get-LlmValue      
+                                                                             -Object $prescriptionResponses -Name      
+                                                                             "medications_requested" -Default @()      
+C:\JeffLocal\app\run_intake.ps1                                           95 $pharmacy = Get-LlmValue -Object          
+                                                                             $prescriptionResponses -Name "pharmacy"   
+                                                                             -Default ""                               
+C:\JeffLocal\app\run_intake.ps1                                          106     request_type = $requestType           
+C:\JeffLocal\app\run_intake.ps1                                          107     request_subtype = $selectedPathway    
+C:\JeffLocal\app\run_intake.ps1                                          121 if ($null -ne $pathwayResponses) {        
+C:\JeffLocal\app\run_intake.ps1                                          122     if ($call.PSObject.Properties["pathway
+                                                                             _responses"]) {                           
+C:\JeffLocal\app\run_intake.ps1                                          123         $call.PSObject.Properties["pathway
+                                                                             _responses"].Value = $pathwayResponses    
+C:\JeffLocal\app\run_intake.ps1                                          126         $call | Add-Member                
+                                                                             -NotePropertyName "pathway_responses"     
+                                                                             -NotePropertyValue $pathwayResponses      
+                                                                             -Force                                    
+C:\JeffLocal\app\run_intake.ps1                                          131     if ($call.PSObject.Properties["request
+                                                                             _type"]) {                                
+C:\JeffLocal\app\run_intake.ps1                                          132         $call.PSObject.Properties["request
+                                                                             _type"].Value = $requestType              
+C:\JeffLocal\app\run_intake.ps1                                          135         $call | Add-Member                
+                                                                             -NotePropertyName "request_type"          
+                                                                             -NotePropertyValue $requestType -Force    
+C:\JeffLocal\app\send_20_live_lookup_direct_to_queue.py                   58         print(f"[{i}/20]                  
+                                                                             {call['request_type']}")                  
+C:\JeffLocal\app\send_5_live_lookup_direct_to_queue.py                    48         all_calls[0],   # Abdel Boumnijel 
+                                                                             - repeat prescription                     
+C:\JeffLocal\app\send_5_live_lookup_direct_to_queue.py                    49         all_calls[1],   # Elizabeth       
+                                                                             Boumnijel - sick note                     
+C:\JeffLocal\app\send_5_live_lookup_direct_to_queue.py                    50         all_calls[2],   # Kevin Bradbury  
+                                                                             - referral query                          
+C:\JeffLocal\app\send_5_live_lookup_direct_to_queue.py                    52         all_calls[19],  # Phillip Doherty 
+                                                                             - admin query, no NHS supplied            
+C:\JeffLocal\app\send_5_live_lookup_direct_to_queue.py                    66         print(f"[{i}/5]                   
+                                                                             {call['request_type']}")                  
+C:\JeffLocal\app\send_fresh_encrypted_test.py                             48         "workflow": "prescription",       
+C:\JeffLocal\app\send_fresh_encrypted_test.py                             49         "request_type":                   
+                                                                             "repeat_prescription",                    
+C:\JeffLocal\app\send_fresh_encrypted_test.py                             64         "raw_transcript": "Test caller    
+                                                                             requests a routine repeat prescription.   
+                                                                             This is a synthetic local test            
+                                                                             transcript."                              
+C:\JeffLocal\app\modules\Jeff.Emergency.ps1                               20 function Invoke-JeffEmergencyOverride {   
+C:\JeffLocal\app\modules\Jeff.Emergency.ps1                               26     $pathwayResponses =                   
+                                                                             Get-JeffStaffValue -Object $Handoff -Name 
+                                                                             "pathway_responses" -Default $null        
+C:\JeffLocal\app\modules\Jeff.Emergency.ps1                               29     $evidence = Get-JeffEmergencyEvidence 
+                                                                             -PathwayResponses $pathwayResponses       
+                                                                             -RawTranscript $rawTranscript             
+                                                                             -TranscriptSummary $transcriptSummary     
+C:\JeffLocal\app\modules\Jeff.Emergency.ps1                               32         Set-JeffHandoffFieldSafe -Object  
+                                                                             $Handoff -Name "priority" -Value "999     
+                                                                             Emergency"                                
+C:\JeffLocal\app\modules\Jeff.Emergency.ps1                               39             RequestType =                 
+                                                                             [string](Get-JeffStaffValue -Object       
+                                                                             $Handoff -Name "request_type" -Default    
+                                                                             "admin")                                  
+C:\JeffLocal\app\modules\Jeff.Emergency.ps1                               41             PathwayResponses =            
+                                                                             Get-JeffStaffValue -Object $Handoff -Name 
+                                                                             "pathway_responses" -Default $null        
+C:\JeffLocal\app\modules\Jeff.Emergency.ps1                               46             Priority = "999 Emergency"    
+C:\JeffLocal\app\modules\Jeff.Emergency.ps1                               59         Set-JeffHandoffFieldSafe -Object  
+                                                                             $Handoff -Name "call_summary" -Value      
+                                                                             "Possible emergency red-flag symptoms     
+                                                                             identified from caller report. Caller     
+                                                                             requires immediate urgent safety          
+                                                                             handling."                                
+C:\JeffLocal\app\modules\Jeff.Emergency.ps1                               60         Set-JeffHandoffFieldSafe -Object  
+                                                                             $Handoff -Name "urgency_level" -Value     
+                                                                             "999 Emergency"                           
+C:\JeffLocal\app\modules\Jeff.Handoff.ps1                                 14         [object]$PathwayResponses = $null,
+C:\JeffLocal\app\modules\Jeff.Handoff.ps1                                 30         PathwayResponses =                
+                                                                             $PathwayResponses                         
+C:\JeffLocal\app\modules\Jeff.Handoff.ps1                                 72     $urgentSubtype = $RequestSubtype -in  
+                                                                             @("urgent_repeat_prescription",           
+                                                                             "urgent_appointment_request",             
+                                                                             "red_flag_medication_request")            
+C:\JeffLocal\app\modules\Jeff.Handoff.ps1                                 83         $RequestSubtype -in               
+                                                                             @("third_party_repeat_prescription",      
+                                                                             "sick_note_request", "referral_query",    
+                                                                             "test_results_query") -or                 
+C:\JeffLocal\app\modules\Jeff.Handoff.ps1                                 84         $RequestType -in @("sick_note",   
+                                                                             "referral", "test_result",                
+                                                                             "appointment_redirect", "unknown",        
+                                                                             "needs_review")                           
+C:\JeffLocal\app\modules\Jeff.Handoff.ps1                                 89     if ($urgentSubtype) {                 
+C:\JeffLocal\app\modules\Jeff.Handoff.ps1                                 99         $priority = "999 Emergency"       
+C:\JeffLocal\app\modules\Jeff.Handoff.ps1                                105         if ($urgentSubtype) {             
+C:\JeffLocal\app\modules\Jeff.Handoff.ps1                                106             $priority = "urgent_review"   
+C:\JeffLocal\app\modules\Jeff.Handoff.ps1                                111         elseif ($priority -eq             
+                                                                             "urgent_review") {                        
+C:\JeffLocal\app\modules\Jeff.Handoff.ps1                                116     $actionNeeded = if                    
+                                                                             ($staffReviewRequired) { "Staff review    
+                                                                             required" } else { "Process according to  
+                                                                             workflow" }                               
+C:\JeffLocal\app\modules\Jeff.RequestType.ps1                             10         "prescription|repeat|medication|me
+                                                                             dicine|inhaler|pharmacy|drug|tablet|cream|
+                                                                             gel|capsule|dose" { return "prescription" 
+                                                                             }                                         
+C:\JeffLocal\app\modules\Jeff.RequestType.ps1                             11         "sick\s*note|fit\s*note|fitnote|me
+                                                                             d3|med\s*3|doctor'?s\s*note|gp\s*note|cert
+                                                                             ificate|signed\s*off|sign\s*off" { return 
+                                                                             "sick_note" }                             
+C:\JeffLocal\app\modules\Jeff.RequestType.ps1                             12         "referral|hospital|consultant|clin
+                                                                             ic|chase\s*referral|referred|choose\s*and\
+                                                                             s*book|e-?rs|ers" { return "referral" }   
+C:\JeffLocal\app\modules\Jeff.RequestType.ps1                             15         "admin|reception|letter|records|ad
+                                                                             dress|registration|register|form|email|onl
+                                                                             ine\s*access|medical\s*record|copy\s*of|co
+                                                                             mplaint" { return "admin" }               
+C:\JeffLocal\app\modules\Jeff.RequestType.ps1                             16         default { return "admin" }        
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           188 function Get-JeffEmergencyEvidence {      
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           190         [object]$PathwayResponses,        
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           195     $urgency = Get-JeffStaffValue -Object 
+                                                                             $PathwayResponses -Name                   
+                                                                             "urgency_assessment" -Default $null       
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           202     $structuredAdviceGiven =              
+                                                                             Convert-JeffStaffBool (Get-JeffStaffValue 
+                                                                             -Object $urgency -Name                    
+                                                                             "emergency_advice_given" -Default $false) 
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           203     $appointmentRedirected =              
+                                                                             Convert-JeffStaffBool (Get-JeffStaffValue 
+                                                                             -Object $PathwayResponses -Name           
+                                                                             "appointment_redirected" -Default $false) 
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           210             emergency_advice_given =      
+                                                                             $structuredAdviceGiven                    
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           215     if ($structuredAdviceGiven -or        
+                                                                             $structuredUrgencyLevel -eq "999          
+                                                                             Emergency" -or $structuredUrgencyLevel    
+                                                                             -match "(?i)\b(emergency|urgent)\b") {    
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           217         if ($structuredUrgencyLevel -eq   
+                                                                             "999 Emergency") {                        
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           218             $symptoms += "urgent symptoms"
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           224         if ($appointmentRedirected -and   
+                                                                             $structuredUrgencyLevel -match            
+                                                                             "(?i)\b(emergency|urgent)\b") {           
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           225             $symptoms += "urgent          
+                                                                             appointment redirect"                     
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           230             $symptoms = @("urgent         
+                                                                             symptoms")                                
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           237             emergency_advice_given =      
+                                                                             $structuredAdviceGiven                    
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           265             emergency_advice_given =      
+                                                                             $false                                    
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           275                 symptoms = @("urgent      
+                                                                             symptoms")                                
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           277                 emergency_advice_given =  
+                                                                             $false                                    
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           287         emergency_advice_given =          
+                                                                             $structuredAdviceGiven                    
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           294         [object]$PathwayResponses,        
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           299     $evidence = Get-JeffEmergencyEvidence 
+                                                                             -PathwayResponses $PathwayResponses       
+                                                                             -RawTranscript $RawTranscript             
+                                                                             -TranscriptSummary $TranscriptSummary     
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           335 function Test-JeffEmergencyAdviceGiven {  
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           337         [object]$PathwayResponses,        
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           341     $urgency = Get-JeffStaffValue -Object 
+                                                                             $PathwayResponses -Name                   
+                                                                             "urgency_assessment" -Default $null       
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           342     $adviceGiven = Get-JeffStaffValue     
+                                                                             -Object $urgency -Name                    
+                                                                             "emergency_advice_given" -Default $false  
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           356         if ($text -match                  
+                                                                             '(dial|call|ring)\s*(nine[- ]?nine[-      
+                                                                             ]?nine|999)|a\s*and\s*e|urgent care       
+                                                                             now|seek urgent care') {                  
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           399         "prescription" { return           
+                                                                             "Prescription" }                          
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           400         "sick_note" { return "Sick note" }
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           401         "referral" { return "Referral" }  
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           402         "test_result" { return "Test      
+                                                                             result" }                                 
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           404         "admin" { return "Admin" }        
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           412         [object]$PathwayResponses,        
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           416     $prescription = Get-JeffStaffValue    
+                                                                             -Object $PathwayResponses -Name           
+                                                                             "prescription" -Default $null             
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           417     $sickNote = Get-JeffStaffValue        
+                                                                             -Object $PathwayResponses -Name           
+                                                                             "sick_note" -Default $null                
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           418     $referral = Get-JeffStaffValue        
+                                                                             -Object $PathwayResponses -Name           
+                                                                             "referral" -Default $null                 
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           419     $testResult = Get-JeffStaffValue      
+                                                                             -Object $PathwayResponses -Name           
+                                                                             "test_result" -Default $null              
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           420     $appointment = Get-JeffStaffValue     
+                                                                             -Object $PathwayResponses -Name           
+                                                                             "appointment_redirect" -Default $null     
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           421     $admin = Get-JeffStaffValue -Object   
+                                                                             $PathwayResponses -Name "admin" -Default  
+                                                                             $null                                     
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           424         "prescription" {                  
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           427                 (Get-JeffStaffValue       
+                                                                             -Object $prescription -Name               
+                                                                             "medications_requested" -Default @()),    
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           431         "sick_note" {                     
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           433                 (Get-JeffStaffValue       
+                                                                             -Object $sickNote -Name "purpose"),       
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           434                 (Get-JeffStaffValue       
+                                                                             -Object $sickNote -Name "reason"),        
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           438         "referral" {                      
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           440                 (Get-JeffStaffValue       
+                                                                             -Object $referral -Name "hospital_name"), 
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           441                 (Get-JeffStaffValue       
+                                                                             -Object $referral -Name "specialty"),     
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           442                 (Get-JeffStaffValue       
+                                                                             -Object $referral -Name "referral_type"), 
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           443                 "referral details unclear"
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           460                 (Get-JeffStaffValue       
+                                                                             -Object $admin -Name "admin_reason"),     
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           461                 "admin details unclear"   
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           531         [object]$PathwayResponses,        
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           553     $detail = Get-JeffRequestDetail       
+                                                                             -RequestType $RequestType                 
+                                                                             -PathwayResponses $PathwayResponses       
+                                                                             -MedicationsRequested                     
+                                                                             $MedicationsRequested                     
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           638         [object]$PathwayResponses,        
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           657     $prescription = Get-JeffStaffValue    
+                                                                             -Object $PathwayResponses -Name           
+                                                                             "prescription" -Default $null             
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           658     $sickNote = Get-JeffStaffValue        
+                                                                             -Object $PathwayResponses -Name           
+                                                                             "sick_note" -Default $null                
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           659     $referral = Get-JeffStaffValue        
+                                                                             -Object $PathwayResponses -Name           
+                                                                             "referral" -Default $null                 
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           660     $testResult = Get-JeffStaffValue      
+                                                                             -Object $PathwayResponses -Name           
+                                                                             "test_result" -Default $null              
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           661     $admin = Get-JeffStaffValue -Object   
+                                                                             $PathwayResponses -Name "admin" -Default  
+                                                                             $null                                     
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           662     $urgency = Get-JeffStaffValue -Object 
+                                                                             $PathwayResponses -Name                   
+                                                                             "urgency_assessment" -Default $null       
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           672     if ($redFlag -or $Priority -eq "999   
+                                                                             Emergency") {                             
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           673         $symptoms =                       
+                                                                             Get-JeffStaffRedFlagText                  
+                                                                             -PathwayResponses $PathwayResponses       
+                                                                             -RawTranscript $RawTranscript             
+                                                                             -TranscriptSummary $TranscriptSummary     
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           674         $adviceText = if                  
+                                                                             (Test-JeffEmergencyAdviceGiven            
+                                                                             -PathwayResponses $PathwayResponses       
+                                                                             -RawTranscript $RawTranscript) {          
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           675             "Transcript/pathway indicates 
+                                                                             urgent care or 999/A&E advice was given." 
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           678             "No confirmed 999/A&E advice  
+                                                                             found in the extracted pathway data."     
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           682             task_title = "POSSIBLE        
+                                                                             EMERGENCY - $symptoms"                    
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           685                 "Priority: 999            
+                                                                             Emergency.",                              
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           695         "prescription" {                  
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           698                 (Get-JeffStaffValue       
+                                                                             -Object $prescription -Name               
+                                                                             "medications_requested" -Default @()),    
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           701             $prescriptionType =           
+                                                                             Get-JeffStaffFirstText @(                 
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           702                 (Get-JeffStaffValue       
+                                                                             -Object $prescription -Name               
+                                                                             "prescription_type"),                     
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           705             $runOut = Get-JeffStaffValue  
+                                                                             -Object $prescription -Name               
+                                                                             "run_out_status" -Default ""              
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           706             $titlePrefix = if             
+                                                                             ($prescriptionType -eq "repeat") {        
+                                                                             "Repeat prescription request" } else {    
+                                                                             "Prescription request" }                  
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           709                 "Caller requested         
+                                                                             prescription support for: $medText.",     
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           716         "sick_note" {                     
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           717             $noteType =                   
+                                                                             Get-JeffStaffValue -Object $sickNote      
+                                                                             -Name "request_type" -Default ""          
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           718             $purpose = Get-JeffStaffValue 
+                                                                             -Object $sickNote -Name "purpose"         
+                                                                             -Default ""                               
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           719             $startDate =                  
+                                                                             Get-JeffStaffValue -Object $sickNote      
+                                                                             -Name "start_date" -Default ""            
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           720             $duration =                   
+                                                                             Get-JeffStaffValue -Object $sickNote      
+                                                                             -Name "requested_duration" -Default ""    
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           721             $reason = Get-JeffStaffValue  
+                                                                             -Object $sickNote -Name "reason" -Default 
+                                                                             ""                                        
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           727             $title = "Sick note request - 
+                                                                             $detail"                                  
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           729                 "Caller requested a sick  
+                                                                             note/fit note.",                          
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           738         "referral" {                      
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           739             $referralType =               
+                                                                             Get-JeffStaffValue -Object $referral      
+                                                                             -Name "referral_type" -Default ""         
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           740             $hospital =                   
+                                                                             Get-JeffStaffValue -Object $referral      
+                                                                             -Name "hospital_name" -Default ""         
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           741             $submitted =                  
+                                                                             Get-JeffStaffValue -Object $referral      
+                                                                             -Name "approx_submission_date" -Default ""
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           742             $titleLead = if               
+                                                                             ($referralType -match "chas") { "Referral 
+                                                                             chase" } else { "Referral query" }        
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           748                 "Caller asked about a     
+                                                                             referral.",                               
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           760                 ($(if (-not               
+                                                                             [string]::IsNullOrWhiteSpace($testType))  
+                                                                             { "Test results query - $testType" } else 
+                                                                             { "" })),                                 
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           761                 "Test results query"      
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           764                 "Caller asked about test  
+                                                                             results.",                                
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           777                 ($(if (-not [string]::IsNu
+                                                                             llOrWhiteSpace($urgencyLevel)) { "Pathway 
+                                                                             urgency stated: $urgencyLevel." } else {  
+                                                                             "" })),                                   
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           783             $adminReason =                
+                                                                             Get-JeffStaffValue -Object $admin -Name   
+                                                                             "admin_reason" -Default ""                
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           784             $category = if ($adminReason  
+                                                                             -match "record") {                        
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           787             elseif ($adminReason -match   
+                                                                             "letter") {                               
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           790             elseif ($adminReason -match   
+                                                                             "address") {                              
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           793             elseif ($adminReason -match   
+                                                                             "registration|register") {                
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           797                 "admin"                   
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           799             $title = "Admin query -       
+                                                                             $category"                                
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           801                 "Caller requested admin   
+                                                                             support.",                                
+C:\JeffLocal\app\modules\Jeff.StaffSummary.ps1                           802                 ($(if (-not [string]::IsNu
+                                                                             llOrWhiteSpace($adminReason)) { "Reason   
+                                                                             stated: $adminReason." } else { "" })),   
+C:\JeffLocal\app\modules\Jeff.Validation.ps1                              37     if ($RequestType -eq "prescription"   
+                                                                             -and $medicationsRequested.Count -eq 0) { 
+C:\JeffLocal\dashboard\app\db.py                                          28             request_type TEXT,            
+C:\JeffLocal\dashboard\app\db.py                                         103             source_workflow TEXT,         
+C:\JeffLocal\dashboard\app\db.py                                         117             role TEXT NOT NULL CHECK(role 
+                                                                             IN ('admin', 'staff', 'readonly')),       
+C:\JeffLocal\dashboard\app\db.py                                         130             role TEXT NOT NULL CHECK(role 
+                                                                             IN ('admin', 'staff', 'readonly')),       
+C:\JeffLocal\dashboard\app\db.py                                         195                 ("Admin Demo", None,      
+                                                                             "admin", None, now, now),                 
+C:\JeffLocal\dashboard\app\importer.py                                    29 URGENT_COPY_FOOTER = "Urgent/red-flag     
+                                                                             case: follow local urgent escalation      
+                                                                             protocol. Do not rely on copied note      
+                                                                             alone."                                   
+C:\JeffLocal\dashboard\app\importer.py                                   136     pathway_response =                    
+                                                                             value_or_missing(first_value(data,        
+                                                                             ["pathway_response", "pathway.response",  
+                                                                             "pathway.advice", "signposting.advice"],  
+                                                                             ""))                                      
+C:\JeffLocal\dashboard\app\importer.py                                   151     if pathway_response != "not provided":
+C:\JeffLocal\dashboard\app\importer.py                                   152         note += f"Pathway response/advice 
+                                                                             recorded: {pathway_response}. "           
+C:\JeffLocal\dashboard\app\importer.py                                   154     if case.get("red_flags_present") or   
+                                                                             case.get("priority") == "999 Emergency":  
+C:\JeffLocal\dashboard\app\importer.py                                   155         note += f" {URGENT_COPY_FOOTER}"  
+C:\JeffLocal\dashboard\app\importer.py                                   179         action_needed = existing_action   
+                                                                             or "Review and process according to local 
+                                                                             workflow."                                
+C:\JeffLocal\dashboard\app\importer.py                                   196     request_type =                        
+                                                                             value_or_missing(case.get("request_type"))
+C:\JeffLocal\dashboard\app\importer.py                                   204         "Urgent staff review and local    
+                                                                             emergency escalation follow-up required." 
+C:\JeffLocal\dashboard\app\importer.py                                   205         if case.get("red_flags_present")  
+                                                                             or case.get("priority") == "999 Emergency"
+C:\JeffLocal\dashboard\app\importer.py                                   206         else "Review and process          
+                                                                             according to local workflow."             
+C:\JeffLocal\dashboard\app\importer.py                                   208     urgent_footer = (                     
+C:\JeffLocal\dashboard\app\importer.py                                   209         "\nUrgent escalation: 999/A&E     
+                                                                             pathway advised where recorded. Follow    
+                                                                             local urgent escalation protocol."        
+C:\JeffLocal\dashboard\app\importer.py                                   210         if case.get("red_flags_present")  
+                                                                             or case.get("priority") == "999 Emergency"
+C:\JeffLocal\dashboard\app\importer.py                                   214         "Possible emergency - chest pain  
+                                                                             and breathlessness"                       
+C:\JeffLocal\dashboard\app\importer.py                                   215         if case.get("red_flags_present")  
+                                                                             or case.get("priority") == "999 Emergency"
+C:\JeffLocal\dashboard\app\importer.py                                   216         else f"{request_type.replace('_', 
+                                                                             ' ').title()} request - staff action      
+                                                                             required"                                 
+C:\JeffLocal\dashboard\app\importer.py                                   220             f"Request type:               
+                                                                             {request_type}",                          
+C:\JeffLocal\dashboard\app\importer.py                                   230     ) + urgent_footer                     
+C:\JeffLocal\dashboard\app\importer.py                                   255             status = "Urgent Review"      
+C:\JeffLocal\dashboard\app\importer.py                                   266         "request_type": first_value(data, 
+                                                                             ["request_type",                          
+                                                                             "normalized_input.request_type"], ""),    
+C:\JeffLocal\dashboard\app\main.py                                        64     ("Request Type", "request_type"),     
+C:\JeffLocal\dashboard\app\main.py                                       113 STAFF_ROLES = {"admin", "staff",          
+                                                                             "readonly"}                               
+C:\JeffLocal\dashboard\app\main.py                                       114 DEFAULT_OUTCOME_NOTES = "Processed        
+                                                                             according to JeffLocal workflow."         
+C:\JeffLocal\dashboard\app\main.py                                       115 DEFAULT_ACTION_NEEDED = "Review and       
+                                                                             process according to local workflow."     
+C:\JeffLocal\dashboard\app\main.py                                       116 REQUEST_TYPE_LABELS = {                   
+C:\JeffLocal\dashboard\app\main.py                                       117     "prescription": "Prescription",       
+C:\JeffLocal\dashboard\app\main.py                                       118     "sick_note": "Sick Note",             
+C:\JeffLocal\dashboard\app\main.py                                       119     "referral": "Referral",               
+C:\JeffLocal\dashboard\app\main.py                                       120     "test_result": "Test Result",         
+C:\JeffLocal\dashboard\app\main.py                                       122     "admin": "Admin",                     
+C:\JeffLocal\dashboard\app\main.py                                       125 REQUEST_TYPE_CHIPS = [                    
+C:\JeffLocal\dashboard\app\main.py                                       126     ("prescription", "Prescription"),     
+C:\JeffLocal\dashboard\app\main.py                                       127     ("sick_note", "Sick Note"),           
+C:\JeffLocal\dashboard\app\main.py                                       128     ("referral", "Referral"),             
+C:\JeffLocal\dashboard\app\main.py                                       129     ("test_result", "Test Result"),       
+C:\JeffLocal\dashboard\app\main.py                                       131     ("admin", "Admin"),                   
+C:\JeffLocal\dashboard\app\main.py                                       142 SUMMARY_REQUEST_TYPES = [                 
+C:\JeffLocal\dashboard\app\main.py                                       143     ("prescription", "Prescription"),     
+C:\JeffLocal\dashboard\app\main.py                                       144     ("sick_note", "Sick Note"),           
+C:\JeffLocal\dashboard\app\main.py                                       145     ("referral", "Referral"),             
+C:\JeffLocal\dashboard\app\main.py                                       146     ("test_result", "Test Result"),       
+C:\JeffLocal\dashboard\app\main.py                                       148     ("admin", "Admin"),                   
+C:\JeffLocal\dashboard\app\main.py                                       247         "urgent_red_flags":               
+                                                                             ("red_flags_present = 1 OR priority = ?", 
+                                                                             ("999 Emergency",)),                      
+C:\JeffLocal\dashboard\app\main.py                                       248         "needs_review":                   
+                                                                             ("staff_review_required = 1 OR status IN  
+                                                                             (?, ?, ?)", ("Needs Review", "Urgent      
+                                                                             Review", "Escalated")),                   
+C:\JeffLocal\dashboard\app\main.py                                       267                 WHEN '999 Emergency' THEN 
+                                                                             0                                         
+C:\JeffLocal\dashboard\app\main.py                                       268                 WHEN 'urgent_review' THEN 
+                                                                             1                                         
+C:\JeffLocal\dashboard\app\main.py                                       291             CASE WHEN red_flags_present = 
+                                                                             1 OR priority = '999 Emergency' THEN 0    
+                                                                             ELSE 1 END ASC,                           
+C:\JeffLocal\dashboard\app\main.py                                       298 def make_query(filter_name: str, sort:    
+                                                                             str, q: str, request_type: str) ->        
+                                                                             tuple[str, tuple[Any, ...]]:              
+C:\JeffLocal\dashboard\app\main.py                                       302     if request_type:                      
+C:\JeffLocal\dashboard\app\main.py                                       303         parts.append("request_type = ?")  
+C:\JeffLocal\dashboard\app\main.py                                       304         values.append(request_type)       
+C:\JeffLocal\dashboard\app\main.py                                       322 def worklist_url(filter_name: str, sort:  
+                                                                             str, q: str, request_type: str,           
+                                                                             date_range: str) -> str:                  
+C:\JeffLocal\dashboard\app\main.py                                       330     if request_type:                      
+C:\JeffLocal\dashboard\app\main.py                                       331         params["request_type"] =          
+                                                                             request_type                              
+C:\JeffLocal\dashboard\app\main.py                                       335 def paged_worklist_url(filter_name: str,  
+                                                                             sort: str, q: str, request_type: str,     
+                                                                             date_range: str, page: int, page_size:    
+                                                                             int) -> str:                              
+C:\JeffLocal\dashboard\app\main.py                                       345     if request_type:                      
+C:\JeffLocal\dashboard\app\main.py                                       346         params["request_type"] =          
+                                                                             request_type                              
+C:\JeffLocal\dashboard\app\main.py                                       376 def friendly_request_type(value: str) ->  
+                                                                             str:                                      
+C:\JeffLocal\dashboard\app\main.py                                       377     return REQUEST_TYPE_LABELS.get((value 
+                                                                             or "").strip(), (value or                 
+                                                                             "Unknown").replace("_", " ").title())     
+C:\JeffLocal\dashboard\app\main.py                                       456     return staff.get("role") in {"admin", 
+                                                                             "staff"}                                  
+C:\JeffLocal\dashboard\app\main.py                                       460     return staff.get("role") == "admin"   
+C:\JeffLocal\dashboard\app\main.py                                       472 def require_staff_admin(staff: dict[str,  
+                                                                             Any]) -> None:                            
+C:\JeffLocal\dashboard\app\main.py                                       474         raise                             
+                                                                             HTTPException(status_code=403,            
+                                                                             detail="Admin staff required.")           
+C:\JeffLocal\dashboard\app\main.py                                       505     is_emergency =                        
+                                                                             bool(case.get("red_flags_present") or     
+                                                                             str(case.get("priority") or "").strip()   
+                                                                             == "999 Emergency")                       
+C:\JeffLocal\dashboard\app\main.py                                       508     if is_emergency:                      
+C:\JeffLocal\dashboard\app\main.py                                       533             "class": "danger" if          
+                                                                             case.get("priority") == "999 Emergency"   
+                                                                             else "priority-routine" if                
+                                                                             priority.lower() == "routine" else        
+                                                                             "review",                                 
+C:\JeffLocal\dashboard\app\main.py                                       579     case["request_type_label"] = friendly_
+                                                                             request_type(str(case.get("request_type", 
+                                                                             "")))                                     
+C:\JeffLocal\dashboard\app\main.py                                       583     case["red_flag_label"] = "EMERGENCY / 
+                                                                             RED FLAG" if                              
+                                                                             case.get("red_flags_present") or          
+                                                                             case.get("priority") == "999 Emergency"   
+                                                                             else ""                                   
+C:\JeffLocal\dashboard\app\main.py                                       590     case["is_emergency"] =                
+                                                                             bool(case.get("red_flags_present") or     
+                                                                             case.get("priority") == "999 Emergency")  
+C:\JeffLocal\dashboard\app\main.py                                       621     urgent_copy_footer = (                
+C:\JeffLocal\dashboard\app\main.py                                       622         "\nUrgent/red-flag case: follow   
+                                                                             local urgent escalation protocol. Do not  
+                                                                             rely on copied note alone."               
+C:\JeffLocal\dashboard\app\main.py                                       623         if case["is_emergency"]           
+C:\JeffLocal\dashboard\app\main.py                                       630             f"Request type:               
+                                                                             {case.get('request_type') or ''}",        
+C:\JeffLocal\dashboard\app\main.py                                       641             urgent_copy_footer,           
+C:\JeffLocal\dashboard\app\main.py                                       649     case["copy_safe_summary"] =           
+                                                                             copy_safe("\n".join([identifier_header,   
+                                                                             str(case.get("ai_summary_display") or     
+                                                                             ""), urgent_copy_footer]).strip())        
+C:\JeffLocal\dashboard\app\main.py                                       650     case["copy_safe_task"] =              
+                                                                             copy_safe("\n".join([identifier_header,   
+                                                                             str(case.get("staff_task_title") or ""),  
+                                                                             str(case.get("staff_task_display") or     
+                                                                             ""), urgent_copy_footer]).strip())        
+C:\JeffLocal\dashboard\app\main.py                                       675     case["requires_individual_review"] =  
+                                                                             bool(case["is_emergency"] or              
+                                                                             case["identity_review_required"] or       
+                                                                             case.get("staff_review_required"))        
+C:\JeffLocal\dashboard\app\main.py                                       772 def pathway_display_value(value: Any) ->  
+                                                                             str:                                      
+C:\JeffLocal\dashboard\app\main.py                                       783 def add_pathway_item(items:               
+                                                                             list[dict[str, str]], label: str, value:  
+                                                                             Any) -> None:                             
+C:\JeffLocal\dashboard\app\main.py                                       784     display = pathway_display_value(value)
+C:\JeffLocal\dashboard\app\main.py                                       789 def pathway_question_responses(case:      
+                                                                             dict[str, Any]) -> list[dict[str, str]]:  
+C:\JeffLocal\dashboard\app\main.py                                       791     pathway =                             
+                                                                             payload.get("pathway_responses") if isinst
+                                                                             ance(payload.get("pathway_responses"),    
+                                                                             dict) else {}                             
+C:\JeffLocal\dashboard\app\main.py                                       794     request_type =                        
+                                                                             str(case.get("request_type") or           
+                                                                             payload.get("request_type") or "").strip()
+C:\JeffLocal\dashboard\app\main.py                                       796     add_pathway_item(items, "Caller for", 
+                                                                             pathway.get("caller_for") or              
+                                                                             normalized.get("caller_for"))             
+C:\JeffLocal\dashboard\app\main.py                                       798     section = pathway.get(request_type)   
+                                                                             if isinstance(pathway.get(request_type),  
+                                                                             dict) else {}                             
+C:\JeffLocal\dashboard\app\main.py                                       799     if request_type == "prescription":    
+C:\JeffLocal\dashboard\app\main.py                                       800         add_pathway_item(items,           
+                                                                             "Prescription type",                      
+                                                                             section.get("prescription_type"))         
+C:\JeffLocal\dashboard\app\main.py                                       801         add_pathway_item(items,           
+                                                                             "Medication requested",                   
+                                                                             section.get("medications_requested") or   
+                                                                             normalized.get("medications_requested"))  
+C:\JeffLocal\dashboard\app\main.py                                       802         add_pathway_item(items,           
+                                                                             "Pharmacy", section.get("pharmacy") or    
+                                                                             normalized.get("pharmacy"))               
+C:\JeffLocal\dashboard\app\main.py                                       803         add_pathway_item(items, "Run-out  
+                                                                             status", section.get("run_out_status"))   
+C:\JeffLocal\dashboard\app\main.py                                       804     elif request_type == "sick_note":     
+C:\JeffLocal\dashboard\app\main.py                                       805         add_pathway_item(items, "Request  
+                                                                             type", section.get("request_type"))       
+C:\JeffLocal\dashboard\app\main.py                                       806         add_pathway_item(items, "Start    
+                                                                             date requested",                          
+                                                                             section.get("start_date_requested") or    
+                                                                             section.get("start_date"))                
+C:\JeffLocal\dashboard\app\main.py                                       807         add_pathway_item(items, "Duration 
+                                                                             requested",                               
+                                                                             section.get("duration_requested") or      
+                                                                             section.get("requested_duration"))        
+C:\JeffLocal\dashboard\app\main.py                                       808         add_pathway_item(items, "Reason", 
+                                                                             section.get("reason"))                    
+C:\JeffLocal\dashboard\app\main.py                                       809         add_pathway_item(items,           
+                                                                             "Purpose", section.get("purpose"))        
+C:\JeffLocal\dashboard\app\main.py                                       810         add_pathway_item(items, "Already  
+                                                                             spoken to doctor",                        
+                                                                             section.get("already_spoken_to_doctor"))  
+C:\JeffLocal\dashboard\app\main.py                                       811         add_pathway_item(items,           
+                                                                             "Workplace adjustments discussed", section
+                                                                             .get("workplace_adjustments_discussed"))  
+C:\JeffLocal\dashboard\app\main.py                                       812     elif request_type == "referral":      
+C:\JeffLocal\dashboard\app\main.py                                       813         add_pathway_item(items, "Referral 
+                                                                             type", section.get("referral_type"))      
+C:\JeffLocal\dashboard\app\main.py                                       814         add_pathway_item(items,           
+                                                                             "Specialty", section.get("specialty"))    
+C:\JeffLocal\dashboard\app\main.py                                       815         add_pathway_item(items, "Approx   
+                                                                             submission date",                         
+                                                                             section.get("approx_submission_date"))    
+C:\JeffLocal\dashboard\app\main.py                                       817         admin = pathway.get("admin") if   
+                                                                             isinstance(pathway.get("admin"), dict)    
+                                                                             else {}                                   
+C:\JeffLocal\dashboard\app\main.py                                       818         add_pathway_item(items, "Caller   
+                                                                             relationship",                            
+                                                                             admin.get("caller_relationship"))         
+C:\JeffLocal\dashboard\app\main.py                                       819         add_pathway_item(items, "Needs    
+                                                                             identity check",                          
+                                                                             admin.get("needs_identity_check"))        
+C:\JeffLocal\dashboard\app\main.py                                       821     identity = pathway.get("identity") if 
+                                                                             isinstance(pathway.get("identity"), dict) 
+                                                                             else {}                                   
+C:\JeffLocal\dashboard\app\main.py                                       822     add_pathway_item(items, "Callback     
+                                                                             confirmed",                               
+                                                                             identity.get("callback_confirmed"))       
+C:\JeffLocal\dashboard\app\main.py                                       823     add_pathway_item(items,               
+                                                                             "Verification",                           
+                                                                             case.get("verification_status"))          
+C:\JeffLocal\dashboard\app\main.py                                       825     urgency =                             
+                                                                             pathway.get("urgency_assessment") if isins
+                                                                             tance(pathway.get("urgency_assessment"),  
+                                                                             dict) else {}                             
+C:\JeffLocal\dashboard\app\main.py                                       826     add_pathway_item(items, "Urgency      
+                                                                             level", urgency.get("urgency_level") or   
+                                                                             case.get("priority"))                     
+C:\JeffLocal\dashboard\app\main.py                                       827     add_pathway_item(items, "Red flags    
+                                                                             mentioned",                               
+                                                                             urgency.get("red_flags_mentioned") if     
+                                                                             urgency.get("red_flags_mentioned") else   
+                                                                             "None")                                   
+C:\JeffLocal\dashboard\app\main.py                                       828     add_pathway_item(items, "Emergency    
+                                                                             advice given",                            
+                                                                             urgency.get("emergency_advice_given"))    
+C:\JeffLocal\dashboard\app\main.py                                       829     add_pathway_item(items, "Appointment  
+                                                                             redirected",                              
+                                                                             pathway.get("appointment_redirected"))    
+C:\JeffLocal\dashboard\app\main.py                                       865         (*range_params, "999 Emergency"), 
+C:\JeffLocal\dashboard\app\main.py                                       869         (*range_params, "Needs Review",   
+                                                                             "Urgent Review", "Escalated"),            
+C:\JeffLocal\dashboard\app\main.py                                       882         {"label": "Emergency / Red        
+                                                                             Flags", "value": red_flags, "url":        
+                                                                             worklist_url("urgent_red_flags",          
+                                                                             "newest", "", "", date_range)},           
+C:\JeffLocal\dashboard\app\main.py                                       889 def get_request_type_breakdown(conn,      
+                                                                             date_range: str) -> list[dict[str, Any]]: 
+C:\JeffLocal\dashboard\app\main.py                                       893         SELECT COALESCE(request_type,     
+                                                                             'unknown') AS request_type, COUNT(*) AS   
+                                                                             count                                     
+C:\JeffLocal\dashboard\app\main.py                                       896         GROUP BY COALESCE(request_type,   
+                                                                             'unknown')                                
+C:\JeffLocal\dashboard\app\main.py                                       900     counts = {row["request_type"] or      
+                                                                             "unknown": row["count"] for row in rows}  
+C:\JeffLocal\dashboard\app\main.py                                       903     for value, label in                   
+                                                                             SUMMARY_REQUEST_TYPES:                    
+C:\JeffLocal\dashboard\app\main.py                                       927         (*range_params, "999 Emergency"), 
+C:\JeffLocal\dashboard\app\main.py                                       931         (*range_params, "Needs Review",   
+                                                                             "Urgent Review", "Escalated"),            
+C:\JeffLocal\dashboard\app\main.py                                       943         {"label": "Red Flags", "value":   
+                                                                             red_flags, "url":                         
+                                                                             worklist_url("urgent_red_flags",          
+                                                                             "newest", "", "", date_range)},           
+C:\JeffLocal\dashboard\app\main.py                                       950 def get_urgent_attention(conn) ->         
+                                                                             dict[str, Any]:                           
+C:\JeffLocal\dashboard\app\main.py                                       953         ("999 Emergency",),               
+C:\JeffLocal\dashboard\app\main.py                                       957         ("Needs Review", "Urgent Review", 
+                                                                             "Escalated"),                             
+C:\JeffLocal\dashboard\app\main.py                                       966                first_call_id,             
+                                                                             first_patient, first_priority,            
+                                                                             source_workflow,                          
+C:\JeffLocal\dashboard\app\main.py                                      1207     if case.get("request_type") !=        
+                                                                             baseline.get("request_type") or           
+                                                                             case.get("priority") !=                   
+                                                                             baseline.get("priority"):                 
+C:\JeffLocal\dashboard\app\main.py                                      1221     if case.get("status") in              
+                                                                             {"Escalated", "Needs Review", "Urgent     
+                                                                             Review"}:                                 
+C:\JeffLocal\dashboard\app\main.py                                      1380     if case.get("red_flags_present") or   
+                                                                             case.get("priority") == "999 Emergency":  
+C:\JeffLocal\dashboard\app\main.py                                      1382     if case.get("staff_review_required")  
+                                                                             or case.get("status") in {"Needs Review", 
+                                                                             "Urgent Review", "Escalated"}:            
+C:\JeffLocal\dashboard\app\main.py                                      1461         "request_type":                   
+                                                                             case.get("request_type", ""),             
+C:\JeffLocal\dashboard\app\main.py                                      1509             SELECT call_id, patient_name, 
+                                                                             request_type, priority, red_flags_present,
+C:\JeffLocal\dashboard\app\main.py                                      1516             ("999 Emergency",             
+                                                                             *RESOLVED_STATUSES),                      
+C:\JeffLocal\dashboard\app\main.py                                      1533             SELECT call_id, patient_name, 
+                                                                             request_type, priority, red_flags_present,
+C:\JeffLocal\dashboard\app\main.py                                      1576             ("999 Emergency",),           
+C:\JeffLocal\dashboard\app\main.py                                      1585         request_type_rows = conn.execute( 
+C:\JeffLocal\dashboard\app\main.py                                      1587             SELECT COALESCE(request_type, 
+                                                                             'unknown') AS request_type, COUNT(*) AS   
+                                                                             count                                     
+C:\JeffLocal\dashboard\app\main.py                                      1589             GROUP BY                      
+                                                                             COALESCE(request_type, 'unknown')         
+C:\JeffLocal\dashboard\app\main.py                                      1592     request_type_counts = {value: 0 for   
+                                                                             value, _label in SUMMARY_REQUEST_TYPES}   
+C:\JeffLocal\dashboard\app\main.py                                      1593     for row in request_type_rows:         
+C:\JeffLocal\dashboard\app\main.py                                      1594                                           
+                                                                             request_type_counts[row["request_type"]   
+                                                                             or "unknown"] = row["count"]              
+C:\JeffLocal\dashboard\app\main.py                                      1604         "request_type_counts":            
+                                                                             request_type_counts,                      
+C:\JeffLocal\dashboard\app\main.py                                      1839             "roles": ["admin", "staff",   
+                                                                             "readonly"],                              
+C:\JeffLocal\dashboard\app\main.py                                      1863         require_staff_admin(current_staff)
+C:\JeffLocal\dashboard\app\main.py                                      1904         require_staff_admin(current_staff)
+C:\JeffLocal\dashboard\app\main.py                                      1933         require_staff_admin(current_staff)
+C:\JeffLocal\dashboard\app\main.py                                      1955         require_staff_admin(current_staff)
+C:\JeffLocal\dashboard\app\main.py                                      1992         require_staff_admin(current_staff)
+C:\JeffLocal\dashboard\app\main.py                                      2022         require_staff_admin(current_staff)
+C:\JeffLocal\dashboard\app\main.py                                      2130                                           
+                                                                             str(payload.get("source_workflow",        
+                                                                             "")).strip().lower(),                     
+C:\JeffLocal\dashboard\app\main.py                                      2144         "source_workflow":                
+                                                                             str(payload.get("source_workflow",        
+                                                                             "")).strip(),                             
+C:\JeffLocal\dashboard\app\main.py                                      2161     if not alert["source_workflow"]:      
+C:\JeffLocal\dashboard\app\main.py                                      2162         raise                             
+                                                                             HTTPException(status_code=400,            
+                                                                             detail="source_workflow is required")     
+C:\JeffLocal\dashboard\app\main.py                                      2198                 first_call_id,            
+                                                                             first_patient, first_priority,            
+                                                                             source_workflow,                          
+C:\JeffLocal\dashboard\app\main.py                                      2213                 alert["source_workflow"], 
+C:\JeffLocal\dashboard\app\main.py                                      2235                    first_call_id,         
+                                                                             first_patient, first_priority,            
+                                                                             source_workflow,                          
+C:\JeffLocal\dashboard\app\main.py                                      2260                    first_call_id,         
+                                                                             first_patient, first_priority,            
+                                                                             source_workflow,                          
+C:\JeffLocal\dashboard\app\main.py                                      2330                    first_call_id,         
+                                                                             first_patient, first_priority,            
+                                                                             source_workflow,                          
+C:\JeffLocal\dashboard\app\main.py                                      2477                 SELECT call_id,           
+                                                                             patient_name, request_type, priority,     
+                                                                             red_flags_present,                        
+C:\JeffLocal\dashboard\app\main.py                                      2489                 SELECT call_id,           
+                                                                             patient_name, request_type, priority,     
+                                                                             red_flags_present,                        
+C:\JeffLocal\dashboard\app\main.py                                      2584     request_type: str = "",               
+C:\JeffLocal\dashboard\app\main.py                                      2592     if not show_requests and any(key in   
+                                                                             request.query_params for key in           
+                                                                             {"filter", "sort", "q", "request_type",   
+                                                                             "page", "page_size"}):                    
+C:\JeffLocal\dashboard\app\main.py                                      2597     filters = ["all", "urgent_red_flags", 
+                                                                             "needs_review", "identity_issues",        
+                                                                             "open", "resolved", "resolved_today"]     
+C:\JeffLocal\dashboard\app\main.py                                      2609         request_type_breakdown =          
+                                                                             get_request_type_breakdown(conn,          
+                                                                             date_range)                               
+C:\JeffLocal\dashboard\app\main.py                                      2610         visible_request_mix = [item for   
+                                                                             item in request_type_breakdown if         
+                                                                             item["count"] > 0][:5]                    
+C:\JeffLocal\dashboard\app\main.py                                      2615         urgent_attention =                
+                                                                             get_urgent_attention(conn)                
+C:\JeffLocal\dashboard\app\main.py                                      2621     where, params = make_query(filter,    
+                                                                             sort, q.strip(), request_type.strip())    
+C:\JeffLocal\dashboard\app\main.py                                      2663             "url": worklist_url(item,     
+                                                                             sort, q, request_type, date_range),       
+C:\JeffLocal\dashboard\app\main.py                                      2667     request_type_links = [                
+C:\JeffLocal\dashboard\app\main.py                                      2673         for item, label in                
+                                                                             REQUEST_TYPE_CHIPS                        
+C:\JeffLocal\dashboard\app\main.py                                      2688         "previous_url":                   
+                                                                             paged_worklist_url(filter, sort, q,       
+                                                                             request_type, date_range, max(page - 1,   
+                                                                             1), page_size),                           
+C:\JeffLocal\dashboard\app\main.py                                      2689         "next_url":                       
+                                                                             paged_worklist_url(filter, sort, q,       
+                                                                             request_type, date_range, min(page + 1,   
+                                                                             total_pages), page_size),                 
+C:\JeffLocal\dashboard\app\main.py                                      2695     active_request_type_label =           
+                                                                             next((label for item, label in            
+                                                                             REQUEST_TYPE_CHIPS if item ==             
+                                                                             request_type), "")                        
+C:\JeffLocal\dashboard\app\main.py                                      2709             "active_request_type":        
+                                                                             request_type,                             
+C:\JeffLocal\dashboard\app\main.py                                      2716             "request_type_links":         
+                                                                             request_type_links,                       
+C:\JeffLocal\dashboard\app\main.py                                      2717             "all_request_types_url":      
+                                                                             worklist_url(filter, sort, q, "",         
+                                                                             date_range),                              
+C:\JeffLocal\dashboard\app\main.py                                      2720             "request_type_breakdown":     
+                                                                             request_type_breakdown,                   
+C:\JeffLocal\dashboard\app\main.py                                      2727             "urgent_attention":           
+                                                                             urgent_attention,                         
+C:\JeffLocal\dashboard\app\main.py                                      2734             "active_request_type_label":  
+                                                                             active_request_type_label,                
+C:\JeffLocal\dashboard\app\main.py                                      2751     request_type: str = "",               
+C:\JeffLocal\dashboard\app\main.py                                      2762         request_type=request_type,        
+C:\JeffLocal\dashboard\app\main.py                                      2821         request_type_breakdown =          
+                                                                             get_request_type_breakdown(conn,          
+                                                                             date_range)                               
+C:\JeffLocal\dashboard\app\main.py                                      2837             "request_type_breakdown":     
+                                                                             request_type_breakdown,                   
+C:\JeffLocal\dashboard\app\main.py                                      2851         ("Pathway configuration",         
+                                                                             ROOT_DIR / "config" / "pathways.json"),   
+C:\JeffLocal\dashboard\app\main.py                                      2944             "pathway_items":              
+                                                                             pathway_question_responses(case),         
+C:\JeffLocal\dashboard\app\main.py                                      3007             if (old["red_flags_present"]  
+                                                                             or old["priority"] == "999 Emergency")    
+                                                                             and not submitted["outcome_notes"]:       
+C:\JeffLocal\dashboard\app\main.py                                      3079             protected_case =              
+                                                                             bool(case["red_flags_present"] or         
+                                                                             case["priority"] == "999 Emergency" or    
+                                                                             case["verification_status"] in            
+                                                                             IDENTITY_REVIEW_STATUSES)                 
+C:\JeffLocal\dashboard\app\main.py                                      3081             if (case["red_flags_present"] 
+                                                                             or case["priority"] == "999 Emergency")   
+                                                                             and not effective_outcome:                
+C:\JeffLocal\dashboard\app\models.py                                       9     "Urgent Review",                      
+C:\JeffLocal\dashboard\app\models.py                                      24     "request_type",                       
+C:\JeffLocal\dashboard\templates\alerts.html                               8     <p class="muted">Read-only local      
+                                                                             alert events recorded from n8n            
+                                                                             workflows.</p>                            
+C:\JeffLocal\dashboard\templates\alerts.html                              40         <th>Source Workflow</th>          
+C:\JeffLocal\dashboard\templates\alerts.html                              55         <td>{{ alert.source_workflow      
+                                                                             }}</td>                                   
+C:\JeffLocal\dashboard\templates\case_detail.html                         18     <span class="badge                    
+                                                                             request-type-pill">{{                     
+                                                                             case.request_type_label }}</span>         
+C:\JeffLocal\dashboard\templates\case_detail.html                         49 {% if case.is_emergency %}                
+C:\JeffLocal\dashboard\templates\case_detail.html                         50   <div class="emergency-banner">Emergency 
+                                                                             red-flag case - immediate staff review    
+                                                                             required</div>                            
+C:\JeffLocal\dashboard\templates\case_detail.html                         60       <span class="badge priority {{      
+                                                                             'danger' if case.priority == '999         
+                                                                             Emergency' else 'priority-routine' if     
+                                                                             case.priority == 'routine' else 'review'  
+                                                                             }}">{{ case.priority }}</span>            
+C:\JeffLocal\dashboard\templates\case_detail.html                        102     <section class="workflow-form         
+                                                                             detail-workflow simplified-workflow">     
+C:\JeffLocal\dashboard\templates\case_detail.html                        103       <h3>Staff Workflow</h3>             
+C:\JeffLocal\dashboard\templates\case_detail.html                        104       <div class="workflow-meta-row">     
+C:\JeffLocal\dashboard\templates\case_detail.html                        110       <form method="post"                 
+                                                                             action="/case/{{ case.call_id             
+                                                                             }}/quick_action"                          
+                                                                             class="workflow-action-row">              
+C:\JeffLocal\dashboard\templates\case_detail.html                        118     <form method="post" action="/case/{{  
+                                                                             case.call_id }}/update"                   
+                                                                             class="workflow-form detail-workflow      
+                                                                             simplified-workflow">                     
+C:\JeffLocal\dashboard\templates\case_detail.html                        120       <h3>Staff Workflow</h3>             
+C:\JeffLocal\dashboard\templates\case_detail.html                        124       <div class="workflow-meta-row">     
+C:\JeffLocal\dashboard\templates\case_detail.html                        131         <textarea name="outcome_notes"    
+                                                                             rows="3">{{ case.outcome_notes or         
+                                                                             "Processed according to JeffLocal         
+                                                                             workflow." }}</textarea>                  
+C:\JeffLocal\dashboard\templates\case_detail.html                        143       <div class="workflow-action-row">   
+C:\JeffLocal\dashboard\templates\case_detail.html                        161           <textarea name="action_needed"  
+                                                                             rows="2">{{ case.action_needed or "Review 
+                                                                             and process according to local workflow." 
+                                                                             }}</textarea>                             
+C:\JeffLocal\dashboard\templates\case_detail.html                        197       {% if pathway_items %}              
+C:\JeffLocal\dashboard\templates\case_detail.html                        198         <section                          
+                                                                             class="pathway-response-panel">           
+C:\JeffLocal\dashboard\templates\case_detail.html                        199           <h3>Pathway Questions &amp;     
+                                                                             Responses</h3>                            
+C:\JeffLocal\dashboard\templates\case_detail.html                        200           <ul                             
+                                                                             class="pathway-response-list">            
+C:\JeffLocal\dashboard\templates\case_detail.html                        201             {% for item in pathway_items  
+                                                                             %}                                        
+C:\JeffLocal\dashboard\templates\index.html                               34 <section class="urgent-panel"             
+                                                                             aria-label="Urgent Attention">            
+C:\JeffLocal\dashboard\templates\index.html                               36     <h2>Urgent Attention</h2>             
+C:\JeffLocal\dashboard\templates\index.html                               37     {% if urgent_attention.latest %}      
+C:\JeffLocal\dashboard\templates\index.html                               38       <p>{{                               
+                                                                             urgent_attention.latest.alert_type }}: {{ 
+                                                                             urgent_attention.latest.message }}</p>    
+C:\JeffLocal\dashboard\templates\index.html                               43   <div class="urgent-counts">             
+C:\JeffLocal\dashboard\templates\index.html                               44     <a href="{{ filter_links[1].url       
+                                                                             }}"><span>Red Flags</span><strong>{{      
+                                                                             urgent_attention.red_flags }}</strong></a>
+C:\JeffLocal\dashboard\templates\index.html                               45     <a href="{{ filter_links[2].url       
+                                                                             }}"><span>Staff Review</span><strong>{{   
+                                                                             urgent_attention.staff_review             
+                                                                             }}</strong></a>                           
+C:\JeffLocal\dashboard\templates\index.html                               46     <a href="{{ filter_links[3].url       
+                                                                             }}"><span>Identity                        
+                                                                             Checks</span><strong>{{                   
+                                                                             urgent_attention.identity_checks          
+                                                                             }}</strong></a>                           
+C:\JeffLocal\dashboard\templates\index.html                               48   <div class="urgent-actions">            
+C:\JeffLocal\dashboard\templates\index.html                               51     {% if urgent_attention.latest %}      
+C:\JeffLocal\dashboard\templates\index.html                               52       <button type="button"               
+                                                                             id="urgent-ack-button" data-alert-id="{{  
+                                                                             urgent_attention.latest.alert_id          
+                                                                             }}">Acknowledge</button>                  
+C:\JeffLocal\dashboard\templates\index.html                              158       <select name="request_type">        
+C:\JeffLocal\dashboard\templates\index.html                              159         <option value="" {% if not        
+                                                                             active_request_type %}selected{% endif    
+                                                                             %}>All types</option>                     
+C:\JeffLocal\dashboard\templates\index.html                              160         {% for item in request_type_links 
+                                                                             %}                                        
+C:\JeffLocal\dashboard\templates\index.html                              161           <option value="{{ item.value    
+                                                                             }}" {% if item.value ==                   
+                                                                             active_request_type %}selected{% endif    
+                                                                             %}>{{ item.label }}</option>              
+C:\JeffLocal\dashboard\templates\index.html                              194       {% if active_request_type_label     
+                                                                             %}<span class="filter-chip">{{            
+                                                                             active_request_type_label }}</span>{%     
+                                                                             endif %}                                  
+C:\JeffLocal\dashboard\templates\index.html                              206         <a href="{{ all_request_types_url 
+                                                                             }}" class="{% if not active_request_type  
+                                                                             %}active{% endif %}">All Types</a>        
+C:\JeffLocal\dashboard\templates\index.html                              207         {% for item in request_type_links 
+                                                                             %}                                        
+C:\JeffLocal\dashboard\templates\index.html                              208           <a href="{{ item.url }}"        
+                                                                             class="{% if item.value ==                
+                                                                             active_request_type %}active{% endif      
+                                                                             %}">{{ item.label }}</a>                  
+C:\JeffLocal\dashboard\templates\index.html                              224     <a class="button-link danger-link" hre
+                                                                             f="/requests?filter=urgent_red_flags&sort=
+                                                                             newest&range=all">Critical</a>            
+C:\JeffLocal\dashboard\templates\index.html                              256     <article class="request-row {% if     
+                                                                             case.is_emergency %}emergency{% elif      
+                                                                             case.identity_review_required             
+                                                                             %}identity-row{% elif                     
+                                                                             case.staff_review_required %}review-row{% 
+                                                                             endif %} {% if case.is_resolved           
+                                                                             %}resolved-row{% endif %}" id="case-{{    
+                                                                             case.call_id }}" data-case-row role="row">
+C:\JeffLocal\dashboard\templates\index.html                              264                  data-request-type="{{    
+                                                                             case.request_type }}"                     
+C:\JeffLocal\dashboard\templates\index.html                              291         <span class="badge                
+                                                                             request-type-pill">{{                     
+                                                                             case.request_type_label }}</span>         
+C:\JeffLocal\dashboard\templates\index.html                              365       <dt>Source Workflow</dt><dd         
+                                                                             id="alert-modal-source"></dd>             
+C:\JeffLocal\dashboard\templates\index.html                              428   document.getElementById("urgent-ack-butt
+                                                                             on")?.addEventListener("click", async     
+                                                                             (event) => {                              
+C:\JeffLocal\dashboard\templates\index.html                              451     requestType: "{{ active_request_type  
+                                                                             }}",                                      
+C:\JeffLocal\dashboard\templates\index.html                              626       document.getElementById("alert-modal
+                                                                             -source").textContent =                   
+                                                                             alert.source_workflow || "";              
+C:\JeffLocal\dashboard\templates\reports.html                              8     <p class="muted">Daily and weekly     
+                                                                             metrics for pathways, safety queues,      
+                                                                             failed work, and staff activity.</p>      
+C:\JeffLocal\dashboard\templates\reports.html                             33     <div class="section-head"><h2>Pathway 
+                                                                             Volumes</h2><span class="muted">{{        
+                                                                             active_date_range }}</span></div>         
+C:\JeffLocal\dashboard\templates\reports.html                             34     {% for item in request_type_breakdown 
+                                                                             %}                                        
+C:\JeffLocal\dashboard\templates\settings.html                             8     <p class="muted">Read-only local      
+                                                                             configuration overview for model,         
+                                                                             routing, Google push, pathways, and       
+                                                                             monitoring thresholds.</p>                
+C:\JeffLocal\dashboard\tests\diagnose_dashboard_data_integrity.py         20     "request_type",                       
+C:\JeffLocal\dashboard\tests\diagnose_dashboard_data_integrity.py         57                 "SELECT call_id,          
+                                                                             request_type, priority, safe_to_queue,    
+                                                                             staff_review_required, red_flags_present, 
+                                                                             verification_status FROM cases WHERE      
+                                                                             call_id LIKE 'RAWMOCK-%'"                 
+C:\JeffLocal\dashboard\tests\test_api_endpoints.py                        85     assert "RAWMOCK-006-URGENT-REDFLAG"   
+                                                                             in case_ids                               
+C:\JeffLocal\dashboard\tests\test_api_endpoints.py                        86     rawmock_006 = next(case for case in   
+                                                                             data["cases"] if case["call_id"] ==       
+                                                                             "RAWMOCK-006-URGENT-REDFLAG")             
+C:\JeffLocal\dashboard\tests\test_api_endpoints.py                       105 def test_api_daily_summary_returns_request
+                                                                             _type_counts(tmp_path, monkeypatch):      
+C:\JeffLocal\dashboard\tests\test_api_endpoints.py                       115     assert "request_type_counts" in data  
+C:\JeffLocal\dashboard\tests\test_api_endpoints.py                       116     assert "prescription" in              
+                                                                             data["request_type_counts"]               
+C:\JeffLocal\dashboard\tests\test_api_endpoints.py                       117     assert "admin" in                     
+                                                                             data["request_type_counts"]               
+C:\JeffLocal\dashboard\tests\test_api_endpoints.py                       133         "first_call_id":                  
+                                                                             "RAWMOCK-006-URGENT-REDFLAG",             
+C:\JeffLocal\dashboard\tests\test_api_endpoints.py                       135         "first_priority": "999 Emergency",
+C:\JeffLocal\dashboard\tests\test_api_endpoints.py                       136         "source_workflow": "JeffLocal -   
+                                                                             03 Red Flag Scan",                        
+C:\JeffLocal\dashboard\tests\test_api_endpoints.py                       183     assert                                
+                                                                             data["alerts"][0]["dedupe_key"] ==        
+                                                                             "jefflocal red                            
+                                                                             flag|rawmock-006-urgent-redflag|jefflocal 
+                                                                             - 03 red flag scan"                       
+C:\JeffLocal\dashboard\tests\test_api_endpoints.py                       197                                           
+                                                                             ("RAWMOCK-006-URGENT-REDFLAG",),          
+C:\JeffLocal\dashboard\tests\test_api_endpoints.py                       206                                           
+                                                                             ("RAWMOCK-006-URGENT-REDFLAG",),          
+C:\JeffLocal\dashboard\tests\test_api_endpoints.py                       278                 "priority": "999          
+                                                                             Emergency",                               
+C:\JeffLocal\dashboard\tests\test_api_endpoints.py                       312             first_call_id, first_patient, 
+                                                                             first_priority, source_workflow,          
+C:\JeffLocal\dashboard\tests\test_api_endpoints.py                       326             "999 Emergency",              
+C:\JeffLocal\dashboard\tests\test_api_endpoints.py                       390                     "request_type":       
+                                                                             "appointment_redirect",                   
+C:\JeffLocal\dashboard\tests\test_api_endpoints.py                       393                     "priority": "999      
+                                                                             Emergency",                               
+C:\JeffLocal\dashboard\tests\test_api_endpoints.py                       397                     "task_title":         
+                                                                             "Emergency red flag",                     
+C:\JeffLocal\dashboard\tests\test_api_endpoints.py                       412     assert "RAWMOCK-006-URGENT-REDFLAG"   
+                                                                             in ids                                    
+C:\JeffLocal\dashboard\tests\test_api_endpoints.py                       413     assert                                
+                                                                             ids.index("N8NTEST-005-REDFLAG") <        
+                                                                             ids.index("RAWMOCK-006-URGENT-REDFLAG")   
+C:\JeffLocal\dashboard\tests\test_api_endpoints.py                       492     assert names["Admin Demo"] == "admin" 
+C:\JeffLocal\dashboard\tests\test_api_endpoints.py                       497     assert "Admin Demo" in response.text  
+C:\JeffLocal\dashboard\tests\test_api_endpoints.py                       552 def make_batch_case(call_id,              
+                                                                             red_flags_present=False,                  
+                                                                             request_type="prescription",              
+                                                                             priority="routine",                       
+                                                                             verification_status="matched",            
+                                                                             staff_review_required=False,              
+                                                                             safe_to_queue=True):                      
+C:\JeffLocal\dashboard\tests\test_api_endpoints.py                       557             "request_type": request_type, 
+C:\JeffLocal\dashboard\tests\test_api_endpoints.py                       570             "task_title": "Routine        
+                                                                             prescription",                            
+C:\JeffLocal\dashboard\tests\test_api_endpoints.py                       571             "task_body": "Routine         
+                                                                             prescription request",                    
+C:\JeffLocal\dashboard\tests\test_api_endpoints.py                       610         upsert_case(conn,                 
+                                                                             make_batch_case("RAWMOCK-BATCH-B",        
+                                                                             request_type="admin"))                    
+C:\JeffLocal\dashboard\tests\test_api_endpoints.py                       611         upsert_case(conn,                 
+                                                                             make_batch_case("RAWMOCK-BATCH-RED",      
+                                                                             red_flags_present=True, priority="999     
+                                                                             Emergency", safe_to_queue=False,          
+                                                                             staff_review_required=True))              
+C:\JeffLocal\dashboard\tests\test_api_endpoints.py                       707     calls = [{"call_id": f"GPDEMO-20260513
+                                                                             -120000-00{index}-PRESCRIPTION"} for      
+                                                                             index in range(1, 6)]                     
+C:\JeffLocal\dashboard\tests\test_api_endpoints.py                       727 def test_admin_staff_edit_reactivate_invit
+                                                                             ation_and_audit(tmp_path, monkeypatch):   
+C:\JeffLocal\dashboard\tests\test_api_endpoints.py                       729     admin = staff_id(db_path, "Admin      
+                                                                             Demo")                                    
+C:\JeffLocal\dashboard\tests\test_api_endpoints.py                       731                                           
+                                                                             client.cookies.set("jefflocal_staff_id",  
+                                                                             str(admin))                               
+C:\JeffLocal\dashboard\tests\test_api_endpoints.py                       757 def test_non_admin_staff_management_mutati
+                                                                             on_forbidden(tmp_path, monkeypatch):      
+C:\JeffLocal\dashboard\tests\test_api_endpoints.py                       798         upsert_case(conn,                 
+                                                                             make_batch_case("RAWMOCK-BULK-RED",       
+                                                                             red_flags_present=True, priority="999     
+                                                                             Emergency", safe_to_queue=False,          
+                                                                             staff_review_required=True))              
+C:\JeffLocal\dashboard\tests\test_importer.py                             52         where, params =                   
+                                                                             filter_clause("urgent_red_flags")         
+C:\JeffLocal\dashboard\tests\test_importer.py                             53         urgent_ids = {                    
+C:\JeffLocal\dashboard\tests\test_importer.py                             64     assert "RAWMOCK-006-URGENT-REDFLAG"   
+                                                                             in urgent_ids                             
+C:\JeffLocal\dashboard\tests\test_importer.py                            106     data["request_type"] = "admin"        
+C:\JeffLocal\dashboard\tests\test_importer.py                            115                    verification_status,   
+                                                                             request_type, assigned_to, outcome_notes, 
+C:\JeffLocal\dashboard\tests\test_importer.py                            127     assert row["request_type"] == "admin" 
+C:\JeffLocal\dashboard\tests\test_importer.py                            144                 SELECT call_id,           
+                                                                             request_type, priority, safe_to_queue,    
+C:\JeffLocal\dashboard\tests\test_importer.py                            155         assert row["request_type"] ==     
+                                                                             data["request_type"]                      
+C:\JeffLocal\dashboard\tests\test_importer.py                            188             "call_id":                    
+                                                                             "GPDEMO-20260513-120000-001-PRESCRIPTION",
+C:\JeffLocal\dashboard\tests\test_importer.py                            190             "request_type":               
+                                                                             "prescription",                           
+C:\JeffLocal\dashboard\tests\test_importer.py                            197             "transcript": "Caller         
+                                                                             requests a repeat blood pressure          
+                                                                             prescription and confirms callback. No    
+                                                                             urgent symptoms reported.",               
+C:\JeffLocal\dashboard\tests\test_importer.py                            203     assert "prescription" in              
+                                                                             case["task_body"].lower()                 
+C:\JeffLocal\dashboard\tests\test_importer.py                            216 def test_gp_demo_red_flag_task_includes_ur
+                                                                             gent_footer():                            
+C:\JeffLocal\dashboard\tests\test_importer.py                            221             "request_type":               
+                                                                             "appointment_redirect",                   
+C:\JeffLocal\dashboard\tests\test_importer.py                            223             "priority": "999 Emergency",  
+C:\JeffLocal\dashboard\tests\test_importer.py                            236     assert "Urgent/red-flag case: follow  
+                                                                             local urgent escalation protocol" in      
+                                                                             case["patient_record_note"]               
+C:\JeffLocal\dashboard\tests\test_importer.py                            244             "request_type": "admin",      
+C:\JeffLocal\dashboard\tests\test_importer.py                            256     assert "Identity review" in           
+                                                                             case["task_title"] or "Admin request" in  
+                                                                             case["task_title"]                        
+C:\JeffLocal\dashboard\tests\test_importer.py                            264             "request_type":               
+                                                                             "prescription",                           
+C:\JeffLocal\dashboard\tests\test_importer.py                            279             "request_type":               
+                                                                             "prescription",                           
+C:\JeffLocal\dashboard\tests\test_importer.py                            293             "request_type":               
+                                                                             "prescription",                           
+C:\JeffLocal\dashboard\tests\test_importer.py                            316             "request_type": "admin",      
+C:\JeffLocal\dashboard\tests\test_locked_fields.py                        45                 "priority": "999          
+                                                                             Emergency",                               
+C:\JeffLocal\dashboard\tests\test_locked_fields.py                       125             "/case/RAWMOCK-006-URGENT-REDF
+                                                                             LAG/quick_action",                        
+C:\JeffLocal\dashboard\tests\test_locked_fields.py                       194                 "priority": "999          
+                                                                             Emergency",                               
+C:\JeffLocal\dashboard\tests\test_render_pages.py                         37         detail_response = client.get("/cas
+                                                                             e/RAWMOCK-006-URGENT-REDFLAG")            
+C:\JeffLocal\dashboard\tests\test_render_pages.py                         44     assert "RAWMOCK-006-URGENT-REDFLAG"   
+                                                                             in detail_response.text                   
+C:\JeffLocal\dashboard\tests\test_render_pages.py                         45     assert "Emergency red-flag case -     
+                                                                             immediate staff review required" in       
+                                                                             detail_response.text                      
+C:\JeffLocal\dashboard\tests\test_render_pages.py                         62         admin_id = conn.execute("SELECT   
+                                                                             id FROM staff_users WHERE display_name =  
+                                                                             ?", ("Admin Demo",)).fetchone()["id"]     
+C:\JeffLocal\dashboard\tests\test_render_pages.py                         68                                           
+                                                                             client.cookies.set("jefflocal_staff_id",  
+                                                                             str(admin_id))                            
+C:\JeffLocal\dashboard\tests\test_render_pages.py                         76     assert "Urgent Attention" in          
+                                                                             dashboard.text                            
+C:\JeffLocal\dashboard\tests\test_render_pages.py                         87     assert                                
+                                                                             "/requests?filter=urgent_red_flags" in    
+                                                                             dashboard.text                            
+C:\JeffLocal\dashboard\tests\test_render_pages.py                         97         admin_id = conn.execute("SELECT   
+                                                                             id FROM staff_users WHERE display_name =  
+                                                                             ?", ("Admin Demo",)).fetchone()["id"]     
+C:\JeffLocal\dashboard\tests\test_render_pages.py                        101                                           
+                                                                             client.cookies.set("jefflocal_staff_id",  
+                                                                             str(admin_id))                            
+C:\JeffLocal\dashboard\tests\test_render_pages.py                        160 def make_case(call_id, timestamp,         
+                                                                             priority="routine", status="New",         
+                                                                             request_type="admin",                     
+                                                                             verification_status="matched",            
+                                                                             staff_review_required=True,               
+                                                                             red_flags_present=False):                 
+C:\JeffLocal\dashboard\tests\test_render_pages.py                        165             "request_type": request_type, 
+C:\JeffLocal\dashboard\tests\test_render_pages.py                        199                                           
+                                                                             make_case("RAWMOCK-SORT-EMERGENCY",       
+                                                                             iso_days_ago(3, 12, 0), priority="999     
+                                                                             Emergency", red_flags_present=True),      
+C:\JeffLocal\dashboard\tests\test_render_pages.py                        205                                           
+                                                                             request_type="prescription",              
+C:\JeffLocal\dashboard\tests\test_render_pages.py                        229     assert_before(response.text,          
+                                                                             "RAWMOCK-SORT-EMERGENCY",                 
+                                                                             "RAWMOCK-SORT-RESOLVED")                  
+C:\JeffLocal\dashboard\tests\test_render_pages.py                        259     assert_before(response.text,          
+                                                                             "RAWMOCK-SORT-OLD",                       
+                                                                             "RAWMOCK-SORT-EMERGENCY")                 
+C:\JeffLocal\dashboard\tests\test_render_pages.py                        274     assert_before(response.text,          
+                                                                             "RAWMOCK-SORT-EMERGENCY",                 
+                                                                             "RAWMOCK-SORT-NEW")                       
+C:\JeffLocal\dashboard\tests\test_render_pages.py                        289     assert_before(response.text,          
+                                                                             "RAWMOCK-SORT-EMERGENCY",                 
+                                                                             "RAWMOCK-SORT-RESOLVED")                  
+C:\JeffLocal\dashboard\tests\test_render_pages.py                        293 def test_sorting_works_with_identity_filte
+                                                                             r_search_and_request_type(tmp_path,       
+                                                                             monkeypatch):                             
+C:\JeffLocal\dashboard\tests\test_render_pages.py                        301         response = client.get("/?filter=id
+                                                                             entity_issues&sort=newest&q=IDENTITY&reque
+                                                                             st_type=prescription&range=all")          
+C:\JeffLocal\dashboard\tests\test_render_pages.py                        324     assert "Admin" in response.text       
+C:\JeffLocal\dashboard\tests\test_render_pages.py                        336 def test_rawmock_006_emergency_marker(tmp_
+                                                                             path, monkeypatch):                       
+C:\JeffLocal\dashboard\tests\test_render_pages.py                        348             priority="999 Emergency",     
+C:\JeffLocal\dashboard\tests\test_render_pages.py                        365     assert "EMERGENCY / RED FLAG" not in  
+                                                                             status_section                            
+C:\JeffLocal\dashboard\tests\test_render_pages.py                        366     assert "Emergency red-flag case -     
+                                                                             immediate staff review required" not in   
+                                                                             status_section                            
+C:\JeffLocal\dashboard\tests\test_render_pages.py                        367     assert "999 Emergency" not in         
+                                                                             status_section                            
+C:\JeffLocal\dashboard\tests\test_render_pages.py                        373     assert "999 Emergency" in             
+                                                                             summary_section                           
+C:\JeffLocal\dashboard\tests\test_render_pages.py                        397 def test_request_type_chips_admin_and_pres
+                                                                             cription(tmp_path, monkeypatch):          
+C:\JeffLocal\dashboard\tests\test_render_pages.py                        407         admin_response = client.get("/?fil
+                                                                             ter=all&sort=newest&request_type=admin&ran
+                                                                             ge=all")                                  
+C:\JeffLocal\dashboard\tests\test_render_pages.py                        408         prescription_response = client.get
+                                                                             ("/?filter=all&sort=newest&request_type=pr
+                                                                             escription&range=all")                    
+C:\JeffLocal\dashboard\tests\test_render_pages.py                        410     assert admin_response.status_code ==  
+                                                                             200                                       
+C:\JeffLocal\dashboard\tests\test_render_pages.py                        411     assert                                
+                                                                             "RAWMOCK-012-MESSY-MULTI-INTENT" in       
+                                                                             admin_response.text                       
+C:\JeffLocal\dashboard\tests\test_render_pages.py                        412     assert "RAWMOCK-001-REPEAT-EXACT" not 
+                                                                             in admin_response.text                    
+C:\JeffLocal\dashboard\tests\test_render_pages.py                        413     assert                                
+                                                                             prescription_response.status_code == 200  
+C:\JeffLocal\dashboard\tests\test_render_pages.py                        414     assert "RAWMOCK-001-REPEAT-EXACT" in  
+                                                                             prescription_response.text                
+C:\JeffLocal\dashboard\tests\test_render_pages.py                        542 def test_call_column_does_not_render_workf
+                                                                             low_status_pill(tmp_path, monkeypatch):   
+C:\JeffLocal\dashboard\tests\test_render_pages.py                        576             priority="999 Emergency",     
+C:\JeffLocal\dashboard\tests\test_render_pages.py                        584         response = client.get("/?filter=ur
+                                                                             gent_red_flags&sort=newest&q=RAWMOCK-STATU
+                                                                             S-RED-OPEN&range=all")                    
+C:\JeffLocal\dashboard\tests\test_render_pages.py                        587     assert 'class="request-row emergency' 
+                                                                             in response.text                          
+C:\JeffLocal\dashboard\tests\test_render_pages.py                        595     assert "999 Emergency" not in         
+                                                                             status_section                            
+C:\JeffLocal\dashboard\tests\test_render_pages.py                        601     assert "999 Emergency" in             
+                                                                             summary_section                           
+C:\JeffLocal\dashboard\tests\test_render_pages.py                        646     assert "Urgent Attention" in          
+                                                                             response.text                             
+C:\JeffLocal\dashboard\tests\test_render_pages.py                        666         admin_id = conn.execute("SELECT   
+                                                                             id FROM staff_users WHERE display_name =  
+                                                                             ?", ("Admin Demo",)).fetchone()["id"]     
+C:\JeffLocal\dashboard\tests\test_render_pages.py                        671                                           
+                                                                             client.cookies.set("jefflocal_staff_id",  
+                                                                             str(admin_id))                            
+C:\JeffLocal\dashboard\tests\test_render_pages.py                        715     case = make_case("RAWMOCK-COPY-SAFE", 
+                                                                             iso_days_ago(0),                          
+                                                                             request_type="prescription",              
+                                                                             staff_review_required=False)              
+C:\JeffLocal\dashboard\tests\test_render_pages.py                        717     case["task_title"] = "Prescription    
+                                                                             request for Copy Safety"                  
+C:\JeffLocal\dashboard\tests\test_render_pages.py                        719     case["call_summary"] = "Copy Safety   
+                                                                             requested a routine prescription."        
+C:\JeffLocal\dashboard\tests\test_render_pages.py                        723     case["patient_record_note"] = "EMIS:  
+                                                                             EMIS-COPY. The caller requested a routine 
+                                                                             prescription. Callback number provided:   
+                                                                             07111000000."                             
+C:\JeffLocal\dashboard\tests\test_render_pages.py                        752         upsert_case(conn,                 
+                                                                             make_case("RAWMOCK-STATUS-REVIEW",        
+                                                                             iso_days_ago(0), request_type="admin",    
+                                                                             status="Needs Review",                    
+                                                                             staff_review_required=True))              
+C:\JeffLocal\dashboard\tests\test_render_pages.py                        753         upsert_case(conn,                 
+                                                                             make_case("RAWMOCK-STATUS-IDENTITY",      
+                                                                             iso_days_ago(0),                          
+                                                                             request_type="prescription",              
+                                                                             verification_status="possible_match",     
+                                                                             priority="review_required",               
+                                                                             staff_review_required=True))              
+C:\JeffLocal\dashboard\tests\test_render_pages.py                        754         red_case =                        
+                                                                             make_case("RAWMOCK-STATUS-RED",           
+                                                                             iso_days_ago(0), priority="999            
+                                                                             Emergency", red_flags_present=True,       
+                                                                             staff_review_required=True)               
+C:\JeffLocal\dashboard\tests\test_render_pages.py                        763         red_flag = client.get("/?filter=ur
+                                                                             gent_red_flags&sort=newest&q=RAWMOCK-STATU
+                                                                             S-RED&range=all")                         
+C:\JeffLocal\dashboard\tests\test_render_pages.py                        791     assert "EMERGENCY / RED FLAG" not in  
+                                                                             red_row.split('class="request-cell        
+                                                                             status-cell"')[1]                         
+C:\JeffLocal\dashboard\tests\test_render_pages.py                        792     assert "Emergency red-flag case -     
+                                                                             immediate staff review required" not in   
+                                                                             red_row.split('class="request-cell        
+                                                                             status-cell"')[1]                         
+C:\JeffLocal\dashboard\tests\test_render_pages.py                        793     assert "999 Emergency" in red_row     
+C:\JeffLocal\dashboard\tests\test_render_pages.py                        800 def test_workflow_and_risk_filters_keep_re
+                                                                             solved_red_flags_out_of_open(tmp_path,    
+                                                                             monkeypatch):                             
+C:\JeffLocal\dashboard\tests\test_render_pages.py                        812             priority="999 Emergency",     
+C:\JeffLocal\dashboard\tests\test_render_pages.py                        820             priority="999 Emergency",     
+C:\JeffLocal\dashboard\tests\test_render_pages.py                        832         urgent = client.get("/?filter=urge
+                                                                             nt_red_flags&sort=newest&q=RAWMOCK-FILTER-
+                                                                             RED&range=all")                           
+C:\JeffLocal\dashboard\tests\test_render_pages.py                        836     assert urgent.status_code == 200      
+C:\JeffLocal\dashboard\tests\test_render_pages.py                        839     assert "RAWMOCK-FILTER-RED-OPEN" in   
+                                                                             urgent.text                               
+C:\JeffLocal\dashboard\tests\test_render_pages.py                        854             priority="999 Emergency",     
+C:\JeffLocal\dashboard\tests\test_render_pages.py                       1024                 "action_needed": "Review  
+                                                                             and process according to local workflow.",
+C:\JeffLocal\dashboard\tests\test_render_pages.py                       1025                 "outcome_notes":          
+                                                                             "Processed according to JeffLocal         
+                                                                             workflow.",                               
+C:\JeffLocal\dashboard\tests\test_render_pages.py                       1039                 "action_needed": "Review  
+                                                                             and process according to local workflow.",
+C:\JeffLocal\dashboard\tests\test_render_pages.py                       1040                 "outcome_notes":          
+                                                                             "Processed according to JeffLocal         
+                                                                             workflow.",                               
+C:\JeffLocal\dashboard\tests\test_render_pages.py                       1065 def test_staff_workflow_is_simplified_with
+                                                                             _advanced_fields_collapsed_and_save_progre
+                                                                             ss_only(tmp_path, monkeypatch):           
+C:\JeffLocal\dashboard\tests\test_render_pages.py                       1073         upsert_case(conn,                 
+                                                                             make_case("RAWMOCK-UX-WORKFLOW",          
+                                                                             iso_days_ago(0),                          
+                                                                             staff_review_required=False))             
+C:\JeffLocal\dashboard\tests\test_render_pages.py                       1074         resolved_case =                   
+                                                                             make_case("RAWMOCK-UX-WORKFLOW-RESOLVED", 
+                                                                             iso_days_ago(0), status="Resolved",       
+                                                                             staff_review_required=False)              
+C:\JeffLocal\dashboard\tests\test_render_pages.py                       1079         detail =                          
+                                                                             client.get("/case/RAWMOCK-UX-WORKFLOW")   
+C:\JeffLocal\dashboard\tests\test_render_pages.py                       1081                                           
+                                                                             "/case/RAWMOCK-UX-WORKFLOW/update",       
+C:\JeffLocal\dashboard\tests\test_render_pages.py                       1086                 "action_needed": "Review  
+                                                                             and process according to local workflow.",
+C:\JeffLocal\dashboard\tests\test_render_pages.py                       1095         resolved_detail = client.get("/cas
+                                                                             e/RAWMOCK-UX-WORKFLOW-RESOLVED")          
+C:\JeffLocal\dashboard\tests\test_render_pages.py                       1098     workflow_section =                    
+                                                                             detail.text.split("<h3>Staff              
+                                                                             Workflow</h3>")[1].split("</form>")[0]    
+C:\JeffLocal\dashboard\tests\test_render_pages.py                       1099     before_advanced =                     
+                                                                             workflow_section.split("Advanced staff    
+                                                                             fields")[0]                               
+C:\JeffLocal\dashboard\tests\test_render_pages.py                       1104     assert '<details                      
+                                                                             class="advanced-staff-fields">' in        
+                                                                             workflow_section                          
+C:\JeffLocal\dashboard\tests\test_render_pages.py                       1105     assert "<summary>Advanced staff       
+                                                                             fields</summary>" in workflow_section     
+C:\JeffLocal\dashboard\tests\test_render_pages.py                       1106     assert "Mark as Resolved" in          
+                                                                             workflow_section                          
+C:\JeffLocal\dashboard\tests\test_render_pages.py                       1107     assert "Reception Demo" in            
+                                                                             workflow_section                          
+C:\JeffLocal\dashboard\tests\test_render_pages.py                       1110         row = conn.execute("SELECT        
+                                                                             status, outcome_notes FROM cases WHERE    
+                                                                             call_id = ?",                             
+                                                                             ("RAWMOCK-UX-WORKFLOW",)).fetchone()      
+C:\JeffLocal\dashboard\tests\test_render_pages.py                       1169 def test_pathway_question_responses_render
+                                                                             _without_raw_json(tmp_path, monkeypatch): 
+C:\JeffLocal\dashboard\tests\test_render_pages.py                       1176         "call_id": "RAWMOCK-UX-PATHWAY",  
+C:\JeffLocal\dashboard\tests\test_render_pages.py                       1177         "request_type": "prescription",   
+C:\JeffLocal\dashboard\tests\test_render_pages.py                       1179         "pathway_responses": {            
+C:\JeffLocal\dashboard\tests\test_render_pages.py                       1181             "prescription":               
+                                                                             {"prescription_type": "repeat",           
+                                                                             "medications_requested": ["atorvastatin   
+                                                                             20mg"], "pharmacy": "Demo Pharmacy",      
+                                                                             "run_out_status": "two tablets left"},    
+C:\JeffLocal\dashboard\tests\test_render_pages.py                       1183             "urgency_assessment":         
+                                                                             {"urgency_level": "routine",              
+                                                                             "red_flags_mentioned": [],                
+                                                                             "emergency_advice_given": False},         
+C:\JeffLocal\dashboard\tests\test_render_pages.py                       1186     source = tmp_path /                   
+                                                                             "pathway_handoff.json"                    
+C:\JeffLocal\dashboard\tests\test_render_pages.py                       1190         case =                            
+                                                                             make_case("RAWMOCK-UX-PATHWAY",           
+                                                                             iso_days_ago(0),                          
+                                                                             request_type="prescription",              
+                                                                             staff_review_required=False)              
+C:\JeffLocal\dashboard\tests\test_render_pages.py                       1195         response =                        
+                                                                             client.get("/case/RAWMOCK-UX-PATHWAY")    
+C:\JeffLocal\dashboard\tests\test_render_pages.py                       1198     assert "Pathway Questions &amp;       
+                                                                             Responses" in response.text               
+C:\JeffLocal\dashboard\tests\test_render_pages.py                       1199     assert "Prescription type" in         
+                                                                             response.text                             
+C:\JeffLocal\dashboard\tests\test_render_pages.py                       1204     assert "pathway_responses" not in     
+                                                                             response.text                             
+C:\JeffLocal\dashboard\tests\test_render_pages.py                       1242         red_case =                        
+                                                                             make_case("RAWMOCK-UX-RED",               
+                                                                             iso_days_ago(0), priority="999            
+                                                                             Emergency", red_flags_present=True,       
+                                                                             staff_review_required=True)               
+C:\JeffLocal\dashboard\tests\test_render_pages.py                       1254     assert "emergency" not in routine_row 
+C:\JeffLocal\dashboard\tests\test_render_pages.py                       1255     assert "review-row" in review_row and 
+                                                                             "emergency" not in review_row             
+C:\JeffLocal\dashboard\tests\test_render_pages.py                       1256     assert "identity-row" in identity_row 
+                                                                             and "emergency" not in identity_row       
+C:\JeffLocal\dashboard\tests\test_render_pages.py                       1257     assert "emergency" in red_row         
+
+
+

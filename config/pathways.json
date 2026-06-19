@@ -1,0 +1,70 @@
+{
+  "version": "1.0",
+  "practice_id": "churchtown",
+  "pathways": {
+    "prescription": {
+      "enabled": true,
+      "canonical_name": "Prescription Request",
+      "staff_routing_label": "Medicines Management",
+      "default_priority": "routine",
+      "emis_workflow": "prescription",
+      "safety_notes": "Verify patient identity. Check for controlled drugs."
+    },
+    "sick_note": {
+      "enabled": true,
+      "canonical_name": "Sick Note / Fit Note",
+      "staff_routing_label": "GP Tasks",
+      "default_priority": "routine",
+      "emis_workflow": "sick_note",
+      "safety_notes": "Check prior sick notes. GP authorisation required."
+    },
+    "referral": {
+      "enabled": true,
+      "canonical_name": "Referral Request",
+      "staff_routing_label": "GP Tasks",
+      "default_priority": "routine",
+      "emis_workflow": "referral",
+      "safety_notes": "Confirm referral pathway with GP before raising."
+    },
+    "test_result": {
+      "enabled": true,
+      "canonical_name": "Test Result Enquiry",
+      "staff_routing_label": "Clinician Review",
+      "default_priority": "routine",
+      "emis_workflow": "test_result",
+      "safety_notes": "Assign to responsible clinician. Do not give results over phone."
+    },
+    "appointment_redirect": {
+      "enabled": true,
+      "canonical_name": "Appointment Request",
+      "staff_routing_label": "Reception",
+      "default_priority": "routine",
+      "emis_workflow": "appointment_redirect",
+      "safety_notes": "Check appointment availability. Redirect to duty clinician if urgent."
+    },
+    "admin": {
+      "enabled": true,
+      "canonical_name": "General Admin",
+      "staff_routing_label": "Admin",
+      "default_priority": "routine",
+      "emis_workflow": "admin",
+      "safety_notes": "Log contact in patient record. Route to appropriate team."
+    },
+    "unknown": {
+      "enabled": true,
+      "canonical_name": "Unknown / Unclassified",
+      "staff_routing_label": "Staff Review",
+      "default_priority": "review_required",
+      "emis_workflow": "admin",
+      "safety_notes": "Manual review required before routing."
+    },
+    "needs_review": {
+      "enabled": true,
+      "canonical_name": "Needs Review",
+      "staff_routing_label": "Staff Review",
+      "default_priority": "review_required",
+      "emis_workflow": "admin",
+      "safety_notes": "Staff review required. Do not auto-route."
+    }
+  }
+}

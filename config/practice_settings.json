@@ -1,0 +1,29 @@
+{
+  "practice_id": "churchtown",
+  "practice_name": "Churchtown Medical Centre",
+  "address": {
+    "line1": "Botanic Road",
+    "town": "Southport",
+    "county": "Merseyside",
+    "postcode": "PR9 7NQ"
+  },
+  "phone": "01704 228877",
+  "opening_hours": {
+    "monday":    { "open": "08:00", "close": "18:30" },
+    "tuesday":   { "open": "08:00", "close": "18:30" },
+    "wednesday": { "open": "08:00", "close": "18:30" },
+    "thursday":  { "open": "08:00", "close": "18:30" },
+    "friday":    { "open": "08:00", "close": "18:00" },
+    "saturday":  { "open": null,    "close": null     },
+    "sunday":    { "open": null,    "close": null     }
+  },
+  "gp_list": [
+    { "id": "gp_1", "name": "Dr Smith",   "role": "GP Partner"  },
+    { "id": "gp_2", "name": "Dr Jones",   "role": "GP Partner"  },
+    { "id": "gp_3", "name": "Dr Patel",   "role": "Salaried GP" }
+  ],
+  "emis_web_enabled": false,
+  "eni_integration_enabled": false,
+  "phase": "pilot",
+  "notes": "Pilot site. ENI/EMIS live integration is Phase 2 only — do not enable."
+}

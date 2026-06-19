@@ -69,7 +69,7 @@ function Normalize-DateString {
         try {
             $dt = [datetime]::ParseExact($text, $fmt, $null)
 
-            if ($dt.Year -gt ((Get-Date).Year + 1)) {
+            if ($dt.Year -gt (Get-Date).Year) {
                 $dt = $dt.AddYears(-100)
             }
 
@@ -79,7 +79,7 @@ function Normalize-DateString {
 
     try {
         $dt = [datetime]::Parse($text)
-        if ($dt.Year -gt ((Get-Date).Year + 1)) {
+        if ($dt.Year -gt (Get-Date).Year) {
             $dt = $dt.AddYears(-100)
         }
         return $dt.ToString("yyyy-MM-dd")
@@ -91,7 +91,9 @@ function Normalize-DateString {
 function Normalize-Phone {
     param([string]$Phone)
     if ([string]::IsNullOrWhiteSpace($Phone)) { return "" }
-    return (($Phone -replace '[^\d]', '').Trim())
+    $digits = ($Phone -replace '[^\d]', '').Trim()
+    if ($digits.Length -lt 10) { return "" }
+    return $digits
 }
 
 function Get-LastName {

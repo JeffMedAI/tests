@@ -210,7 +210,7 @@ def test_assigned_staff_workload_separates_open_and_resolved(tmp_path, monkeypat
     assert activity["team"]["in_progress"] == 1
 
 
-def test_reopen_moves_case_back_to_active_counts(tmp_path, monkeypatch):
+def test_reopen_moves_case_back_to_active_counts(tmp_path, monkeypatch, authed_client):
     db_path = setup_db(tmp_path, monkeypatch)
     with connect(db_path) as conn:
         upsert_case(
@@ -222,11 +222,9 @@ def test_reopen_moves_case_back_to_active_counts(tmp_path, monkeypatch):
                 resolved_by="Admin Demo",
             ),
         )
-        admin_id = conn.execute("SELECT id FROM staff_users WHERE display_name = ?", ("Admin Demo",)).fetchone()["id"]
         assert metric_value(main_module.get_kpi_cards(conn, "all"), "Open Cases") == 0
 
-    with TestClient(app) as client:
-        client.cookies.set("jefflocal_staff_id", str(admin_id))
+    with authed_client as client:
         response = client.post(
             "/case/METRIC-REOPEN/quick_action",
             data={"action": "reopen", "return_url": "/"},

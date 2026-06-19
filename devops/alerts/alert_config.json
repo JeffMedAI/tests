@@ -1,0 +1,74 @@
+{
+  "version": "1.0",
+  "updated": "2026-06-18",
+  "alert_channels": {
+    "whatsapp": {
+      "enabled": true,
+      "recipient": "07440333938",
+      "recipient_name": "Saeed",
+      "send_via": "scripts/daily/strategy_daily.ps1"
+    }
+  },
+  "alerts": [
+    {
+      "id": "dashboard_down",
+      "label": "Dashboard unreachable",
+      "description": "Port 8765 not responding",
+      "check": "http://localhost:8765/health",
+      "severity": "critical",
+      "threshold": "1 consecutive failure",
+      "action": "Watchdog auto-restarts. WhatsApp alert if still down after restart."
+    },
+    {
+      "id": "n8n_down",
+      "label": "n8n unreachable",
+      "description": "Port 5678 not responding — new calls cannot enter the pipeline",
+      "check": "http://localhost:5678/healthz",
+      "severity": "critical",
+      "threshold": "1 consecutive failure",
+      "action": "Watchdog auto-restarts. WhatsApp alert if still down after restart."
+    },
+    {
+      "id": "deadletter_queue",
+      "label": "Dead-letter queue growing",
+      "description": "Files in queue/deadletter/ — calls failed to process",
+      "check": "count of files in C:\\JeffLocal\\queue\\deadletter\\",
+      "severity": "high",
+      "threshold": "Any file older than 1 hour",
+      "action": "Daily brief includes count. Manual replay required (no auto-replay in Phase 1)."
+    },
+    {
+      "id": "red_flag_unacknowledged",
+      "label": "Unacknowledged red-flag case",
+      "description": "A 999 Emergency case has been on the dashboard for more than 10 minutes without staff action",
+      "check": "dashboard alert_events table: priority=999 Emergency, status=New, age > 10 min",
+      "severity": "critical",
+      "threshold": "10 minutes",
+      "action": "Dashboard shows prominent warning. Evening brief flags it."
+    },
+    {
+      "id": "ollama_slow",
+      "label": "Ollama response slow",
+      "description": "LLM extraction taking longer than 60 seconds per call",
+      "check": "pipeline log: processing time > 60s",
+      "severity": "medium",
+      "threshold": "3 consecutive slow calls",
+      "action": "Log warning. Check Ollama resource usage. Note in daily brief."
+    },
+    {
+      "id": "db_size",
+      "label": "Database file large",
+      "description": "dashboard.sqlite exceeding 500 MB",
+      "check": "file size of C:\\JeffLocal\\dashboard\\data\\dashboard.sqlite",
+      "severity": "medium",
+      "threshold": "500 MB",
+      "action": "Run GDPR purge (90-day). Note in weekly report."
+    }
+  ],
+  "baseline_metrics": {
+    "note": "Record first-week actuals here after pilot go-live.",
+    "avg_processing_seconds": null,
+    "avg_cases_per_day": null,
+    "uptime_target_percent": 99.5
+  }
+}

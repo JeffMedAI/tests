@@ -529,6 +529,19 @@ if (@($duplicateBatchIds).Count -gt 0) {
                     }
                 } catch {
                     Write-Host "Ollama pathway extraction failed (non-fatal): $($_.Exception.Message)"
+                    # SAFETY: Ollama failure -> force staff_review_required + not safe to queue.
+                    # Never silently pass through an unprocessed case as routine.
+                    if ($call.PSObject.Properties["staff_review_required"]) {
+                        $call.PSObject.Properties["staff_review_required"].Value = $true
+                    } else {
+                        $call | Add-Member -NotePropertyName "staff_review_required" -NotePropertyValue $true -Force
+                    }
+                    if ($call.PSObject.Properties["safe_to_queue"]) {
+                        $call.PSObject.Properties["safe_to_queue"].Value = $false
+                    } else {
+                        $call | Add-Member -NotePropertyName "safe_to_queue" -NotePropertyValue $false -Force
+                    }
+                    Write-Host "SAFETY: Ollama failure on $callId - forced staff_review_required=true, safe_to_queue=false"
                 }
             }
         }
@@ -537,18 +550,19 @@ if (@($duplicateBatchIds).Count -gt 0) {
         $prescriptionResponses = Get-ObjectPropertyValue -Object $pathwayResponses -Name "prescription" -Default $null
         $urgencyAssessment = Get-ObjectPropertyValue -Object $pathwayResponses -Name "urgency_assessment" -Default $null
 
+        # SAFETY: LLM identity block must NOT contribute to patient matching.
+        # identity.patient_name and identity.dob are intentionally excluded here.
         $patientNameRaw = Get-FirstNonBlankValue @(
             (Get-ObjectPropertyValue -Object $call -Name "patient_name_raw"),
             (Get-ObjectPropertyValue -Object $call -Name "patient_name"),
-            (Get-ObjectPropertyValue -Object $callNormalizedInput -Name "patient_name"),
-            (Get-ObjectPropertyValue -Object $identityResponses -Name "patient_name")
+            (Get-ObjectPropertyValue -Object $callNormalizedInput -Name "patient_name")
         )
 
+        # SAFETY: dob from LLM identity block excluded - deterministic fields only.
         $dobRaw = Get-FirstNonBlankValue @(
             (Get-ObjectPropertyValue -Object $call -Name "dob_raw"),
             (Get-ObjectPropertyValue -Object $call -Name "dob"),
-            (Get-ObjectPropertyValue -Object $callNormalizedInput -Name "dob"),
-            (Get-ObjectPropertyValue -Object $identityResponses -Name "dob")
+            (Get-ObjectPropertyValue -Object $callNormalizedInput -Name "dob")
         )
 
         $callbackRaw = Get-FirstNonBlankValue @(
