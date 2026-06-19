@@ -253,9 +253,10 @@ class TestPublicPaths:
         )
 
     def test_favicon_is_public(self, page: Page):
-        response = page.goto(f"{BASE_URL}/favicon.ico")
+        # Use request.get — page.goto aborts on 204 No Content responses
+        response = page.request.get(f"{BASE_URL}/favicon.ico")
         assert response is not None
-        # App returns 204 for favicon
+        # App returns 204 for favicon (no content, no icon file needed)
         assert response.status in (200, 204), (
             f"Expected 200/204 for /favicon.ico, got {response.status}"
         )
