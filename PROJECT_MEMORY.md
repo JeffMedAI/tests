@@ -1,6 +1,6 @@
 ﻿# PROJECT MEMORY â€” JeffLocal
 # READ THIS FIRST at every session start, before doing anything else.
-# Last updated: 2026-06-21 (auto-updated 18:00)
+# Last updated: 2026-06-22 (auto-updated 18:00)
 # Maintained by: Claude (update at end of every session)
 
 ---
@@ -75,7 +75,7 @@ strategy | Docs, reports, governance, marketing
 
 ---
 
-## CURRENT STATUS -- 2026-06-21 (18:00)
+## CURRENT STATUS -- 2026-06-22 (18:00)
 
 ### What is working
 - Production dashboard LIVE at dashboard.app-avamed.uk (port 8765)
@@ -178,7 +178,7 @@ C:\JeffLocal\config\model_monitoring.json
 Repo:    https://github.com/JeffMedAI/tests
 Branch:  sandbox (production code)
 Main:    merged 2026-06-19 (sandbox → main via worktree)
-Latest:  f95ca46 memory: session end protocol 2026-06-20 18:00
+Latest:  36b6512 memory: session end protocol 2026-06-21 18:00
 test_user: id=5, role=staff, username=test_user (Playwright E2E)
 ```
 
@@ -270,4 +270,6 @@ Monitoring:   Watchdog (restarts services if down, checks every 60s)
 
 
 
-                        
+
+
+                    
