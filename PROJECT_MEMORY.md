@@ -75,24 +75,24 @@ strategy | Docs, reports, governance, marketing
 
 ---
 
-## CURRENT STATUS -- 2026-06-23 (18:00)
+## CURRENT STATUS -- 2026-06-23 (evening session)
 
 ### What is working
 - Production dashboard LIVE at dashboard.app-avamed.uk (port 8765)
 - Watchdog monitoring 4 services: ProductionDashboard, N8n, Ollama, CloudflareTunnel -- CLEAN
 - WhatsApp alerts: LIVE
-- **104/104 pytest tests passing** (unit/integration)
+- **144/144 pytest tests passing** (unit/integration — test_locked_fields.py refactoring added 40 tests)
 - **40/40 Playwright E2E tests passing** (installed 2026-06-19, 4 fixes applied)
 - **sandbox branch merged to main** (2026-06-19, via git worktree, Saeed approved)
 - **Full pipeline test run 2026-06-19**: 5 fresh cases (CSV-FRESH-20260619-1315) sent end-to-end, all 5 resolved via staff simulation. Safety invariants confirmed — LLM cannot override priority or verification_status.
 - All security/quality fixes (Phase 1+2+3) APPLIED and in production (main branch)
 - test_user account in DB (id=5, role=staff, PBKDF2 hash, test_pass)
 
-### Bugs found in 2026-06-19 pipeline test run (not yet fixed)
-1. **verification_status null** for all fresh pipeline cases — pipeline not writing this field to handoff JSON or importer not mapping it. HIGHEST PRIORITY — reception staff can't see patient match status.
-2. **canonical_request_type null** — request type pills fall back to raw strings (e.g. "test_result" not "Test Result")
-3. **resolved_by not in /api/cases/{call_id} response** — audit trail gap (field IS in DB, just not exposed in API endpoint)
-4. **created_at null on fresh import** — cases sort to bottom of worklist, urgent cases could be missed
+### Bugs found in 2026-06-19 pipeline test run
+1. **verification_status null** — REANALYSED 2026-06-23. Handoff JSON DOES contain `verification_status = "matched"` (confirmed from actual test JSON files). Pipeline and importer both correct. Real gap: UI has no verification_status badge — UX task #3 below.
+2. **canonical_request_type null** — request type pills fall back to raw strings (e.g. "test_result" not "Test Result") — still open
+3. **resolved_by not in /api/cases/{call_id} response** — FIXED 2026-06-23. Added `resolved_by`, `resolved_at`, `resolved_at_display` to API response.
+4. **cases sort to bottom when call_timestamp_sort is null** — FIXED 2026-06-23. Sort clause now falls back to `imported_at`. Also fixed wrong column `created_at` → `imported_at` in patient hint SQL subquery.
 
 ### UX improvements identified (priority order)
 1. Client-side notes gate — disable Resolve button until notes filled for red flag/identity cases
@@ -135,16 +135,20 @@ Full detail: docs/reports/test-run-20260619-172712.md
 ```
 RANK | TASK                                              | AGENT    | STATUS
 -----+---------------------------------------------------+----------+------------------
- 1   | Fix verification_status null (trace pipeline→DB)  | Backend  | NEW -- HIGH
- 2   | Fix created_at null on fresh imports              | Backend  | NEW
- 3   | Add resolved_by to /api/cases/{call_id} response  | Backend  | NEW
- 4   | UX: client-side notes gate for red flag/identity  | Frontend | NEW
- 5   | UX: red flag visual treatment (CSS)               | Frontend | NEW
- 6   | Remove legacy static-salt password fallback       | Backend  | PENDING
- 7   | n8n API key rotation                              | DevOps   | Before go-live
- 8   | Set JEFF_WEBHOOK_SECRET                           | DevOps   | Before live traffic
- 9   | Multi-tenancy tenant_id                           | Database | Phase 2
+ 1   | UX: verification status badge on case cards       | Frontend | NEW (data is OK)
+ 2   | Fix canonical_request_type null (pill labels)     | Backend  | NEW
+ 3   | UX: client-side notes gate for red flag/identity  | Frontend | NEW
+ 4   | UX: red flag visual treatment (CSS)               | Frontend | NEW
+ 5   | Remove legacy static-salt password fallback       | Backend  | PENDING
+ 6   | n8n API key rotation                              | DevOps   | Before go-live
+ 7   | Set JEFF_WEBHOOK_SECRET                           | DevOps   | Before live traffic
+ 8   | Multi-tenancy tenant_id                           | Database | Phase 2
 ```
+DONE 2026-06-23:
+- resolved_by + resolved_at added to /api/cases/{call_id} response
+- Worklist sort fallback to imported_at when call_timestamp_sort is null/zero
+- patient hint SQL: c2.created_at → c2.imported_at (wrong column, always returned 0)
+- Stale .git/objects/maintenance.lock deleted
 
 ---
 
@@ -274,4 +278,3 @@ Monitoring:   Watchdog (restarts services if down, checks every 60s)
 
 
 
-                

@@ -103,3 +103,79 @@
 5. **Reused** — `request_type_breakdown` (already in context) provides bar chart data with pre-calculated `width` percentages and filter URLs.
 
 **Test result:** Python syntax check passed. No unit tests broken. UI requires manual login to verify (browser automation blocked by auth).
+
+---
+
+## 2026-06-17 — Test/Demo Naming Cleanup (RAWMOCK removed, GPDEMO/N8NTEST addressed additively)
+**Agent:** Lead Agent (Claude Code session)
+**Approved by:** Saeed (explicit "approved" in session — additive prefix change)
+**Description:** Saeed flagged that RAWMOCK, GPDEMO and N8NTEST test-data prefixes look unprofessional ahead of going production-ready.
+1. **RAWMOCK** — removed from `dashboard/tests/test_api_endpoints.py`: replaced file-fixture-based seeding with direct DB seeding using the existing `TC-` prefix convention. Two tests deleted at Saeed's instruction (`test_api_sync_rawmock_only_returns_pattern`, `test_gp_demo_prefix_allowed_only_as_test_prefix`).
+2. **GPDEMO / N8NTEST** — confirmed these are still live and load-bearing in `app/main.py` (`DEMO_CALL_PREFIXES`, `N8NTEST_ARCHIVE_FOLDERS`, `archive_n8ntest_artifacts()`, `write_n8ntest_envelopes()`, etc.) and referenced across ~15 test/script files outside `dashboard/`. A full rename was judged too risky to do safely in one pass (silent loss of demo-data recognition if any caller of the old prefix is missed). Instead: added a new prefix, `AVA-TEST`, to `DEMO_CALL_PREFIXES` in `app/main.py`, alongside the existing entries (`TC-`, `RX-TEST`, `PRODSIM`, `DEMO`, `GPDEMO`, `GPTDEMO`). Nothing removed, nothing renamed — old prefixes keep working. New test batches should use `AVA-TEST-<timestamp>` going forward; existing GPDEMO/N8NTEST-prefixed scripts can be migrated at Saeed's pace.
+**Files changed:** `dashboard/app/main.py` (DEMO_CALL_PREFIXES — additive only), `dashboard/tests/test_api_endpoints.py`, `CHANGELOG.md`
+**Tests run:** Local pytest run on this machine was unreliable (sandbox file-mount desync, unrelated to the edits — flagged separately). Re-verification on the real Windows host pending.
+**Saeed notified:** This session
+
+---
+
+## 2026-06-17 — Known Gap Logged: No call_id prefix validation on `/api/n8n/test-intake-batch`
+**Agent:** Lead Agent (Claude Code session)
+**Approved by:** Saeed ("log as gap" — no fix applied this session)
+**Description:** While investigating the GPDEMO/N8NTEST naming cleanup above, found that the test `test_api_n8n_test_intake_rejects_non_n8ntest_call_id` (`dashboard/tests/test_api_endpoints.py`) expects the `/api/n8n/test-intake-batch` endpoint to reject any call_id that doesn't contain "N8NTEST" (400 response). Read the full `api_n8n_test_intake_batch` function and its helpers (`call_id_from_test_call`, `write_n8ntest_envelopes`, `is_encrypted_envelope`) in `app/main.py` — none of them actually perform this check. The endpoint currently accepts any call_id shape, provided `test_mode` and `disable_google_push` are set correctly. This is the same underlying gap implied by the now-deleted `test_gp_demo_prefix_allowed_only_as_test_prefix` test.
+**Risk:** Low — this endpoint is already gated behind `test_mode=true`, `disable_google_push=true`, and HMAC verification (`JEFF_WEBHOOK_SECRET`). Not patient-identity or clinical-safety logic, so does not trigger the auth/patient-data Security Agent gate on its own. Flagged here per Saeed's instruction rather than fixed.
+**Files affected (not changed):** `dashboard/app/main.py` (`api_n8n_test_intake_batch`), `dashboard/tests/test_api_endpoints.py`
+**Tests run:** N/A — no fix applied, gap logged only
+**Saeed notified:** This session
+
+---
+
+## 2026-06-17 — Known Gap Logged: n8n session not staying signed in (CRITICAL — blocks testing)
+**Agent:** Lead Agent (Claude Code session)
+**Approved by:** Saeed ("flag as critical gap" — no fix applied this session)
+**Description:** Mid test-run, attempting to activate "Listen for test event" on the `jefflocal-test-intake` workflow to fix a 404 on `/webhook-test/...`, found n8n's UI at `http://localhost:5678` sitting on its sign-in screen rather than an already-authenticated session. Per standing rule, Claude does not enter passwords into any field, so could not log in to flip the listener on. Worked around it this run by sending the batch to the always-on production path (`/webhook/jefflocal-test-intake`) instead, which returned 200 — but that path only works if the workflow is "Active" in n8n, and is not normally how test/demo traffic should enter. The underlying issue — why the n8n session isn't staying signed in — is unresolved and unexplained. [UNVERIFIED — confirm before proceeding: whether this is expected behaviour (e.g. session timeout, browser profile reset) or a config/cookie problem worth fixing before pilot go-live, when test/demo traffic will need quick repeatable webhook-test access].
+**Risk:** Medium-high ahead of go-live — if reception-facing tooling or routine testing depends on staying signed into n8n, repeated lockouts will slow diagnosis during the pilot window. Does not touch patient data or auth logic directly, so not an automatic Security Agent block, but flagged as critical because it blocked this session's test run until worked around.
+**Also found:** the staff dashboard at `https://dashboard.app-avamed.uk` also requires sign-in (username/password or PIN) — this could not be verified against CLAUDE.md's note that "staff accounts do not yet exist," since Claude does not enter dashboard credentials either. [UNVERIFIED — confirm whether staff accounts now exist, and if so whether n8n and dashboard logins are both meant to require a human each session].
+**Files affected:** None — infrastructure/session-state issue, not a code change.
+**Workaround used this run:** `tests/send_gp_demo_n8n_webhook_calls.py --url http://localhost:5678/webhook/jefflocal-test-intake` (production webhook path) instead of the default test-listener path.
+**Tests run:** N/A — gap logged only
+**Saeed notified:** This session
+
+---
+
+## 2026-06-23 — Bug fix: stale .git/objects/maintenance.lock deleted
+**Agent:** Lead Agent (Claude Code session)
+**Approved by:** Bug-fix autonomy exception — Security Agent: no code change, no data risk; Lead Agent: approved. Logged per CLAUDE.md.
+**Description:** Found stale lock file at `.git/objects/maintenance.lock` dated 2026-05-29. Left by a `git maintenance` run that was interrupted. Stale lock prevents future git maintenance runs. Deleted safely — no git operations were in progress.
+**Files changed:** None (lock file deleted, not a tracked file)
+**Tests run:** N/A
+**Saeed notified:** This session
+
+---
+
+## 2026-06-23 — Bug fix: resolved_by missing from /api/cases/{call_id} response
+**Agent:** Lead Agent (Claude Code session)
+**Approved by:** Bug-fix autonomy exception — Security Agent: `resolved_by` is staff name (not patient identity, not auth logic), already stored in DB and returned on HTML case detail page — exposing it on the JSON API endpoint is consistent; Lead Agent: approved. Logged per CLAUDE.md.
+**Description:** `/api/cases/{call_id}` GET endpoint (used by inline detail panel) did not include `resolved_by`, `resolved_at`, or `resolved_at_display` in its response, even though all three fields are in the DB and used in audit trail logic. Reception staff using the JS panel had no way to see who resolved a case or when. Added all three fields to the return dict.
+**Files changed:** `dashboard/app/main.py` (api_case_get return dict, 3 fields added)
+**Tests run:** 144/144 pytest tests passing (all green)
+**Saeed notified:** This session
+
+---
+
+## 2026-06-23 — Bug fix: wrong column name (created_at) in patient lookup SQL
+**Agent:** Lead Agent (Claude Code session)
+**Approved by:** Bug-fix autonomy exception — Security Agent: column name fix in a read-only patient lookup subquery, no auth or identity logic touched; Lead Agent: approved. Logged per CLAUDE.md.
+**Description:** Patient lookup endpoint (`/api/patient-hint`) had a SQL subquery using `c2.created_at` to count today's cases for the same patient. The `cases` table has no `created_at` column — this would silently return 0 for `cases_today` on every lookup (SQLite returns NULL for unknown columns in expressions, so the COUNT was always 0). Fixed by replacing `c2.created_at` with `c2.imported_at`, which is the correct column (set at import time, always populated).
+**Files changed:** `dashboard/app/main.py` (one SQL clause in patient hint endpoint)
+**Tests run:** 144/144 pytest tests passing (all green)
+**Saeed notified:** This session
+
+---
+
+## 2026-06-23 — Bug fix: fresh cases sort to bottom of worklist when call_timestamp_sort is null/zero
+**Agent:** Lead Agent (Claude Code session)
+**Approved by:** Bug-fix autonomy exception — Security Agent: worklist sort order change, no patient identity or auth logic; Lead Agent: approved. Logged per CLAUDE.md.
+**Description:** Worklist ORDER BY used `COALESCE(call_timestamp_sort, 0) DESC`. When `call_timestamp_sort` is 0 or unparseable (e.g. malformed timestamp from pipeline), cases sort to the bottom behind all cases with real timestamps — including urgent ones. Fresh imports always have `imported_at` set correctly. Fixed by replacing the bare `COALESCE` with `COALESCE(NULLIF(call_timestamp_sort, 0), CAST(strftime('%s', imported_at) AS REAL), 0)` across `sort_clause()` and `worklist_order_clause()`. Cases with a valid call timestamp sort by call time (existing behaviour). Cases with no valid call timestamp fall back to import time (new, correct behaviour).
+**Files changed:** `dashboard/app/main.py` (`sort_clause`, `worklist_order_clause` — 4 ORDER BY expressions updated)
+**Tests run:** 144/144 pytest tests passing (all green)
+**Saeed notified:** This session
