@@ -584,7 +584,7 @@
               I confirm staff review is complete and this request is ready to resolve.
             </label>
             <div class="cd-workflow-actions">
-              <button type="submit" name="intent" value="resolve" class="cd-resolve-btn" {% if current_staff and current_staff.role == "readonly" %}disabled{% endif %}>✓ Mark as Resolved</button>
+              <button type="submit" name="intent" value="resolve" class="cd-resolve-btn" {% if current_staff and current_staff.role == "readonly" %}disabled{% elif case.red_flags_present or case.identity_review_required %}data-requires-notes="true"{% endif %}>✓ Mark as Resolved</button>
               <button type="submit" name="intent" value="save_progress" class="secondary-button" {% if current_staff and current_staff.role == "readonly" %}disabled{% endif %}>Save progress</button>
             </div>
             {% if case.red_flags_present %}
@@ -621,6 +621,17 @@
                 <input name="last_edited_by" value="{{ case.last_edited_by or current_staff.display_name if current_staff else '' }}">
               </label>
             </details>
+          <script>
+            (function () {
+              var btn = document.querySelector('.cd-workflow-form .cd-resolve-btn[data-requires-notes]');
+              if (!btn) return;
+              var ta = document.querySelector('.cd-workflow-form textarea[name="outcome_notes"]');
+              if (!ta) return;
+              function sync() { btn.disabled = ta.value.trim().length === 0; }
+              ta.addEventListener('input', sync);
+              sync();
+            }());
+          </script>
           </form>
         </div>
       {% endif %}

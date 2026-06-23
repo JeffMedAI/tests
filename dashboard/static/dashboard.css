@@ -1939,6 +1939,7 @@ a.glance-row:hover { background: var(--gray-100); text-decoration: none; }
 .request-card.review-row { border-left: 3px solid var(--warning); }
 .request-card.identity-row { border-left: 3px solid var(--purple); }
 .request-card.resolved-row { opacity: .72; }
+.request-card[data-red-flag="true"]:not(.resolved-row) { border-left: 4px solid var(--danger); background: rgba(220, 38, 38, 0.04); }
 
 /* Card row layouts */
 .card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }

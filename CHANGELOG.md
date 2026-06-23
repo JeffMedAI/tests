@@ -179,3 +179,27 @@
 **Files changed:** `dashboard/app/main.py` (`sort_clause`, `worklist_order_clause` — 4 ORDER BY expressions updated)
 **Tests run:** 144/144 pytest tests passing (all green)
 **Saeed notified:** This session
+
+## 2026-06-23 — UX: Red flag card visual treatment
+**Agent:** Lead Agent (Claude Code session)
+**Approved by:** Bug-fix autonomy exception — Security Agent: CSS/template only, no auth or patient-identity logic; Lead Agent: approved. Logged per CLAUDE.md.
+**Description:** Worklist case cards for red-flag calls had no visual distinction beyond a "Red Flag" badge chip. Added `data-red-flag` attribute to the `<article>` element in index.html. Added CSS rule `.request-card[data-red-flag="true"]:not(.resolved-row)` with 4px danger-colour left border and light red background tint. Makes urgent cases unmissable at a glance.
+**Files changed:** `dashboard/templates/index.html` (data-red-flag attribute on article), `dashboard/static/dashboard.css` (new card rule)
+**Tests run:** 144/144 pytest tests passing (all green)
+**Saeed notified:** This session
+
+## 2026-06-23 — UX: Verification status badge on case cards
+**Agent:** Lead Agent (Claude Code session)
+**Approved by:** Bug-fix autonomy exception — Security Agent: display-only badge, verification_status set by deterministic code not LLM; Lead Agent: approved. Logged per CLAUDE.md.
+**Description:** Reception staff could not see patient identity confirmation on the worklist card. `verification_status = "matched"` was in the DB but never displayed. Added a green "✓ Matched" badge to the card-badges section in index.html. Shows only when `identity_review_required` is False and `verification_status` is non-empty (i.e. a good match). Identity-problem cases already show "Review (No ID Match)" etc via summary_chips — this covers the opposite, successful case.
+**Files changed:** `dashboard/templates/index.html` (verification badge in card-badges div)
+**Tests run:** 144/144 pytest tests passing (all green)
+**Saeed notified:** This session
+
+## 2026-06-23 — UX: Client-side notes gate for red flag / identity cases
+**Agent:** Lead Agent (Claude Code session)
+**Approved by:** Bug-fix autonomy exception — Security Agent: JS gate is additive safety, server-side validation unchanged; Lead Agent: approved. Logged per CLAUDE.md.
+**Description:** For red-flag and identity-review cases, the "Mark as Resolved" button was clickable even when the outcome notes field was empty. Server-side already blocks resolution without notes for these cases (returns error). Added client-side gate: resolve button gets `data-requires-notes="true"` attribute (via Jinja2) when `case.red_flags_present or case.identity_review_required`. Inline JS disables the button on page load if notes textarea is empty, and re-enables it when the staff member types. Prevents the error modal from appearing in the first place.
+**Files changed:** `dashboard/templates/case_detail.html` (resolve button attribute + inline script)
+**Tests run:** 144/144 pytest tests passing (all green)
+**Saeed notified:** This session

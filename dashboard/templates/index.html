@@ -541,7 +541,8 @@
         <article
           class="request-card {% if case.is_emergency %}emergency{% elif case.identity_review_required %}identity-row{% elif case.staff_review_required %}review-row{% endif %} {% if case.is_resolved %}resolved-row{% endif %}{% if not case.is_resolved and (case.red_flags_present or '999' in (case.priority or '')) %} is-urgent-pulse{% endif %}"
           id="case-{{ case.call_id }}"
-          data-case-row>
+          data-case-row
+          data-red-flag="{{ 'true' if case.red_flags_present else 'false' }}">
 
           {# Checkbox #}
           <label class="batch-select card-check" data-no-toggle aria-label="Select {{ case.call_id }} for bulk actions">
@@ -567,6 +568,9 @@
             <div class="card-top-left">
               <div class="card-badges">
                 <span class="badge {{ case.request_type_class }}">{{ case.request_type_label }}</span>
+                {% if not case.identity_review_required and case.verification_status %}
+                  <span class="badge safe" title="Patient identity confirmed">&#10003; Matched</span>
+                {% endif %}
                 {% for chip in case.summary_chips %}
                   <span class="badge {{ chip.class }}"{% if chip.tooltip %} title="{{ chip.tooltip }}"{% endif %}>{{ chip.label }}</span>
                 {% endfor %}

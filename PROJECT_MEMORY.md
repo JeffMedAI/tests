@@ -135,16 +135,16 @@ Full detail: docs/reports/test-run-20260619-172712.md
 ```
 RANK | TASK                                              | AGENT    | STATUS
 -----+---------------------------------------------------+----------+------------------
- 1   | UX: verification status badge on case cards       | Frontend | NEW (data is OK)
- 2   | Fix canonical_request_type null (pill labels)     | Backend  | NEW
- 3   | UX: client-side notes gate for red flag/identity  | Frontend | NEW
- 4   | UX: red flag visual treatment (CSS)               | Frontend | NEW
- 5   | Remove legacy static-salt password fallback       | Backend  | PENDING
- 6   | n8n API key rotation                              | DevOps   | Before go-live
- 7   | Set JEFF_WEBHOOK_SECRET                           | DevOps   | Before live traffic
- 8   | Multi-tenancy tenant_id                           | Database | Phase 2
+ 1   | Fix canonical_request_type null (pill labels)     | Backend  | NEW
+ 2   | Remove legacy static-salt password fallback       | Backend  | PENDING
+ 3   | n8n API key rotation                              | DevOps   | Before go-live
+ 4   | Set JEFF_WEBHOOK_SECRET                           | DevOps   | Before live traffic
+ 5   | Multi-tenancy tenant_id                           | Database | Phase 2
 ```
 DONE 2026-06-23:
+- UX: verification status badge (✓ Matched) on worklist case cards
+- UX: red flag card visual treatment — 4px red border + background tint
+- UX: client-side notes gate — resolve button disabled until notes filled (red flag/identity cases)
 - resolved_by + resolved_at added to /api/cases/{call_id} response
 - Worklist sort fallback to imported_at when call_timestamp_sort is null/zero
 - patient hint SQL: c2.created_at → c2.imported_at (wrong column, always returned 0)
