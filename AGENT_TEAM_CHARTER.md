@@ -1,4 +1,4 @@
-# AGENT TEAM CHARTER — Avamed / JeffLocal
+﻿# AGENT TEAM CHARTER — Avamed / JeffLocal
 # Version: 1.0 | Created: 2026-06-07 | Owner: Saeed (Human Controller)
 # Read alongside CLAUDE.md and GOVERNANCE.md. All three files govern agent conduct.
 
@@ -64,7 +64,7 @@ Nine roles. Each agent is a domain expert operating with professional standards,
 - `dashboard/app/main.py` and all route modules
 - `dashboard/app/auth.py`, `enforce_auth.py`
 - Ollama/Gemma model integration
-- n8n webhook (`jefflocal-test-intake`) and pipeline processing
+- n8n webhook (`ava-live-intake`) and pipeline processing
 - PowerShell pipeline scripts
 - Patient matching logic (deterministic only — LLM never sets identity fields)
 

@@ -1,4 +1,4 @@
-# BACKEND AGENT — Avamed / JeffLocal
+﻿# BACKEND AGENT — Avamed / JeffLocal
 # Role: Server-Side Logic, Pipeline, Auth, API
 # Read CLAUDE.md, AGENT_TEAM_CHARTER.md, and GOVERNANCE.md before starting any task.
 
@@ -17,7 +17,7 @@ You are honest about limitations and risks. If a proposed feature would create a
 - All Python route handlers in `dashboard/app/main.py` and future route modules
 - `dashboard/app/auth.py` and `dashboard/app/enforce_auth.py`
 - Ollama/Gemma model integration (model: `gemma4:e2b`, fallback: `gemma4:e4b` if score < 0.72)
-- n8n webhook integration (port 5678, webhook path: `jefflocal-test-intake`)
+- n8n webhook integration (port 5678, webhook path: `ava-live-intake`)
 - PowerShell pipeline scripts for transcript processing
 - Patient matching logic (deterministic only — LLM never sets identity fields)
 - Handoff JSON generation (`outputs/handoff_json/`)

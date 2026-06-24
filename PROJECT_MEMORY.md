@@ -196,7 +196,7 @@ AI:           Ollama / gemma4:e2b (confidence floor 0.72, fallback gemma4:e4b)
 Auth:         Session cookies (httponly, samesite=lax) â€” tokens hashed in DB
 Database:     SQLite at dashboard\data\dashboard.sqlite
 Remote:       Cloudflare tunnel (HTTPS termination external)
-Workflow:     n8n (localhost:5678, webhook: jefflocal-test-intake)
+Workflow:     n8n (localhost:5678, webhook: ava-live-intake)
 Voice agent:  Jeff (Hostcomm UK, external, posts to n8n webhook)
 Monitoring:   Watchdog (restarts services if down, checks every 60s)
 ```

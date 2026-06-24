@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -312,7 +312,7 @@
         <div class="step-num" style="background:#1a2e1a; color:#22c55e;">2</div>
         <div class="step-body">
           <div class="step-title">Encrypted intake arrives</div>
-          <div class="step-desc">Jeff sends the transcript as an encrypted JSON payload via n8n webhook. n8n (port 5678, webhook path: <code>jefflocal-test-intake</code>) receives it and writes it to the queue.</div>
+          <div class="step-desc">Jeff sends the transcript as an encrypted JSON payload via n8n webhook. n8n (port 5678, webhook path: <code>ava-live-intake</code>) receives it and writes it to the queue.</div>
           <div class="step-path">queue/encrypted_raw/</div>
         </div>
       </div>
@@ -432,7 +432,7 @@
       }
     </div>
     <p style="font-size:11px; color:#f59e0b; margin-top:10px;">
-      ⚠️ n8n webhook path must be <code>jefflocal-test-intake</code>. The API key in .mcp.json is the same key as the plaintext <code>n8n API key.txt</code> file in root.
+      ⚠️ n8n webhook path must be <code>ava-live-intake</code>. The API key in .mcp.json is the same key as the plaintext <code>n8n API key.txt</code> file in root.
       Once that file is deleted, rotate the key so the old one cannot be used if it was ever exposed.
     </p>
   </div>

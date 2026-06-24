@@ -439,8 +439,8 @@ def parse_args() -> argparse.Namespace:
         description="JeffLocal E2E Call Flow Test — exercises the full system end-to-end.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    p.add_argument("--webhook-url",    default="http://localhost:5678/webhook/jefflocal-test-intake",
-                   help="n8n webhook URL (default: http://localhost:5678/webhook/jefflocal-test-intake)")
+    p.add_argument("--webhook-url",    default="http://localhost:5678/webhook/ava-live-intake",
+                   help="n8n webhook URL (default: http://localhost:5678/webhook/ava-live-intake)")
     p.add_argument("--dashboard-url",  default="http://localhost:5000",
                    help="Dashboard base URL (default: http://localhost:5000 sandbox; use 8765 for production)")
     p.add_argument("--wait-seconds",   type=int, default=30,

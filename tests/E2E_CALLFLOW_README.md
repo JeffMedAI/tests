@@ -1,4 +1,4 @@
-# JeffLocal — E2E Call Flow Test
+﻿# JeffLocal — E2E Call Flow Test
 
 Tests the full JeffLocal system end-to-end on command.  
 Not part of CI. Run manually when you want a full system verification.
@@ -45,7 +45,7 @@ python tests/run_e2e_callflow_test.py --stage 3   # verify only (cases must alre
 
 | Argument | Default | Description |
 |---|---|---|
-| `--webhook-url` | `http://localhost:5678/webhook/jefflocal-test-intake` | n8n webhook endpoint |
+| `--webhook-url` | `http://localhost:5678/webhook/ava-live-intake` | n8n webhook endpoint |
 | `--dashboard-url` | `http://localhost:8765` | Dashboard base URL |
 | `--wait-seconds` | `30` | Seconds to wait after injection before verifying |
 | `--timeout` | `120` | HTTP timeout for the webhook POST |
