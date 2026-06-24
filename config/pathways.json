@@ -1,6 +1,42 @@
 {
-  "version": "1.0",
+  "version": "2.0",
   "practice_id": "churchtown",
+  "source": "Jeff voice-agent prompt instructions (Churchtown Medical Centre), captured 2026-06-16",
+  "notes": "Caller-facing pathways only. A caller always selects ONE of these five. Appointment requests are NOT a pathway: Jeff refuses appointments and asks the caller to pick one of the five. The deterministic pipeline still routes unclassifiable / low-confidence / forced-review calls to staff review via the staff_review_required flag + 'Needs Review' status (the dashboard 'needs_review' filter keys off that flag, not off a pathway entry) — this safety net does not require a pathway definition here.",
+  "urgency_levels": {
+    "999 Emergency": "999 Emergency",
+    "Urgent - Same day": "urgent_same_day",
+    "Routine": "routine",
+    "Admin": "routine"
+  },
+  "shared_question_blocks": {
+    "caller": {
+      "section": "Caller",
+      "questions": [
+        {"id": "caller_for", "order": 1, "prompt": "Are you calling about yourself or someone else?", "type": "choice", "options": ["self", "someone_else"], "captures": "pathway_responses.caller_for"},
+        {"id": "caller_name", "order": 2, "prompt": "(If someone else) Your name", "type": "text", "branch_on": "caller_for=someone_else", "captures": "pathway_responses.caller_name"},
+        {"id": "caller_relationship", "order": 3, "prompt": "(If someone else) Your relationship to the patient", "type": "text", "branch_on": "caller_for=someone_else", "captures": "pathway_responses.caller_relationship"}
+      ]
+    },
+    "identity": {
+      "section": "Identity",
+      "questions": [
+        {"id": "dob_stated", "order": 1, "prompt": "Patient date of birth (day, month, year)", "type": "date", "captures": "identity.dob_stated"},
+        {"id": "name_stated", "order": 2, "prompt": "Patient first and last name", "type": "text", "captures": "identity.name_stated"},
+        {"id": "postcode", "order": 3, "prompt": "Patient postcode", "type": "text", "captures": "normalized_input.postcode"},
+        {"id": "callback_confirmed", "order": 4, "prompt": "Best callback number confirmed?", "type": "boolean", "captures": "identity.callback_confirmed"}
+      ]
+    },
+    "red_flag": {
+      "section": "Red flag & urgency",
+      "questions": [
+        {"id": "urgency_level", "order": 1, "prompt": "Urgency level determined", "type": "choice", "options": ["999 Emergency", "Urgent - Same day", "Routine", "Admin"], "captures": "urgency_assessment.urgency_level"},
+        {"id": "red_flags_mentioned", "order": 2, "prompt": "Red-flag symptoms mentioned", "type": "list", "captures": "urgency_assessment.red_flags_mentioned"},
+        {"id": "red_flag_followup_questions", "order": 3, "prompt": "Red-flag follow-up questions asked & answers", "type": "qa_list", "captures": "urgency_assessment.red_flag_followup_questions"},
+        {"id": "emergency_advice_given", "order": 4, "prompt": "Emergency advice (999/A&E) given?", "type": "boolean", "captures": "urgency_assessment.emergency_advice_given"}
+      ]
+    }
+  },
   "pathways": {
     "prescription": {
       "enabled": true,
@@ -8,15 +44,16 @@
       "staff_routing_label": "Medicines Management",
       "default_priority": "routine",
       "emis_workflow": "prescription",
-      "safety_notes": "Verify patient identity. Check for controlled drugs."
-    },
-    "sick_note": {
-      "enabled": true,
-      "canonical_name": "Sick Note / Fit Note",
-      "staff_routing_label": "GP Tasks",
-      "default_priority": "routine",
-      "emis_workflow": "sick_note",
-      "safety_notes": "Check prior sick notes. GP authorisation required."
+      "safety_notes": "Verify patient identity. Check for controlled drugs.",
+      "questions": [
+        {"id": "prescription_type", "order": 1, "prompt": "Is this a repeat prescription or a new medication?", "type": "choice", "options": ["repeat", "new"], "captures": "pathway_responses.prescription.prescription_type"},
+        {"id": "new_medication_symptom", "order": 2, "prompt": "(New) Briefly describe the symptom you are seeking this prescription for", "type": "text", "branch_on": "prescription_type=new", "captures": "pathway_responses.prescription.new_medication_symptom"},
+        {"id": "medications_requested", "order": 3, "prompt": "(Repeat) Name of the medication", "type": "list", "branch_on": "prescription_type=repeat", "captures": "pathway_responses.prescription.medications_requested"},
+        {"id": "run_out_status", "order": 4, "prompt": "(Repeat) Have you run out / about to run out?", "type": "text", "branch_on": "prescription_type=repeat", "captures": "pathway_responses.prescription.run_out_status"},
+        {"id": "pharmacy", "order": 5, "prompt": "(Repeat) Which pharmacy do you normally use?", "type": "text", "branch_on": "prescription_type=repeat", "captures": "pathway_responses.prescription.pharmacy"},
+        {"id": "pharmacy_first_condition", "order": 6, "prompt": "Pharmacy First condition (caller can go directly to pharmacy, no GP script needed)", "type": "choice", "options": ["uti_women_16_64", "shingles_18_plus", "impetigo_1_plus", "infected_insect_bites_1_plus", "sore_throat_5_plus", "sinusitis_12_plus", "acute_otitis_media_1_17", "none"], "captures": "pathway_responses.prescription.pharmacy_first_condition"},
+        {"id": "pharmacy_first_advised", "order": 7, "prompt": "Pharmacy First advice given?", "type": "boolean", "branch_on": "pharmacy_first_condition!=none", "captures": "pathway_responses.prescription.pharmacy_first_advised"}
+      ]
     },
     "referral": {
       "enabled": true,
@@ -24,7 +61,33 @@
       "staff_routing_label": "GP Tasks",
       "default_priority": "routine",
       "emis_workflow": "referral",
-      "safety_notes": "Confirm referral pathway with GP before raising."
+      "safety_notes": "Confirm referral pathway with GP before raising.",
+      "questions": [
+        {"id": "referral_type", "order": 1, "prompt": "Are you chasing a referral or requesting a new one?", "type": "choice", "options": ["chasing", "new"], "captures": "pathway_responses.referral.referral_type"},
+        {"id": "hospital_name", "order": 2, "prompt": "(Chasing) Name of the hospital", "type": "text", "branch_on": "referral_type=chasing", "captures": "pathway_responses.referral.hospital_name"},
+        {"id": "approx_submission_date", "order": 3, "prompt": "(Chasing) Approximate date the referral was submitted", "type": "text", "branch_on": "referral_type=chasing", "captures": "pathway_responses.referral.approx_submission_date"},
+        {"id": "doctor_already_discussed", "order": 4, "prompt": "(New) Has a doctor already discussed this referral with you?", "type": "boolean", "branch_on": "referral_type=new", "captures": "pathway_responses.referral.doctor_already_discussed"}
+      ]
+    },
+    "sick_note": {
+      "enabled": true,
+      "canonical_name": "Sick Note / Fit Note",
+      "staff_routing_label": "GP Tasks",
+      "default_priority": "routine",
+      "emis_workflow": "sick_note",
+      "safety_notes": "Check prior sick notes. GP authorisation required. Triggers: sick note, fit note, Med3, doctor's note, GP note.",
+      "questions": [
+        {"id": "note_type", "order": 1, "prompt": "New sick note request or an extension of an existing one?", "type": "choice", "options": ["new", "extension"], "captures": "pathway_responses.sick_note.request_type"},
+        {"id": "over_7_days", "order": 2, "prompt": "(New) Will it need to cover more than 7 days?", "type": "boolean", "branch_on": "note_type=new", "captures": "pathway_responses.sick_note.over_7_days", "note": "If NO: self-certification advice given, no GP note for first 7 days."},
+        {"id": "start_date_requested", "order": 3, "prompt": "(New, >7 days) Start date needed from", "type": "date", "branch_on": "note_type=new", "captures": "pathway_responses.sick_note.start_date_requested"},
+        {"id": "duration_requested", "order": 4, "prompt": "(New, >7 days) How long signed off?", "type": "text", "branch_on": "note_type=new", "captures": "pathway_responses.sick_note.duration_requested"},
+        {"id": "calculated_end_date", "order": 5, "prompt": "(New, >7 days) Calculated end date (confirmed back to caller)", "type": "date", "branch_on": "note_type=new", "captures": "pathway_responses.sick_note.calculated_end_date"},
+        {"id": "purpose", "order": 6, "prompt": "(New, >7 days) For work, benefits or personal use?", "type": "choice", "options": ["work", "benefits", "personal"], "branch_on": "note_type=new", "captures": "pathway_responses.sick_note.purpose"},
+        {"id": "reason", "order": 7, "prompt": "(New, >7 days) Reason for requesting the sick note (caller's own words)", "type": "text", "branch_on": "note_type=new", "captures": "pathway_responses.sick_note.reason"},
+        {"id": "already_spoken_to_doctor", "order": 8, "prompt": "(New, >7 days) Have you spoken to a doctor about it?", "type": "boolean", "branch_on": "note_type=new", "captures": "pathway_responses.sick_note.already_spoken_to_doctor"},
+        {"id": "workplace_adjustments_discussed", "order": 9, "prompt": "(New, >7 days) Might workplace adjustments (reduced hours / lighter duties) help you return?", "type": "boolean", "branch_on": "note_type=new", "captures": "pathway_responses.sick_note.workplace_adjustments_discussed"},
+        {"id": "current_note_end_date", "order": 10, "prompt": "(Extension) Date your current sick note ends", "type": "date", "branch_on": "note_type=extension", "captures": "pathway_responses.sick_note.current_note_end_date", "note": "If current note has NOT ended, caller is asked to call back after it ends."}
+      ]
     },
     "test_result": {
       "enabled": true,
@@ -32,15 +95,12 @@
       "staff_routing_label": "Clinician Review",
       "default_priority": "routine",
       "emis_workflow": "test_result",
-      "safety_notes": "Assign to responsible clinician. Do not give results over phone."
-    },
-    "appointment_redirect": {
-      "enabled": true,
-      "canonical_name": "Appointment Request",
-      "staff_routing_label": "Reception",
-      "default_priority": "routine",
-      "emis_workflow": "appointment_redirect",
-      "safety_notes": "Check appointment availability. Redirect to duty clinician if urgent."
+      "safety_notes": "Assign to responsible clinician. Do not give results over phone.",
+      "questions": [
+        {"id": "test_type", "order": 1, "prompt": "What test are you inquiring about?", "type": "text", "captures": "pathway_responses.test_result.test_type"},
+        {"id": "approx_test_date", "order": 2, "prompt": "Approximate date the test was taken", "type": "text", "captures": "pathway_responses.test_result.approx_test_date"},
+        {"id": "reference_number", "order": 3, "prompt": "Any reference number?", "type": "text", "captures": "pathway_responses.test_result.reference_number"}
+      ]
     },
     "admin": {
       "enabled": true,
@@ -48,23 +108,13 @@
       "staff_routing_label": "Admin",
       "default_priority": "routine",
       "emis_workflow": "admin",
-      "safety_notes": "Log contact in patient record. Route to appropriate team."
-    },
-    "unknown": {
-      "enabled": true,
-      "canonical_name": "Unknown / Unclassified",
-      "staff_routing_label": "Staff Review",
-      "default_priority": "review_required",
-      "emis_workflow": "admin",
-      "safety_notes": "Manual review required before routing."
-    },
-    "needs_review": {
-      "enabled": true,
-      "canonical_name": "Needs Review",
-      "staff_routing_label": "Staff Review",
-      "default_priority": "review_required",
-      "emis_workflow": "admin",
-      "safety_notes": "Staff review required. Do not auto-route."
+      "safety_notes": "Log contact in patient record. Route to appropriate team. Take identity only if the answer is not on the website and a reception callback is needed.",
+      "questions": [
+        {"id": "admin_reason", "order": 1, "prompt": "Briefly, how can the admin department help?", "type": "text", "captures": "pathway_responses.admin.admin_reason"},
+        {"id": "website_answer_available", "order": 2, "prompt": "Was the answer available on the practice website?", "type": "boolean", "captures": "pathway_responses.admin.website_answer_available", "note": "If yes: answer given, identity verification skipped."},
+        {"id": "callback_needed", "order": 3, "prompt": "Reception callback needed?", "type": "boolean", "branch_on": "website_answer_available=false", "captures": "pathway_responses.admin.callback_needed"},
+        {"id": "needs_identity_check", "order": 4, "prompt": "Identity details taken for callback?", "type": "boolean", "branch_on": "website_answer_available=false", "captures": "pathway_responses.admin.needs_identity_check"}
+      ]
     }
   }
 }

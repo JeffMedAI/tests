@@ -59,3 +59,15 @@ Thumbs.db
 JeffLocal.tmppytest/
 
 n8n API key.txt
+
+# Graphify AST cache — auto-generated, large, no value in git history
+graphify-out/cache/
+
+# Security runtime state — live nonces must never be in version control
+config/security/
+
+# WhatsApp message log — contains phone numbers and message history
+PyWhatKit_DB.txt
+
+# Playwright MCP test artifacts
+.playwright-mcp/
