@@ -1940,6 +1940,7 @@ a.glance-row:hover { background: var(--gray-100); text-decoration: none; }
 .request-card.identity-row { border-left: 3px solid var(--purple); }
 .request-card.resolved-row { opacity: .72; }
 .request-card[data-red-flag="true"]:not(.resolved-row) { border-left: 4px solid var(--danger); background: rgba(220, 38, 38, 0.04); }
+.request-card[data-red-flag="true"].resolved-row { border-left: 3px solid rgba(220, 38, 38, 0.35); }
 
 /* Card row layouts */
 .card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
@@ -2974,6 +2975,7 @@ button:disabled { background: var(--gray-200); color: var(--gray-500); border-co
 }
 .cd-resolve-btn:hover { opacity: .88; }
 .cd-resolve-btn:disabled { opacity: .45; cursor: not-allowed; }
+.cd-resolve-btn { min-height: 44px; }
 .cd-reopen-btn {
   display: inline-flex;
   align-items: center;

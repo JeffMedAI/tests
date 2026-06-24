@@ -320,7 +320,7 @@
       Back to Requests
     </a>
     <div class="cd-badge-row">
-      <span class="badge {{ case.request_type }}">{{ case.request_type_label }}</span>
+      <span class="badge {{ case.request_type_class }}">{{ case.request_type_label }}</span>
       {% for chip in case.summary_chips %}
         <span class="badge {{ chip.class }}"{% if chip.tooltip %} title="{{ chip.tooltip }}"{% endif %}>{{ chip.label }}</span>
       {% endfor %}
@@ -584,7 +584,7 @@
               I confirm staff review is complete and this request is ready to resolve.
             </label>
             <div class="cd-workflow-actions">
-              <button type="submit" name="intent" value="resolve" class="cd-resolve-btn" {% if current_staff and current_staff.role == "readonly" %}disabled{% elif case.red_flags_present or case.identity_review_required %}data-requires-notes="true"{% endif %}>✓ Mark as Resolved</button>
+              <button type="submit" name="intent" value="resolve" class="cd-resolve-btn" {% if current_staff and current_staff.role == "readonly" %}disabled title="Read-only staff cannot resolve cases."{% elif case.red_flags_present or case.identity_review_required %}data-requires-notes="true" title="Enter outcome notes above before resolving this case."{% endif %}>✓ Mark as Resolved</button>
               <button type="submit" name="intent" value="save_progress" class="secondary-button" {% if current_staff and current_staff.role == "readonly" %}disabled{% endif %}>Save progress</button>
             </div>
             {% if case.red_flags_present %}
@@ -593,8 +593,8 @@
             {% if case.identity_review_required %}
               <p class="warning">Outcome notes required before resolving an identity issue.</p>
             {% endif %}
-            <label class="cd-label">Outcome note
-              <textarea name="outcome_notes" rows="2">{{ case.outcome_notes or "Processed according to JeffLocal workflow." }}</textarea>
+            <label class="cd-label" for="outcome_notes">Outcome note
+              <textarea id="outcome_notes" name="outcome_notes" rows="2">{{ case.outcome_notes or "Processed according to JeffLocal workflow." }}</textarea>
             </label>
             <details class="advanced-staff-fields" style="margin-top:8px">
               <summary>Advanced staff fields</summary>
@@ -622,10 +622,12 @@
               </label>
             </details>
           <script>
+            /* Mirrors server-side guard (main.py L4443): red-flag and identity cases
+               require outcome_notes. Disables resolve button until field has content. */
             (function () {
               var btn = document.querySelector('.cd-workflow-form .cd-resolve-btn[data-requires-notes]');
               if (!btn) return;
-              var ta = document.querySelector('.cd-workflow-form textarea[name="outcome_notes"]');
+              var ta = document.getElementById('outcome_notes');
               if (!ta) return;
               function sync() { btn.disabled = ta.value.trim().length === 0; }
               ta.addEventListener('input', sync);

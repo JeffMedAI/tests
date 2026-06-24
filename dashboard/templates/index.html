@@ -541,6 +541,7 @@
         <article
           class="request-card {% if case.is_emergency %}emergency{% elif case.identity_review_required %}identity-row{% elif case.staff_review_required %}review-row{% endif %} {% if case.is_resolved %}resolved-row{% endif %}{% if not case.is_resolved and (case.red_flags_present or '999' in (case.priority or '')) %} is-urgent-pulse{% endif %}"
           id="case-{{ case.call_id }}"
+          tabindex="0"
           data-case-row
           data-red-flag="{{ 'true' if case.red_flags_present else 'false' }}">
 
@@ -1603,6 +1604,15 @@
         } else {
           openPanel(callId);
         }
+      });
+      caseListScroll.addEventListener('keydown', function (event) {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        var card = event.target.closest('[data-' + 'case-row]');
+        if (!card) return;
+        event.preventDefault();
+        var callId = card.id.replace(/^case-/, '');
+        if (!callId) return;
+        if (callId === activePanelCallId) { closePanel(); } else { openPanel(callId); }
       });
     }
 

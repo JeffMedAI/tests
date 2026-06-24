@@ -847,8 +847,11 @@ def filter_clause(filter_name: str) -> tuple[str, tuple[Any, ...]]:
     return filters.get(filter_name, filters["all"])
 
 
+_TS_SORT = "COALESCE(NULLIF(call_timestamp_sort, 0), CAST(strftime('%s', imported_at) AS REAL), 0)"
+
+
 def sort_clause(sort: str) -> str:
-    ts = "COALESCE(NULLIF(call_timestamp_sort, 0), CAST(strftime('%s', imported_at) AS REAL), 0)"
+    ts = _TS_SORT
     clauses = {
         "newest": f"{ts} DESC, call_id ASC",
         "oldest": f"{ts} ASC, call_id ASC",
@@ -877,7 +880,7 @@ def sort_clause(sort: str) -> str:
 
 
 def worklist_order_clause(sort: str, filter_name: str, explicit_sort: bool) -> str:
-    ts = "COALESCE(NULLIF(call_timestamp_sort, 0), CAST(strftime('%s', imported_at) AS REAL), 0)"
+    ts = _TS_SORT
     if not explicit_sort and filter_name in {"all", "open", "unresolved"}:
         return f"""
             CASE WHEN red_flags_present = 1 OR priority = '999 Emergency' THEN 0 ELSE 1 END ASC,
