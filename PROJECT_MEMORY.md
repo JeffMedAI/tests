@@ -75,7 +75,7 @@ strategy | Docs, reports, governance, marketing
 
 ---
 
-## CURRENT STATUS -- 2026-06-23 (evening session)
+## CURRENT STATUS -- 2026-06-24 (evening session)
 
 ### What is working
 - Production dashboard LIVE at dashboard.app-avamed.uk (port 8765)
@@ -89,10 +89,10 @@ strategy | Docs, reports, governance, marketing
 - test_user account in DB (id=5, role=staff, PBKDF2 hash, test_pass)
 
 ### Bugs found in 2026-06-19 pipeline test run
-1. **verification_status null** — REANALYSED 2026-06-23. Handoff JSON DOES contain `verification_status = "matched"` (confirmed from actual test JSON files). Pipeline and importer both correct. Real gap: UI has no verification_status badge — UX task #3 below.
-2. **canonical_request_type null** — request type pills fall back to raw strings (e.g. "test_result" not "Test Result") — still open
-3. **resolved_by not in /api/cases/{call_id} response** — FIXED 2026-06-23. Added `resolved_by`, `resolved_at`, `resolved_at_display` to API response.
-4. **cases sort to bottom when call_timestamp_sort is null** — FIXED 2026-06-23. Sort clause now falls back to `imported_at`. Also fixed wrong column `created_at` → `imported_at` in patient hint SQL subquery.
+1. **verification_status null** — REANALYSED 2026-06-23. Handoff JSON DOES contain `verification_status = "matched"` (confirmed from actual test JSON files). Pipeline and importer both correct. UX badge added 2026-06-23.
+2. **canonical_request_type null** — FIXED 2026-06-24. Root cause: case_detail.html used raw `request_type` instead of `request_type_class` for badge CSS. Legacy subtypes (e.g. test_results_enquiry) got no styling. Now uses `request_type_class` (canonical).
+3. **resolved_by not in /api/cases/{call_id} response** — FIXED 2026-06-23.
+4. **cases sort to bottom when call_timestamp_sort is null** — FIXED 2026-06-23.
 
 ### UX improvements identified (priority order)
 1. Client-side notes gate — disable Resolve button until notes filled for red flag/identity cases
@@ -135,20 +135,30 @@ Full detail: docs/reports/test-run-20260619-172712.md
 ```
 RANK | TASK                                              | AGENT    | STATUS
 -----+---------------------------------------------------+----------+------------------
- 1   | Fix canonical_request_type null (pill labels)     | Backend  | NEW
- 2   | Remove legacy static-salt password fallback       | Backend  | PENDING
- 3   | n8n API key rotation                              | DevOps   | Before go-live
- 4   | Set JEFF_WEBHOOK_SECRET                           | DevOps   | Before live traffic
+ 1   | Remove legacy static-salt password fallback       | Backend  | PENDING
+ 2   | n8n API key rotation                              | DevOps   | Before go-live
+ 3   | Set JEFF_WEBHOOK_SECRET                           | DevOps   | Before live traffic
+ 4   | Run full Playwright E2E suite post-UX changes     | Test     | Next session
  5   | Multi-tenancy tenant_id                           | Database | Phase 2
 ```
+DONE 2026-06-24:
+- Pipeline batch AVA-LIVE-20260624: 5/5 cases end-to-end, safety invariants confirmed
+- Staff simulation PASS — locked fields intact on all 5 resolved cases
+- Fix: request_type_class used for badge CSS in case_detail.html (Bug #2 root cause)
+- Fix: outcome_notes textarea id + label for (WCAG label association)
+- Fix: resolve button title tooltip (disabled state explains why)
+- Fix: JS notes gate WHY comment + getElementById
+- Fix: case card tabindex=0 + Enter/Space keydown (keyboard nav)
+- Fix: resolve button min-height 44px (WCAG touch target)
+- Fix: resolved red-flag rows keep faint left border (audit trail)
+- Fix: _TS_SORT constant extracted from duplicate COALESCE expression
+
 DONE 2026-06-23:
-- UX: verification status badge (✓ Matched) on worklist case cards
-- UX: red flag card visual treatment — 4px red border + background tint
-- UX: client-side notes gate — resolve button disabled until notes filled (red flag/identity cases)
-- resolved_by + resolved_at added to /api/cases/{call_id} response
-- Worklist sort fallback to imported_at when call_timestamp_sort is null/zero
-- patient hint SQL: c2.created_at → c2.imported_at (wrong column, always returned 0)
-- Stale .git/objects/maintenance.lock deleted
+- UX: verification status badge, red flag card treatment, notes gate
+- resolved_by + resolved_at in API response
+- Worklist sort fallback, patient hint SQL fix
+- Webhook renamed jefflocal-test-intake → ava-live-intake (17 files + n8n workflow)
+- 9 stale docs archived
 
 ---
 
@@ -182,7 +192,7 @@ C:\JeffLocal\config\model_monitoring.json
 Repo:    https://github.com/JeffMedAI/tests
 Branch:  sandbox (production code)
 Main:    merged 2026-06-19 (sandbox → main via worktree)
-Latest:  6a56d47 ux: 3 UX fixes ÔÇö red flag cards, verification badge, notes gate
+Latest:  7057863 fix: 8 UX/code fixes — a11y, touch target, keyboard nav, request_type badge
 test_user: id=5, role=staff, username=test_user (Playwright E2E)
 ```
 
