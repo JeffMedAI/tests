@@ -1,6 +1,6 @@
 ﻿# PROJECT MEMORY â€” JeffLocal
 # READ THIS FIRST at every session start, before doing anything else.
-# Last updated: 2026-06-24 (auto-updated 19:00)
+# Last updated: 2026-06-25 (auto-updated 18:00)
 # Maintained by: Claude (update at end of every session)
 
 ---
@@ -64,7 +64,7 @@ Re-confirm every session.
 Agent    | Role
 -------- | ---------------------------------------------------
 lead     | Orchestrator, human liaison
-backend  | Flask, Python, Ollama, n8n webhook
+backend  | FastAPI, Python, Ollama, n8n webhook
 frontend | Dashboard UI, CSS, Jinja2
 database | SQLite, migrations, GDPR purge
 test     | pytest + Playwright E2E
@@ -75,7 +75,7 @@ strategy | Docs, reports, governance, marketing
 
 ---
 
-## CURRENT STATUS -- 2026-06-24 (evening session)
+## CURRENT STATUS -- 2026-06-25 (evening session, no commits today)
 
 ### What is working
 - Production dashboard LIVE at dashboard.app-avamed.uk (port 8765)
@@ -169,7 +169,7 @@ C:\JeffLocal\PROJECT_MEMORY.md                  â† THIS FILE â€” updat
 C:\JeffLocal\CLAUDE.md                          â† Rules (read every session)
 C:\JeffLocal\docs\sessions\                     â† Per-session summaries
 C:\JeffLocal\docs\reports\                      â† Daily reports (YYYY-MM-DD.md)
-C:\JeffLocal\dashboard\app\main.py              â† PRODUCTION Flask app
+C:\JeffLocal\dashboard\app\main.py              â† PRODUCTION FastAPI app
 C:\JeffLocal\dashboard\app\auth.py              â† Auth module
 C:\JeffLocal\dashboard\app\db.py                â† Database module
 C:\JeffLocal\app\process_queue.ps1              â† PowerShell pipeline
@@ -192,7 +192,7 @@ C:\JeffLocal\config\model_monitoring.json
 Repo:    https://github.com/JeffMedAI/tests
 Branch:  sandbox (production code)
 Main:    merged 2026-06-19 (sandbox → main via worktree)
-Latest:  3998d10 memory: session end protocol 2026-06-24 18:00
+Latest:  88a3508 memory: session end protocol 2026-06-24 18:00
 test_user: id=5, role=staff, username=test_user (Playwright E2E)
 ```
 
@@ -201,7 +201,7 @@ test_user: id=5, role=staff, username=test_user (Playwright E2E)
 ## TECHNICAL STACK
 
 ```
-Dashboard:    Flask (Python 3.14), Jinja2 templates, SQLite
+Dashboard:    FastAPI (Python 3.14), Jinja2 templates, SQLite
 AI:           Ollama / gemma4:e2b (confidence floor 0.72, fallback gemma4:e4b)
 Auth:         Session cookies (httponly, samesite=lax) â€” tokens hashed in DB
 Database:     SQLite at dashboard\data\dashboard.sqlite
@@ -262,19 +262,6 @@ Monitoring:   Watchdog (restarts services if down, checks every 60s)
 4. git push origin HEAD
 5. Tell Saeed: "Session saved. Memory updated. Ready to pick up tomorrow."
 ```
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
