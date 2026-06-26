@@ -72,7 +72,7 @@ N8NTEST_ARCHIVE_FOLDERS = [
 ]
 SERVICE_START_SCRIPT = ROOT_DIR / "scripts" / "service_control" / "start_jefflocal_services.ps1"
 LOCAL_SERVICE_URLS = {
-    "dashboard": "http://127.0.0.1:5000",  # sandbox runs on 5000, not 8765
+    "dashboard": "http://127.0.0.1:8765",  # production dashboard port (display label only)
     "n8n": "http://localhost:5678",
     "voice_agent": "local webhook/test intake",
 }
@@ -4623,10 +4623,10 @@ def api_hourly_volume(request: Request) -> dict[str, Any]:
             raise HTTPException(status_code=401, detail="Authentication required")
         rows = conn.execute(
             """
-            SELECT CAST(strftime('%H', created_at) AS INTEGER) AS hour,
+            SELECT CAST(strftime('%H', imported_at) AS INTEGER) AS hour,
                    COUNT(*) AS count
             FROM cases
-            WHERE date(created_at) = date('now')
+            WHERE date(imported_at) = date('now')
             GROUP BY hour
             ORDER BY hour
             """
@@ -4648,14 +4648,14 @@ def api_performance_summary(request: Request) -> dict[str, Any]:
             raise HTTPException(status_code=401, detail="Authentication required")
 
         cases_today: int = conn.execute(
-            "SELECT COUNT(*) FROM cases WHERE date(created_at) = date('now')"
+            "SELECT COUNT(*) FROM cases WHERE date(imported_at) = date('now')"
         ).fetchone()[0]
 
         avg_row = conn.execute(
             """
             SELECT AVG(turnaround_minutes)
             FROM cases
-            WHERE date(created_at) = date('now')
+            WHERE date(imported_at) = date('now')
               AND turnaround_minutes IS NOT NULL
               AND turnaround_minutes > 0
             """
@@ -4665,14 +4665,14 @@ def api_performance_summary(request: Request) -> dict[str, Any]:
         red_flags_today: int = conn.execute(
             """
             SELECT COUNT(*) FROM cases
-            WHERE date(created_at) = date('now')
+            WHERE date(imported_at) = date('now')
               AND red_flags_present = 1
             """
         ).fetchone()[0]
 
-        one_hour_ago = (datetime.now(timezone.utc).timestamp() - 3600)
+        one_hour_ago = (datetime.now(timezone.utc) - timedelta(hours=1)).replace(microsecond=0).isoformat()
         throughput_row = conn.execute(
-            "SELECT COUNT(*) FROM dashboard_imports WHERE imported_at > ?",
+            "SELECT COUNT(*) FROM cases WHERE imported_at > ?",
             (one_hour_ago,),
         ).fetchone()
         throughput: int = throughput_row[0] if throughput_row else 0

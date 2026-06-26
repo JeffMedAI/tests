@@ -331,6 +331,60 @@ $ReportPath = if ($Mode -eq 'Evening') { "$ReportsDir\$Today-evening.md" } else 
 Set-Content -Path $ReportPath -Value $Report -Encoding UTF8
 Write-Log "Report saved: $ReportPath"
 
+# ── 8b. Evening mode: write session log if Claude didn't write one today ─────
+# Guarantees the brief parser always finds bullet-format content to extract.
+# Writes ONLY if no session log file exists for today (human session takes priority).
+$SessionLogPath = $null
+if ($Mode -eq 'Evening') {
+    $TodayLogs = Get-ChildItem -Path $SessionsDir -Filter "$Today-*.md" -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -notlike "SESSION_TEMPLATE*" }
+    if (-not $TodayLogs) {
+        $SessionLogPath = "$SessionsDir\$Today-1800.md"
+        $NoWorkContent = @"
+# SESSION SUMMARY — [$Today 18:00]
+# Tool: Cowork (automated session end)
+# Written by: Claude scheduled task at $BriefClock
+
+---
+
+## WHAT WE DID
+
+- No human session today — automated close.
+
+---
+
+## BLOCKERS
+
+$BlockerSection
+
+---
+
+## PENDING SAEED APPROVALS
+
+$ApprovalSection
+
+---
+
+## WHAT TO DO NEXT SESSION
+
+$NextSection
+
+---
+
+## GIT STATE
+
+Latest commit: $LatestCommit
+Branch: sandbox
+"@
+        if (-not $DryRun) {
+            Set-Content -Path $SessionLogPath -Value $NoWorkContent -Encoding UTF8
+            Write-Log "No session log for today — wrote automated placeholder: $SessionLogPath"
+        } else {
+            Write-Log "DryRun: would write session log: $SessionLogPath"
+        }
+    }
+}
+
 # ── 9. Commit + push ──────────────────────────────────────────────────────────
 if ($DryRun) {
     Write-Log "DryRun: skipped git commit/push"
@@ -340,12 +394,42 @@ if ($DryRun) {
     try {
         git config user.email "215987900+Avamedio@users.noreply.github.com"
         git config user.name "Saeed"
-        git add PROJECT_MEMORY.md $ReportPath 2>&1 | Out-Null
+        $FilesToAdd = @("PROJECT_MEMORY.md", $ReportPath)
+        if ($SessionLogPath -and (Test-Path $SessionLogPath)) { $FilesToAdd += $SessionLogPath }
+        git add $FilesToAdd 2>&1 | Out-Null
         git commit -m "memory: $($Mode.ToLower()) brief $Today $BriefClock" 2>&1 | Out-Null
         git push origin HEAD 2>&1 | Out-Null
         Write-Log "Git push complete"
     } catch {
         Write-Log "WARNING: Git push failed - $_"
+    }
+
+    # Evening mode: create restore tag for this day's state
+    if ($Mode -eq 'Evening') {
+        try {
+            $RestoreTag = "restore/$Today-1800"
+            $TagExists = git tag -l $RestoreTag 2>&1
+            if (-not $TagExists) {
+                git tag $RestoreTag 2>&1 | Out-Null
+                git push origin $RestoreTag 2>&1 | Out-Null
+                Write-Log "Restore tag created: $RestoreTag"
+
+                # Keep only 3 most recent restore tags
+                $AllRestoreTags = @(git tag -l "restore/*" 2>&1 | Where-Object { $_ -match "^restore/" } | Sort-Object)
+                if ($AllRestoreTags.Count -gt 3) {
+                    $ToDelete = $AllRestoreTags | Select-Object -First ($AllRestoreTags.Count - 3)
+                    foreach ($oldTag in $ToDelete) {
+                        git tag -d $oldTag 2>&1 | Out-Null
+                        git push origin ":refs/tags/$oldTag" 2>&1 | Out-Null
+                        Write-Log "Pruned old restore tag: $oldTag"
+                    }
+                }
+            } else {
+                Write-Log "Restore tag already exists: $RestoreTag"
+            }
+        } catch {
+            Write-Log "WARNING: Restore tag creation failed - $_"
+        }
     }
     Pop-Location
 }

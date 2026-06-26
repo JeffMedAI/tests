@@ -1,9 +1,0 @@
-{
-  "model_name": "gemma4:e2b",
-  "fallback_model": "gemma4:e4b",
-  "temperature": 0.1,
-  "timeout_seconds": 30,
-  "confidence_floor": 0.72,
-  "ollama_endpoint": "http://localhost:11434",
-  "max_retries": 2
-}

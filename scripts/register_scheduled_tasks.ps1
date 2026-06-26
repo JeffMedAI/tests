@@ -48,7 +48,7 @@ Register-ScheduledTask `
     -Action $action2 `
     -Trigger $trigger2 `
     -Settings $settings2 `
-    -Description "Checks dashboard, Flask, SQLite, Ollama reachability every 5 minutes" `
+    -Description "Checks dashboard, FastAPI, SQLite, Ollama reachability every 5 minutes" `
     -RunLevel Highest `
     -Force
 
