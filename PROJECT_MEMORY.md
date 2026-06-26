@@ -148,7 +148,9 @@ DONE 2026-06-26:
 - Deleted all pre-Phase1AB backup folders (PRE_PHASE1AB_20260602*, RESTORE_POINT_20260529, p1_ux_20260523*) — Saeed approved. All code preserved in git history.
 - Fixed main.py: LOCAL_SERVICE_URLS port 5000→8765; api_hourly_volume and api_performance_summary use imported_at not created_at.
 - Restore tags pruned to 3: restore/2026-06-24-1800, restore/2026-06-25-1800, restore/2026-06-26-1800.
-- Commit: 5591564
+- Added .graphifyignore — scopes code graph to source only, excluding .claude/, docs/, backups/ (graph: 3972→1678 nodes).
+- Logged tech-debt Phase 1 remediation in CHANGELOG.md (B1/D1/DOC1/I1–I3 items). Security verdict: APPROVE-WITH-NOTES.
+- Commits: 5591564 → 22e363a → e12a19c
 
 DONE 2026-06-24:
 - Pipeline batch AVA-LIVE-20260624: 5/5 cases end-to-end, safety invariants confirmed
@@ -201,7 +203,7 @@ C:\JeffLocal\config\model_monitoring.json
 Repo:    https://github.com/JeffMedAI/tests
 Branch:  sandbox (production code)
 Main:    merged 2026-06-19 (sandbox → main via worktree)
-Latest:  5591564 chore: remove pre-Phase1AB backup folders, fix main.py port/column refs
+Latest:  e12a19c docs(changelog): log tech-debt Phase 1 remediation + security verdict
 test_user: id=5, role=staff, username=test_user (Playwright E2E)
 ```
 
