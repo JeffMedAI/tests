@@ -1,6 +1,6 @@
 ﻿# PROJECT MEMORY â€” JeffLocal
 # READ THIS FIRST at every session start, before doing anything else.
-# Last updated: 2026-06-26 (auto-updated 07:00)
+# Last updated: 2026-06-26 (auto-updated 19:00)
 # Maintained by: Claude (update at end of every session)
 
 ---
@@ -75,7 +75,7 @@ strategy | Docs, reports, governance, marketing
 
 ---
 
-## CURRENT STATUS -- 2026-06-25 (evening session, no commits today)
+## CURRENT STATUS -- 2026-06-26
 
 ### What is working
 - Production dashboard LIVE at dashboard.app-avamed.uk (port 8765)
@@ -141,6 +141,15 @@ RANK | TASK                                              | AGENT    | STATUS
  4   | Run full Playwright E2E suite post-UX changes     | Test     | Next session
  5   | Multi-tenancy tenant_id                           | Database | Phase 2
 ```
+DONE 2026-06-26:
+- Investigated missing session log issue. Root cause: auto-generated log used plain prose, brief parser needs bullets.
+- Fixed strategy_daily.ps1: Evening mode now auto-writes bullet-format session log if no human session ran.
+- Fixed strategy_daily.ps1: Evening mode now creates/prunes restore tags automatically after each day.
+- Deleted all pre-Phase1AB backup folders (PRE_PHASE1AB_20260602*, RESTORE_POINT_20260529, p1_ux_20260523*) — Saeed approved. All code preserved in git history.
+- Fixed main.py: LOCAL_SERVICE_URLS port 5000→8765; api_hourly_volume and api_performance_summary use imported_at not created_at.
+- Restore tags pruned to 3: restore/2026-06-24-1800, restore/2026-06-25-1800, restore/2026-06-26-1800.
+- Commit: 5591564
+
 DONE 2026-06-24:
 - Pipeline batch AVA-LIVE-20260624: 5/5 cases end-to-end, safety invariants confirmed
 - Staff simulation PASS — locked fields intact on all 5 resolved cases
@@ -192,7 +201,7 @@ C:\JeffLocal\config\model_monitoring.json
 Repo:    https://github.com/JeffMedAI/tests
 Branch:  sandbox (production code)
 Main:    merged 2026-06-19 (sandbox → main via worktree)
-Latest:  e51783d memory: session end protocol 2026-06-25 18:00
+Latest:  5591564 chore: remove pre-Phase1AB backup folders, fix main.py port/column refs
 test_user: id=5, role=staff, username=test_user (Playwright E2E)
 ```
 
@@ -262,6 +271,7 @@ Monitoring:   Watchdog (restarts services if down, checks every 60s)
 4. git push origin HEAD
 5. Tell Saeed: "Session saved. Memory updated. Ready to pick up tomorrow."
 ```
+
 
 
 
