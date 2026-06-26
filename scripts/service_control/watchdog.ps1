@@ -218,7 +218,7 @@ $Services = @(
             if (Test-Path $launch) {
                 Start-HiddenPS $launch
             } else {
-                # Fallback: launch Flask directly
+                # Fallback: launch the dashboard (uvicorn / FastAPI) directly
                 $venvPy = "$RepoRoot\dashboard\.venv\Scripts\python.exe"
                 if (-not (Test-Path $venvPy)) {
                     python -m venv "$RepoRoot\dashboard\.venv" 2>&1 | Out-Null

@@ -30,7 +30,7 @@ except Exception:  # pragma: no cover - local fallback only
     build_n8ntest_batch = None
 
 
-DEFAULT_WEBHOOK_URL = "http://localhost:5678/webhook/jefflocal-test-intake"
+DEFAULT_WEBHOOK_URL = "http://localhost:5678/webhook/ava-live-intake"
 LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1"}
 REQUIRED_ENVELOPE_FIELDS = {
     "protocol",

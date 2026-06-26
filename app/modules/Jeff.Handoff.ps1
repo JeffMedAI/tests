@@ -104,7 +104,9 @@ function Get-JeffHandoffDisposition {
         $safeToQueue = $true
 
         if ($urgentSubtype) {
-            $priority = "urgent_review"
+            if ($priority -ne "urgent_same_day") {
+                $priority = "urgent_review"
+            }
         }
         elseif ($hasIdentityUncertainty -or $callbackMissing) {
             $priority = "review_required"

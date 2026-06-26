@@ -56,6 +56,28 @@ Thumbs.db
 
 # Temp / test working dirs
 .tmp/
+tmp/
+tmp_pytest/
 JeffLocal.tmppytest/
+JeffLocaltmppytest/
+Temppytest_tmp/
+*tmppytest*/
+*.tmp
+*.resync
+
+# Dev/UX review screenshots — not source; archive externally if a record is needed
+/*.png
 
 n8n API key.txt
+
+# Graphify AST cache — auto-generated, large, no value in git history
+graphify-out/cache/
+
+# Security runtime state — live nonces must never be in version control
+config/security/
+
+# WhatsApp message log — contains phone numbers and message history
+PyWhatKit_DB.txt
+
+# Playwright MCP test artifacts
+.playwright-mcp/

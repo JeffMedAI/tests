@@ -1,0 +1,7 @@
+# Dependencies for the JeffLocal decryption / intake pipeline (app/).
+# The staff dashboard declares its own deps in dashboard/requirements.txt.
+#
+# cryptography: RSA private-key unwrap + AES-GCM decryption and HMAC checks
+#   for JEIE-1 encrypted-call envelopes (app/decrypt_encrypted_raw.py).
+#   Security-critical — keep patched; pinned below the next major.
+cryptography>=44,<49

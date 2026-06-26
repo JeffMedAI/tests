@@ -31,10 +31,10 @@ class TestLoginPageRenders:
     def test_login_page_loads(self, page: Page):
         page.goto(f"{BASE_URL}/login")
         expect(page).to_have_url(f"{BASE_URL}/login")
-        # Username and password fields must exist
-        expect(page.locator('input[name="username"]')).to_be_visible()
+        # Login page has two forms (password + PIN) — use the password form's IDs
+        expect(page.locator('#username')).to_be_visible()
         expect(page.locator('input[name="password"]')).to_be_visible()
-        expect(page.locator('button[type="submit"]')).to_be_visible()
+        expect(page.locator('button[type="submit"]').first).to_be_visible()
 
 
 class TestValidLogin:
@@ -163,17 +163,17 @@ class TestUnauthenticatedAccess:
         (FastAPI middleware) or a 401 response.
         """
         response = page.request.get(f"{BASE_URL}/api/alerts/recent")
-        # The auth middleware redirects (302) rather than returning 401 for browser
-        # requests, but the final URL should be /login, OR the status is 401.
-        assert response.status in (302, 401) or "/login" in page.url, (
-            f"Expected 302/401 for unauthenticated API request, got {response.status}"
+        # Playwright follows redirects — final status may be 200 at /login URL.
+        # Accept 302/401 (pre-redirect) or a final URL containing /login.
+        assert response.status in (302, 401) or "/login" in response.url, (
+            f"Expected 302/401 or redirect to /login for unauthenticated request, got {response.status} at {response.url}"
         )
 
     def test_api_alerts_unacknowledged_without_session_protected(self, page: Page):
         response = page.request.get(f"{BASE_URL}/api/alerts/unacknowledged")
-        assert response.status in (302, 401), (
-            f"Expected 302/401 for unauthenticated request to /api/alerts/unacknowledged, "
-            f"got {response.status}"
+        assert response.status in (302, 401) or "/login" in response.url, (
+            f"Expected 302/401 or redirect to /login for /api/alerts/unacknowledged, "
+            f"got {response.status} at {response.url}"
         )
 
 

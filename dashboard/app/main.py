@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import asyncio
 import hashlib
@@ -72,7 +72,7 @@ N8NTEST_ARCHIVE_FOLDERS = [
 ]
 SERVICE_START_SCRIPT = ROOT_DIR / "scripts" / "service_control" / "start_jefflocal_services.ps1"
 LOCAL_SERVICE_URLS = {
-    "dashboard": "http://127.0.0.1:5000",  # sandbox runs on 5000, not 8765
+    "dashboard": "http://127.0.0.1:8765",  # production dashboard port (display label only)
     "n8n": "http://localhost:5678",
     "voice_agent": "local webhook/test intake",
 }
@@ -847,11 +847,15 @@ def filter_clause(filter_name: str) -> tuple[str, tuple[Any, ...]]:
     return filters.get(filter_name, filters["all"])
 
 
+_TS_SORT = "COALESCE(NULLIF(call_timestamp_sort, 0), CAST(strftime('%s', imported_at) AS REAL), 0)"
+
+
 def sort_clause(sort: str) -> str:
+    ts = _TS_SORT
     clauses = {
-        "newest": "COALESCE(call_timestamp_sort, 0) DESC, call_id ASC",
-        "oldest": "COALESCE(call_timestamp_sort, 0) ASC, call_id ASC",
-        "priority": """
+        "newest": f"{ts} DESC, call_id ASC",
+        "oldest": f"{ts} ASC, call_id ASC",
+        "priority": f"""
             CASE priority
                 WHEN '999 Emergency' THEN 0
                 WHEN 'urgent_same_day' THEN 1
@@ -861,14 +865,14 @@ def sort_clause(sort: str) -> str:
                 WHEN 'normal' THEN 5
                 ELSE 6
             END ASC,
-            COALESCE(call_timestamp_sort, 0) DESC,
+            {ts} DESC,
             call_id ASC
         """,
-        "unresolved": """
+        "unresolved": f"""
             CASE WHEN LOWER(REPLACE(TRIM(COALESCE(status, '')), '_', ' ')) IN ('resolved', 'closed', 'completed', 'complete', 'cancelled', 'canceled', 'archived', 'duplicate', 'dismissed', 'unable to complete') THEN 1 ELSE 0 END ASC,
             red_flags_present DESC,
             staff_review_required DESC,
-            COALESCE(call_timestamp_sort, 0) DESC,
+            {ts} DESC,
             call_id ASC
         """,
     }
@@ -876,10 +880,11 @@ def sort_clause(sort: str) -> str:
 
 
 def worklist_order_clause(sort: str, filter_name: str, explicit_sort: bool) -> str:
+    ts = _TS_SORT
     if not explicit_sort and filter_name in {"all", "open", "unresolved"}:
-        return """
+        return f"""
             CASE WHEN red_flags_present = 1 OR priority = '999 Emergency' THEN 0 ELSE 1 END ASC,
-            COALESCE(call_timestamp_sort, 0) DESC,
+            {ts} DESC,
             call_id ASC
         """
     return sort_clause(sort)
@@ -3347,6 +3352,9 @@ def api_case_get(call_id: str) -> dict[str, Any]:
         "suggested_actions":       build_suggested_actions(case),
         "transcript_excerpt":      str(case.get("transcript") or "")[:400].strip(),
         "pathway_items":           pathway_question_responses(case),
+        "resolved_by":             _safe_str("resolved_by"),
+        "resolved_at":             _safe_str("resolved_at"),
+        "resolved_at_display":     _safe_str("resolved_at_display"),
     }
 
 
@@ -3816,7 +3824,7 @@ async def api_n8n_test_intake_batch(
     _hmac: None = Depends(verify_webhook_hmac),
 ) -> dict[str, Any]:
     """SANDBOX / TEST ONLY — bypasses n8n entirely.
-    All real calls must route through n8n webhook: POST /webhook/jefflocal-test-intake (port 5678).
+    All real calls must route through n8n webhook: POST /webhook/ava-live-intake (port 5678).
     Guarded by test_mode=true. HMAC-protected via JEFF_WEBHOOK_SECRET when set.
     It will be removed before production deployment.
     """
@@ -4615,10 +4623,10 @@ def api_hourly_volume(request: Request) -> dict[str, Any]:
             raise HTTPException(status_code=401, detail="Authentication required")
         rows = conn.execute(
             """
-            SELECT CAST(strftime('%H', created_at) AS INTEGER) AS hour,
+            SELECT CAST(strftime('%H', imported_at) AS INTEGER) AS hour,
                    COUNT(*) AS count
             FROM cases
-            WHERE date(created_at) = date('now')
+            WHERE date(imported_at) = date('now')
             GROUP BY hour
             ORDER BY hour
             """
@@ -4640,14 +4648,14 @@ def api_performance_summary(request: Request) -> dict[str, Any]:
             raise HTTPException(status_code=401, detail="Authentication required")
 
         cases_today: int = conn.execute(
-            "SELECT COUNT(*) FROM cases WHERE date(created_at) = date('now')"
+            "SELECT COUNT(*) FROM cases WHERE date(imported_at) = date('now')"
         ).fetchone()[0]
 
         avg_row = conn.execute(
             """
             SELECT AVG(turnaround_minutes)
             FROM cases
-            WHERE date(created_at) = date('now')
+            WHERE date(imported_at) = date('now')
               AND turnaround_minutes IS NOT NULL
               AND turnaround_minutes > 0
             """
@@ -4657,14 +4665,14 @@ def api_performance_summary(request: Request) -> dict[str, Any]:
         red_flags_today: int = conn.execute(
             """
             SELECT COUNT(*) FROM cases
-            WHERE date(created_at) = date('now')
+            WHERE date(imported_at) = date('now')
               AND red_flags_present = 1
             """
         ).fetchone()[0]
 
-        one_hour_ago = (datetime.now(timezone.utc).timestamp() - 3600)
+        one_hour_ago = (datetime.now(timezone.utc) - timedelta(hours=1)).replace(microsecond=0).isoformat()
         throughput_row = conn.execute(
-            "SELECT COUNT(*) FROM dashboard_imports WHERE imported_at > ?",
+            "SELECT COUNT(*) FROM cases WHERE imported_at > ?",
             (one_hour_ago,),
         ).fetchone()
         throughput: int = throughput_row[0] if throughput_row else 0
@@ -4693,7 +4701,7 @@ def api_patient_card(request: Request, name: str = "") -> dict[str, Any]:
             SELECT patient_name, dob, nhs_number,
                    (SELECT COUNT(*) FROM cases c2
                     WHERE c2.patient_name = cases.patient_name
-                      AND date(c2.created_at) = date('now')) AS cases_today
+                      AND date(c2.imported_at) = date('now')) AS cases_today
             FROM cases
             WHERE patient_name LIKE ?
             ORDER BY COALESCE(call_timestamp_sort, 0) DESC

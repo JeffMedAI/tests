@@ -1,0 +1,39 @@
+# graphify code-graph scope (preferred over .gitignore when present).
+# Goal: index ACTUAL source (dashboard/, app/, scripts/, config/, tests/) so that
+# `graphify query` returns code — not the agent framework, prompts, or backups.
+# Re-run `graphify update .` after editing this file.
+
+# Agent / tooling frameworks (not project source)
+.claude/
+.claude-flow/
+.swarm/
+.impeccable/
+.playwright-mcp/
+node_modules/
+
+# Backups & decommissioned trees (also gitignored)
+backup/
+backups/
+sandbox/
+
+# graphify's own prior output snapshots (duplicate GRAPH_REPORTs confuse queries)
+graphify-out/2026-06-05/
+graphify-out/2026-06-16/
+graphify-out/2026-06-17/
+graphify-out/cache/
+
+# Non-code corpora that dominated query results.
+# docs/ is all markdown (sessions, reports, prompts, specs); governance/context/
+# agents are prose too. A code graph should not index them.
+docs/
+governance/
+context/
+agents/
+JARVIS/
+Projects/
+Scheduled/
+examples/
+
+# Misc
+*.png
+PyWhatKit_DB.txt

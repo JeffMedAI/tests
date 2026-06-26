@@ -1,4 +1,4 @@
-# Project Context — Avamed
+﻿# Project Context — Avamed
 # Eight things to know before touching anything in this project.
 
 ---
@@ -67,7 +67,7 @@ The git branch is named "sandbox" — this does NOT mean the working directory i
 3. PowerShell modules in `app/modules/` process: extract → classify → validate via Ollama/Gemma
 4. Deterministic patient matching (`Jeff.PatientMatch.ps1`) against EMIS/NHS reference data
 5. Handoff JSON written to `outputs/handoff_json/`
-6. n8n (port 5678, webhook path: `jefflocal-test-intake`) handles intake routing
+6. n8n (port 5678, webhook path: `ava-live-intake`) handles intake routing
 7. Dashboard importer (`importer.py`) polls `outputs/handoff_json/`, imports to SQLite
 8. Reception staff see prioritised task on dashboard and take action
 

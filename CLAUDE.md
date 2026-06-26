@@ -1,4 +1,4 @@
-# CLAUDE.md — Avamed (JeffLocal)
+﻿# CLAUDE.md — Avamed (JeffLocal)
 # Source of truth for all Claude rules. Read first, every session, no exceptions.
 # Last updated: 2026-06-18
 
@@ -171,7 +171,7 @@ If any pipeline code allows LLM output to set these fields, that is a critical b
 3. PowerShell pipeline processes via Ollama/Gemma
 4. Deterministic patient matching against EMIS/NHS reference data
 5. Handoff JSON written to `outputs/handoff_json/`
-6. n8n (port 5678, webhook path: `jefflocal-test-intake`) routes intake
+6. n8n (port 5678, webhook path: `ava-live-intake`) routes intake
 7. Dashboard importer polls `outputs/handoff_json/`, imports to SQLite
 8. Reception staff action prioritised task on dashboard
 
@@ -194,7 +194,7 @@ The full recipe lives in `C:\JeffLocal\TESTING.md`. Read it before every test ru
 reusable template for building and running test calls. The agreed standing rules:
 
 1. **Always run the real end-to-end pipeline.** Test calls enter through the live n8n webhook
-   (`http://localhost:5678/webhook-test/jefflocal-test-intake`, encrypted JEIE-1 envelopes via
+   (`http://localhost:5678/webhook-test/ava-live-intake`, encrypted JEIE-1 envelopes via
    `tests/send_gp_demo_n8n_webhook_calls.py`), Ollama/Gemma runs **live**, and the case must reach
    the dashboard the same way a real call does. No stage is bypassed. If a stage must be shortcut,
    say so in the run report and get Saeed's sign-off.

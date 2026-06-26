@@ -1,4 +1,4 @@
-# JeffLocal — Production Project Specification
+﻿# JeffLocal — Production Project Specification
 ## Claude Cowork Specialist Agent Handbook
 
 **Version:** 1.0 — 2026-05-22  
@@ -201,7 +201,7 @@ app/run_intake.ps1                             ← local intake entry point
 
 #### What IR Owns
 - n8n workflow "JeffLocal - 06 Test Intake Webhook" (workflow ID: `0pRmm3xCHP4wsVyy`)
-- Webhook endpoint configuration (`POST /webhook/jefflocal-test-intake` on port 5678)
+- Webhook endpoint configuration (`POST /webhook/ava-live-intake` on port 5678)
 - Payload validation before queue write
 - Queue write logic (`queue/encrypted_raw/`)
 - Dashboard intake API (`/api/n8n/test-intake-batch` — test/sandbox only, marked deprecated)

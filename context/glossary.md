@@ -1,4 +1,4 @@
-# Glossary — Avamed
+﻿# Glossary — Avamed
 # Key terms used across this project. Use these consistently.
 
 ---
@@ -18,7 +18,7 @@
 | **GuardRail** | The Safety & Governance Agent with independent veto authority over any change touching patient data, auth logic, or clinical safety. |
 | **ControlTower** | The Chief Coordinator agent that wraps proposed changes into formal approval packs before escalating to Saeed. |
 | **DX Agent** | The Implementation Lead agent. Executes approved work but cannot approve its own changes. |
-| **n8n** | The workflow automation tool used as the intake router. Runs on port 5678. Webhook path: `jefflocal-test-intake`. |
+| **n8n** | The workflow automation tool used as the intake router. Runs on port 5678. Webhook path: `ava-live-intake`. |
 | **Deadletter queue** | The final stage in the pipeline queue for cases that failed processing and cannot be automatically retried. Currently contains 5 items with no replay tooling. |
 | **ENI** | EMIS/NHS Integration — the department responsible for direct EMIS connectivity. Explicitly INACTIVE; Phase 2 only. |
 | **DSPT** | Data Security and Protection Toolkit — mandatory NHS compliance standard for organisations handling NHS data. Deadline: 30 June 2026. |

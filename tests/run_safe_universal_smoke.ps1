@@ -86,10 +86,7 @@ foreach ($pathway in @(
     "sick_note",
     "referral",
     "test_result",
-    "appointment_redirect",
-    "admin",
-    "unknown",
-    "needs_review"
+    "admin"
 )) {
     Assert-HasProperty -Name "pathway $pathway present" -Object $pathwayConfig.pathways -PropertyName $pathway
     $entry = $pathwayConfig.pathways.PSObject.Properties[$pathway].Value

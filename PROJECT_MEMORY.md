@@ -1,6 +1,6 @@
 ﻿# PROJECT MEMORY â€” JeffLocal
 # READ THIS FIRST at every session start, before doing anything else.
-# Last updated: 2026-06-18 (auto-updated 19:00)
+# Last updated: 2026-06-26 (auto-updated 19:00)
 # Maintained by: Claude (update at end of every session)
 
 ---
@@ -64,7 +64,7 @@ Re-confirm every session.
 Agent    | Role
 -------- | ---------------------------------------------------
 lead     | Orchestrator, human liaison
-backend  | Flask, Python, Ollama, n8n webhook
+backend  | FastAPI, Python, Ollama, n8n webhook
 frontend | Dashboard UI, CSS, Jinja2
 database | SQLite, migrations, GDPR purge
 test     | pytest + Playwright E2E
@@ -75,72 +75,99 @@ strategy | Docs, reports, governance, marketing
 
 ---
 
-## CURRENT STATUS -- 2026-06-18 (18:00)
+## CURRENT STATUS -- 2026-06-26
 
 ### What is working
 - Production dashboard LIVE at dashboard.app-avamed.uk (port 8765)
 - Watchdog monitoring 4 services: ProductionDashboard, N8n, Ollama, CloudflareTunnel -- CLEAN
-- WhatsApp alerts: LIVE -- mute flag removed, tab fix and dedup active
-- Phase 1+2+3 security/quality sprint: ALL 11 fixes APPLIED, Lead Agent APPROVED
-- **Full end-to-end pipeline verified 2026-06-08**: Jeff webhook -> n8n -> dashboard -> Ollama -> DB -> case visible
-- n8n WF06 fixed: no longer injects N8NTEST- prefixes; passes Jeff identifiers unchanged
-- **104/104 pytest tests passing (2026-06-18)**: all unit/integration tests green. E2E blocked on playwright not installed.
-- Governance gate artifacts created (Gates 2, 5, 6, 7): VALIDATION_RULES.json, PATHWAY_REGISTRY.md, HANDOFF_TEMPLATES.json, SCHEMA_V1.sql, DISASTER_RECOVERY_PLAN.md, RELEASE_GATE_CRITERIA.md, PIPELINE_HEALTH.md, DATABASE_HEALTH.md, runbooks
+- WhatsApp alerts: LIVE
+- **144/144 pytest tests passing** (unit/integration — test_locked_fields.py refactoring added 40 tests)
+- **40/40 Playwright E2E tests passing** (installed 2026-06-19, 4 fixes applied)
+- **sandbox branch merged to main** (2026-06-19, via git worktree, Saeed approved)
+- **Full pipeline test run 2026-06-19**: 5 fresh cases (CSV-FRESH-20260619-1315) sent end-to-end, all 5 resolved via staff simulation. Safety invariants confirmed — LLM cannot override priority or verification_status.
+- All security/quality fixes (Phase 1+2+3) APPLIED and in production (main branch)
+- test_user account in DB (id=5, role=staff, PBKDF2 hash, test_pass)
 
-### Changes this session (2026-06-18) -- sandbox branch, PENDING Saeed approval to merge
-1. **CLAUDE.md updated**: 8 rules (was 5) + restore point protocol added to session end
-2. **test_importer.py rewritten**: 5 RAWMOCK file-dependent tests replaced with tmp_path JSON fixtures (TC- IDs)
-3. **test_dashboard_active_metrics.py fixed**: test_reopen uses authed_client fixture (old jefflocal_staff_id cookie removed)
-4. **N8NTEST prefix validation reverted**: hallucinated block removed from main.py; test deleted
+### Bugs found in 2026-06-19 pipeline test run
+1. **verification_status null** — REANALYSED 2026-06-23. Handoff JSON DOES contain `verification_status = "matched"` (confirmed from actual test JSON files). Pipeline and importer both correct. UX badge added 2026-06-23.
+2. **canonical_request_type null** — FIXED 2026-06-24. Root cause: case_detail.html used raw `request_type` instead of `request_type_class` for badge CSS. Legacy subtypes (e.g. test_results_enquiry) got no styling. Now uses `request_type_class` (canonical).
+3. **resolved_by not in /api/cases/{call_id} response** — FIXED 2026-06-23.
+4. **cases sort to bottom when call_timestamp_sort is null** — FIXED 2026-06-23.
 
-### Still pending from prior sessions -- sandbox branch, PENDING Saeed approval to merge
-1. **Panel layout fix** (commit a7c21d4): Compact action bar; full scrollable body in detail panel.
-2. **Role-based sidebar redesign** (commit c00dc8c): Reception and Manager views separated in the left sidebar.
-3. **Review confirmation checkbox** (commit 0c5f189): Added to detail panel — receptionist must tick before marking a case as reviewed.
-4. **Review gate refined** (commit c230e91): Custom checkbox design with amber (unchecked) → green (checked) visual transition.
+### UX improvements identified (priority order)
+1. Client-side notes gate — disable Resolve button until notes filled for red flag/identity cases
+2. Red flag visual treatment — unmissable styling (red border/background, not just a dot)
+3. Verification status badge on case cards (needs Bug 1 fixed first)
+4. Third-party caller badge (derived from pathway, not manual)
+5. "Urgent Review" label → "999 Emergency" for red flag cases
+6. "Assign to me" step to prevent two staff working same case
+7. Worklist auto-refresh / polling (every 30s)
+8. Human-readable request type labels when canonical_request_type null
+Full detail: docs/reports/test-run-20260619-172712.md
 
-### ⚠️ Pending merge to production
-- All five feature commits above are on the sandbox branch.
-- Awaiting Saeed's explicit approval before merge to C:\JeffLocal\dashboard\.
-
-### All security/quality fixes (Phase 1+2+3) -- Lead Agent endorsed 2026-06-08
+### All security/quality fixes (Phase 1+2+3) -- in production
 1. jefflocal_staff_id cookie auth bypass -- REMOVED
 2. /api/alerts/ from public allowlist -- REMOVED
 3. LLM identity fields blocked from patient matching pipeline -- DONE
 4. SafeToQueueOverride in Get-JeffHandoffDisposition -- DONE
 5. Per-user random salt for password/PIN hashing -- DONE
-6. Session tokens hashed before DB storage -- DONE (Saeed override 2026-06-08)
+6. Session tokens hashed before DB storage -- DONE
 7. Post-password-change redirect loop -- FIXED
 8. DB indexes: sessions(expires_at), sessions(user_id), audit_events(timestamp) -- DONE
-9. Import loop crash fix -- DONE (failed files -> failed/ subdir, loop never crashes)
+9. Import loop crash fix -- DONE
 10. GDPR purge wired to production DB -- DONE
 11. Dead code (unreachable elseif in Jeff.Handoff.ps1) -- REMOVED
 
 ### Blocking Pilot 1 go-live
 - No real staff accounts (need names, roles, emails from Saeed)
 - Governance gates 1-7 not completed
-- Avamed not yet a registered company (blocks NHS SBS bid -- DEADLINE 23 June 2026)
-- JEFF_WEBHOOK_SECRET not set -- HMAC verification currently skipped (must be set before live traffic)
+- Avamed not yet a registered company
+- JEFF_WEBHOOK_SECRET not set -- must be set before any live Jeff traffic
+- NHS SBS framework bid postponed to next submission window (Saeed decision 2026-06-19)
 
 ### Pending Saeed approvals / actions
-1. **NHS SBS Ariba registration** -- DEADLINE 23 June 2026. Register at ariba.com.
-2. **Real staff accounts** -- provide names, roles, emails to unblock pilot go-live
-3. **Governance gates 1-7 sign-off** -- cannot be delegated
-4. **JEFF_WEBHOOK_SECRET** -- set in environment before any live Jeff traffic
-5. **n8n API key rotation** -- confirm go-ahead
+1. **Real staff accounts** -- provide names, roles, emails to unblock pilot go-live
+2. **Governance gates 1-7 sign-off** -- cannot be delegated
+3. **JEFF_WEBHOOK_SECRET** -- set in environment before any live Jeff traffic
+4. **n8n API key rotation** -- confirmed "later"
 
 ### Open technical tasks (priority order)
 ```
-RANK | TASK                                         | AGENT    | STATUS
------+----------------------------------------------+----------+------------------------
- 1   | Remove legacy static-salt password fallback  | Backend  | PENDING -- once all
-     | from auth.py (verify_password legacy path)   |          |   staff have logged in
- 2   | n8n API key rotation                         | DevOps   | Before go-live (Saeed)
- 3   | Create test_user account in DB               | Test     | Enables Playwright E2E
- 4   | Set JEFF_WEBHOOK_SECRET                      | DevOps   | Before live traffic
- 5   | Confirm .mcp.json in .gitignore              | DevOps   | Quick check
- 6   | Multi-tenancy tenant_id                      | Database | Phase 2
+RANK | TASK                                              | AGENT    | STATUS
+-----+---------------------------------------------------+----------+------------------
+ 1   | Remove legacy static-salt password fallback       | Backend  | PENDING
+ 2   | n8n API key rotation                              | DevOps   | Before go-live
+ 3   | Set JEFF_WEBHOOK_SECRET                           | DevOps   | Before live traffic
+ 4   | Run full Playwright E2E suite post-UX changes     | Test     | Next session
+ 5   | Multi-tenancy tenant_id                           | Database | Phase 2
 ```
+DONE 2026-06-26:
+- Investigated missing session log issue. Root cause: auto-generated log used plain prose, brief parser needs bullets.
+- Fixed strategy_daily.ps1: Evening mode now auto-writes bullet-format session log if no human session ran.
+- Fixed strategy_daily.ps1: Evening mode now creates/prunes restore tags automatically after each day.
+- Deleted all pre-Phase1AB backup folders (PRE_PHASE1AB_20260602*, RESTORE_POINT_20260529, p1_ux_20260523*) — Saeed approved. All code preserved in git history.
+- Fixed main.py: LOCAL_SERVICE_URLS port 5000→8765; api_hourly_volume and api_performance_summary use imported_at not created_at.
+- Restore tags pruned to 3: restore/2026-06-24-1800, restore/2026-06-25-1800, restore/2026-06-26-1800.
+- Commit: 5591564
+
+DONE 2026-06-24:
+- Pipeline batch AVA-LIVE-20260624: 5/5 cases end-to-end, safety invariants confirmed
+- Staff simulation PASS — locked fields intact on all 5 resolved cases
+- Fix: request_type_class used for badge CSS in case_detail.html (Bug #2 root cause)
+- Fix: outcome_notes textarea id + label for (WCAG label association)
+- Fix: resolve button title tooltip (disabled state explains why)
+- Fix: JS notes gate WHY comment + getElementById
+- Fix: case card tabindex=0 + Enter/Space keydown (keyboard nav)
+- Fix: resolve button min-height 44px (WCAG touch target)
+- Fix: resolved red-flag rows keep faint left border (audit trail)
+- Fix: _TS_SORT constant extracted from duplicate COALESCE expression
+
+DONE 2026-06-23:
+- UX: verification status badge, red flag card treatment, notes gate
+- resolved_by + resolved_at in API response
+- Worklist sort fallback, patient hint SQL fix
+- Webhook renamed jefflocal-test-intake → ava-live-intake (17 files + n8n workflow)
+- 9 stale docs archived
 
 ---
 
@@ -151,7 +178,7 @@ C:\JeffLocal\PROJECT_MEMORY.md                  â† THIS FILE â€” updat
 C:\JeffLocal\CLAUDE.md                          â† Rules (read every session)
 C:\JeffLocal\docs\sessions\                     â† Per-session summaries
 C:\JeffLocal\docs\reports\                      â† Daily reports (YYYY-MM-DD.md)
-C:\JeffLocal\dashboard\app\main.py              â† PRODUCTION Flask app
+C:\JeffLocal\dashboard\app\main.py              â† PRODUCTION FastAPI app
 C:\JeffLocal\dashboard\app\auth.py              â† Auth module
 C:\JeffLocal\dashboard\app\db.py                â† Database module
 C:\JeffLocal\app\process_queue.ps1              â† PowerShell pipeline
@@ -172,9 +199,10 @@ C:\JeffLocal\config\model_monitoring.json
 
 ```
 Repo:    https://github.com/JeffMedAI/tests
-Branch:  sandbox
-Latest:  dc03560 fix: all 104 tests passing ÔÇö rewrite importer tests, fix metrics auth, revert N8NTEST
-Pushed to origin: pending this session's commit
+Branch:  sandbox (production code)
+Main:    merged 2026-06-19 (sandbox → main via worktree)
+Latest:  5591564 chore: remove pre-Phase1AB backup folders, fix main.py port/column refs
+test_user: id=5, role=staff, username=test_user (Playwright E2E)
 ```
 
 ---
@@ -182,12 +210,12 @@ Pushed to origin: pending this session's commit
 ## TECHNICAL STACK
 
 ```
-Dashboard:    Flask (Python 3.14), Jinja2 templates, SQLite
+Dashboard:    FastAPI (Python 3.14), Jinja2 templates, SQLite
 AI:           Ollama / gemma4:e2b (confidence floor 0.72, fallback gemma4:e4b)
 Auth:         Session cookies (httponly, samesite=lax) â€” tokens hashed in DB
 Database:     SQLite at dashboard\data\dashboard.sqlite
 Remote:       Cloudflare tunnel (HTTPS termination external)
-Workflow:     n8n (localhost:5678, webhook: jefflocal-test-intake)
+Workflow:     n8n (localhost:5678, webhook: ava-live-intake)
 Voice agent:  Jeff (Hostcomm UK, external, posts to n8n webhook)
 Monitoring:   Watchdog (restarts services if down, checks every 60s)
 ```
@@ -243,6 +271,22 @@ Monitoring:   Watchdog (restarts services if down, checks every 60s)
 4. git push origin HEAD
 5. Tell Saeed: "Session saved. Memory updated. Ready to pick up tomorrow."
 ```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
