@@ -1,6 +1,6 @@
 ﻿# PROJECT MEMORY â€” JeffLocal
 # READ THIS FIRST at every session start, before doing anything else.
-# Last updated: 2026-06-27 (auto-updated 19:00)
+# Last updated: 2026-06-28 (auto-updated 19:00)
 # Maintained by: Claude (update at end of every session)
 
 ---
@@ -203,7 +203,7 @@ C:\JeffLocal\config\model_monitoring.json
 Repo:    https://github.com/JeffMedAI/tests
 Branch:  sandbox (production code)
 Main:    merged 2026-06-19 (sandbox → main via worktree)
-Latest:  fd8eb3f memory: session end protocol 2026-06-26 18:00
+Latest:  2ad8ac1 memory: session end protocol 2026-06-27 18:00
 test_user: id=5, role=staff, username=test_user (Playwright E2E)
 ```
 
@@ -308,4 +308,6 @@ Monitoring:   Watchdog (restarts services if down, checks every 60s)
 
 
 
-                     
+
+
+                   
