@@ -5,22 +5,13 @@
 #   -Mode Morning  -> 07:00  "MORNING BRIEF"  (look ahead: yesterday recap + today's plan)
 #   -Mode Evening  -> 19:00  "EVENING BRIEF"  (session close: what we did today + handover)
 #
-# What this script does (both modes):
-#   1. Reads session logs from last 24h (docs\sessions\). If none, falls back to
-#      the most recent log (any age) so the brief is NEVER empty.
-#   2. Reads git log for last 24 hours
-#   3. Checks document freshness
-#   4. STATE VERIFICATION: compares PROJECT_MEMORY current status vs session logs
-#      — extracts pending/blocked items from memory
-#      — checks for drift (memory items with no recent log activity)
-#      — appends STATE VERIFICATION section to report
-#   5. Updates PROJECT_MEMORY.md current status section
-#   6. Generates the brief in simple English (caveman style: short, plain, no jargon)
-#   7. Saves report to docs\reports\{date}.md (evening run suffixes -evening)
-#   8. Commits and pushes to git
-#   9. Sends the brief to Saeed via WhatsApp
+# COMBINED MODE: When called as a scheduled task (no -DryRun, no -RepoRoot override)
+# this script forwards to combined_brief.ps1, which covers BOTH projects (JeffLocal +
+# St Marks Pharmacy / STMARKS-WEB) in a single WhatsApp message.
+# The -DryRun flag suppresses the forward so combined_brief.ps1 can call this script
+# internally without recursion.
 #
-# Last updated: 2026-06-16
+# Last updated: 2026-06-26
 
 param(
     [ValidateSet('Morning','Evening')]
@@ -44,6 +35,17 @@ if ($Mode -eq 'Evening') {
     $BriefClock = "07:00"
     $DidLabel   = "WHAT WE DID YESTERDAY"
     $NextLabel  = "WHAT WE ARE DOING TODAY"
+}
+
+# ── COMBINED BRIEF FORWARD ────────────────────────────────────────────────────
+# When called as a scheduled task (DryRun not set, default RepoRoot) forward to
+# combined_brief.ps1 which covers both projects. combined_brief.ps1 then calls
+# this script with -DryRun to update PROJECT_MEMORY without looping.
+$_CombinedScript = "C:\JeffLocal\scripts\daily\combined_brief.ps1"
+if (-not $DryRun -and $RepoRoot -eq "C:\JeffLocal" -and (Test-Path $_CombinedScript)) {
+    Write-Host "Forwarding to combined_brief.ps1 (covers JeffLocal + St Marks Pharmacy)..."
+    & $_CombinedScript -Mode $Mode
+    exit $LASTEXITCODE
 }
 
 Set-StrictMode -Version Latest
