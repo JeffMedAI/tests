@@ -1,6 +1,6 @@
 ﻿# PROJECT MEMORY â€” JeffLocal
 # READ THIS FIRST at every session start, before doing anything else.
-# Last updated: 2026-06-29 (auto-updated 18:00)
+# Last updated: 2026-07-01 (auto-updated 18:00)
 # Maintained by: Claude (update at end of every session)
 
 ---
@@ -75,7 +75,7 @@ strategy | Docs, reports, governance, marketing
 
 ---
 
-## CURRENT STATUS -- 2026-06-29
+## CURRENT STATUS -- 2026-07-01
 
 ### What is working
 - Production dashboard LIVE at dashboard.app-avamed.uk (port 8765)
@@ -203,7 +203,7 @@ C:\JeffLocal\config\model_monitoring.json
 Repo:    https://github.com/JeffMedAI/tests
 Branch:  sandbox (production code)
 Main:    merged 2026-06-19 (sandbox → main via worktree)
-Latest:  7f39d36 feat: combined brief script covering JeffLocal + SMCPHARMA in one message
+Latest:  c94aabb memory: session end protocol 2026-06-29 18:00 (no new commits 2026-07-01)
 test_user: id=5, role=staff, username=test_user (Playwright E2E)
 ```
 
@@ -304,4 +304,10 @@ Monitoring:   Watchdog (restarts services if down, checks every 60s)
 
 
 
-
+
+
+
+
+
+
+
