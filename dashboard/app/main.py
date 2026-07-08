@@ -22,6 +22,13 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from .audit import write_audit_event
+from .observability import (
+    HealthStatus,
+    StructuredFormatter,
+    build_health_response,
+    record_pipeline_event,
+)
+from .safety import PROTECTED_FIELDS, SafetyViolation, sanitise_for_pipeline, validate_llm_output
 from .auth import (
     clear_failed_attempts,
     consume_reset_token,
@@ -2467,17 +2474,22 @@ def api_health() -> dict[str, Any]:
     handoff_folder = BASE_DIR.parent / "outputs" / "handoff_json"
     with connect() as conn:
         case_count = conn.execute("SELECT COUNT(*) FROM cases").fetchone()[0]
-    return {
-        "ok": True,
-        "service": "JeffLocal",
-        "timestamp": utc_now_iso(),
-        "checks": {
-            "dashboard": True,
-            "database": True,
-            "handoff_folder": handoff_folder.exists(),
-            "case_count": case_count,
-        },
+
+    services = {
+        "dashboard": "up",
+        "database": "up",
+        "handoff_folder": "up" if handoff_folder.exists() else "degraded",
     }
+    health = build_health_response(services=services)
+    health["ok"] = True
+    health["service"] = "JeffLocal"
+    health["checks"] = {
+        "dashboard": True,
+        "database": True,
+        "handoff_folder": handoff_folder.exists(),
+        "case_count": case_count,
+    }
+    return health
 
 
 @app.post("/api/n8n/sync")

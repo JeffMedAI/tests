@@ -118,7 +118,7 @@ def test_api_health_returns_json_case_count(tmp_path, monkeypatch):
 def test_api_red_flags_includes_tc_006(tmp_path, monkeypatch):
     client_context, _db_path = make_client(tmp_path, monkeypatch)
     with client_context as client:
-        response = client.get("/api/red-flags")
+        response = client.get("/api/n8n/red-flags")
 
     assert response.status_code == 200
     assert_json_response(response)
@@ -135,7 +135,7 @@ def test_api_red_flags_includes_tc_006(tmp_path, monkeypatch):
 def test_api_overdue_returns_json(tmp_path, monkeypatch):
     client_context, _db_path = make_client(tmp_path, monkeypatch)
     with client_context as client:
-        response = client.get("/api/overdue?threshold_hours=24")
+        response = client.get("/api/n8n/overdue?threshold_hours=24")
 
     assert response.status_code == 200
     assert_json_response(response)
@@ -149,7 +149,7 @@ def test_api_overdue_returns_json(tmp_path, monkeypatch):
 def test_api_daily_summary_returns_request_type_counts(tmp_path, monkeypatch):
     client_context, _db_path = make_client(tmp_path, monkeypatch)
     with client_context as client:
-        response = client.get("/api/daily-summary")
+        response = client.get("/api/n8n/daily-summary")
 
     assert response.status_code == 200
     assert_json_response(response)
@@ -184,7 +184,7 @@ def alert_payload():
 def test_api_alert_log_writes_sqlite_and_jsonl(tmp_path, monkeypatch):
     client_context, _db_path = make_client(tmp_path, monkeypatch)
     with client_context as client:
-        response = client.post("/api/alerts/log", json=alert_payload())
+        response = client.post("/api/n8n/alerts/log", json=alert_payload())
 
     assert response.status_code == 200
     assert_json_response(response)
@@ -200,8 +200,8 @@ def test_api_alert_log_writes_sqlite_and_jsonl(tmp_path, monkeypatch):
 def test_api_alert_log_dedupes_recent_duplicate(tmp_path, monkeypatch):
     client_context, _db_path = make_client(tmp_path, monkeypatch)
     with client_context as client:
-        first = client.post("/api/alerts/log", json=alert_payload())
-        second = client.post("/api/alerts/log", json=alert_payload())
+        first = client.post("/api/n8n/alerts/log", json=alert_payload())
+        second = client.post("/api/n8n/alerts/log", json=alert_payload())
 
     assert first.status_code == 200
     assert second.status_code == 200
@@ -215,7 +215,7 @@ def test_api_alert_log_dedupes_recent_duplicate(tmp_path, monkeypatch):
 def test_api_alerts_recent_returns_logged_alerts(tmp_path, monkeypatch):
     client_context, _db_path = make_client(tmp_path, monkeypatch)
     with client_context as client:
-        client.post("/api/alerts/log", json=alert_payload())
+        client.post("/api/n8n/alerts/log", json=alert_payload())
         response = client.get("/api/alerts/recent?limit=5")
 
     assert response.status_code == 200
@@ -242,7 +242,7 @@ def test_api_alert_logging_does_not_alter_locked_case_fields(tmp_path, monkeypat
             ).fetchone()
         )
     with client_context as client:
-        response = client.post("/api/alerts/log", json=alert_payload())
+        response = client.post("/api/n8n/alerts/log", json=alert_payload())
     with connect(db_path) as conn:
         after = dict(
             conn.execute(
@@ -438,7 +438,7 @@ def test_api_red_flags_sorts_newer_n8ntest_before_older_tc(tmp_path, monkeypatch
         )
 
     with client_context as client:
-        response = client.get("/api/red-flags")
+        response = client.get("/api/n8n/red-flags")
 
     assert response.status_code == 200
     cases = response.json()["cases"]
@@ -573,7 +573,7 @@ def test_alert_message_leading_equals_cleaned_for_new_and_existing_alerts(tmp_pa
     payload = alert_payload()
     payload["message"] = "=JeffLocal has a red flag alert"
     with client_context as client:
-        logged = client.post("/api/alerts/log", json=payload)
+        logged = client.post("/api/n8n/alerts/log", json=payload)
         alerts_page = client.get("/alerts")
 
     assert logged.status_code == 200
