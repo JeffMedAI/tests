@@ -1,6 +1,6 @@
 ﻿# PROJECT MEMORY â€” JeffLocal
 # READ THIS FIRST at every session start, before doing anything else.
-# Last updated: 2026-07-07 (auto-updated 18:00)
+# Last updated: 2026-07-08 (auto-updated 18:00)
 # Maintained by: Claude (update at end of every session)
 
 ---
@@ -219,9 +219,9 @@ C:\JeffLocal\config\model_monitoring.json
 
 ```
 Repo:    https://github.com/JeffMedAI/tests
-Branch:  sandbox (production code)
+Branch:  sandbox (production code) — [UNVERIFIED — confirm before proceeding] actual current branch checked out is feature/refactor-2-5-6, see 2026-07-08-1800 session log
 Main:    merged 2026-06-19 (sandbox → main via worktree)
-Latest:  a168af8 feat: SQLite hot backup — TDD tests, script, Task Scheduler entry
+Latest:  7cc846c feat: items #5 and #6 — observability module and AI safety boundary (TDD)
 test_user: id=5, role=staff, username=test_user (Playwright E2E)
 ```
 
