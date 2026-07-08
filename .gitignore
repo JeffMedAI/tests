@@ -40,6 +40,8 @@ config/*key*
 # polluting the code graph with duplicate copies of live files.
 backup/
 backups/
+# Source files for backup tooling are tracked; only data files are excluded
+!scripts/backup/
 
 # Decommissioned sandbox (removed 2026-06-07) — orphaned venv + sqlite only.
 # Kept out of git + the code graph; do not resurrect.
