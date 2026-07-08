@@ -11,49 +11,51 @@
 
 ---
 
-**Last session:** 2026-07-08 10:15
+**Last session:** 2026-07-08 (continuation session)
 **Closed by:** Claude (Sonnet 4.6)
-**Last commit:** cfb24d0 chore: add gstack skill routing rules to CLAUDE.md
+**Last commit:** a168af8 feat: SQLite hot backup — TDD tests, script, Task Scheduler entry
 **Production:** dashboard.app-avamed.uk (Cloudflare tunnel → localhost:8765), watchdog-managed, LIVE
 
 ---
 
 ## WORK SCOPE
 
-Fix all n8n workflow execution failures. All 6 workflows audited. Install and configure gstack.
+Production-readiness sprint: 3 tasks approved by Saeed — install gemma4:e4b fallback, SQLite backup script, split main.py into modules. First two complete this session. Third documented but NOT started (Saeed's instruction).
 
 ## WHAT WORKED / WHAT DIDN'T
 
 **Worked:**
-- Route rename pattern (`/api/xxx` → `/api/n8n/xxx`) — the `/api/n8n/` prefix is already in `AUTH_PUBLIC_PREFIXES` at main.py:101, so renamed routes bypass auth without any new allowlist changes
-- Python script (`fix_n8n_auth_urls.py`) to update n8n workflow nodes via API — works reliably
-- WF03 confirmed success at 08:50 UTC after fix
-- WF05 (Daily Summary) was also broken — failing every day since 5 July, now fixed
-- WF02 (Dashboard Sync, inactive) pre-fixed so it won't break when activated
-- Full audit: all 9 dashboard HTTP nodes across all 6 workflows now on `/api/n8n/` prefix
+- gemma4:e4b (9.6 GB) pulled and confirmed in ollama list
+- TDD backup script: 22/22 tests GREEN. Failure on first run was Windows temp dir permissions — fix: use `--basetemp` flag pointing to scratchpad directory
+- SQLite hot backup confirmed on real DB (568 KB, integrity OK, pruned 0)
+- JeffLocal-SQLiteBackup Task Scheduler entry registered (daily 02:15) without admin rights — key: do NOT use `-RunLevel Highest` flag
+- `.gitignore` needed `!scripts/backup/` exception — `backup/` rule was blocking the new script files
 
 **Didn't work / Gotchas:**
-- n8n MCP `update_workflow` tool: always fails — do NOT use it. Use direct HTTP PUT via Python (pattern in `fix_n8n_auth_urls.py`)
-- When fixing n8n auth, audit ALL HTTP nodes in every workflow, not just the first failing one — WF05 would have kept failing if Saeed hadn't asked about workflows 1, 2, 6
-- Multiple git lock files appeared during this session — `index.lock`, `HEAD.lock`, `sandbox.lock`, `maintenance.lock`. Clear with `rm -f .git/*.lock .git/refs/heads/*.lock .git/objects/maintenance.lock` if git commits fail
+- `Register-ScheduledTask -RunLevel Highest` → Access Denied (not admin). Remove that flag to register as current user
+- pytest `tmp_path` fixture crashes on Windows if `C:\Users\s5256\AppData\Local\Temp\pytest-of-s5256` has a permissions lock — use `--basetemp=<scratchpad>` to work around
+- PowerShell `git commit -m "$(cat <<'EOF'..."` heredoc syntax does NOT work in PowerShell — use `$msg = @'...'@; git commit -m $msg` instead
+- `2>&1` redirect on native executables in PowerShell triggers cosmetic NativeCommandError even on exit code 0 — not a real error, just ignore it
 
 **Files changed this session:**
-- `dashboard/app/main.py` — 5 route decorators renamed total (lines 2497, 2520, 2483, 2556, 3390)
-- `scripts/service_control/fix_n8n_auth_urls.py` — new file, reusable URL fix script
-- `CLAUDE.md` — gstack routing rules appended
+- `scripts/backup/backup_db.py` — new: SQLite hot backup with 30-day rolling retention
+- `scripts/backup/test_backup.py` — new: 22 TDD tests
+- `scripts/service_control/install_scheduled_tasks.ps1` — added JeffLocal-SQLiteBackup entry
+- `.gitignore` — added `!scripts/backup/` exception
 
 ## HOW THE SESSION CLOSED
 
-- All 9 n8n dashboard HTTP nodes confirmed clean (audit printed, all OK)
-- WF03 verified SUCCESS. WF04 fix applied. WF05 fix applied. WF02 pre-fixed.
-- gstack installed: telemetry off, proactive on, routing rules in CLAUDE.md
-- Commits: 4d8b127 → 60fd606 → cfb24d0. Pushed. Restore tag restore/2026-07-08-0951.
+- Task 1 (gemma4:e4b): DONE
+- Task 2 (SQLite backup): DONE — tests GREEN, script runs, scheduled
+- Task 3 (main.py split): PLAN WRITTEN, NOT STARTED — Saeed said "add to pending list"
+- PROJECT_MEMORY, HANDOFF, graphify updated
+- Commit a168af8 on sandbox branch
 
 ## NEXT + BLOCKERS
 
 **Next actions:**
-1. Confirm WF04 (next 30-min tick) and WF05 (tomorrow 11:00 UTC) succeed
-2. Remove legacy static-salt password fallback (Backend Task #1)
+1. **Task 3: Split main.py** — branch `refactor/split-main-py`, extraction order in PROJECT_MEMORY task list. Multi-session. Do NOT start without Saeed's go-ahead each session.
+2. Remove legacy static-salt task from PROJECT_MEMORY (already done in auth.py — verify first)
 3. Saeed to provide real staff accounts → pilot go-live unblocked
 
 **Blockers:**
@@ -66,11 +68,13 @@ Fix all n8n workflow execution failures. All 6 workflows audited. Install and co
 - Governance gates 1-7 sign-off
 - JEFF_WEBHOOK_SECRET in Windows env
 - n8n API key rotation ("later")
+- Go-ahead to start Task 3 (main.py split) each session
 
 **Durable gotchas:**
 - PRODUCTION is always `C:\JeffLocal\dashboard\` (port 8765). Git branch named "sandbox" — irrelevant to paths.
 - n8n MCP `update_workflow` always fails. Use Python HTTP PUT script instead.
-- Audit ALL HTTP nodes in ALL workflows when fixing n8n auth — not just the ones that are currently failing.
+- Audit ALL HTTP nodes in ALL workflows when fixing n8n auth — not just the ones currently failing.
 - LLM output must NEVER set verification_status, safe_to_queue, priority, or patient-identity fields.
-- 5 items in deadletter queue; no replay tooling yet.
-- Git lock files can pile up — check for `*.lock` in `.git/` and subdirs if commit fails.
+- Git lock files can pile up — check `.git/*.lock` if commit fails.
+- pytest `tmp_path` on Windows: use `--basetemp=<scratchpad>` if access denied on default temp dir.
+- Task Scheduler registration: do NOT use `-RunLevel Highest`, it requires admin. Omit it to register as current user.

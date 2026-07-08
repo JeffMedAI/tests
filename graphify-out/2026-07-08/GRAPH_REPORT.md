@@ -1,16 +1,16 @@
-# Graph Report - JeffLocal  (2026-07-08)
+# Graph Report - JeffLocal  (2026-06-25)
 
 ## Corpus Check
-- 328 files · ~260,117 words
+- 366 files · ~172,191 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 1801 nodes · 3785 edges · 244 communities (143 shown, 101 thin omitted)
+- 1678 nodes · 3660 edges · 233 communities (133 shown, 100 thin omitted)
 - Extraction: 98% EXTRACTED · 2% INFERRED · 0% AMBIGUOUS · INFERRED: 60 edges (avg confidence: 0.8)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `a168af82`
+- Built from commit: `88a35087`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -28,20 +28,11 @@
 - [[_COMMUNITY_Community 10|Community 10]]
 - [[_COMMUNITY_Community 11|Community 11]]
 - [[_COMMUNITY_Community 12|Community 12]]
-- [[_COMMUNITY_Community 13|Community 13]]
-- [[_COMMUNITY_Community 14|Community 14]]
-- [[_COMMUNITY_Community 15|Community 15]]
 - [[_COMMUNITY_Community 16|Community 16]]
-- [[_COMMUNITY_Community 17|Community 17]]
-- [[_COMMUNITY_Community 18|Community 18]]
-- [[_COMMUNITY_Community 19|Community 19]]
-- [[_COMMUNITY_Community 20|Community 20]]
 - [[_COMMUNITY_Community 21|Community 21]]
 - [[_COMMUNITY_Community 22|Community 22]]
-- [[_COMMUNITY_Community 23|Community 23]]
 - [[_COMMUNITY_Community 24|Community 24]]
 - [[_COMMUNITY_Community 25|Community 25]]
-- [[_COMMUNITY_Community 26|Community 26]]
 - [[_COMMUNITY_Community 29|Community 29]]
 - [[_COMMUNITY_Community 33|Community 33]]
 - [[_COMMUNITY_Community 35|Community 35]]
@@ -207,35 +198,35 @@
 10. `current_staff_from_request()` - 34 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `build_encrypted_calls()` --calls--> `decrypt_envelope()`  [INFERRED]
-  tests/fixtures/n8n_webhook_test_pack.py → app/decrypt_encrypted_raw.py
+- `encrypt_calls()` --calls--> `decrypt_envelope()`  [INFERRED]
+  tests/send_gp_demo_n8n_webhook_calls.py → app/decrypt_encrypted_raw.py
 - `test_gp_demo_envelope_decrypts_locally_and_uses_separate_tag()` --calls--> `decrypt_envelope()`  [INFERRED]
   tests/test_gp_demo_sender_encryption.py → app/decrypt_encrypted_raw.py
 - `encrypt_local_test_call()` --calls--> `encrypt_envelope()`  [INFERRED]
   dashboard/app/main.py → tests/fixtures/live_lookup_test_payloads.py
 - `New-TestHandoff()` --calls--> `New-JeffHandoffObject()`  [INFERRED]
   tests/run_staff_facing_postprocessing.ps1 → app/build_handoff.ps1
-- `build_batch()` --calls--> `decrypt_envelope()`  [INFERRED]
-  tests/fixtures/prodsim_webhook_test_pack.py → app/decrypt_encrypted_raw.py
+- `build_encrypted_calls()` --calls--> `decrypt_envelope()`  [INFERRED]
+  tests/fixtures/n8n_webhook_test_pack.py → app/decrypt_encrypted_raw.py
 
 ## Import Cycles
 - 1-file cycle: `app/decrypt_encrypted_raw.py -> app/decrypt_encrypted_raw.py`
 - 1-file cycle: `scripts/demo/seed_demo_data.py -> scripts/demo/seed_demo_data.py`
 - 1-file cycle: `tests/test_decrypt_encrypted_raw.py -> tests/test_decrypt_encrypted_raw.py`
 
-## Communities (244 total, 101 thin omitted)
+## Communities (233 total, 100 thin omitted)
 
 ### Community 0 - "Community 0"
-Cohesion: 0.10
-Nodes (59): write_audit_event(), ollama_clinical_summary(), Call local Ollama to generate a clinical AI summary. Returns string or None on f, alerts_page(), api_alert_acknowledge(), api_call_recording(), api_case_action(), api_case_copy_audit() (+51 more)
+Cohesion: 0.11
+Nodes (58): write_audit_event(), alerts_page(), api_alert_acknowledge(), api_call_recording(), api_case_action(), api_case_copy_audit(), api_case_enrich(), api_cases_batch_resolve() (+50 more)
 
 ### Community 1 - "Community 1"
-Cohesion: 0.07
-Nodes (26): 10. Health content sends patients away, 11. No Healthy Living Pharmacy badge, no accreditations beyond GPhC, 1. Consistent service page template, 1. NO patient reviews anywhere, 2. NO prices on private services, 2. Value proposition copy (verbatim — use as inspiration, not copying), 3. GPhC numbers with live verification links, 3. NO pharmacist biography (+18 more)
+Cohesion: 0.08
+Nodes (27): row_to_dict(), alert_row_to_display(), api_alerts_recent(), api_alerts_unacknowledged(), as_optional_int(), attach_recent_audit_events(), attach_recording_metadata(), case_detail() (+19 more)
 
 ### Community 3 - "Community 3"
-Cohesion: 0.08
-Nodes (25): APPROVAL PROTOCOL, BLOG CONTENT CALENDAR (first 6 months post-launch), CLAUDE.md — St Marks Pharmacy Website Project, CONFIRMED SERVICES (all active — do not ask for re-confirmation), CONTENT RULES (apply to every page — mandatory), DECISION LOG (keep running — add to docx too), KPIs TO TRACK MONTHLY FROM LAUNCH, Last updated: 2026-06-30 (+17 more)
+Cohesion: 0.33
+Nodes (15): assert_envelope_shape(), build_batch(), build_plain_calls(), encrypt_calls(), is_local_url(), local_self_check(), main(), print_summary() (+7 more)
 
 ### Community 4 - "Community 4"
 Cohesion: 0.52
@@ -243,7 +234,7 @@ Nodes (6): build_batch(), build_plain_calls(), fresh_blocks(), main(), Fresh 5-c
 
 ### Community 5 - "Community 5"
 Cohesion: 0.08
-Nodes (66): decrypt_envelope(), build_calls(), encrypt_envelope(), make_call(), utc_now_iso(), build_batch(), build_test_calls(), main() (+58 more)
+Nodes (61): decrypt_envelope(), build_calls(), encrypt_envelope(), make_call(), utc_now_iso(), _base_call(), build_batch(), build_encrypted_calls() (+53 more)
 
 ### Community 6 - "Community 6"
 Cohesion: 0.52
@@ -255,43 +246,15 @@ Nodes (70): aes_gcm_decrypt(), audit(), build_parser(), check_nonce_replay(), co
 
 ### Community 10 - "Community 10"
 Cohesion: 0.14
-Nodes (44): active_case_clause(), active_identity_check_clause(), active_red_flag_clause(), active_staff_review_clause(), api_case(), api_daily_summary(), api_overdue(), api_red_flags() (+36 more)
+Nodes (45): active_case_clause(), active_identity_check_clause(), active_red_flag_clause(), active_staff_review_clause(), api_case(), api_daily_summary(), api_overdue(), api_red_flags() (+37 more)
 
 ### Community 11 - "Community 11"
-Cohesion: 0.05
-Nodes (105): connect(), init_db(), import_handoffs(), upsert_case(), _background_importer(), _daily_session_purge(), _nav_alert_count(), Background task: purge expired sessions once per day. (+97 more)
+Cohesion: 0.06
+Nodes (101): connect(), init_db(), import_handoffs(), upsert_case(), _background_importer(), _daily_session_purge(), _nav_alert_count(), Background task: purge expired sessions once per day. (+93 more)
 
 ### Community 12 - "Community 12"
-Cohesion: 0.15
-Nodes (12): BLOCKERS, CONFIRMED FACTS (2026-06-30, from Saeed), Fast snapshot of where we are. READ FIRST every session., HOW IT IS BUILT (important — not what the docx plan says), LAST COMMIT, Last updated: 2026-07-03 (evening — go-live on real domain), OPEN TASKS / NEXT, PENDING SAEED / APPROVALS (+4 more)
-
-### Community 13 - "Community 13"
-Cohesion: 0.22
-Nodes (11): api_n8n_test_intake_batch(), archive_n8ntest_artifacts(), call_id_from_test_call(), count_batch_files(), count_n8ntest_files(), encrypt_local_test_call(), is_encrypted_envelope(), n8ntest_dashboard_cases() (+3 more)
-
-### Community 14 - "Community 14"
-Cohesion: 0.33
-Nodes (10): _base_call(), build_batch(), build_encrypted_calls(), build_test_calls(), main(), _voice(), bool, float (+2 more)
-
-### Community 15 - "Community 15"
-Cohesion: 0.20
-Nodes (9): Checklist, Decisions Needed (Saeed), Gaps in this data (be aware), McKeevers Chemists — Competitive Analysis (Services & Revenue), Next Steps, Open Questions, The revenue ranking (highest first), What this tells us about their strategy (+1 more)
-
-### Community 17 - "Community 17"
-Cohesion: 0.47
-Nodes (8): fix_workflow_url(), get_api_key(), get_workflow(), main(), n8n_request(), put_workflow(), Fix workflows 03 + 04: update HTTP Request URLs from /api/red-flags and /api/ove, toggle_active()
-
-### Community 18 - "Community 18"
-Cohesion: 0.22
-Nodes (8): Accessibility & Inclusion, Anti-references, Brand Personality, Design Principles, Product, Product Purpose, Register, Users
-
-### Community 19 - "Community 19"
-Cohesion: 0.33
-Nodes (5): HANDOFF — Avamed (JeffLocal), HOW THE SESSION CLOSED, NEXT + BLOCKERS, WHAT WORKED / WHAT DIDN'T, WORK SCOPE
-
-### Community 20 - "Community 20"
-Cohesion: 0.33
-Nodes (5): HANDOFF — St Marks Pharmacy Website (STMARKS-WEB), HOW THE SESSION CLOSED, NEXT + BLOCKERS, WHAT WORKED / WHAT DIDN'T, WORK SCOPE (what this session set out to do)
+Cohesion: 0.67
+Nodes (4): Verify an HMAC-SHA256 webhook signature in constant time.      The caller (Jef, FastAPI dependency: enforce HMAC-SHA256 signature on the raw request body., verify_hmac_signature(), verify_webhook_hmac()
 
 ### Community 21 - "Community 21"
 Cohesion: 0.12
@@ -300,10 +263,6 @@ Nodes (44): build_e2e_batch(), build_e2e_calls(), _call(), E2E Call Flow Test Pa
 ### Community 22 - "Community 22"
 Cohesion: 0.09
 Nodes (33): New-JeffHandoffObject(), Invoke-JeffEmergencyOverride(), Set-JeffHandoffFieldSafe(), Get-JeffHandoffDisposition(), Get-JeffHandoffTaskText(), Get-JeffFirstNameSafe(), Get-JeffFirstNonBlank(), Get-JeffLastNameSafe() (+25 more)
-
-### Community 23 - "Community 23"
-Cohesion: 0.80
-Nodes (4): clean(), fetch(), handleBooking(), json()
 
 ### Community 24 - "Community 24"
 Cohesion: 0.18
@@ -330,16 +289,16 @@ Cohesion: 0.20
 Nodes (9): Arguments, Cleanup, Files, Output, Quick start, Requirements, Stages, The 10 test cases (+1 more)
 
 ### Community 44 - "Community 44"
-Cohesion: 0.14
-Nodes (22): row_to_dict(), batch_resolve_block_reason(), batch_resolve_cases(), bulk_action_cases(), calculate_turnaround_minutes(), detail_case_url(), has_text(), is_active_case() (+14 more)
+Cohesion: 0.10
+Nodes (28): api_case_get(), build_suggested_actions(), bulk_action_cases(), calculate_age_label(), canonical_request_type(), format_safe_to_queue(), format_staff_review(), friendly_request_type() (+20 more)
 
 ### Community 45 - "Community 45"
 Cohesion: 0.09
 Nodes (50): TestClient, authed_client(), _bypass_session_lookup(), Accept hardcoded test tokens without a real DB session lookup., TestClient pre-loaded with an admin session cookie., TestClient pre-loaded with a readonly session cookie., readonly_client(), alert_payload() (+42 more)
 
 ### Community 46 - "Community 46"
-Cohesion: 0.05
-Nodes (70): add_pathway_item(), alert_dedupe_key(), alert_row_to_display(), api_alert_log(), api_alerts_recent(), api_alerts_unacknowledged(), api_case_get(), as_optional_int() (+62 more)
+Cohesion: 0.08
+Nodes (40): add_pathway_item(), alert_dedupe_key(), api_alert_log(), api_n8n_test_intake_batch(), archive_n8ntest_artifacts(), batch_resolve_block_reason(), call_id_from_test_call(), clean_alert_message() (+32 more)
 
 ### Community 48 - "Community 48"
 Cohesion: 0.17
@@ -410,8 +369,8 @@ Cohesion: 0.40
 Nodes (9): load_sender_module(), make_routine_prescription_handoff(), str, run_powershell_handoff(), test_agent_question_does_not_trigger_red_flag(), test_caller_affirmative_red_flag_triggers_override(), test_caller_denial_is_respected(), test_gp_demo_sender_uses_existing_lookup_patients() (+1 more)
 
 ### Community 123 - "Community 123"
-Cohesion: 0.21
-Nodes (25): as_bool_int(), as_int(), build_patient_record_note(), build_processed_outputs(), clean_text(), first_value(), identifier_for_patient_record(), identifier_for_safe_staff_copy() (+17 more)
+Cohesion: 0.14
+Nodes (33): as_bool_int(), as_int(), build_patient_record_note(), build_processed_outputs(), clean_text(), first_value(), identifier_for_patient_record(), identifier_for_safe_staff_copy() (+25 more)
 
 ### Community 134 - "Community 134"
 Cohesion: 0.32
@@ -479,11 +438,11 @@ Nodes (25): All Other Agents, AUTHORITY LEVELS, CHANGE CONTROL, COMPLIANCE OBLIG
 
 ### Community 313 - "Community 313"
 Cohesion: 0.08
-Nodes (25): AGENT CULTURE & CONDUCT (mandatory for all agents), APPROVAL PROTOCOL, COMMERCIAL — ACTIVE OBLIGATIONS, COMMUNICATION RULES (mandatory), COMPLIANCE, CORE SAFETY RULE — OLLAMA/DETERMINISTIC SPLIT, CRITICAL PATH — THE SINGLE MOST COMMON SOURCE OF ERRORS, GOVERNANCE STRUCTURE — WHO HAS AUTHORITY (+17 more)
+Nodes (24): AGENT CULTURE & CONDUCT (mandatory for all agents), APPROVAL PROTOCOL, COMMERCIAL — ACTIVE OBLIGATIONS, COMMUNICATION RULES (mandatory), COMPLIANCE, CORE SAFETY RULE — OLLAMA/DETERMINISTIC SPLIT, CRITICAL PATH — THE SINGLE MOST COMMON SOURCE OF ERRORS, GOVERNANCE STRUCTURE — WHO HAS AUTHORITY (+16 more)
 
 ### Community 337 - "Community 337"
-Cohesion: 0.08
-Nodes (23): AGENT TEAM, All security/quality fixes (Phase 1+2+3) -- in production, APPROVAL PROTOCOL, Blocking Pilot 1 go-live, Bugs found in 2026-06-19 pipeline test run, CRITICAL PATH DISTINCTION â€” READ EVERY SESSION, CURRENT STATUS -- 2026-07-08, GIT STATE (+15 more)
+Cohesion: 0.09
+Nodes (22): AGENT TEAM, All security/quality fixes (Phase 1+2+3) -- in production, APPROVAL PROTOCOL, Blocking Pilot 1 go-live, Bugs found in 2026-06-19 pipeline test run, CRITICAL PATH DISTINCTION â€” READ EVERY SESSION, CURRENT STATUS -- 2026-06-24 (evening session), GIT STATE (+14 more)
 
 ### Community 372 - "Community 372"
 Cohesion: 0.12
@@ -494,8 +453,8 @@ Cohesion: 0.17
 Nodes (10): BrowserContext, auth_page(), browser(), context(), page(), Shared fixtures for JeffLocal Playwright E2E tests.  Prerequisites:     pip i, Launch Chromium in headless mode for the full test session., Fresh browser context per test.  Ignores HTTPS certificate errors so tests (+2 more)
 
 ### Community 485 - "Community 485"
-Cohesion: 0.09
-Nodes (21): 2026-06-07 — Directory Cleanup & Architecture Change (No More Sandbox), 2026-06-07 — Governance Package Created, 2026-06-10 — Avamed Clarity Design Sprint (Tasks 1–6), 2026-06-11 — Batch 1 UX/UI Fixes, 2026-06-12 — Sidebar Redesign (Role-based), 2026-06-17 — Known Gap Logged: n8n session not staying signed in (CRITICAL — blocks testing), 2026-06-17 — Known Gap Logged: No call_id prefix validation on `/api/n8n/test-intake-batch`, 2026-06-17 — Test/Demo Naming Cleanup (RAWMOCK removed, GPDEMO/N8NTEST addressed additively) (+13 more)
+Cohesion: 0.10
+Nodes (20): 2026-06-07 — Directory Cleanup & Architecture Change (No More Sandbox), 2026-06-07 — Governance Package Created, 2026-06-10 — Avamed Clarity Design Sprint (Tasks 1–6), 2026-06-11 — Batch 1 UX/UI Fixes, 2026-06-12 — Sidebar Redesign (Role-based), 2026-06-17 — Known Gap Logged: n8n session not staying signed in (CRITICAL — blocks testing), 2026-06-17 — Known Gap Logged: No call_id prefix validation on `/api/n8n/test-intake-batch`, 2026-06-17 — Test/Demo Naming Cleanup (RAWMOCK removed, GPDEMO/N8NTEST addressed additively) (+12 more)
 
 ### Community 486 - "Community 486"
 Cohesion: 0.27
@@ -534,24 +493,24 @@ Cohesion: 0.40
 Nodes (4): DevOps — Infrastructure, Scripts & Configuration, Rules, Scripts, Structure
 
 ## Knowledge Gaps
-- **452 isolated node(s):** `npm_config_update_notifier`, `CLAUDE_FLOW_MODE`, `CLAUDE_FLOW_HOOKS_ENABLED`, `CLAUDE_FLOW_TOPOLOGY`, `CLAUDE_FLOW_MAX_AGENTS` (+447 more)
+- **369 isolated node(s):** `npm_config_update_notifier`, `CLAUDE_FLOW_MODE`, `CLAUDE_FLOW_HOOKS_ENABLED`, `CLAUDE_FLOW_TOPOLOGY`, `CLAUDE_FLOW_MAX_AGENTS` (+364 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **101 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **100 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `encrypt_envelope()` connect `Community 5` to `Community 4`, `Community 13`, `Community 14`?**
-  _High betweenness centrality (0.076) - this node is a cross-community bridge._
-- **Why does `encrypt_local_test_call()` connect `Community 13` to `Community 10`, `Community 5`, `Community 46`?**
-  _High betweenness centrality (0.074) - this node is a cross-community bridge._
-- **Why does `decrypt_envelope()` connect `Community 5` to `Community 9`, `Community 14`, `Community 6`?**
-  _High betweenness centrality (0.059) - this node is a cross-community bridge._
+- **Why does `encrypt_envelope()` connect `Community 5` to `Community 3`, `Community 4`, `Community 46`?**
+  _High betweenness centrality (0.097) - this node is a cross-community bridge._
+- **Why does `encrypt_local_test_call()` connect `Community 46` to `Community 10`, `Community 5`?**
+  _High betweenness centrality (0.097) - this node is a cross-community bridge._
+- **Why does `decrypt_envelope()` connect `Community 5` to `Community 9`, `Community 3`, `Community 6`?**
+  _High betweenness centrality (0.073) - this node is a cross-community bridge._
 - **What connects `npm_config_update_notifier`, `CLAUDE_FLOW_MODE`, `CLAUDE_FLOW_HOOKS_ENABLED` to the rest of the system?**
-  _584 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _500 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Community 0` be split into smaller, more focused modules?**
-  _Cohesion score 0.1016949152542373 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.11131276467029642 - nodes in this community are weakly interconnected._
 - **Should `Community 1` be split into smaller, more focused modules?**
-  _Cohesion score 0.07407407407407407 - nodes in this community are weakly interconnected._
-- **Should `Community 3` be split into smaller, more focused modules?**
-  _Cohesion score 0.07692307692307693 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.08374384236453201 - nodes in this community are weakly interconnected._
+- **Should `Community 5` be split into smaller, more focused modules?**
+  _Cohesion score 0.08439897698209718 - nodes in this community are weakly interconnected._

@@ -290,116 +290,6 @@
       "norm_label": "send 5 encrypted jeie-1 test calls through the n8n intake webhook. flow: n8n web"
     },
     {
-      "label": "strategy_daily.ps1",
-      "file_type": "code",
-      "source_file": "SMCPHARMA/scripts/daily/strategy_daily.ps1",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "smcpharma_scripts_daily_strategy_daily_ps1_daily_strategy_daily",
-      "community": 30,
-      "norm_label": "strategy_daily.ps1"
-    },
-    {
-      "label": "Write-Log()",
-      "file_type": "code",
-      "source_file": "SMCPHARMA/scripts/daily/strategy_daily.ps1",
-      "source_location": "L43",
-      "_origin": "ast",
-      "id": "smcpharma_scripts_daily_strategy_daily_ps1_daily_strategy_daily_write_log",
-      "community": 30,
-      "norm_label": "write-log()"
-    },
-    {
-      "label": "main.js",
-      "file_type": "code",
-      "source_file": "SMCPHARMA/site/assets/js/main.js",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "js_main",
-      "community": 26,
-      "norm_label": "main.js"
-    },
-    {
-      "label": "updateHeaderState()",
-      "file_type": "code",
-      "source_file": "SMCPHARMA/site/assets/js/main.js",
-      "source_location": "L128",
-      "_origin": "ast",
-      "id": "js_main_updateheaderstate",
-      "community": 26,
-      "norm_label": "updateheaderstate()"
-    },
-    {
-      "label": "getActiveSection()",
-      "file_type": "code",
-      "source_file": "SMCPHARMA/site/assets/js/main.js",
-      "source_location": "L208",
-      "_origin": "ast",
-      "id": "js_main_getactivesection",
-      "community": 26,
-      "norm_label": "getactivesection()"
-    },
-    {
-      "label": "updateActiveLink()",
-      "file_type": "code",
-      "source_file": "SMCPHARMA/site/assets/js/main.js",
-      "source_location": "L221",
-      "_origin": "ast",
-      "id": "js_main_updateactivelink",
-      "community": 26,
-      "norm_label": "updateactivelink()"
-    },
-    {
-      "label": "index.js",
-      "file_type": "code",
-      "source_file": "SMCPHARMA/src/index.js",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "src_index",
-      "community": 23,
-      "norm_label": "index.js"
-    },
-    {
-      "label": "fetch()",
-      "file_type": "code",
-      "source_file": "SMCPHARMA/src/index.js",
-      "source_location": "L18",
-      "_origin": "ast",
-      "id": "src_index_fetch",
-      "community": 23,
-      "norm_label": "fetch()"
-    },
-    {
-      "label": "handleBooking()",
-      "file_type": "code",
-      "source_file": "SMCPHARMA/src/index.js",
-      "source_location": "L33",
-      "_origin": "ast",
-      "id": "src_index_handlebooking",
-      "community": 23,
-      "norm_label": "handlebooking()"
-    },
-    {
-      "label": "clean()",
-      "file_type": "code",
-      "source_file": "SMCPHARMA/src/index.js",
-      "source_location": "L92",
-      "_origin": "ast",
-      "id": "src_index_clean",
-      "community": 23,
-      "norm_label": "clean()"
-    },
-    {
-      "label": "json()",
-      "file_type": "code",
-      "source_file": "SMCPHARMA/src/index.js",
-      "source_location": "L99",
-      "_origin": "ast",
-      "id": "src_index_json",
-      "community": 23,
-      "norm_label": "json()"
-    },
-    {
       "label": "Run-MockTest-V5.ps1",
       "file_type": "code",
       "source_file": "app/Run-MockTest-V5.ps1",
@@ -2796,7 +2686,7 @@
       "source_location": "L272",
       "_origin": "ast",
       "id": "app_db_row_to_dict",
-      "community": 44,
+      "community": 1,
       "norm_label": "row_to_dict()"
     },
     {
@@ -2806,7 +2696,7 @@
       "source_location": "L272",
       "_origin": "ast",
       "id": "row",
-      "community": 44,
+      "community": 1,
       "norm_label": "row"
     },
     {
@@ -2816,7 +2706,7 @@
       "source_location": "L272",
       "_origin": "ast",
       "id": "dashboard_app_db_py_any",
-      "community": 44,
+      "community": 1,
       "norm_label": "any"
     },
     {
@@ -2986,7 +2876,7 @@
       "source_location": "L250",
       "_origin": "ast",
       "id": "app_importer_ollama_clinical_summary",
-      "community": 0,
+      "community": 123,
       "norm_label": "ollama_clinical_summary()"
     },
     {
@@ -3046,7 +2936,7 @@
       "source_location": "L251",
       "_origin": "ast",
       "id": "app_importer_rationale_251",
-      "community": 0,
+      "community": 123,
       "norm_label": "call local ollama to generate a clinical ai summary. returns string or none on f"
     },
     {
@@ -3236,7 +3126,7 @@
       "source_location": "L596",
       "_origin": "ast",
       "id": "app_main_warmup_ollama",
-      "community": 46,
+      "community": 123,
       "norm_label": "_warmup_ollama()"
     },
     {
@@ -3286,7 +3176,7 @@
       "source_location": "L646",
       "_origin": "ast",
       "id": "app_main_calculate_turnaround_minutes",
-      "community": 44,
+      "community": 0,
       "norm_label": "calculate_turnaround_minutes()"
     },
     {
@@ -3516,7 +3406,7 @@
       "source_location": "L793",
       "_origin": "ast",
       "id": "app_main_update_staff_fields",
-      "community": 44,
+      "community": 0,
       "norm_label": "update_staff_fields()"
     },
     {
@@ -3586,7 +3476,7 @@
       "source_location": "L956",
       "_origin": "ast",
       "id": "app_main_safe_local_return_url",
-      "community": 46,
+      "community": 0,
       "norm_label": "safe_local_return_url()"
     },
     {
@@ -3596,7 +3486,7 @@
       "source_location": "L966",
       "_origin": "ast",
       "id": "app_main_detail_case_url",
-      "community": 44,
+      "community": 46,
       "norm_label": "detail_case_url()"
     },
     {
@@ -3606,7 +3496,7 @@
       "source_location": "L972",
       "_origin": "ast",
       "id": "app_main_return_url_with_notice",
-      "community": 44,
+      "community": 0,
       "norm_label": "return_url_with_notice()"
     },
     {
@@ -3616,7 +3506,7 @@
       "source_location": "L979",
       "_origin": "ast",
       "id": "app_main_canonical_request_type",
-      "community": 46,
+      "community": 44,
       "norm_label": "canonical_request_type()"
     },
     {
@@ -3626,7 +3516,7 @@
       "source_location": "L984",
       "_origin": "ast",
       "id": "app_main_friendly_request_type",
-      "community": 46,
+      "community": 44,
       "norm_label": "friendly_request_type()"
     },
     {
@@ -3636,7 +3526,7 @@
       "source_location": "L989",
       "_origin": "ast",
       "id": "app_main_friendly_status",
-      "community": 46,
+      "community": 44,
       "norm_label": "friendly_status()"
     },
     {
@@ -3646,7 +3536,7 @@
       "source_location": "L993",
       "_origin": "ast",
       "id": "app_main_calculate_age_label",
-      "community": 46,
+      "community": 44,
       "norm_label": "calculate_age_label()"
     },
     {
@@ -3696,7 +3586,7 @@
       "source_location": "L1060",
       "_origin": "ast",
       "id": "app_main_staff_can_edit",
-      "community": 0,
+      "community": 46,
       "norm_label": "staff_can_edit()"
     },
     {
@@ -3706,7 +3596,7 @@
       "source_location": "L1064",
       "_origin": "ast",
       "id": "app_main_staff_can_manage",
-      "community": 0,
+      "community": 1,
       "norm_label": "staff_can_manage()"
     },
     {
@@ -3746,7 +3636,7 @@
       "source_location": "L1082",
       "_origin": "ast",
       "id": "app_main_format_staff_review",
-      "community": 46,
+      "community": 44,
       "norm_label": "format_staff_review()"
     },
     {
@@ -3756,7 +3646,7 @@
       "source_location": "L1086",
       "_origin": "ast",
       "id": "app_main_format_safe_to_queue",
-      "community": 46,
+      "community": 44,
       "norm_label": "format_safe_to_queue()"
     },
     {
@@ -3776,7 +3666,7 @@
       "source_location": "L1107",
       "_origin": "ast",
       "id": "app_main_build_suggested_actions",
-      "community": 46,
+      "community": 44,
       "norm_label": "build_suggested_actions()"
     },
     {
@@ -3786,7 +3676,7 @@
       "source_location": "L1175",
       "_origin": "ast",
       "id": "app_main_emis_workflow_steps",
-      "community": 46,
+      "community": 1,
       "norm_label": "emis_workflow_steps()"
     },
     {
@@ -3796,7 +3686,7 @@
       "source_location": "L1190",
       "_origin": "ast",
       "id": "app_main_summary_chips_for_case",
-      "community": 46,
+      "community": 44,
       "norm_label": "summary_chips_for_case()"
     },
     {
@@ -3806,7 +3696,7 @@
       "source_location": "L1263",
       "_origin": "ast",
       "id": "app_main_sanitize_internal_codes",
-      "community": 46,
+      "community": 44,
       "norm_label": "sanitize_internal_codes()"
     },
     {
@@ -3816,7 +3706,7 @@
       "source_location": "L1274",
       "_origin": "ast",
       "id": "app_main_dedupe_repeated_display_sentences",
-      "community": 46,
+      "community": 1,
       "norm_label": "dedupe_repeated_display_sentences()"
     },
     {
@@ -3826,7 +3716,7 @@
       "source_location": "L1289",
       "_origin": "ast",
       "id": "app_main_prepare_case",
-      "community": 46,
+      "community": 44,
       "norm_label": "prepare_case()"
     },
     {
@@ -3836,7 +3726,7 @@
       "source_location": "L1444",
       "_origin": "ast",
       "id": "app_main_attach_recent_audit_events",
-      "community": 46,
+      "community": 1,
       "norm_label": "attach_recent_audit_events()"
     },
     {
@@ -3846,7 +3736,7 @@
       "source_location": "L1470",
       "_origin": "ast",
       "id": "app_main_transcript_conversation_lines",
-      "community": 46,
+      "community": 1,
       "norm_label": "transcript_conversation_lines()"
     },
     {
@@ -3906,7 +3796,7 @@
       "source_location": "L1696",
       "_origin": "ast",
       "id": "app_main_friendly_audit_text",
-      "community": 46,
+      "community": 1,
       "norm_label": "friendly_audit_text()"
     },
     {
@@ -4006,7 +3896,7 @@
       "source_location": "L1968",
       "_origin": "ast",
       "id": "app_main_compact_workload",
-      "community": 46,
+      "community": 10,
       "norm_label": "compact_workload()"
     },
     {
@@ -4026,7 +3916,7 @@
       "source_location": "L1988",
       "_origin": "ast",
       "id": "app_main_is_modal_worthy_alert",
-      "community": 46,
+      "community": 1,
       "norm_label": "is_modal_worthy_alert()"
     },
     {
@@ -4086,7 +3976,7 @@
       "source_location": "L2200",
       "_origin": "ast",
       "id": "app_main_batch_resolve_block_reason",
-      "community": 44,
+      "community": 46,
       "norm_label": "batch_resolve_block_reason()"
     },
     {
@@ -4096,7 +3986,7 @@
       "source_location": "L2222",
       "_origin": "ast",
       "id": "app_main_batch_resolve_cases",
-      "community": 44,
+      "community": 0,
       "norm_label": "batch_resolve_cases()"
     },
     {
@@ -4106,7 +3996,7 @@
       "source_location": "L2277",
       "_origin": "ast",
       "id": "app_main_get_recording_for_case",
-      "community": 46,
+      "community": 1,
       "norm_label": "get_recording_for_case()"
     },
     {
@@ -4116,7 +4006,7 @@
       "source_location": "L2303",
       "_origin": "ast",
       "id": "app_main_attach_recording_metadata",
-      "community": 46,
+      "community": 1,
       "norm_label": "attach_recording_metadata()"
     },
     {
@@ -4126,7 +4016,7 @@
       "source_location": "L2362",
       "_origin": "ast",
       "id": "app_main_as_optional_int",
-      "community": 46,
+      "community": 1,
       "norm_label": "as_optional_int()"
     },
     {
@@ -4206,7 +4096,7 @@
       "source_location": "L2547",
       "_origin": "ast",
       "id": "app_main_alert_row_to_display",
-      "community": 46,
+      "community": 1,
       "norm_label": "alert_row_to_display()"
     },
     {
@@ -4296,7 +4186,7 @@
       "source_location": "L2855",
       "_origin": "ast",
       "id": "app_main_staff_page",
-      "community": 0,
+      "community": 1,
       "norm_label": "staff_page()"
     },
     {
@@ -4356,7 +4246,7 @@
       "source_location": "L3027",
       "_origin": "ast",
       "id": "app_main_staff_invitations_page",
-      "community": 0,
+      "community": 1,
       "norm_label": "staff_invitations_page()"
     },
     {
@@ -4466,7 +4356,7 @@
       "source_location": "L3305",
       "_origin": "ast",
       "id": "app_main_api_case_get",
-      "community": 46,
+      "community": 44,
       "norm_label": "api_case_get()"
     },
     {
@@ -4516,7 +4406,7 @@
       "source_location": "L3463",
       "_origin": "ast",
       "id": "app_main_api_alerts_recent",
-      "community": 46,
+      "community": 1,
       "norm_label": "api_alerts_recent()"
     },
     {
@@ -4526,7 +4416,7 @@
       "source_location": "L3488",
       "_origin": "ast",
       "id": "app_main_api_alerts_unacknowledged",
-      "community": 46,
+      "community": 1,
       "norm_label": "api_alerts_unacknowledged()"
     },
     {
@@ -4556,7 +4446,7 @@
       "source_location": "L3588",
       "_origin": "ast",
       "id": "app_main_is_encrypted_envelope",
-      "community": 13,
+      "community": 46,
       "norm_label": "is_encrypted_envelope()"
     },
     {
@@ -4566,7 +4456,7 @@
       "source_location": "L3607",
       "_origin": "ast",
       "id": "app_main_call_id_from_test_call",
-      "community": 13,
+      "community": 46,
       "norm_label": "call_id_from_test_call()"
     },
     {
@@ -4576,7 +4466,7 @@
       "source_location": "L3613",
       "_origin": "ast",
       "id": "app_main_encrypt_local_test_call",
-      "community": 13,
+      "community": 46,
       "norm_label": "encrypt_local_test_call()"
     },
     {
@@ -4586,7 +4476,7 @@
       "source_location": "L3622",
       "_origin": "ast",
       "id": "app_main_archive_n8ntest_artifacts",
-      "community": 13,
+      "community": 46,
       "norm_label": "archive_n8ntest_artifacts()"
     },
     {
@@ -4596,7 +4486,7 @@
       "source_location": "L3647",
       "_origin": "ast",
       "id": "app_main_write_n8ntest_envelopes",
-      "community": 13,
+      "community": 46,
       "norm_label": "write_n8ntest_envelopes()"
     },
     {
@@ -4606,7 +4496,7 @@
       "source_location": "L3660",
       "_origin": "ast",
       "id": "app_main_run_encrypted_cycle_disable_google_push",
-      "community": 13,
+      "community": 46,
       "norm_label": "run_encrypted_cycle_disable_google_push()"
     },
     {
@@ -4616,7 +4506,7 @@
       "source_location": "L3693",
       "_origin": "ast",
       "id": "app_main_count_n8ntest_files",
-      "community": 13,
+      "community": 46,
       "norm_label": "count_n8ntest_files()"
     },
     {
@@ -4626,7 +4516,7 @@
       "source_location": "L3700",
       "_origin": "ast",
       "id": "app_main_count_batch_files",
-      "community": 13,
+      "community": 46,
       "norm_label": "count_batch_files()"
     },
     {
@@ -4636,7 +4526,7 @@
       "source_location": "L3712",
       "_origin": "ast",
       "id": "app_main_n8ntest_dashboard_cases",
-      "community": 13,
+      "community": 46,
       "norm_label": "n8ntest_dashboard_cases()"
     },
     {
@@ -4646,7 +4536,7 @@
       "source_location": "L3750",
       "_origin": "ast",
       "id": "app_main_verify_hmac_signature",
-      "community": 46,
+      "community": 12,
       "norm_label": "verify_hmac_signature()"
     },
     {
@@ -4656,7 +4546,7 @@
       "source_location": "L3786",
       "_origin": "ast",
       "id": "app_main_verify_webhook_hmac",
-      "community": 46,
+      "community": 12,
       "norm_label": "verify_webhook_hmac()"
     },
     {
@@ -4666,7 +4556,7 @@
       "source_location": "L3821",
       "_origin": "ast",
       "id": "app_main_api_n8n_test_intake_batch",
-      "community": 13,
+      "community": 46,
       "norm_label": "api_n8n_test_intake_batch()"
     },
     {
@@ -4696,7 +4586,7 @@
       "source_location": "L4125",
       "_origin": "ast",
       "id": "app_main_patients_page",
-      "community": 0,
+      "community": 1,
       "norm_label": "patients_page()"
     },
     {
@@ -4746,7 +4636,7 @@
       "source_location": "L4292",
       "_origin": "ast",
       "id": "app_main_case_detail",
-      "community": 46,
+      "community": 1,
       "norm_label": "case_detail()"
     },
     {
@@ -4756,7 +4646,7 @@
       "source_location": "L4392",
       "_origin": "ast",
       "id": "app_main_update_case",
-      "community": 44,
+      "community": 0,
       "norm_label": "update_case()"
     },
     {
@@ -4836,7 +4726,7 @@
       "source_location": "L597",
       "_origin": "ast",
       "id": "app_main_rationale_597",
-      "community": 46,
+      "community": 123,
       "norm_label": "pre-load the ollama model into ram on startup."
     },
     {
@@ -4856,7 +4746,7 @@
       "source_location": "L980",
       "_origin": "ast",
       "id": "app_main_rationale_980",
-      "community": 46,
+      "community": 44,
       "norm_label": "return the canonical type key used for css class and label lookup."
     },
     {
@@ -4866,7 +4756,7 @@
       "source_location": "L1108",
       "_origin": "ast",
       "id": "app_main_rationale_1108",
-      "community": 46,
+      "community": 44,
       "norm_label": "return 3-5 clinical triage action strings derived from case data."
     },
     {
@@ -4876,7 +4766,7 @@
       "source_location": "L1191",
       "_origin": "ast",
       "id": "app_main_rationale_1191",
-      "community": 46,
+      "community": 44,
       "norm_label": "generate status pills for case display.      design rule: one pill per concern"
     },
     {
@@ -4886,7 +4776,7 @@
       "source_location": "L1264",
       "_origin": "ast",
       "id": "app_main_rationale_1264",
-      "community": 46,
+      "community": 44,
       "norm_label": "replace pipeline-internal codes with human-readable equivalents in display text."
     },
     {
@@ -4976,7 +4866,7 @@
       "source_location": "L3306",
       "_origin": "ast",
       "id": "app_main_rationale_3306",
-      "community": 46,
+      "community": 44,
       "norm_label": "return key case fields as json for the inline detail panel."
     },
     {
@@ -4986,7 +4876,7 @@
       "source_location": "L3755",
       "_origin": "ast",
       "id": "app_main_rationale_3755",
-      "community": 46,
+      "community": 12,
       "norm_label": "verify an hmac-sha256 webhook signature in constant time.      the caller (jef"
     },
     {
@@ -4996,7 +4886,7 @@
       "source_location": "L3787",
       "_origin": "ast",
       "id": "app_main_rationale_3787",
-      "community": 46,
+      "community": 12,
       "norm_label": "fastapi dependency: enforce hmac-sha256 signature on the raw request body."
     },
     {
@@ -5006,7 +4896,7 @@
       "source_location": "L3826",
       "_origin": "ast",
       "id": "app_main_rationale_3826",
-      "community": 13,
+      "community": 46,
       "norm_label": "sandbox / test only \u2014 bypasses n8n entirely.     all real calls must route thro"
     },
     {
@@ -5066,7 +4956,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "app_models",
-      "community": 46,
+      "community": 1,
       "norm_label": "models.py"
     },
     {
@@ -5096,7 +4986,7 @@
       "source_location": "L116",
       "_origin": "ast",
       "id": "app_models_parse_bool",
-      "community": 46,
+      "community": 1,
       "norm_label": "parse_bool()"
     },
     {
@@ -5106,7 +4996,7 @@
       "source_location": "L124",
       "_origin": "ast",
       "id": "app_models_format_display_timestamp",
-      "community": 46,
+      "community": 1,
       "norm_label": "format_display_timestamp()"
     },
     {
@@ -5116,7 +5006,7 @@
       "source_location": "L157",
       "_origin": "ast",
       "id": "app_models_format_dob_uk",
-      "community": 46,
+      "community": 1,
       "norm_label": "format_dob_uk()"
     },
     {
@@ -5126,7 +5016,7 @@
       "source_location": "L195",
       "_origin": "ast",
       "id": "app_models_format_phone_uk",
-      "community": 46,
+      "community": 1,
       "norm_label": "format_phone_uk()"
     },
     {
@@ -5136,7 +5026,7 @@
       "source_location": "L225",
       "_origin": "ast",
       "id": "app_models_format_turnaround_time",
-      "community": 46,
+      "community": 1,
       "norm_label": "format_turnaround_time()"
     },
     {
@@ -5146,7 +5036,7 @@
       "source_location": "L158",
       "_origin": "ast",
       "id": "app_models_rationale_158",
-      "community": 46,
+      "community": 1,
       "norm_label": "format dob to nhs/uk standard dd/mm/yyyy format."
     },
     {
@@ -5156,7 +5046,7 @@
       "source_location": "L196",
       "_origin": "ast",
       "id": "app_models_rationale_196",
-      "community": 46,
+      "community": 1,
       "norm_label": "format uk phone number to standard format: 07xxx xxxxxx or +44 xxxx xxxxxx."
     },
     {
@@ -5166,7 +5056,7 @@
       "source_location": "L226",
       "_origin": "ast",
       "id": "app_models_rationale_226",
-      "community": 46,
+      "community": 1,
       "norm_label": "format turnaround time in minutes to human-readable format (e.g., '2h 15m', '45"
     },
     {
@@ -6986,7 +6876,7 @@
       "source_location": "L40",
       "_origin": "ast",
       "id": "tests_test_importer_write_handoff",
-      "community": 11,
+      "community": 123,
       "norm_label": "_write_handoff()"
     },
     {
@@ -6996,7 +6886,7 @@
       "source_location": "L40",
       "_origin": "ast",
       "id": "dashboard_tests_test_importer_py_path",
-      "community": 11,
+      "community": 123,
       "norm_label": "path"
     },
     {
@@ -7006,7 +6896,7 @@
       "source_location": "L47",
       "_origin": "ast",
       "id": "tests_test_importer_seed_handoff_dir",
-      "community": 11,
+      "community": 123,
       "norm_label": "_seed_handoff_dir()"
     },
     {
@@ -7136,7 +7026,7 @@
       "source_location": "L48",
       "_origin": "ast",
       "id": "tests_test_importer_rationale_48",
-      "community": 11,
+      "community": 123,
       "norm_label": "write 12 synthetic handoff json files to a temp directory."
     },
     {
@@ -7860,36 +7750,6 @@
       "norm_label": "fix_git_lock.ps1"
     },
     {
-      "label": "combined_brief.ps1",
-      "file_type": "code",
-      "source_file": "scripts/daily/combined_brief.ps1",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "daily_combined_brief",
-      "community": 27,
-      "norm_label": "combined_brief.ps1"
-    },
-    {
-      "label": "Write-Log()",
-      "file_type": "code",
-      "source_file": "scripts/daily/combined_brief.ps1",
-      "source_location": "L28",
-      "_origin": "ast",
-      "id": "daily_combined_brief_write_log",
-      "community": 27,
-      "norm_label": "write-log()"
-    },
-    {
-      "label": "Get-ProjectBrief()",
-      "file_type": "code",
-      "source_file": "scripts/daily/combined_brief.ps1",
-      "source_location": "L39",
-      "_origin": "ast",
-      "id": "daily_combined_brief_get_projectbrief",
-      "community": 27,
-      "norm_label": "get-projectbrief()"
-    },
-    {
       "label": "gdpr_purge.py",
       "file_type": "code",
       "source_file": "scripts/daily/gdpr_purge.py",
@@ -8305,18 +8165,18 @@
       "source_file": "scripts/daily/strategy_daily.ps1",
       "source_location": "L1",
       "_origin": "ast",
-      "id": "scripts_daily_strategy_daily_ps1_daily_strategy_daily",
-      "community": 28,
+      "id": "daily_strategy_daily",
+      "community": 247,
       "norm_label": "strategy_daily.ps1"
     },
     {
       "label": "Write-Log()",
       "file_type": "code",
       "source_file": "scripts/daily/strategy_daily.ps1",
-      "source_location": "L59",
+      "source_location": "L57",
       "_origin": "ast",
-      "id": "scripts_daily_strategy_daily_ps1_daily_strategy_daily_write_log",
-      "community": 28,
+      "id": "daily_strategy_daily_write_log",
+      "community": 247,
       "norm_label": "write-log()"
     },
     {
@@ -8688,96 +8548,6 @@
       "id": "service_control_launch_n8n",
       "community": 506,
       "norm_label": "_launch_n8n.ps1"
-    },
-    {
-      "label": "fix_n8n_auth_urls.py",
-      "file_type": "code",
-      "source_file": "scripts/service_control/fix_n8n_auth_urls.py",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "service_control_fix_n8n_auth_urls",
-      "community": 17,
-      "norm_label": "fix_n8n_auth_urls.py"
-    },
-    {
-      "label": "get_api_key()",
-      "file_type": "code",
-      "source_file": "scripts/service_control/fix_n8n_auth_urls.py",
-      "source_location": "L15",
-      "_origin": "ast",
-      "id": "service_control_fix_n8n_auth_urls_get_api_key",
-      "community": 17,
-      "norm_label": "get_api_key()"
-    },
-    {
-      "label": "n8n_request()",
-      "file_type": "code",
-      "source_file": "scripts/service_control/fix_n8n_auth_urls.py",
-      "source_location": "L22",
-      "_origin": "ast",
-      "id": "service_control_fix_n8n_auth_urls_n8n_request",
-      "community": 17,
-      "norm_label": "n8n_request()"
-    },
-    {
-      "label": "get_workflow()",
-      "file_type": "code",
-      "source_file": "scripts/service_control/fix_n8n_auth_urls.py",
-      "source_location": "L36",
-      "_origin": "ast",
-      "id": "service_control_fix_n8n_auth_urls_get_workflow",
-      "community": 17,
-      "norm_label": "get_workflow()"
-    },
-    {
-      "label": "put_workflow()",
-      "file_type": "code",
-      "source_file": "scripts/service_control/fix_n8n_auth_urls.py",
-      "source_location": "L43",
-      "_origin": "ast",
-      "id": "service_control_fix_n8n_auth_urls_put_workflow",
-      "community": 17,
-      "norm_label": "put_workflow()"
-    },
-    {
-      "label": "toggle_active()",
-      "file_type": "code",
-      "source_file": "scripts/service_control/fix_n8n_auth_urls.py",
-      "source_location": "L52",
-      "_origin": "ast",
-      "id": "service_control_fix_n8n_auth_urls_toggle_active",
-      "community": 17,
-      "norm_label": "toggle_active()"
-    },
-    {
-      "label": "fix_workflow_url()",
-      "file_type": "code",
-      "source_file": "scripts/service_control/fix_n8n_auth_urls.py",
-      "source_location": "L61",
-      "_origin": "ast",
-      "id": "service_control_fix_n8n_auth_urls_fix_workflow_url",
-      "community": 17,
-      "norm_label": "fix_workflow_url()"
-    },
-    {
-      "label": "main()",
-      "file_type": "code",
-      "source_file": "scripts/service_control/fix_n8n_auth_urls.py",
-      "source_location": "L93",
-      "_origin": "ast",
-      "id": "service_control_fix_n8n_auth_urls_main",
-      "community": 17,
-      "norm_label": "main()"
-    },
-    {
-      "label": "Fix workflows 03 + 04: update HTTP Request URLs from /api/red-flags and /api/ove",
-      "file_type": "rationale",
-      "source_file": "scripts/service_control/fix_n8n_auth_urls.py",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "service_control_fix_n8n_auth_urls_rationale_1",
-      "community": 17,
-      "norm_label": "fix workflows 03 + 04: update http request urls from /api/red-flags and /api/ove"
     },
     {
       "label": "fix_n8n_workflows.py",
@@ -9586,7 +9356,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "fixtures_n8n_webhook_test_pack",
-      "community": 14,
+      "community": 5,
       "norm_label": "n8n_webhook_test_pack.py"
     },
     {
@@ -9596,7 +9366,7 @@
       "source_location": "L16",
       "_origin": "ast",
       "id": "fixtures_n8n_webhook_test_pack_voice",
-      "community": 14,
+      "community": 5,
       "norm_label": "_voice()"
     },
     {
@@ -9606,7 +9376,7 @@
       "source_location": "L31",
       "_origin": "ast",
       "id": "fixtures_n8n_webhook_test_pack_base_call",
-      "community": 14,
+      "community": 5,
       "norm_label": "_base_call()"
     },
     {
@@ -9616,7 +9386,7 @@
       "source_location": "L126",
       "_origin": "ast",
       "id": "fixtures_n8n_webhook_test_pack_build_test_calls",
-      "community": 14,
+      "community": 5,
       "norm_label": "build_test_calls()"
     },
     {
@@ -9626,7 +9396,7 @@
       "source_location": "L226",
       "_origin": "ast",
       "id": "fixtures_n8n_webhook_test_pack_build_encrypted_calls",
-      "community": 14,
+      "community": 5,
       "norm_label": "build_encrypted_calls()"
     },
     {
@@ -9636,7 +9406,7 @@
       "source_location": "L232",
       "_origin": "ast",
       "id": "fixtures_n8n_webhook_test_pack_build_batch",
-      "community": 14,
+      "community": 5,
       "norm_label": "build_batch()"
     },
     {
@@ -9646,7 +9416,7 @@
       "source_location": "L242",
       "_origin": "ast",
       "id": "fixtures_n8n_webhook_test_pack_main",
-      "community": 14,
+      "community": 5,
       "norm_label": "main()"
     },
     {
@@ -11236,7 +11006,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "tests_send_gp_demo_n8n_webhook_calls",
-      "community": 5,
+      "community": 3,
       "norm_label": "send_gp_demo_n8n_webhook_calls.py"
     },
     {
@@ -11246,7 +11016,7 @@
       "source_location": "L52",
       "_origin": "ast",
       "id": "tests_send_gp_demo_n8n_webhook_calls_is_local_url",
-      "community": 5,
+      "community": 3,
       "norm_label": "is_local_url()"
     },
     {
@@ -11256,7 +11026,7 @@
       "source_location": "L57",
       "_origin": "ast",
       "id": "tests_send_gp_demo_n8n_webhook_calls_utc_now_iso",
-      "community": 5,
+      "community": 3,
       "norm_label": "utc_now_iso()"
     },
     {
@@ -11266,7 +11036,7 @@
       "source_location": "L61",
       "_origin": "ast",
       "id": "tests_send_gp_demo_n8n_webhook_calls_transcript_blocks",
-      "community": 5,
+      "community": 3,
       "norm_label": "transcript_blocks()"
     },
     {
@@ -11276,7 +11046,7 @@
       "source_location": "L199",
       "_origin": "ast",
       "id": "tests_send_gp_demo_n8n_webhook_calls_build_plain_calls",
-      "community": 5,
+      "community": 3,
       "norm_label": "build_plain_calls()"
     },
     {
@@ -11286,7 +11056,7 @@
       "source_location": "L308",
       "_origin": "ast",
       "id": "tests_send_gp_demo_n8n_webhook_calls_encrypt_calls",
-      "community": 5,
+      "community": 3,
       "norm_label": "encrypt_calls()"
     },
     {
@@ -11296,7 +11066,7 @@
       "source_location": "L312",
       "_origin": "ast",
       "id": "tests_send_gp_demo_n8n_webhook_calls_build_batch",
-      "community": 5,
+      "community": 3,
       "norm_label": "build_batch()"
     },
     {
@@ -11306,7 +11076,7 @@
       "source_location": "L324",
       "_origin": "ast",
       "id": "tests_send_gp_demo_n8n_webhook_calls_assert_envelope_shape",
-      "community": 5,
+      "community": 3,
       "norm_label": "assert_envelope_shape()"
     },
     {
@@ -11316,7 +11086,7 @@
       "source_location": "L338",
       "_origin": "ast",
       "id": "tests_send_gp_demo_n8n_webhook_calls_local_self_check",
-      "community": 5,
+      "community": 3,
       "norm_label": "local_self_check()"
     },
     {
@@ -11326,7 +11096,7 @@
       "source_location": "L357",
       "_origin": "ast",
       "id": "tests_send_gp_demo_n8n_webhook_calls_print_summary",
-      "community": 5,
+      "community": 3,
       "norm_label": "print_summary()"
     },
     {
@@ -11336,7 +11106,7 @@
       "source_location": "L368",
       "_origin": "ast",
       "id": "tests_send_gp_demo_n8n_webhook_calls_report_deadletter_issue",
-      "community": 5,
+      "community": 3,
       "norm_label": "report_deadletter_issue()"
     },
     {
@@ -11346,7 +11116,7 @@
       "source_location": "L379",
       "_origin": "ast",
       "id": "tests_send_gp_demo_n8n_webhook_calls_send_batch",
-      "community": 5,
+      "community": 3,
       "norm_label": "send_batch()"
     },
     {
@@ -11356,7 +11126,7 @@
       "source_location": "L394",
       "_origin": "ast",
       "id": "tests_send_gp_demo_n8n_webhook_calls_main",
-      "community": 5,
+      "community": 3,
       "norm_label": "main()"
     },
     {
@@ -12340,16 +12110,6 @@
       "norm_label": "2026-06-23 \u2014 ux: client-side notes gate for red flag / identity cases"
     },
     {
-      "label": "2026-06-26 \u2014 Tech-debt Phase 1 remediation (B1, D1, DOC1, I1\u2013I3)",
-      "file_type": "document",
-      "source_file": "CHANGELOG.md",
-      "source_location": "L207",
-      "_origin": "ast",
-      "id": "changelog_2026_06_26_tech_debt_phase_1_remediation_b1_d1_doc1_i1_i3",
-      "community": 485,
-      "norm_label": "2026-06-26 \u2014 tech-debt phase 1 remediation (b1, d1, doc1, i1\u2013i3)"
-    },
-    {
       "label": "CLAUDE.md",
       "file_type": "document",
       "source_file": "CLAUDE.md",
@@ -12393,7 +12153,7 @@
       "label": "WHO YOU ARE WORKING WITH",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L37",
+      "source_location": "L34",
       "_origin": "ast",
       "id": "claude_who_you_are_working_with",
       "community": 313,
@@ -12403,7 +12163,7 @@
       "label": "WHAT THIS PROJECT IS",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L48",
+      "source_location": "L45",
       "_origin": "ast",
       "id": "claude_what_this_project_is",
       "community": 313,
@@ -12413,7 +12173,7 @@
       "label": "RULES THAT ALWAYS APPLY \u2014 NO EXCEPTIONS",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L62",
+      "source_location": "L59",
       "_origin": "ast",
       "id": "claude_rules_that_always_apply_no_exceptions",
       "community": 313,
@@ -12423,7 +12183,7 @@
       "label": "AGENT CULTURE & CONDUCT (mandatory for all agents)",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L82",
+      "source_location": "L79",
       "_origin": "ast",
       "id": "claude_agent_culture_conduct_mandatory_for_all_agents",
       "community": 313,
@@ -12433,7 +12193,7 @@
       "label": "CRITICAL PATH \u2014 THE SINGLE MOST COMMON SOURCE OF ERRORS",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L98",
+      "source_location": "L95",
       "_origin": "ast",
       "id": "claude_critical_path_the_single_most_common_source_of_errors",
       "community": 313,
@@ -12443,7 +12203,7 @@
       "label": "GOVERNANCE STRUCTURE \u2014 WHO HAS AUTHORITY",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L112",
+      "source_location": "L109",
       "_origin": "ast",
       "id": "claude_governance_structure_who_has_authority",
       "community": 313,
@@ -12453,7 +12213,7 @@
       "label": "APPROVAL PROTOCOL",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L136",
+      "source_location": "L133",
       "_origin": "ast",
       "id": "claude_approval_protocol",
       "community": 313,
@@ -12463,7 +12223,7 @@
       "label": "CORE SAFETY RULE \u2014 OLLAMA/DETERMINISTIC SPLIT",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L150",
+      "source_location": "L147",
       "_origin": "ast",
       "id": "claude_core_safety_rule_ollama_deterministic_split",
       "community": 313,
@@ -12473,7 +12233,7 @@
       "label": "PIPELINE \u2014 KEY FACTS",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L169",
+      "source_location": "L166",
       "_origin": "ast",
       "id": "claude_pipeline_key_facts",
       "community": 313,
@@ -12483,7 +12243,7 @@
       "label": "TESTING PROTOCOL (mandatory \u2014 when Saeed says \"run tests\")",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L194",
+      "source_location": "L191",
       "_origin": "ast",
       "id": "claude_testing_protocol_mandatory_when_saeed_says_run_tests",
       "community": 313,
@@ -12493,7 +12253,7 @@
       "label": "COMPLIANCE",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L223",
+      "source_location": "L220",
       "_origin": "ast",
       "id": "claude_compliance",
       "community": 313,
@@ -12503,7 +12263,7 @@
       "label": "COMMERCIAL \u2014 ACTIVE OBLIGATIONS",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L237",
+      "source_location": "L234",
       "_origin": "ast",
       "id": "claude_commercial_active_obligations",
       "community": 313,
@@ -12513,7 +12273,7 @@
       "label": "PILOT TIMELINE",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L249",
+      "source_location": "L246",
       "_origin": "ast",
       "id": "claude_pilot_timeline",
       "community": 313,
@@ -12523,7 +12283,7 @@
       "label": "MARKETING SPEND THRESHOLDS",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L257",
+      "source_location": "L254",
       "_origin": "ast",
       "id": "claude_marketing_spend_thresholds",
       "community": 313,
@@ -12533,7 +12293,7 @@
       "label": "COMMUNICATION RULES (mandatory)",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L272",
+      "source_location": "L269",
       "_origin": "ast",
       "id": "claude_communication_rules_mandatory",
       "community": 313,
@@ -12543,7 +12303,7 @@
       "label": "UNCERTAINTY LABELLING",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L289",
+      "source_location": "L286",
       "_origin": "ast",
       "id": "claude_uncertainty_labelling",
       "community": 313,
@@ -12553,7 +12313,7 @@
       "label": "OUTPUT DEFAULTS",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L298",
+      "source_location": "L295",
       "_origin": "ast",
       "id": "claude_output_defaults",
       "community": 313,
@@ -12563,7 +12323,7 @@
       "label": "MEMORY SYSTEM",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L308",
+      "source_location": "L305",
       "_origin": "ast",
       "id": "claude_memory_system",
       "community": 313,
@@ -12573,7 +12333,7 @@
       "label": "SESSION END PROTOCOL",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L321",
+      "source_location": "L318",
       "_origin": "ast",
       "id": "claude_session_end_protocol",
       "community": 313,
@@ -12583,7 +12343,7 @@
       "label": "READ NEXT (in order)",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L358",
+      "source_location": "L353",
       "_origin": "ast",
       "id": "claude_read_next_in_order",
       "community": 313,
@@ -12593,21 +12353,11 @@
       "label": "graphify",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L371",
+      "source_location": "L366",
       "_origin": "ast",
       "id": "claude_graphify",
       "community": 313,
       "norm_label": "graphify"
-    },
-    {
-      "label": "Skill routing",
-      "file_type": "document",
-      "source_file": "CLAUDE.md",
-      "source_location": "L381",
-      "_origin": "ast",
-      "id": "claude_skill_routing",
-      "community": 313,
-      "norm_label": "skill routing"
     },
     {
       "label": "GOVERNANCE.md",
@@ -12870,66 +12620,6 @@
       "norm_label": "governance review"
     },
     {
-      "label": "HANDOFF.md",
-      "file_type": "document",
-      "source_file": "HANDOFF.md",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "handoff",
-      "community": 19,
-      "norm_label": "handoff.md"
-    },
-    {
-      "label": "HANDOFF \u2014 Avamed (JeffLocal)",
-      "file_type": "document",
-      "source_file": "HANDOFF.md",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "handoff_handoff_avamed_jefflocal",
-      "community": 19,
-      "norm_label": "handoff \u2014 avamed (jefflocal)"
-    },
-    {
-      "label": "WORK SCOPE",
-      "file_type": "document",
-      "source_file": "HANDOFF.md",
-      "source_location": "L21",
-      "_origin": "ast",
-      "id": "handoff_work_scope",
-      "community": 19,
-      "norm_label": "work scope"
-    },
-    {
-      "label": "WHAT WORKED / WHAT DIDN'T",
-      "file_type": "document",
-      "source_file": "HANDOFF.md",
-      "source_location": "L25",
-      "_origin": "ast",
-      "id": "handoff_what_worked_what_didn_t",
-      "community": 19,
-      "norm_label": "what worked / what didn't"
-    },
-    {
-      "label": "HOW THE SESSION CLOSED",
-      "file_type": "document",
-      "source_file": "HANDOFF.md",
-      "source_location": "L45",
-      "_origin": "ast",
-      "id": "handoff_how_the_session_closed",
-      "community": 19,
-      "norm_label": "how the session closed"
-    },
-    {
-      "label": "NEXT + BLOCKERS",
-      "file_type": "document",
-      "source_file": "HANDOFF.md",
-      "source_location": "L52",
-      "_origin": "ast",
-      "id": "handoff_next_blockers",
-      "community": 19,
-      "norm_label": "next + blockers"
-    },
-    {
       "label": "PRODUCT.md",
       "file_type": "document",
       "source_file": "PRODUCT.md",
@@ -13040,14 +12730,14 @@
       "norm_label": "read this first at every session start, before doing anything else."
     },
     {
-      "label": "Last updated: 2026-07-07 (auto-updated 18:00)",
+      "label": "Last updated: 2026-06-25 (auto-updated 07:00)",
       "file_type": "document",
       "source_file": "PROJECT_MEMORY.md",
       "source_location": "L3",
       "_origin": "ast",
-      "id": "project_memory_last_updated_2026_07_07_auto_updated_18_00",
+      "id": "project_memory_last_updated_2026_06_25_auto_updated_07_00",
       "community": 337,
-      "norm_label": "last updated: 2026-07-07 (auto-updated 18:00)"
+      "norm_label": "last updated: 2026-06-25 (auto-updated 07:00)"
     },
     {
       "label": "Maintained by: Claude (update at end of every session)",
@@ -13110,14 +12800,14 @@
       "norm_label": "agent team"
     },
     {
-      "label": "CURRENT STATUS -- 2026-07-08",
+      "label": "CURRENT STATUS -- 2026-06-24 (evening session)",
       "file_type": "document",
       "source_file": "PROJECT_MEMORY.md",
       "source_location": "L78",
       "_origin": "ast",
-      "id": "project_memory_current_status_2026_07_08",
+      "id": "project_memory_current_status_2026_06_24_evening_session",
       "community": 337,
-      "norm_label": "current status -- 2026-07-08"
+      "norm_label": "current status -- 2026-06-24 (evening session)"
     },
     {
       "label": "What is working",
@@ -13133,7 +12823,7 @@
       "label": "Bugs found in 2026-06-19 pipeline test run",
       "file_type": "document",
       "source_file": "PROJECT_MEMORY.md",
-      "source_location": "L93",
+      "source_location": "L91",
       "_origin": "ast",
       "id": "project_memory_bugs_found_in_2026_06_19_pipeline_test_run",
       "community": 337,
@@ -13143,7 +12833,7 @@
       "label": "UX improvements identified (priority order)",
       "file_type": "document",
       "source_file": "PROJECT_MEMORY.md",
-      "source_location": "L99",
+      "source_location": "L97",
       "_origin": "ast",
       "id": "project_memory_ux_improvements_identified_priority_order",
       "community": 337,
@@ -13153,7 +12843,7 @@
       "label": "All security/quality fixes (Phase 1+2+3) -- in production",
       "file_type": "document",
       "source_file": "PROJECT_MEMORY.md",
-      "source_location": "L110",
+      "source_location": "L108",
       "_origin": "ast",
       "id": "project_memory_all_security_quality_fixes_phase_1_2_3_in_production",
       "community": 337,
@@ -13163,7 +12853,7 @@
       "label": "Blocking Pilot 1 go-live",
       "file_type": "document",
       "source_file": "PROJECT_MEMORY.md",
-      "source_location": "L123",
+      "source_location": "L121",
       "_origin": "ast",
       "id": "project_memory_blocking_pilot_1_go_live",
       "community": 337,
@@ -13173,7 +12863,7 @@
       "label": "Pending Saeed approvals / actions",
       "file_type": "document",
       "source_file": "PROJECT_MEMORY.md",
-      "source_location": "L130",
+      "source_location": "L128",
       "_origin": "ast",
       "id": "project_memory_pending_saeed_approvals_actions",
       "community": 337,
@@ -13183,27 +12873,17 @@
       "label": "Open technical tasks (priority order)",
       "file_type": "document",
       "source_file": "PROJECT_MEMORY.md",
-      "source_location": "L136",
+      "source_location": "L134",
       "_origin": "ast",
       "id": "project_memory_open_technical_tasks_priority_order",
       "community": 337,
       "norm_label": "open technical tasks (priority order)"
     },
     {
-      "label": "n8n fix notes (2026-07-08)",
-      "file_type": "document",
-      "source_file": "PROJECT_MEMORY.md",
-      "source_location": "L147",
-      "_origin": "ast",
-      "id": "project_memory_n8n_fix_notes_2026_07_08",
-      "community": 337,
-      "norm_label": "n8n fix notes (2026-07-08)"
-    },
-    {
       "label": "KEY FILE PATHS",
       "file_type": "document",
       "source_file": "PROJECT_MEMORY.md",
-      "source_location": "L188",
+      "source_location": "L165",
       "_origin": "ast",
       "id": "project_memory_key_file_paths",
       "community": 337,
@@ -13213,7 +12893,7 @@
       "label": "GIT STATE",
       "file_type": "document",
       "source_file": "PROJECT_MEMORY.md",
-      "source_location": "L212",
+      "source_location": "L189",
       "_origin": "ast",
       "id": "project_memory_git_state",
       "community": 337,
@@ -13223,7 +12903,7 @@
       "label": "TECHNICAL STACK",
       "file_type": "document",
       "source_file": "PROJECT_MEMORY.md",
-      "source_location": "L224",
+      "source_location": "L201",
       "_origin": "ast",
       "id": "project_memory_technical_stack",
       "community": 337,
@@ -13233,7 +12913,7 @@
       "label": "KNOWN PROCESS RULES (hard lessons)",
       "file_type": "document",
       "source_file": "PROJECT_MEMORY.md",
-      "source_location": "L239",
+      "source_location": "L216",
       "_origin": "ast",
       "id": "project_memory_known_process_rules_hard_lessons",
       "community": 337,
@@ -13243,7 +12923,7 @@
       "label": "SESSION STARTUP CHECKLIST",
       "file_type": "document",
       "source_file": "PROJECT_MEMORY.md",
-      "source_location": "L266",
+      "source_location": "L243",
       "_origin": "ast",
       "id": "project_memory_session_startup_checklist",
       "community": 337,
@@ -13253,7 +12933,7 @@
       "label": "SESSION END CHECKLIST",
       "file_type": "document",
       "source_file": "PROJECT_MEMORY.md",
-      "source_location": "L279",
+      "source_location": "L256",
       "_origin": "ast",
       "id": "project_memory_session_end_checklist",
       "community": 337,
@@ -13378,916 +13058,6 @@
       "id": "reporting_change_log",
       "community": 495,
       "norm_label": "change log"
-    },
-    {
-      "label": "pharmacycareplus-analysis.md",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/.firecrawl/pharmacycareplus-analysis.md",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "firecrawl_pharmacycareplus_analysis",
-      "community": 1,
-      "norm_label": "pharmacycareplus-analysis.md"
-    },
-    {
-      "label": "PharmacyCare+ (pharmacycareplus.co.uk) \u2014 Inspiration & Gap Analysis",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/.firecrawl/pharmacycareplus-analysis.md",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "firecrawl_pharmacycareplus_analysis_pharmacycare_pharmacycareplus_co_uk_inspiration_gap_analysis",
-      "community": 1,
-      "norm_label": "pharmacycare+ (pharmacycareplus.co.uk) \u2014 inspiration & gap analysis"
-    },
-    {
-      "label": "Their service structure (clean 3-way split \u2014 steal this)",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/.firecrawl/pharmacycareplus-analysis.md",
-      "source_location": "L10",
-      "_origin": "ast",
-      "id": "firecrawl_pharmacycareplus_analysis_their_service_structure_clean_3_way_split_steal_this",
-      "community": 1,
-      "norm_label": "their service structure (clean 3-way split \u2014 steal this)"
-    },
-    {
-      "label": "What they do well \u2014 apply to St Marks",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/.firecrawl/pharmacycareplus-analysis.md",
-      "source_location": "L22",
-      "_origin": "ast",
-      "id": "firecrawl_pharmacycareplus_analysis_what_they_do_well_apply_to_st_marks",
-      "community": 1,
-      "norm_label": "what they do well \u2014 apply to st marks"
-    },
-    {
-      "label": "1. Consistent service page template",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/.firecrawl/pharmacycareplus-analysis.md",
-      "source_location": "L24",
-      "_origin": "ast",
-      "id": "firecrawl_pharmacycareplus_analysis_1_consistent_service_page_template",
-      "community": 1,
-      "norm_label": "1. consistent service page template"
-    },
-    {
-      "label": "2. Value proposition copy (verbatim \u2014 use as inspiration, not copying)",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/.firecrawl/pharmacycareplus-analysis.md",
-      "source_location": "L35",
-      "_origin": "ast",
-      "id": "firecrawl_pharmacycareplus_analysis_2_value_proposition_copy_verbatim_use_as_inspiration_not_copying",
-      "community": 1,
-      "norm_label": "2. value proposition copy (verbatim \u2014 use as inspiration, not copying)"
-    },
-    {
-      "label": "3. GPhC numbers with live verification links",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/.firecrawl/pharmacycareplus-analysis.md",
-      "source_location": "L46",
-      "_origin": "ast",
-      "id": "firecrawl_pharmacycareplus_analysis_3_gphc_numbers_with_live_verification_links",
-      "community": 1,
-      "norm_label": "3. gphc numbers with live verification links"
-    },
-    {
-      "label": "4. Referral safety net on every clinical page",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/.firecrawl/pharmacycareplus-analysis.md",
-      "source_location": "L49",
-      "_origin": "ast",
-      "id": "firecrawl_pharmacycareplus_analysis_4_referral_safety_net_on_every_clinical_page",
-      "community": 1,
-      "norm_label": "4. referral safety net on every clinical page"
-    },
-    {
-      "label": "5. Community place-name tagline",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/.firecrawl/pharmacycareplus-analysis.md",
-      "source_location": "L53",
-      "_origin": "ast",
-      "id": "firecrawl_pharmacycareplus_analysis_5_community_place_name_tagline",
-      "community": 1,
-      "norm_label": "5. community place-name tagline"
-    },
-    {
-      "label": "6. Persistent dual CTA in navigation",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/.firecrawl/pharmacycareplus-analysis.md",
-      "source_location": "L56",
-      "_origin": "ast",
-      "id": "firecrawl_pharmacycareplus_analysis_6_persistent_dual_cta_in_navigation",
-      "community": 1,
-      "norm_label": "6. persistent dual cta in navigation"
-    },
-    {
-      "label": "7. NHS App for prescriptions",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/.firecrawl/pharmacycareplus-analysis.md",
-      "source_location": "L59",
-      "_origin": "ast",
-      "id": "firecrawl_pharmacycareplus_analysis_7_nhs_app_for_prescriptions",
-      "community": 1,
-      "norm_label": "7. nhs app for prescriptions"
-    },
-    {
-      "label": "8. Three-slide homepage hero (content-commercial balance)",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/.firecrawl/pharmacycareplus-analysis.md",
-      "source_location": "L62",
-      "_origin": "ast",
-      "id": "firecrawl_pharmacycareplus_analysis_8_three_slide_homepage_hero_content_commercial_balance",
-      "community": 1,
-      "norm_label": "8. three-slide homepage hero (content-commercial balance)"
-    },
-    {
-      "label": "What they do badly \u2014 exploit these gaps",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/.firecrawl/pharmacycareplus-analysis.md",
-      "source_location": "L70",
-      "_origin": "ast",
-      "id": "firecrawl_pharmacycareplus_analysis_what_they_do_badly_exploit_these_gaps",
-      "community": 1,
-      "norm_label": "what they do badly \u2014 exploit these gaps"
-    },
-    {
-      "label": "1. NO patient reviews anywhere",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/.firecrawl/pharmacycareplus-analysis.md",
-      "source_location": "L72",
-      "_origin": "ast",
-      "id": "firecrawl_pharmacycareplus_analysis_1_no_patient_reviews_anywhere",
-      "community": 1,
-      "norm_label": "1. no patient reviews anywhere"
-    },
-    {
-      "label": "2. NO prices on private services",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/.firecrawl/pharmacycareplus-analysis.md",
-      "source_location": "L75",
-      "_origin": "ast",
-      "id": "firecrawl_pharmacycareplus_analysis_2_no_prices_on_private_services",
-      "community": 1,
-      "norm_label": "2. no prices on private services"
-    },
-    {
-      "label": "3. NO pharmacist biography",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/.firecrawl/pharmacycareplus-analysis.md",
-      "source_location": "L78",
-      "_origin": "ast",
-      "id": "firecrawl_pharmacycareplus_analysis_3_no_pharmacist_biography",
-      "community": 1,
-      "norm_label": "3. no pharmacist biography"
-    },
-    {
-      "label": "4. NO blog or original content calendar",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/.firecrawl/pharmacycareplus-analysis.md",
-      "source_location": "L81",
-      "_origin": "ast",
-      "id": "firecrawl_pharmacycareplus_analysis_4_no_blog_or_original_content_calendar",
-      "community": 1,
-      "norm_label": "4. no blog or original content calendar"
-    },
-    {
-      "label": "5. NO long-tail question targeting",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/.firecrawl/pharmacycareplus-analysis.md",
-      "source_location": "L84",
-      "_origin": "ast",
-      "id": "firecrawl_pharmacycareplus_analysis_5_no_long_tail_question_targeting",
-      "community": 1,
-      "norm_label": "5. no long-tail question targeting"
-    },
-    {
-      "label": "6. Diabetes blood test has NO content page",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/.firecrawl/pharmacycareplus-analysis.md",
-      "source_location": "L87",
-      "_origin": "ast",
-      "id": "firecrawl_pharmacycareplus_analysis_6_diabetes_blood_test_has_no_content_page",
-      "community": 1,
-      "norm_label": "6. diabetes blood test has no content page"
-    },
-    {
-      "label": "7. No travel health content",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/.firecrawl/pharmacycareplus-analysis.md",
-      "source_location": "L90",
-      "_origin": "ast",
-      "id": "firecrawl_pharmacycareplus_analysis_7_no_travel_health_content",
-      "community": 1,
-      "norm_label": "7. no travel health content"
-    },
-    {
-      "label": "8. Named drugs not mentioned",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/.firecrawl/pharmacycareplus-analysis.md",
-      "source_location": "L93",
-      "_origin": "ast",
-      "id": "firecrawl_pharmacycareplus_analysis_8_named_drugs_not_mentioned",
-      "community": 1,
-      "norm_label": "8. named drugs not mentioned"
-    },
-    {
-      "label": "9. Identical template across all pharmacies (BeWell platform)",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/.firecrawl/pharmacycareplus-analysis.md",
-      "source_location": "L96",
-      "_origin": "ast",
-      "id": "firecrawl_pharmacycareplus_analysis_9_identical_template_across_all_pharmacies_bewell_platform",
-      "community": 1,
-      "norm_label": "9. identical template across all pharmacies (bewell platform)"
-    },
-    {
-      "label": "10. Health content sends patients away",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/.firecrawl/pharmacycareplus-analysis.md",
-      "source_location": "L99",
-      "_origin": "ast",
-      "id": "firecrawl_pharmacycareplus_analysis_10_health_content_sends_patients_away",
-      "community": 1,
-      "norm_label": "10. health content sends patients away"
-    },
-    {
-      "label": "11. No Healthy Living Pharmacy badge, no accreditations beyond GPhC",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/.firecrawl/pharmacycareplus-analysis.md",
-      "source_location": "L102",
-      "_origin": "ast",
-      "id": "firecrawl_pharmacycareplus_analysis_11_no_healthy_living_pharmacy_badge_no_accreditations_beyond_gphc",
-      "community": 1,
-      "norm_label": "11. no healthy living pharmacy badge, no accreditations beyond gphc"
-    },
-    {
-      "label": "Content/copy angles to outperform them",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/.firecrawl/pharmacycareplus-analysis.md",
-      "source_location": "L107",
-      "_origin": "ast",
-      "id": "firecrawl_pharmacycareplus_analysis_content_copy_angles_to_outperform_them",
-      "community": 1,
-      "norm_label": "content/copy angles to outperform them"
-    },
-    {
-      "label": "UX patterns worth using",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/.firecrawl/pharmacycareplus-analysis.md",
-      "source_location": "L120",
-      "_origin": "ast",
-      "id": "firecrawl_pharmacycareplus_analysis_ux_patterns_worth_using",
-      "community": 1,
-      "norm_label": "ux patterns worth using"
-    },
-    {
-      "label": "SEO observations",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/.firecrawl/pharmacycareplus-analysis.md",
-      "source_location": "L130",
-      "_origin": "ast",
-      "id": "firecrawl_pharmacycareplus_analysis_seo_observations",
-      "community": 1,
-      "norm_label": "seo observations"
-    },
-    {
-      "label": "CLAUDE.md",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/CLAUDE.md",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "smcpharma_claude",
-      "community": 3,
-      "norm_label": "claude.md"
-    },
-    {
-      "label": "CLAUDE.md \u2014 St Marks Pharmacy Website Project",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/CLAUDE.md",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "smcpharma_claude_claude_md_st_marks_pharmacy_website_project",
-      "community": 3,
-      "norm_label": "claude.md \u2014 st marks pharmacy website project"
-    },
-    {
-      "label": "Source of truth for all Claude rules. Read first, every session, no exceptions.",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/CLAUDE.md",
-      "source_location": "L2",
-      "_origin": "ast",
-      "id": "smcpharma_claude_source_of_truth_for_all_claude_rules_read_first_every_session_no_exceptions",
-      "community": 3,
-      "norm_label": "source of truth for all claude rules. read first, every session, no exceptions."
-    },
-    {
-      "label": "Last updated: 2026-06-30",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/CLAUDE.md",
-      "source_location": "L3",
-      "_origin": "ast",
-      "id": "smcpharma_claude_last_updated_2026_06_30",
-      "community": 3,
-      "norm_label": "last updated: 2026-06-30"
-    },
-    {
-      "label": "SESSION START PROTOCOL (mandatory, every session)",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/CLAUDE.md",
-      "source_location": "L7",
-      "_origin": "ast",
-      "id": "smcpharma_claude_session_start_protocol_mandatory_every_session",
-      "community": 3,
-      "norm_label": "session start protocol (mandatory, every session)"
-    },
-    {
-      "label": "WHO YOU ARE WORKING WITH",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/CLAUDE.md",
-      "source_location": "L39",
-      "_origin": "ast",
-      "id": "smcpharma_claude_who_you_are_working_with",
-      "community": 3,
-      "norm_label": "who you are working with"
-    },
-    {
-      "label": "WHAT THIS PROJECT IS",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/CLAUDE.md",
-      "source_location": "L49",
-      "_origin": "ast",
-      "id": "smcpharma_claude_what_this_project_is",
-      "community": 3,
-      "norm_label": "what this project is"
-    },
-    {
-      "label": "CONFIRMED SERVICES (all active \u2014 do not ask for re-confirmation)",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/CLAUDE.md",
-      "source_location": "L90",
-      "_origin": "ast",
-      "id": "smcpharma_claude_confirmed_services_all_active_do_not_ask_for_re_confirmation",
-      "community": 3,
-      "norm_label": "confirmed services (all active \u2014 do not ask for re-confirmation)"
-    },
-    {
-      "label": "RULES THAT ALWAYS APPLY \u2014 NO EXCEPTIONS",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/CLAUDE.md",
-      "source_location": "L125",
-      "_origin": "ast",
-      "id": "smcpharma_claude_rules_that_always_apply_no_exceptions",
-      "community": 3,
-      "norm_label": "rules that always apply \u2014 no exceptions"
-    },
-    {
-      "label": "TECHNOLOGY STACK (decided \u2014 do not re-propose alternatives without a reason)",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/CLAUDE.md",
-      "source_location": "L149",
-      "_origin": "ast",
-      "id": "smcpharma_claude_technology_stack_decided_do_not_re_propose_alternatives_without_a_reason",
-      "community": 3,
-      "norm_label": "technology stack (decided \u2014 do not re-propose alternatives without a reason)"
-    },
-    {
-      "label": "SITE ARCHITECTURE \u2014 23 PAGES (do not add pages without a reason)",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/CLAUDE.md",
-      "source_location": "L182",
-      "_origin": "ast",
-      "id": "smcpharma_claude_site_architecture_23_pages_do_not_add_pages_without_a_reason",
-      "community": 3,
-      "norm_label": "site architecture \u2014 23 pages (do not add pages without a reason)"
-    },
-    {
-      "label": "PRICING REFERENCE (for page content \u2014 confirm with client before publishing)",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/CLAUDE.md",
-      "source_location": "L209",
-      "_origin": "ast",
-      "id": "smcpharma_claude_pricing_reference_for_page_content_confirm_with_client_before_publishing",
-      "community": 3,
-      "norm_label": "pricing reference (for page content \u2014 confirm with client before publishing)"
-    },
-    {
-      "label": "CONTENT RULES (apply to every page \u2014 mandatory)",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/CLAUDE.md",
-      "source_location": "L226",
-      "_origin": "ast",
-      "id": "smcpharma_claude_content_rules_apply_to_every_page_mandatory",
-      "community": 3,
-      "norm_label": "content rules (apply to every page \u2014 mandatory)"
-    },
-    {
-      "label": "PHASED DEPLOYMENT PLAN",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/CLAUDE.md",
-      "source_location": "L241",
-      "_origin": "ast",
-      "id": "smcpharma_claude_phased_deployment_plan",
-      "community": 3,
-      "norm_label": "phased deployment plan"
-    },
-    {
-      "label": "Phase 1 \u2014 Foundation (Weeks 1\u20136)",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/CLAUDE.md",
-      "source_location": "L243",
-      "_origin": "ast",
-      "id": "smcpharma_claude_phase_1_foundation_weeks_1_6",
-      "community": 3,
-      "norm_label": "phase 1 \u2014 foundation (weeks 1\u20136)"
-    },
-    {
-      "label": "Phase 2 \u2014 Services Expansion (Weeks 6\u201314)",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/CLAUDE.md",
-      "source_location": "L258",
-      "_origin": "ast",
-      "id": "smcpharma_claude_phase_2_services_expansion_weeks_6_14",
-      "community": 3,
-      "norm_label": "phase 2 \u2014 services expansion (weeks 6\u201314)"
-    },
-    {
-      "label": "Phase 3 \u2014 OTC Shop (Months 4\u20138)",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/CLAUDE.md",
-      "source_location": "L272",
-      "_origin": "ast",
-      "id": "smcpharma_claude_phase_3_otc_shop_months_4_8",
-      "community": 3,
-      "norm_label": "phase 3 \u2014 otc shop (months 4\u20138)"
-    },
-    {
-      "label": "LEGAL & COMPLIANCE \u2014 HARD GATES (nothing ships without these)",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/CLAUDE.md",
-      "source_location": "L284",
-      "_origin": "ast",
-      "id": "smcpharma_claude_legal_compliance_hard_gates_nothing_ships_without_these",
-      "community": 3,
-      "norm_label": "legal & compliance \u2014 hard gates (nothing ships without these)"
-    },
-    {
-      "label": "SEO PRIORITY KEYWORDS",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/CLAUDE.md",
-      "source_location": "L304",
-      "_origin": "ast",
-      "id": "smcpharma_claude_seo_priority_keywords",
-      "community": 3,
-      "norm_label": "seo priority keywords"
-    },
-    {
-      "label": "BLOG CONTENT CALENDAR (first 6 months post-launch)",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/CLAUDE.md",
-      "source_location": "L322",
-      "_origin": "ast",
-      "id": "smcpharma_claude_blog_content_calendar_first_6_months_post_launch",
-      "community": 3,
-      "norm_label": "blog content calendar (first 6 months post-launch)"
-    },
-    {
-      "label": "KPIs TO TRACK MONTHLY FROM LAUNCH",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/CLAUDE.md",
-      "source_location": "L339",
-      "_origin": "ast",
-      "id": "smcpharma_claude_kpis_to_track_monthly_from_launch",
-      "community": 3,
-      "norm_label": "kpis to track monthly from launch"
-    },
-    {
-      "label": "APPROVAL PROTOCOL",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/CLAUDE.md",
-      "source_location": "L356",
-      "_origin": "ast",
-      "id": "smcpharma_claude_approval_protocol",
-      "community": 3,
-      "norm_label": "approval protocol"
-    },
-    {
-      "label": "SKILLS & TOOLS TO USE (check these before doing anything manually)",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/CLAUDE.md",
-      "source_location": "L369",
-      "_origin": "ast",
-      "id": "smcpharma_claude_skills_tools_to_use_check_these_before_doing_anything_manually",
-      "community": 3,
-      "norm_label": "skills & tools to use (check these before doing anything manually)"
-    },
-    {
-      "label": "MEMORY SYSTEM",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/CLAUDE.md",
-      "source_location": "L411",
-      "_origin": "ast",
-      "id": "smcpharma_claude_memory_system",
-      "community": 3,
-      "norm_label": "memory system"
-    },
-    {
-      "label": "SESSION END PROTOCOL",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/CLAUDE.md",
-      "source_location": "L430",
-      "_origin": "ast",
-      "id": "smcpharma_claude_session_end_protocol",
-      "community": 3,
-      "norm_label": "session end protocol"
-    },
-    {
-      "label": "DECISION LOG (keep running \u2014 add to docx too)",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/CLAUDE.md",
-      "source_location": "L459",
-      "_origin": "ast",
-      "id": "smcpharma_claude_decision_log_keep_running_add_to_docx_too",
-      "community": 3,
-      "norm_label": "decision log (keep running \u2014 add to docx too)"
-    },
-    {
-      "label": "HANDOFF.md",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/HANDOFF.md",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "smcpharma_handoff",
-      "community": 20,
-      "norm_label": "handoff.md"
-    },
-    {
-      "label": "HANDOFF \u2014 St Marks Pharmacy Website (STMARKS-WEB)",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/HANDOFF.md",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "smcpharma_handoff_handoff_st_marks_pharmacy_website_stmarks_web",
-      "community": 20,
-      "norm_label": "handoff \u2014 st marks pharmacy website (stmarks-web)"
-    },
-    {
-      "label": "WORK SCOPE (what this session set out to do)",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/HANDOFF.md",
-      "source_location": "L21",
-      "_origin": "ast",
-      "id": "smcpharma_handoff_work_scope_what_this_session_set_out_to_do",
-      "community": 20,
-      "norm_label": "work scope (what this session set out to do)"
-    },
-    {
-      "label": "WHAT WORKED / WHAT DIDN'T",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/HANDOFF.md",
-      "source_location": "L27",
-      "_origin": "ast",
-      "id": "smcpharma_handoff_what_worked_what_didn_t",
-      "community": 20,
-      "norm_label": "what worked / what didn't"
-    },
-    {
-      "label": "HOW THE SESSION CLOSED",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/HANDOFF.md",
-      "source_location": "L47",
-      "_origin": "ast",
-      "id": "smcpharma_handoff_how_the_session_closed",
-      "community": 20,
-      "norm_label": "how the session closed"
-    },
-    {
-      "label": "NEXT + BLOCKERS",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/HANDOFF.md",
-      "source_location": "L55",
-      "_origin": "ast",
-      "id": "smcpharma_handoff_next_blockers",
-      "community": 20,
-      "norm_label": "next + blockers"
-    },
-    {
-      "label": "McKeevers-Competitive-Analysis.md",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/McKeevers-Competitive-Analysis.md",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "smcpharma_mckeevers_competitive_analysis",
-      "community": 15,
-      "norm_label": "mckeevers-competitive-analysis.md"
-    },
-    {
-      "label": "McKeevers Chemists \u2014 Competitive Analysis (Services & Revenue)",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/McKeevers-Competitive-Analysis.md",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "smcpharma_mckeevers_competitive_analysis_mckeevers_chemists_competitive_analysis_services_revenue",
-      "community": 15,
-      "norm_label": "mckeevers chemists \u2014 competitive analysis (services & revenue)"
-    },
-    {
-      "label": "Who they are",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/McKeevers-Competitive-Analysis.md",
-      "source_location": "L10",
-      "_origin": "ast",
-      "id": "smcpharma_mckeevers_competitive_analysis_who_they_are",
-      "community": 15,
-      "norm_label": "who they are"
-    },
-    {
-      "label": "The revenue ranking (highest first)",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/McKeevers-Competitive-Analysis.md",
-      "source_location": "L16",
-      "_origin": "ast",
-      "id": "smcpharma_mckeevers_competitive_analysis_the_revenue_ranking_highest_first",
-      "community": 15,
-      "norm_label": "the revenue ranking (highest first)"
-    },
-    {
-      "label": "What this tells us about their strategy",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/McKeevers-Competitive-Analysis.md",
-      "source_location": "L35",
-      "_origin": "ast",
-      "id": "smcpharma_mckeevers_competitive_analysis_what_this_tells_us_about_their_strategy",
-      "community": 15,
-      "norm_label": "what this tells us about their strategy"
-    },
-    {
-      "label": "Gaps in this data (be aware)",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/McKeevers-Competitive-Analysis.md",
-      "source_location": "L49",
-      "_origin": "ast",
-      "id": "smcpharma_mckeevers_competitive_analysis_gaps_in_this_data_be_aware",
-      "community": 15,
-      "norm_label": "gaps in this data (be aware)"
-    },
-    {
-      "label": "Next Steps",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/McKeevers-Competitive-Analysis.md",
-      "source_location": "L57",
-      "_origin": "ast",
-      "id": "smcpharma_mckeevers_competitive_analysis_next_steps",
-      "community": 15,
-      "norm_label": "next steps"
-    },
-    {
-      "label": "Decisions Needed (Saeed)",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/McKeevers-Competitive-Analysis.md",
-      "source_location": "L61",
-      "_origin": "ast",
-      "id": "smcpharma_mckeevers_competitive_analysis_decisions_needed_saeed",
-      "community": 15,
-      "norm_label": "decisions needed (saeed)"
-    },
-    {
-      "label": "Open Questions",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/McKeevers-Competitive-Analysis.md",
-      "source_location": "L64",
-      "_origin": "ast",
-      "id": "smcpharma_mckeevers_competitive_analysis_open_questions",
-      "community": 15,
-      "norm_label": "open questions"
-    },
-    {
-      "label": "Checklist",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/McKeevers-Competitive-Analysis.md",
-      "source_location": "L67",
-      "_origin": "ast",
-      "id": "smcpharma_mckeevers_competitive_analysis_checklist",
-      "community": 15,
-      "norm_label": "checklist"
-    },
-    {
-      "label": "PRODUCT.md",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/PRODUCT.md",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "smcpharma_product",
-      "community": 18,
-      "norm_label": "product.md"
-    },
-    {
-      "label": "Product",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/PRODUCT.md",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "smcpharma_product_product",
-      "community": 18,
-      "norm_label": "product"
-    },
-    {
-      "label": "Register",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/PRODUCT.md",
-      "source_location": "L3",
-      "_origin": "ast",
-      "id": "smcpharma_product_register",
-      "community": 18,
-      "norm_label": "register"
-    },
-    {
-      "label": "Users",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/PRODUCT.md",
-      "source_location": "L7",
-      "_origin": "ast",
-      "id": "smcpharma_product_users",
-      "community": 18,
-      "norm_label": "users"
-    },
-    {
-      "label": "Product Purpose",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/PRODUCT.md",
-      "source_location": "L11",
-      "_origin": "ast",
-      "id": "smcpharma_product_product_purpose",
-      "community": 18,
-      "norm_label": "product purpose"
-    },
-    {
-      "label": "Brand Personality",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/PRODUCT.md",
-      "source_location": "L15",
-      "_origin": "ast",
-      "id": "smcpharma_product_brand_personality",
-      "community": 18,
-      "norm_label": "brand personality"
-    },
-    {
-      "label": "Anti-references",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/PRODUCT.md",
-      "source_location": "L21",
-      "_origin": "ast",
-      "id": "smcpharma_product_anti_references",
-      "community": 18,
-      "norm_label": "anti-references"
-    },
-    {
-      "label": "Design Principles",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/PRODUCT.md",
-      "source_location": "L29",
-      "_origin": "ast",
-      "id": "smcpharma_product_design_principles",
-      "community": 18,
-      "norm_label": "design principles"
-    },
-    {
-      "label": "Accessibility & Inclusion",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/PRODUCT.md",
-      "source_location": "L37",
-      "_origin": "ast",
-      "id": "smcpharma_product_accessibility_inclusion",
-      "community": 18,
-      "norm_label": "accessibility & inclusion"
-    },
-    {
-      "label": "PROJECT_MEMORY.md",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/PROJECT_MEMORY.md",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "smcpharma_project_memory",
-      "community": 12,
-      "norm_label": "project_memory.md"
-    },
-    {
-      "label": "PROJECT MEMORY \u2014 St Marks Pharmacy Website (STMARKS-WEB)",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/PROJECT_MEMORY.md",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "smcpharma_project_memory_project_memory_st_marks_pharmacy_website_stmarks_web",
-      "community": 12,
-      "norm_label": "project memory \u2014 st marks pharmacy website (stmarks-web)"
-    },
-    {
-      "label": "Fast snapshot of where we are. READ FIRST every session.",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/PROJECT_MEMORY.md",
-      "source_location": "L2",
-      "_origin": "ast",
-      "id": "smcpharma_project_memory_fast_snapshot_of_where_we_are_read_first_every_session",
-      "community": 12,
-      "norm_label": "fast snapshot of where we are. read first every session."
-    },
-    {
-      "label": "Update at every session end AND whenever something material changes mid-session.",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/PROJECT_MEMORY.md",
-      "source_location": "L3",
-      "_origin": "ast",
-      "id": "smcpharma_project_memory_update_at_every_session_end_and_whenever_something_material_changes_mid_session",
-      "community": 12,
-      "norm_label": "update at every session end and whenever something material changes mid-session."
-    },
-    {
-      "label": "Last updated: 2026-07-03 (evening \u2014 go-live on real domain)",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/PROJECT_MEMORY.md",
-      "source_location": "L4",
-      "_origin": "ast",
-      "id": "smcpharma_project_memory_last_updated_2026_07_03_evening_go_live_on_real_domain",
-      "community": 12,
-      "norm_label": "last updated: 2026-07-03 (evening \u2014 go-live on real domain)"
-    },
-    {
-      "label": "STATUS",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/PROJECT_MEMORY.md",
-      "source_location": "L6",
-      "_origin": "ast",
-      "id": "smcpharma_project_memory_status",
-      "community": 12,
-      "norm_label": "status"
-    },
-    {
-      "label": "WHAT IS BUILT AND LIVE",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/PROJECT_MEMORY.md",
-      "source_location": "L20",
-      "_origin": "ast",
-      "id": "smcpharma_project_memory_what_is_built_and_live",
-      "community": 12,
-      "norm_label": "what is built and live"
-    },
-    {
-      "label": "HOW IT IS BUILT (important \u2014 not what the docx plan says)",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/PROJECT_MEMORY.md",
-      "source_location": "L28",
-      "_origin": "ast",
-      "id": "smcpharma_project_memory_how_it_is_built_important_not_what_the_docx_plan_says",
-      "community": 12,
-      "norm_label": "how it is built (important \u2014 not what the docx plan says)"
-    },
-    {
-      "label": "PENDING SAEED / APPROVALS",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/PROJECT_MEMORY.md",
-      "source_location": "L47",
-      "_origin": "ast",
-      "id": "smcpharma_project_memory_pending_saeed_approvals",
-      "community": 12,
-      "norm_label": "pending saeed / approvals"
-    },
-    {
-      "label": "OPEN TASKS / NEXT",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/PROJECT_MEMORY.md",
-      "source_location": "L61",
-      "_origin": "ast",
-      "id": "smcpharma_project_memory_open_tasks_next",
-      "community": 12,
-      "norm_label": "open tasks / next"
-    },
-    {
-      "label": "CONFIRMED FACTS (2026-06-30, from Saeed)",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/PROJECT_MEMORY.md",
-      "source_location": "L69",
-      "_origin": "ast",
-      "id": "smcpharma_project_memory_confirmed_facts_2026_06_30_from_saeed",
-      "community": 12,
-      "norm_label": "confirmed facts (2026-06-30, from saeed)"
-    },
-    {
-      "label": "BLOCKERS",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/PROJECT_MEMORY.md",
-      "source_location": "L77",
-      "_origin": "ast",
-      "id": "smcpharma_project_memory_blockers",
-      "community": 12,
-      "norm_label": "blockers"
-    },
-    {
-      "label": "LAST COMMIT",
-      "file_type": "document",
-      "source_file": "SMCPHARMA/PROJECT_MEMORY.md",
-      "source_location": "L81",
-      "_origin": "ast",
-      "id": "smcpharma_project_memory_last_commit",
-      "community": 12,
-      "norm_label": "last commit"
     },
     {
       "label": "TESTING.md",
@@ -17154,7 +15924,7 @@
       "file_type": "code",
       "source_file": "tests/fixtures/n8n_webhook_test_pack.py",
       "source_location": "L16",
-      "community": 14,
+      "community": 5,
       "norm_label": "str",
       "id": "tests_fixtures_n8n_webhook_test_pack_py_str"
     },
@@ -17163,7 +15933,7 @@
       "file_type": "code",
       "source_file": "tests/fixtures/n8n_webhook_test_pack.py",
       "source_location": "L16",
-      "community": 14,
+      "community": 5,
       "norm_label": "int",
       "id": "tests_fixtures_n8n_webhook_test_pack_py_int"
     },
@@ -17172,7 +15942,7 @@
       "file_type": "code",
       "source_file": "tests/fixtures/n8n_webhook_test_pack.py",
       "source_location": "L31",
-      "community": 14,
+      "community": 5,
       "norm_label": "bool",
       "id": "tests_fixtures_n8n_webhook_test_pack_py_bool"
     },
@@ -17181,7 +15951,7 @@
       "file_type": "code",
       "source_file": "tests/fixtures/n8n_webhook_test_pack.py",
       "source_location": "L31",
-      "community": 14,
+      "community": 5,
       "norm_label": "float",
       "id": "tests_fixtures_n8n_webhook_test_pack_py_float"
     },
@@ -17325,7 +16095,7 @@
       "file_type": "code",
       "source_file": "tests/send_gp_demo_n8n_webhook_calls.py",
       "source_location": "L52",
-      "community": 5,
+      "community": 3,
       "norm_label": "str",
       "id": "tests_send_gp_demo_n8n_webhook_calls_py_str"
     },
@@ -17334,7 +16104,7 @@
       "file_type": "code",
       "source_file": "tests/send_gp_demo_n8n_webhook_calls.py",
       "source_location": "L52",
-      "community": 5,
+      "community": 3,
       "norm_label": "bool",
       "id": "tests_send_gp_demo_n8n_webhook_calls_py_bool"
     },
@@ -17343,7 +16113,7 @@
       "file_type": "code",
       "source_file": "tests/send_gp_demo_n8n_webhook_calls.py",
       "source_location": "L379",
-      "community": 5,
+      "community": 3,
       "norm_label": "int",
       "id": "tests_send_gp_demo_n8n_webhook_calls_py_int"
     },
@@ -18205,141 +16975,6 @@
       "confidence_score": 1.0,
       "source": "tmp_send_mock_batch_n8n_inner",
       "target": "tmp_send_mock_batch_n8n_ts"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/scripts/daily/strategy_daily.ps1",
-      "source_location": "L43",
-      "weight": 1.0,
-      "source": "smcpharma_scripts_daily_strategy_daily_ps1_daily_strategy_daily",
-      "target": "smcpharma_scripts_daily_strategy_daily_ps1_daily_strategy_daily_write_log",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/site/assets/js/main.js",
-      "source_location": "L208",
-      "weight": 1.0,
-      "source": "js_main",
-      "target": "js_main_getactivesection",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/site/assets/js/main.js",
-      "source_location": "L221",
-      "weight": 1.0,
-      "source": "js_main",
-      "target": "js_main_updateactivelink",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/site/assets/js/main.js",
-      "source_location": "L128",
-      "weight": 1.0,
-      "source": "js_main",
-      "target": "js_main_updateheaderstate",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/site/assets/js/main.js",
-      "source_location": "L222",
-      "weight": 1.0,
-      "source": "js_main_updateactivelink",
-      "target": "js_main_getactivesection",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/src/index.js",
-      "source_location": "L92",
-      "weight": 1.0,
-      "source": "src_index",
-      "target": "src_index_clean",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/src/index.js",
-      "source_location": "L18",
-      "weight": 1.0,
-      "source": "src_index",
-      "target": "src_index_fetch",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/src/index.js",
-      "source_location": "L33",
-      "weight": 1.0,
-      "source": "src_index",
-      "target": "src_index_handlebooking",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/src/index.js",
-      "source_location": "L99",
-      "weight": 1.0,
-      "source": "src_index",
-      "target": "src_index_json",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/src/index.js",
-      "source_location": "L25",
-      "weight": 1.0,
-      "source": "src_index_fetch",
-      "target": "src_index_handlebooking",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/src/index.js",
-      "source_location": "L23",
-      "weight": 1.0,
-      "source": "src_index_fetch",
-      "target": "src_index_json",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/src/index.js",
-      "source_location": "L42",
-      "weight": 1.0,
-      "source": "src_index_handlebooking",
-      "target": "src_index_clean",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/src/index.js",
-      "source_location": "L36",
-      "weight": 1.0,
-      "source": "src_index_handlebooking",
-      "target": "src_index_json",
-      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -43520,26 +42155,6 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "scripts/daily/combined_brief.ps1",
-      "source_location": "L39",
-      "weight": 1.0,
-      "source": "daily_combined_brief",
-      "target": "daily_combined_brief_get_projectbrief",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "scripts/daily/combined_brief.ps1",
-      "source_location": "L28",
-      "weight": 1.0,
-      "source": "daily_combined_brief",
-      "target": "daily_combined_brief_write_log",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
       "source_file": "scripts/daily/gdpr_purge.py",
       "source_location": "L209",
       "weight": 1.0,
@@ -44332,11 +42947,11 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "scripts/daily/strategy_daily.ps1",
-      "source_location": "L59",
+      "source_location": "L38",
       "weight": 1.0,
-      "source": "scripts_daily_strategy_daily_ps1_daily_strategy_daily",
-      "target": "scripts_daily_strategy_daily_ps1_daily_strategy_daily_write_log",
-      "confidence_score": 1.0
+      "confidence_score": 1.0,
+      "source": "daily_strategy_daily",
+      "target": "daily_strategy_daily_write_log"
     },
     {
       "relation": "contains",
@@ -44894,185 +43509,6 @@
       "confidence_score": 1.0,
       "source": "demo_seed_demo_data_seed",
       "target": "scripts_demo_seed_demo_data_py_path"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "scripts/service_control/fix_n8n_auth_urls.py",
-      "source_location": "L61",
-      "weight": 1.0,
-      "source": "service_control_fix_n8n_auth_urls",
-      "target": "service_control_fix_n8n_auth_urls_fix_workflow_url",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "scripts/service_control/fix_n8n_auth_urls.py",
-      "source_location": "L15",
-      "weight": 1.0,
-      "source": "service_control_fix_n8n_auth_urls",
-      "target": "service_control_fix_n8n_auth_urls_get_api_key",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "scripts/service_control/fix_n8n_auth_urls.py",
-      "source_location": "L36",
-      "weight": 1.0,
-      "source": "service_control_fix_n8n_auth_urls",
-      "target": "service_control_fix_n8n_auth_urls_get_workflow",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "scripts/service_control/fix_n8n_auth_urls.py",
-      "source_location": "L93",
-      "weight": 1.0,
-      "source": "service_control_fix_n8n_auth_urls",
-      "target": "service_control_fix_n8n_auth_urls_main",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "scripts/service_control/fix_n8n_auth_urls.py",
-      "source_location": "L22",
-      "weight": 1.0,
-      "source": "service_control_fix_n8n_auth_urls",
-      "target": "service_control_fix_n8n_auth_urls_n8n_request",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "scripts/service_control/fix_n8n_auth_urls.py",
-      "source_location": "L43",
-      "weight": 1.0,
-      "source": "service_control_fix_n8n_auth_urls",
-      "target": "service_control_fix_n8n_auth_urls_put_workflow",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "scripts/service_control/fix_n8n_auth_urls.py",
-      "source_location": "L52",
-      "weight": 1.0,
-      "source": "service_control_fix_n8n_auth_urls",
-      "target": "service_control_fix_n8n_auth_urls_toggle_active",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "rationale_for",
-      "confidence": "EXTRACTED",
-      "source_file": "scripts/service_control/fix_n8n_auth_urls.py",
-      "source_location": "L1",
-      "weight": 1.0,
-      "source": "service_control_fix_n8n_auth_urls_rationale_1",
-      "target": "service_control_fix_n8n_auth_urls",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "scripts/service_control/fix_n8n_auth_urls.py",
-      "source_location": "L94",
-      "weight": 1.0,
-      "source": "service_control_fix_n8n_auth_urls_main",
-      "target": "service_control_fix_n8n_auth_urls_get_api_key",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "scripts/service_control/fix_n8n_auth_urls.py",
-      "source_location": "L37",
-      "weight": 1.0,
-      "source": "service_control_fix_n8n_auth_urls_get_workflow",
-      "target": "service_control_fix_n8n_auth_urls_n8n_request",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "scripts/service_control/fix_n8n_auth_urls.py",
-      "source_location": "L44",
-      "weight": 1.0,
-      "source": "service_control_fix_n8n_auth_urls_put_workflow",
-      "target": "service_control_fix_n8n_auth_urls_n8n_request",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "scripts/service_control/fix_n8n_auth_urls.py",
-      "source_location": "L54",
-      "weight": 1.0,
-      "source": "service_control_fix_n8n_auth_urls_toggle_active",
-      "target": "service_control_fix_n8n_auth_urls_n8n_request",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "scripts/service_control/fix_n8n_auth_urls.py",
-      "source_location": "L62",
-      "weight": 1.0,
-      "source": "service_control_fix_n8n_auth_urls_fix_workflow_url",
-      "target": "service_control_fix_n8n_auth_urls_get_workflow",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "scripts/service_control/fix_n8n_auth_urls.py",
-      "source_location": "L117",
-      "weight": 1.0,
-      "source": "service_control_fix_n8n_auth_urls_main",
-      "target": "service_control_fix_n8n_auth_urls_get_workflow",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "scripts/service_control/fix_n8n_auth_urls.py",
-      "source_location": "L86",
-      "weight": 1.0,
-      "source": "service_control_fix_n8n_auth_urls_fix_workflow_url",
-      "target": "service_control_fix_n8n_auth_urls_put_workflow",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "scripts/service_control/fix_n8n_auth_urls.py",
-      "source_location": "L87",
-      "weight": 1.0,
-      "source": "service_control_fix_n8n_auth_urls_fix_workflow_url",
-      "target": "service_control_fix_n8n_auth_urls_toggle_active",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "scripts/service_control/fix_n8n_auth_urls.py",
-      "source_location": "L98",
-      "weight": 1.0,
-      "source": "service_control_fix_n8n_auth_urls_main",
-      "target": "service_control_fix_n8n_auth_urls_fix_workflow_url",
-      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -51650,16 +50086,6 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "CHANGELOG.md",
-      "source_location": "L207",
-      "weight": 1.0,
-      "source": "changelog_format_defined_in_reporting_md",
-      "target": "changelog_2026_06_26_tech_debt_phase_1_remediation_b1_d1_doc1_i1_i3",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "CHANGELOG.md",
       "source_location": "L57",
       "weight": 1.0,
       "confidence_score": 1.0,
@@ -51865,16 +50291,6 @@
       "confidence_score": 1.0,
       "source": "claude_last_updated_2026_06_18",
       "target": "claude_session_start_protocol_mandatory_every_session"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "CLAUDE.md",
-      "source_location": "L381",
-      "weight": 1.0,
-      "source": "claude_last_updated_2026_06_18",
-      "target": "claude_skill_routing",
-      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -52169,56 +50585,6 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "HANDOFF.md",
-      "source_location": "L1",
-      "weight": 1.0,
-      "source": "handoff",
-      "target": "handoff_handoff_avamed_jefflocal",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "HANDOFF.md",
-      "source_location": "L45",
-      "weight": 1.0,
-      "source": "handoff_handoff_avamed_jefflocal",
-      "target": "handoff_how_the_session_closed",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "HANDOFF.md",
-      "source_location": "L52",
-      "weight": 1.0,
-      "source": "handoff_handoff_avamed_jefflocal",
-      "target": "handoff_next_blockers",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "HANDOFF.md",
-      "source_location": "L25",
-      "weight": 1.0,
-      "source": "handoff_handoff_avamed_jefflocal",
-      "target": "handoff_what_worked_what_didn_t",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "HANDOFF.md",
-      "source_location": "L21",
-      "weight": 1.0,
-      "source": "handoff_handoff_avamed_jefflocal",
-      "target": "handoff_work_scope",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
       "source_file": "PRODUCT.md",
       "source_location": "L1",
       "weight": 1.0,
@@ -52302,9 +50668,9 @@
       "source_file": "PROJECT_MEMORY.md",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "project_memory",
-      "target": "project_memory_last_updated_2026_07_07_auto_updated_18_00",
-      "confidence_score": 1.0
+      "target": "project_memory_last_updated_2026_06_25_auto_updated_07_00"
     },
     {
       "relation": "contains",
@@ -52362,9 +50728,9 @@
       "source_file": "PROJECT_MEMORY.md",
       "source_location": "L78",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "project_memory_maintained_by_claude_update_at_end_of_every_session",
-      "target": "project_memory_current_status_2026_07_08",
-      "confidence_score": 1.0
+      "target": "project_memory_current_status_2026_06_24_evening_session"
     },
     {
       "relation": "contains",
@@ -52450,71 +50816,61 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "PROJECT_MEMORY.md",
-      "source_location": "L110",
+      "source_location": "L108",
       "weight": 1.0,
-      "source": "project_memory_current_status_2026_07_08",
-      "target": "project_memory_all_security_quality_fixes_phase_1_2_3_in_production",
-      "confidence_score": 1.0
+      "confidence_score": 1.0,
+      "source": "project_memory_current_status_2026_06_24_evening_session",
+      "target": "project_memory_all_security_quality_fixes_phase_1_2_3_in_production"
     },
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "PROJECT_MEMORY.md",
-      "source_location": "L123",
+      "source_location": "L121",
       "weight": 1.0,
-      "source": "project_memory_current_status_2026_07_08",
-      "target": "project_memory_blocking_pilot_1_go_live",
-      "confidence_score": 1.0
+      "confidence_score": 1.0,
+      "source": "project_memory_current_status_2026_06_24_evening_session",
+      "target": "project_memory_blocking_pilot_1_go_live"
     },
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "PROJECT_MEMORY.md",
-      "source_location": "L93",
+      "source_location": "L91",
       "weight": 1.0,
-      "source": "project_memory_current_status_2026_07_08",
-      "target": "project_memory_bugs_found_in_2026_06_19_pipeline_test_run",
-      "confidence_score": 1.0
+      "confidence_score": 1.0,
+      "source": "project_memory_current_status_2026_06_24_evening_session",
+      "target": "project_memory_bugs_found_in_2026_06_19_pipeline_test_run"
     },
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "PROJECT_MEMORY.md",
-      "source_location": "L147",
+      "source_location": "L134",
       "weight": 1.0,
-      "source": "project_memory_current_status_2026_07_08",
-      "target": "project_memory_n8n_fix_notes_2026_07_08",
-      "confidence_score": 1.0
+      "confidence_score": 1.0,
+      "source": "project_memory_current_status_2026_06_24_evening_session",
+      "target": "project_memory_open_technical_tasks_priority_order"
     },
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "PROJECT_MEMORY.md",
-      "source_location": "L136",
+      "source_location": "L128",
       "weight": 1.0,
-      "source": "project_memory_current_status_2026_07_08",
-      "target": "project_memory_open_technical_tasks_priority_order",
-      "confidence_score": 1.0
+      "confidence_score": 1.0,
+      "source": "project_memory_current_status_2026_06_24_evening_session",
+      "target": "project_memory_pending_saeed_approvals_actions"
     },
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "PROJECT_MEMORY.md",
-      "source_location": "L130",
+      "source_location": "L97",
       "weight": 1.0,
-      "source": "project_memory_current_status_2026_07_08",
-      "target": "project_memory_pending_saeed_approvals_actions",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "PROJECT_MEMORY.md",
-      "source_location": "L99",
-      "weight": 1.0,
-      "source": "project_memory_current_status_2026_07_08",
-      "target": "project_memory_ux_improvements_identified_priority_order",
-      "confidence_score": 1.0
+      "confidence_score": 1.0,
+      "source": "project_memory_current_status_2026_06_24_evening_session",
+      "target": "project_memory_ux_improvements_identified_priority_order"
     },
     {
       "relation": "contains",
@@ -52522,9 +50878,9 @@
       "source_file": "PROJECT_MEMORY.md",
       "source_location": "L80",
       "weight": 1.0,
-      "source": "project_memory_current_status_2026_07_08",
-      "target": "project_memory_what_is_working",
-      "confidence_score": 1.0
+      "confidence_score": 1.0,
+      "source": "project_memory_current_status_2026_06_24_evening_session",
+      "target": "project_memory_what_is_working"
     },
     {
       "relation": "contains",
@@ -52625,856 +50981,6 @@
       "confidence_score": 1.0,
       "source": "reporting_defines_all_standard_reports_format_frequency_who_sends_where_it_goes",
       "target": "reporting_weekly_report"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/.firecrawl/pharmacycareplus-analysis.md",
-      "source_location": "L1",
-      "weight": 1.0,
-      "source": "firecrawl_pharmacycareplus_analysis",
-      "target": "firecrawl_pharmacycareplus_analysis_pharmacycare_pharmacycareplus_co_uk_inspiration_gap_analysis",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/.firecrawl/pharmacycareplus-analysis.md",
-      "source_location": "L107",
-      "weight": 1.0,
-      "source": "firecrawl_pharmacycareplus_analysis_pharmacycare_pharmacycareplus_co_uk_inspiration_gap_analysis",
-      "target": "firecrawl_pharmacycareplus_analysis_content_copy_angles_to_outperform_them",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/.firecrawl/pharmacycareplus-analysis.md",
-      "source_location": "L130",
-      "weight": 1.0,
-      "source": "firecrawl_pharmacycareplus_analysis_pharmacycare_pharmacycareplus_co_uk_inspiration_gap_analysis",
-      "target": "firecrawl_pharmacycareplus_analysis_seo_observations",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/.firecrawl/pharmacycareplus-analysis.md",
-      "source_location": "L10",
-      "weight": 1.0,
-      "source": "firecrawl_pharmacycareplus_analysis_pharmacycare_pharmacycareplus_co_uk_inspiration_gap_analysis",
-      "target": "firecrawl_pharmacycareplus_analysis_their_service_structure_clean_3_way_split_steal_this",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/.firecrawl/pharmacycareplus-analysis.md",
-      "source_location": "L120",
-      "weight": 1.0,
-      "source": "firecrawl_pharmacycareplus_analysis_pharmacycare_pharmacycareplus_co_uk_inspiration_gap_analysis",
-      "target": "firecrawl_pharmacycareplus_analysis_ux_patterns_worth_using",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/.firecrawl/pharmacycareplus-analysis.md",
-      "source_location": "L70",
-      "weight": 1.0,
-      "source": "firecrawl_pharmacycareplus_analysis_pharmacycare_pharmacycareplus_co_uk_inspiration_gap_analysis",
-      "target": "firecrawl_pharmacycareplus_analysis_what_they_do_badly_exploit_these_gaps",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/.firecrawl/pharmacycareplus-analysis.md",
-      "source_location": "L22",
-      "weight": 1.0,
-      "source": "firecrawl_pharmacycareplus_analysis_pharmacycare_pharmacycareplus_co_uk_inspiration_gap_analysis",
-      "target": "firecrawl_pharmacycareplus_analysis_what_they_do_well_apply_to_st_marks",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/.firecrawl/pharmacycareplus-analysis.md",
-      "source_location": "L24",
-      "weight": 1.0,
-      "source": "firecrawl_pharmacycareplus_analysis_what_they_do_well_apply_to_st_marks",
-      "target": "firecrawl_pharmacycareplus_analysis_1_consistent_service_page_template",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/.firecrawl/pharmacycareplus-analysis.md",
-      "source_location": "L35",
-      "weight": 1.0,
-      "source": "firecrawl_pharmacycareplus_analysis_what_they_do_well_apply_to_st_marks",
-      "target": "firecrawl_pharmacycareplus_analysis_2_value_proposition_copy_verbatim_use_as_inspiration_not_copying",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/.firecrawl/pharmacycareplus-analysis.md",
-      "source_location": "L46",
-      "weight": 1.0,
-      "source": "firecrawl_pharmacycareplus_analysis_what_they_do_well_apply_to_st_marks",
-      "target": "firecrawl_pharmacycareplus_analysis_3_gphc_numbers_with_live_verification_links",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/.firecrawl/pharmacycareplus-analysis.md",
-      "source_location": "L49",
-      "weight": 1.0,
-      "source": "firecrawl_pharmacycareplus_analysis_what_they_do_well_apply_to_st_marks",
-      "target": "firecrawl_pharmacycareplus_analysis_4_referral_safety_net_on_every_clinical_page",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/.firecrawl/pharmacycareplus-analysis.md",
-      "source_location": "L53",
-      "weight": 1.0,
-      "source": "firecrawl_pharmacycareplus_analysis_what_they_do_well_apply_to_st_marks",
-      "target": "firecrawl_pharmacycareplus_analysis_5_community_place_name_tagline",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/.firecrawl/pharmacycareplus-analysis.md",
-      "source_location": "L56",
-      "weight": 1.0,
-      "source": "firecrawl_pharmacycareplus_analysis_what_they_do_well_apply_to_st_marks",
-      "target": "firecrawl_pharmacycareplus_analysis_6_persistent_dual_cta_in_navigation",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/.firecrawl/pharmacycareplus-analysis.md",
-      "source_location": "L59",
-      "weight": 1.0,
-      "source": "firecrawl_pharmacycareplus_analysis_what_they_do_well_apply_to_st_marks",
-      "target": "firecrawl_pharmacycareplus_analysis_7_nhs_app_for_prescriptions",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/.firecrawl/pharmacycareplus-analysis.md",
-      "source_location": "L62",
-      "weight": 1.0,
-      "source": "firecrawl_pharmacycareplus_analysis_what_they_do_well_apply_to_st_marks",
-      "target": "firecrawl_pharmacycareplus_analysis_8_three_slide_homepage_hero_content_commercial_balance",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/.firecrawl/pharmacycareplus-analysis.md",
-      "source_location": "L99",
-      "weight": 1.0,
-      "source": "firecrawl_pharmacycareplus_analysis_what_they_do_badly_exploit_these_gaps",
-      "target": "firecrawl_pharmacycareplus_analysis_10_health_content_sends_patients_away",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/.firecrawl/pharmacycareplus-analysis.md",
-      "source_location": "L102",
-      "weight": 1.0,
-      "source": "firecrawl_pharmacycareplus_analysis_what_they_do_badly_exploit_these_gaps",
-      "target": "firecrawl_pharmacycareplus_analysis_11_no_healthy_living_pharmacy_badge_no_accreditations_beyond_gphc",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/.firecrawl/pharmacycareplus-analysis.md",
-      "source_location": "L72",
-      "weight": 1.0,
-      "source": "firecrawl_pharmacycareplus_analysis_what_they_do_badly_exploit_these_gaps",
-      "target": "firecrawl_pharmacycareplus_analysis_1_no_patient_reviews_anywhere",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/.firecrawl/pharmacycareplus-analysis.md",
-      "source_location": "L75",
-      "weight": 1.0,
-      "source": "firecrawl_pharmacycareplus_analysis_what_they_do_badly_exploit_these_gaps",
-      "target": "firecrawl_pharmacycareplus_analysis_2_no_prices_on_private_services",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/.firecrawl/pharmacycareplus-analysis.md",
-      "source_location": "L78",
-      "weight": 1.0,
-      "source": "firecrawl_pharmacycareplus_analysis_what_they_do_badly_exploit_these_gaps",
-      "target": "firecrawl_pharmacycareplus_analysis_3_no_pharmacist_biography",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/.firecrawl/pharmacycareplus-analysis.md",
-      "source_location": "L81",
-      "weight": 1.0,
-      "source": "firecrawl_pharmacycareplus_analysis_what_they_do_badly_exploit_these_gaps",
-      "target": "firecrawl_pharmacycareplus_analysis_4_no_blog_or_original_content_calendar",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/.firecrawl/pharmacycareplus-analysis.md",
-      "source_location": "L84",
-      "weight": 1.0,
-      "source": "firecrawl_pharmacycareplus_analysis_what_they_do_badly_exploit_these_gaps",
-      "target": "firecrawl_pharmacycareplus_analysis_5_no_long_tail_question_targeting",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/.firecrawl/pharmacycareplus-analysis.md",
-      "source_location": "L87",
-      "weight": 1.0,
-      "source": "firecrawl_pharmacycareplus_analysis_what_they_do_badly_exploit_these_gaps",
-      "target": "firecrawl_pharmacycareplus_analysis_6_diabetes_blood_test_has_no_content_page",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/.firecrawl/pharmacycareplus-analysis.md",
-      "source_location": "L90",
-      "weight": 1.0,
-      "source": "firecrawl_pharmacycareplus_analysis_what_they_do_badly_exploit_these_gaps",
-      "target": "firecrawl_pharmacycareplus_analysis_7_no_travel_health_content",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/.firecrawl/pharmacycareplus-analysis.md",
-      "source_location": "L93",
-      "weight": 1.0,
-      "source": "firecrawl_pharmacycareplus_analysis_what_they_do_badly_exploit_these_gaps",
-      "target": "firecrawl_pharmacycareplus_analysis_8_named_drugs_not_mentioned",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/.firecrawl/pharmacycareplus-analysis.md",
-      "source_location": "L96",
-      "weight": 1.0,
-      "source": "firecrawl_pharmacycareplus_analysis_what_they_do_badly_exploit_these_gaps",
-      "target": "firecrawl_pharmacycareplus_analysis_9_identical_template_across_all_pharmacies_bewell_platform",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/CLAUDE.md",
-      "source_location": "L1",
-      "weight": 1.0,
-      "source": "smcpharma_claude",
-      "target": "smcpharma_claude_claude_md_st_marks_pharmacy_website_project",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/CLAUDE.md",
-      "source_location": "L3",
-      "weight": 1.0,
-      "source": "smcpharma_claude",
-      "target": "smcpharma_claude_last_updated_2026_06_30",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/CLAUDE.md",
-      "source_location": "L2",
-      "weight": 1.0,
-      "source": "smcpharma_claude",
-      "target": "smcpharma_claude_source_of_truth_for_all_claude_rules_read_first_every_session_no_exceptions",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/CLAUDE.md",
-      "source_location": "L356",
-      "weight": 1.0,
-      "source": "smcpharma_claude_last_updated_2026_06_30",
-      "target": "smcpharma_claude_approval_protocol",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/CLAUDE.md",
-      "source_location": "L322",
-      "weight": 1.0,
-      "source": "smcpharma_claude_last_updated_2026_06_30",
-      "target": "smcpharma_claude_blog_content_calendar_first_6_months_post_launch",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/CLAUDE.md",
-      "source_location": "L90",
-      "weight": 1.0,
-      "source": "smcpharma_claude_last_updated_2026_06_30",
-      "target": "smcpharma_claude_confirmed_services_all_active_do_not_ask_for_re_confirmation",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/CLAUDE.md",
-      "source_location": "L226",
-      "weight": 1.0,
-      "source": "smcpharma_claude_last_updated_2026_06_30",
-      "target": "smcpharma_claude_content_rules_apply_to_every_page_mandatory",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/CLAUDE.md",
-      "source_location": "L459",
-      "weight": 1.0,
-      "source": "smcpharma_claude_last_updated_2026_06_30",
-      "target": "smcpharma_claude_decision_log_keep_running_add_to_docx_too",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/CLAUDE.md",
-      "source_location": "L339",
-      "weight": 1.0,
-      "source": "smcpharma_claude_last_updated_2026_06_30",
-      "target": "smcpharma_claude_kpis_to_track_monthly_from_launch",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/CLAUDE.md",
-      "source_location": "L284",
-      "weight": 1.0,
-      "source": "smcpharma_claude_last_updated_2026_06_30",
-      "target": "smcpharma_claude_legal_compliance_hard_gates_nothing_ships_without_these",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/CLAUDE.md",
-      "source_location": "L411",
-      "weight": 1.0,
-      "source": "smcpharma_claude_last_updated_2026_06_30",
-      "target": "smcpharma_claude_memory_system",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/CLAUDE.md",
-      "source_location": "L241",
-      "weight": 1.0,
-      "source": "smcpharma_claude_last_updated_2026_06_30",
-      "target": "smcpharma_claude_phased_deployment_plan",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/CLAUDE.md",
-      "source_location": "L209",
-      "weight": 1.0,
-      "source": "smcpharma_claude_last_updated_2026_06_30",
-      "target": "smcpharma_claude_pricing_reference_for_page_content_confirm_with_client_before_publishing",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/CLAUDE.md",
-      "source_location": "L125",
-      "weight": 1.0,
-      "source": "smcpharma_claude_last_updated_2026_06_30",
-      "target": "smcpharma_claude_rules_that_always_apply_no_exceptions",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/CLAUDE.md",
-      "source_location": "L304",
-      "weight": 1.0,
-      "source": "smcpharma_claude_last_updated_2026_06_30",
-      "target": "smcpharma_claude_seo_priority_keywords",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/CLAUDE.md",
-      "source_location": "L430",
-      "weight": 1.0,
-      "source": "smcpharma_claude_last_updated_2026_06_30",
-      "target": "smcpharma_claude_session_end_protocol",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/CLAUDE.md",
-      "source_location": "L7",
-      "weight": 1.0,
-      "source": "smcpharma_claude_last_updated_2026_06_30",
-      "target": "smcpharma_claude_session_start_protocol_mandatory_every_session",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/CLAUDE.md",
-      "source_location": "L182",
-      "weight": 1.0,
-      "source": "smcpharma_claude_last_updated_2026_06_30",
-      "target": "smcpharma_claude_site_architecture_23_pages_do_not_add_pages_without_a_reason",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/CLAUDE.md",
-      "source_location": "L369",
-      "weight": 1.0,
-      "source": "smcpharma_claude_last_updated_2026_06_30",
-      "target": "smcpharma_claude_skills_tools_to_use_check_these_before_doing_anything_manually",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/CLAUDE.md",
-      "source_location": "L149",
-      "weight": 1.0,
-      "source": "smcpharma_claude_last_updated_2026_06_30",
-      "target": "smcpharma_claude_technology_stack_decided_do_not_re_propose_alternatives_without_a_reason",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/CLAUDE.md",
-      "source_location": "L49",
-      "weight": 1.0,
-      "source": "smcpharma_claude_last_updated_2026_06_30",
-      "target": "smcpharma_claude_what_this_project_is",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/CLAUDE.md",
-      "source_location": "L39",
-      "weight": 1.0,
-      "source": "smcpharma_claude_last_updated_2026_06_30",
-      "target": "smcpharma_claude_who_you_are_working_with",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/CLAUDE.md",
-      "source_location": "L243",
-      "weight": 1.0,
-      "source": "smcpharma_claude_phased_deployment_plan",
-      "target": "smcpharma_claude_phase_1_foundation_weeks_1_6",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/CLAUDE.md",
-      "source_location": "L258",
-      "weight": 1.0,
-      "source": "smcpharma_claude_phased_deployment_plan",
-      "target": "smcpharma_claude_phase_2_services_expansion_weeks_6_14",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/CLAUDE.md",
-      "source_location": "L272",
-      "weight": 1.0,
-      "source": "smcpharma_claude_phased_deployment_plan",
-      "target": "smcpharma_claude_phase_3_otc_shop_months_4_8",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/HANDOFF.md",
-      "source_location": "L1",
-      "weight": 1.0,
-      "source": "smcpharma_handoff",
-      "target": "smcpharma_handoff_handoff_st_marks_pharmacy_website_stmarks_web",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/HANDOFF.md",
-      "source_location": "L47",
-      "weight": 1.0,
-      "source": "smcpharma_handoff_handoff_st_marks_pharmacy_website_stmarks_web",
-      "target": "smcpharma_handoff_how_the_session_closed",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/HANDOFF.md",
-      "source_location": "L55",
-      "weight": 1.0,
-      "source": "smcpharma_handoff_handoff_st_marks_pharmacy_website_stmarks_web",
-      "target": "smcpharma_handoff_next_blockers",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/HANDOFF.md",
-      "source_location": "L27",
-      "weight": 1.0,
-      "source": "smcpharma_handoff_handoff_st_marks_pharmacy_website_stmarks_web",
-      "target": "smcpharma_handoff_what_worked_what_didn_t",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/HANDOFF.md",
-      "source_location": "L21",
-      "weight": 1.0,
-      "source": "smcpharma_handoff_handoff_st_marks_pharmacy_website_stmarks_web",
-      "target": "smcpharma_handoff_work_scope_what_this_session_set_out_to_do",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/McKeevers-Competitive-Analysis.md",
-      "source_location": "L1",
-      "weight": 1.0,
-      "source": "smcpharma_mckeevers_competitive_analysis",
-      "target": "smcpharma_mckeevers_competitive_analysis_mckeevers_chemists_competitive_analysis_services_revenue",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/McKeevers-Competitive-Analysis.md",
-      "source_location": "L67",
-      "weight": 1.0,
-      "source": "smcpharma_mckeevers_competitive_analysis_mckeevers_chemists_competitive_analysis_services_revenue",
-      "target": "smcpharma_mckeevers_competitive_analysis_checklist",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/McKeevers-Competitive-Analysis.md",
-      "source_location": "L61",
-      "weight": 1.0,
-      "source": "smcpharma_mckeevers_competitive_analysis_mckeevers_chemists_competitive_analysis_services_revenue",
-      "target": "smcpharma_mckeevers_competitive_analysis_decisions_needed_saeed",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/McKeevers-Competitive-Analysis.md",
-      "source_location": "L49",
-      "weight": 1.0,
-      "source": "smcpharma_mckeevers_competitive_analysis_mckeevers_chemists_competitive_analysis_services_revenue",
-      "target": "smcpharma_mckeevers_competitive_analysis_gaps_in_this_data_be_aware",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/McKeevers-Competitive-Analysis.md",
-      "source_location": "L57",
-      "weight": 1.0,
-      "source": "smcpharma_mckeevers_competitive_analysis_mckeevers_chemists_competitive_analysis_services_revenue",
-      "target": "smcpharma_mckeevers_competitive_analysis_next_steps",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/McKeevers-Competitive-Analysis.md",
-      "source_location": "L64",
-      "weight": 1.0,
-      "source": "smcpharma_mckeevers_competitive_analysis_mckeevers_chemists_competitive_analysis_services_revenue",
-      "target": "smcpharma_mckeevers_competitive_analysis_open_questions",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/McKeevers-Competitive-Analysis.md",
-      "source_location": "L16",
-      "weight": 1.0,
-      "source": "smcpharma_mckeevers_competitive_analysis_mckeevers_chemists_competitive_analysis_services_revenue",
-      "target": "smcpharma_mckeevers_competitive_analysis_the_revenue_ranking_highest_first",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/McKeevers-Competitive-Analysis.md",
-      "source_location": "L35",
-      "weight": 1.0,
-      "source": "smcpharma_mckeevers_competitive_analysis_mckeevers_chemists_competitive_analysis_services_revenue",
-      "target": "smcpharma_mckeevers_competitive_analysis_what_this_tells_us_about_their_strategy",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/McKeevers-Competitive-Analysis.md",
-      "source_location": "L10",
-      "weight": 1.0,
-      "source": "smcpharma_mckeevers_competitive_analysis_mckeevers_chemists_competitive_analysis_services_revenue",
-      "target": "smcpharma_mckeevers_competitive_analysis_who_they_are",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/PRODUCT.md",
-      "source_location": "L1",
-      "weight": 1.0,
-      "source": "smcpharma_product",
-      "target": "smcpharma_product_product",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/PRODUCT.md",
-      "source_location": "L37",
-      "weight": 1.0,
-      "source": "smcpharma_product_product",
-      "target": "smcpharma_product_accessibility_inclusion",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/PRODUCT.md",
-      "source_location": "L21",
-      "weight": 1.0,
-      "source": "smcpharma_product_product",
-      "target": "smcpharma_product_anti_references",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/PRODUCT.md",
-      "source_location": "L15",
-      "weight": 1.0,
-      "source": "smcpharma_product_product",
-      "target": "smcpharma_product_brand_personality",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/PRODUCT.md",
-      "source_location": "L29",
-      "weight": 1.0,
-      "source": "smcpharma_product_product",
-      "target": "smcpharma_product_design_principles",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/PRODUCT.md",
-      "source_location": "L11",
-      "weight": 1.0,
-      "source": "smcpharma_product_product",
-      "target": "smcpharma_product_product_purpose",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/PRODUCT.md",
-      "source_location": "L3",
-      "weight": 1.0,
-      "source": "smcpharma_product_product",
-      "target": "smcpharma_product_register",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/PRODUCT.md",
-      "source_location": "L7",
-      "weight": 1.0,
-      "source": "smcpharma_product_product",
-      "target": "smcpharma_product_users",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/PROJECT_MEMORY.md",
-      "source_location": "L2",
-      "weight": 1.0,
-      "source": "smcpharma_project_memory",
-      "target": "smcpharma_project_memory_fast_snapshot_of_where_we_are_read_first_every_session",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/PROJECT_MEMORY.md",
-      "source_location": "L4",
-      "weight": 1.0,
-      "source": "smcpharma_project_memory",
-      "target": "smcpharma_project_memory_last_updated_2026_07_03_evening_go_live_on_real_domain",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/PROJECT_MEMORY.md",
-      "source_location": "L1",
-      "weight": 1.0,
-      "source": "smcpharma_project_memory",
-      "target": "smcpharma_project_memory_project_memory_st_marks_pharmacy_website_stmarks_web",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/PROJECT_MEMORY.md",
-      "source_location": "L3",
-      "weight": 1.0,
-      "source": "smcpharma_project_memory",
-      "target": "smcpharma_project_memory_update_at_every_session_end_and_whenever_something_material_changes_mid_session",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/PROJECT_MEMORY.md",
-      "source_location": "L77",
-      "weight": 1.0,
-      "source": "smcpharma_project_memory_last_updated_2026_07_03_evening_go_live_on_real_domain",
-      "target": "smcpharma_project_memory_blockers",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/PROJECT_MEMORY.md",
-      "source_location": "L69",
-      "weight": 1.0,
-      "source": "smcpharma_project_memory_last_updated_2026_07_03_evening_go_live_on_real_domain",
-      "target": "smcpharma_project_memory_confirmed_facts_2026_06_30_from_saeed",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/PROJECT_MEMORY.md",
-      "source_location": "L28",
-      "weight": 1.0,
-      "source": "smcpharma_project_memory_last_updated_2026_07_03_evening_go_live_on_real_domain",
-      "target": "smcpharma_project_memory_how_it_is_built_important_not_what_the_docx_plan_says",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/PROJECT_MEMORY.md",
-      "source_location": "L81",
-      "weight": 1.0,
-      "source": "smcpharma_project_memory_last_updated_2026_07_03_evening_go_live_on_real_domain",
-      "target": "smcpharma_project_memory_last_commit",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/PROJECT_MEMORY.md",
-      "source_location": "L61",
-      "weight": 1.0,
-      "source": "smcpharma_project_memory_last_updated_2026_07_03_evening_go_live_on_real_domain",
-      "target": "smcpharma_project_memory_open_tasks_next",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/PROJECT_MEMORY.md",
-      "source_location": "L47",
-      "weight": 1.0,
-      "source": "smcpharma_project_memory_last_updated_2026_07_03_evening_go_live_on_real_domain",
-      "target": "smcpharma_project_memory_pending_saeed_approvals",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/PROJECT_MEMORY.md",
-      "source_location": "L6",
-      "weight": 1.0,
-      "source": "smcpharma_project_memory_last_updated_2026_07_03_evening_go_live_on_real_domain",
-      "target": "smcpharma_project_memory_status",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "SMCPHARMA/PROJECT_MEMORY.md",
-      "source_location": "L20",
-      "weight": 1.0,
-      "source": "smcpharma_project_memory_last_updated_2026_07_03_evening_go_live_on_real_domain",
-      "target": "smcpharma_project_memory_what_is_built_and_live",
-      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -57758,5 +55264,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "a168af820572c9935fac25016c564d885ac024c6"
+  "built_at_commit": "88a350870278ac14dfe8463ea36f356cf0afb2a3"
 }

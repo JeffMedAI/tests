@@ -137,12 +137,18 @@ Full detail: docs/reports/test-run-20260619-172712.md
 ```
 RANK | TASK                                              | AGENT    | STATUS
 -----+---------------------------------------------------+----------+------------------
- 1   | Remove legacy static-salt password fallback       | Backend  | PENDING
+ 1   | Remove legacy static-salt password fallback       | Backend  | PENDING (NOTE: already done in auth.py — verify before removing from list)
  2   | n8n API key rotation                              | DevOps   | Before go-live
  3   | Set JEFF_WEBHOOK_SECRET                           | DevOps   | Before live traffic
  4   | Run full Playwright E2E suite post-UX changes     | Test     | Next session
- 5   | Multi-tenancy tenant_id                           | Database | Phase 2
+ 5   | Split main.py into modules (refactor/split-main-py branch) | Backend | PENDING — plan written, not started
+ 6   | Multi-tenancy tenant_id                           | Database | Phase 2
 ```
+
+### Completed this session (2026-07-08)
+- gemma4:e4b (9.6 GB) installed — confirmed fallback model available (commit a168af8)
+- SQLite hot backup script: scripts/backup/backup_db.py — 22/22 TDD tests GREEN, Task Scheduler entry JeffLocal-SQLiteBackup at 02:15 daily (commit a168af8)
+- graphify updated: 1801 nodes, 3785 edges
 
 ### n8n fix notes (2026-07-08)
 - Root cause: 3 endpoints called by n8n had no auth bypass → 302 HTML redirect → n8n crash
@@ -215,7 +221,7 @@ C:\JeffLocal\config\model_monitoring.json
 Repo:    https://github.com/JeffMedAI/tests
 Branch:  sandbox (production code)
 Main:    merged 2026-06-19 (sandbox → main via worktree)
-Latest:  9fc2129 memory: session end protocol 2026-07-07 18:00
+Latest:  a168af8 feat: SQLite hot backup — TDD tests, script, Task Scheduler entry
 test_user: id=5, role=staff, username=test_user (Playwright E2E)
 ```
 
