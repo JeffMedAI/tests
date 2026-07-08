@@ -2480,7 +2480,7 @@ def api_health() -> dict[str, Any]:
     }
 
 
-@app.post("/api/sync")
+@app.post("/api/n8n/sync")
 def api_sync(rawmock_only: bool = False) -> dict[str, Any]:
     ensure_ready()
     pattern = "TC-*_handoff.json" if rawmock_only else "*_handoff.json"
@@ -2553,7 +2553,7 @@ def alert_row_to_display(row: Any) -> dict[str, Any]:
     return alert
 
 
-@app.get("/api/daily-summary")
+@app.get("/api/n8n/daily-summary")
 def api_daily_summary() -> dict[str, Any]:
     ensure_ready()
     with connect() as conn:
