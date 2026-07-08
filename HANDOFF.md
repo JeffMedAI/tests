@@ -11,45 +11,62 @@
 
 ---
 
-**Last session:** — (SEED — not yet written from a real session; overwrite at next close)
-**Closed by:** —
-**Last commit:** run `git log --oneline -1`
+**Last session:** 2026-07-08 09:51
+**Closed by:** Claude (Sonnet 4.6)
+**Last commit:** (run `git log --oneline -1`)
 **Production:** dashboard.app-avamed.uk (Cloudflare tunnel → localhost:8765), watchdog-managed, LIVE
 
 ---
 
-## WORK SCOPE (what this session set out to do)
+## WORK SCOPE
 
-_Awaiting first real handoff. At the next session close, replace this with what the session
-set out to do._
+Fix n8n workflow execution failures. Both WF03 (Red Flag Scan) and WF04 (Overdue Scan) were failing with `status=error, finished=false` because n8n HTTP nodes were hitting login-protected endpoints that returned 302 HTML redirects instead of JSON.
 
 ## WHAT WORKED / WHAT DIDN'T
 
-_Awaiting first real handoff. Record the wins and the dead-ends here so the next agent does
-not repeat mistakes. Do not drop the "didn't" side — it is the point of this file._
+**Worked:**
+- Route rename pattern (`/api/xxx` → `/api/n8n/xxx`) — the `/api/n8n/` prefix is already in `AUTH_PUBLIC_PREFIXES` at main.py:101, so renamed routes bypass auth without any new allowlist changes
+- Python script (`fix_n8n_auth_urls.py`) to update n8n workflow nodes via API — bypassed the n8n MCP tool which always fails with "additional properties" schema errors
+- WF03 confirmed success at 08:50 UTC after all 3 routes were renamed
 
-Durable gotchas already known (keep these until proven otherwise):
-- PRODUCTION is always `C:\JeffLocal\dashboard\` (port 8765). The git branch is named "sandbox"
-  but the branch name is NOT a file path — always verify the real path before editing.
-- LLM output must NEVER set verification_status, safe_to_queue, priority, or any patient-identity
-  field — those are deterministic-code-only. Any drift is a critical STOP; escalate to Saeed.
-- 5 items sit in the deadletter queue; no replay tooling exists yet (known tech debt).
+**Didn't work / Gotchas:**
+- n8n MCP `update_workflow` tool: always fails — do NOT use it. Use direct HTTP PUT via Python (pattern in `fix_n8n_auth_urls.py`)
+- Initial fix only renamed 2 routes (`/api/red-flags` and `/api/overdue`). WF03 then failed on a SECOND node — `Log Red Flag Alert` calling `/api/alerts/log`. Had to fix that too. Lesson: when fixing auth on a workflow, audit ALL HTTP nodes in that workflow, not just the first failing one
+- WF04 had same `Log Overdue Alert` node calling `/api/alerts/log` — fixed in same pass
+
+**Files changed:**
+- `dashboard/app/main.py` — 3 route decorators renamed (lines 2497, 2520, 3390)
+- `scripts/service_control/fix_n8n_auth_urls.py` — new file, ran once to update n8n
 
 ## HOW THE SESSION CLOSED
 
-_Awaiting first real handoff. Record: commit hash, push, restore tag created, memory + session
-log written, any deploy/watchdog state._
+- WF03 verified SUCCESS (08:50 UTC execution, `status=success finished=True`)
+- WF04 fix applied but not yet confirmed (next run ~09:00 UTC, same fix pattern)
+- Dashboard up, all 3 new routes returning 200
+- Session log written, HANDOFF written, PROJECT_MEMORY updated
+- Restore tag and commit to follow
 
 ## NEXT + BLOCKERS
 
-**Next actions:** _pull the top 2–3 from PROJECT_MEMORY.md open tasks at next close._
+**Next actions:**
+1. Confirm WF04 success on next scheduled run (09:00 UTC)
+2. Remove legacy static-salt password fallback (Backend Task #1)
+3. Saeed to provide real staff accounts → pilot go-live unblocked
 
-**Blockers:** _list, or "None"._
+**Blockers:**
+- No real staff accounts (Saeed must provide names, roles, emails)
+- Governance gates 1-7 unsigned
+- JEFF_WEBHOOK_SECRET not set (required before any live Jeff traffic)
 
-**Pending Saeed:** _items needing his explicit approval, or "None"._
+**Pending Saeed:**
+- Staff account details
+- Governance gates 1-7 sign-off
+- JEFF_WEBHOOK_SECRET in Windows env
+- n8n API key rotation ("later")
 
-Durable context (until it changes):
-- Pilot site (Churchtown Medical Centre, Southport) NOT yet live with real patients; governance
-  gates 1–7 unsigned. Do not assume the pilot is active.
-- NHS SBS Framework (SBS10523) and DSPT (deadline 30 June 2026) are live commercial obligations —
-  check current date against deadlines when planning strategy tasks.
+**Durable gotchas (keep until proven otherwise):**
+- PRODUCTION is always `C:\JeffLocal\dashboard\` (port 8765). Git branch named "sandbox" — irrelevant to paths.
+- n8n MCP `update_workflow` always fails. Use Python HTTP PUT script instead.
+- When fixing n8n auth, audit ALL HTTP nodes in a workflow — not just the first failing one.
+- LLM output must NEVER set verification_status, safe_to_queue, priority, or patient-identity fields.
+- 5 items in deadletter queue; no replay tooling yet.

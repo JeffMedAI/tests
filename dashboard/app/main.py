@@ -2494,7 +2494,7 @@ def api_sync(rawmock_only: bool = False) -> dict[str, Any]:
     }
 
 
-@app.get("/api/red-flags")
+@app.get("/api/n8n/red-flags")
 def api_red_flags() -> dict[str, Any]:
     ensure_ready()
     red_flag_sql, red_flag_params = active_red_flag_clause()
@@ -2517,7 +2517,7 @@ def api_red_flags() -> dict[str, Any]:
     }
 
 
-@app.get("/api/overdue")
+@app.get("/api/n8n/overdue")
 def api_overdue(threshold_hours: float = 24) -> dict[str, Any]:
     ensure_ready()
     cutoff = datetime.now(timezone.utc).timestamp() - (threshold_hours * 3600)
@@ -3387,7 +3387,7 @@ def write_alert_jsonl(alert: dict[str, Any]) -> None:
         handle.write(json.dumps(alert, sort_keys=True) + "\n")
 
 
-@app.post("/api/alerts/log")
+@app.post("/api/n8n/alerts/log")
 def api_alert_log(payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
     ensure_ready()
     alert = sanitize_alert_payload(payload)

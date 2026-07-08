@@ -1,6 +1,6 @@
 ﻿# PROJECT MEMORY â€” JeffLocal
 # READ THIS FIRST at every session start, before doing anything else.
-# Last updated: 2026-07-06 (auto-updated 18:00)
+# Last updated: 2026-07-07 (auto-updated 18:00)
 # Maintained by: Claude (update at end of every session)
 
 ---
@@ -75,7 +75,7 @@ strategy | Docs, reports, governance, marketing
 
 ---
 
-## CURRENT STATUS -- 2026-07-06
+## CURRENT STATUS -- 2026-07-08
 
 ### What is working
 - Production dashboard LIVE at dashboard.app-avamed.uk (port 8765)
@@ -87,6 +87,8 @@ strategy | Docs, reports, governance, marketing
 - **Full pipeline test run 2026-06-19**: 5 fresh cases (CSV-FRESH-20260619-1315) sent end-to-end, all 5 resolved via staff simulation. Safety invariants confirmed — LLM cannot override priority or verification_status.
 - All security/quality fixes (Phase 1+2+3) APPLIED and in production (main branch)
 - test_user account in DB (id=5, role=staff, PBKDF2 hash, test_pass)
+- **n8n WF03 (Red Flag Scan) FIXED 2026-07-08** -- now succeeds on schedule (08:50 UTC confirmed)
+- **n8n WF04 (Overdue Scan) FIXED 2026-07-08** -- same fix applied, next run 09:00 UTC
 
 ### Bugs found in 2026-06-19 pipeline test run
 1. **verification_status null** — REANALYSED 2026-06-23. Handoff JSON DOES contain `verification_status = "matched"` (confirmed from actual test JSON files). Pipeline and importer both correct. UX badge added 2026-06-23.
@@ -141,6 +143,16 @@ RANK | TASK                                              | AGENT    | STATUS
  4   | Run full Playwright E2E suite post-UX changes     | Test     | Next session
  5   | Multi-tenancy tenant_id                           | Database | Phase 2
 ```
+
+### n8n fix notes (2026-07-08)
+- Root cause: 3 endpoints called by n8n had no auth bypass → 302 HTML redirect → n8n crash
+- Fix: renamed all 3 to `/api/n8n/` prefix (covered by AUTH_PUBLIC_PREFIXES at main.py:101)
+  - GET /api/red-flags → /api/n8n/red-flags (main.py:2497)
+  - GET /api/overdue → /api/n8n/overdue (main.py:2520)
+  - POST /api/alerts/log → /api/n8n/alerts/log (main.py:3390)
+- n8n workflow nodes updated via scripts/service_control/fix_n8n_auth_urls.py
+- WARNING: n8n MCP update_workflow always fails — always use Python HTTP PUT script
+- WARNING: when fixing n8n auth, audit ALL HTTP nodes in a workflow (not just the first)
 DONE 2026-06-26:
 - Investigated missing session log issue. Root cause: auto-generated log used plain prose, brief parser needs bullets.
 - Fixed strategy_daily.ps1: Evening mode now auto-writes bullet-format session log if no human session ran.
@@ -203,7 +215,7 @@ C:\JeffLocal\config\model_monitoring.json
 Repo:    https://github.com/JeffMedAI/tests
 Branch:  sandbox (production code)
 Main:    merged 2026-06-19 (sandbox → main via worktree)
-Latest:  7242911 memory: session end protocol 2026-07-05 18:00 (no new commits 2026-07-06)
+Latest:  9fc2129 memory: session end protocol 2026-07-07 18:00
 test_user: id=5, role=staff, username=test_user (Playwright E2E)
 ```
 
