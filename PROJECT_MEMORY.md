@@ -1,6 +1,6 @@
 ﻿# PROJECT MEMORY â€” JeffLocal
 # READ THIS FIRST at every session start, before doing anything else.
-# Last updated: 2026-07-09 (auto-updated 18:00)
+# Last updated: 2026-07-10 (auto-updated 18:00)
 # Maintained by: Claude (update at end of every session)
 
 ---
@@ -75,7 +75,7 @@ strategy | Docs, reports, governance, marketing
 
 ---
 
-## CURRENT STATUS -- 2026-07-09
+## CURRENT STATUS -- 2026-07-10
 
 ### What is working
 - Production dashboard LIVE at dashboard.app-avamed.uk (port 8765)
@@ -221,7 +221,7 @@ C:\JeffLocal\config\model_monitoring.json
 Repo:    https://github.com/JeffMedAI/tests
 Branch:  sandbox (production code) — [UNVERIFIED — confirm before proceeding] actual current branch checked out is feature/refactor-2-5-6, see 2026-07-08-1800 session log
 Main:    merged 2026-06-19 (sandbox → main via worktree)
-Latest:  ccca75d memory: session end protocol 2026-07-08 18:00 (PROJECT_MEMORY update) — no new commits 2026-07-09
+Latest:  ec30e0a memory: session end protocol 2026-07-09 18:00 — no new commits 2026-07-10 (flagged: large uncommitted diff + stray untracked files in working tree, see 2026-07-10-1800 session log)
 test_user: id=5, role=staff, username=test_user (Playwright E2E)
 ```
 
@@ -289,31 +289,4 @@ Monitoring:   Watchdog (restarts services if down, checks every 60s)
 2. Update this file â€” status, tasks, git state
 3. git add PROJECT_MEMORY.md docs\sessions\ && git commit -m "memory: session YYYY-MM-DD"
 4. git push origin HEAD
-5. Tell Saeed: "Session saved. Memory updated. Ready to pick up tomorrow."
-```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+5. Tell Saeed: "Session saved. Memory updated. Rea
