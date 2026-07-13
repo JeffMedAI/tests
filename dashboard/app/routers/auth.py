@@ -29,6 +29,7 @@ from ..auth import (
 from ..consts import SESSION_COOKIE
 from ..db import connect
 from ..helpers import current_staff_from_request, ensure_ready
+from ..templates_config import templates
 
 router = APIRouter()
 
@@ -37,7 +38,6 @@ MAX_FAILED_ATTEMPTS = 5
 
 @router.get("/login")
 def login_page(request: Request, next: str = "/", error: str = "", info: str = ""):
-    from ..main import templates  # late import to avoid circular dependency
     safe_next = next if next and next.startswith("/") and not next.startswith("//") else "/"
     token = request.cookies.get(SESSION_COOKIE)
     if token:

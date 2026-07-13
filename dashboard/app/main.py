@@ -19,7 +19,6 @@ from uuid import uuid4
 from fastapi import Body, Depends, FastAPI, Form, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
 
 from .audit import write_audit_event
 from .consts import (
@@ -99,6 +98,7 @@ from .models import (
 
 
 from .routers import auth as auth_router
+from .templates_config import templates as _templates_singleton
 
 _log = logging.getLogger(__name__)
 
@@ -109,8 +109,7 @@ SERVICE_START_SCRIPT = ROOT_DIR / "scripts" / "service_control" / "start_jeffloc
 
 app = FastAPI(title="JeffLocal Staff Dashboard")
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
-templates = Jinja2Templates(directory=BASE_DIR / "templates")
-templates.env.filters["display_ts"] = format_display_timestamp
+templates = _templates_singleton
 app.include_router(auth_router.router)
 
 
