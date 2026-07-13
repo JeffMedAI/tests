@@ -11,6 +11,7 @@ if str(FIXTURE_DIR) not in sys.path:
 
 from fastapi.testclient import TestClient
 
+import app.alert_queries as alert_queries_module
 import app.audit as audit_module
 import app.db as db_module
 import app.main as main_module
@@ -88,6 +89,7 @@ def make_client(tmp_path, monkeypatch, login_as_name="Admin Demo"):
     monkeypatch.setattr(db_module, "DB_PATH", db_path)
     monkeypatch.setattr(audit_module, "AUDIT_DIR", tmp_path / "audits")
     monkeypatch.setattr(main_module, "ALERT_DIR", tmp_path / "alerts")
+    monkeypatch.setattr(alert_queries_module, "ALERT_DIR", tmp_path / "alerts")
     seed_rawmock_db(db_path)
     client = TestClient(app)
     if login_as_name:
