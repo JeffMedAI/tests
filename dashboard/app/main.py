@@ -76,6 +76,15 @@ from .auth import (
     verify_pin,
 )
 from .db import DB_PATH, connect, init_db, row_to_dict
+from .helpers import (
+    current_staff_from_request,
+    ensure_ready,
+    normalize_staff_name,
+    require_staff_edit,
+    staff_can_edit,
+    staff_can_manage,
+    staff_display,
+)
 from .importer import import_handoffs
 from .models import (
     ALLOWED_STATUSES,
@@ -434,11 +443,6 @@ async def profile_sign_out_all(request: Request):
     return resp
 
 
-
-
-def ensure_ready() -> None:
-    with connect() as conn:
-        init_db(conn)
 
 
 async def _daily_session_purge() -> None:
@@ -864,10 +868,6 @@ def calculate_age_label(dob: object, age: object = None) -> str:
     return str(years) if years >= 0 else ""
 
 
-def normalize_staff_name(value: object) -> str:
-    return str(value or "").strip() or "demo_user"
-
-
 def get_staff_users(conn, active_only: bool = True) -> list[dict[str, Any]]:
     where = "WHERE active = 1" if active_only else ""
     rows = conn.execute(
@@ -897,40 +897,6 @@ def get_staff_any_by_id(conn, staff_id: object) -> dict[str, Any] | None:
     return row_to_dict(row)
 
 
-def current_staff_from_request(request: Request | None, conn) -> dict[str, Any]:
-    if request:
-        token = request.cookies.get(SESSION_COOKIE)
-        if token:
-            import sqlite3 as _sqlite3
-            conn.row_factory = _sqlite3.Row
-            user = get_session_user(conn, token)
-            if user:
-                return {
-                    "id": user.get("id") or user.get("user_id"),
-                    "display_name": user.get("display_name", ""),
-                    "email": user.get("email", ""),
-                    "role": user.get("role", "staff"),
-                    "active": 1,
-                    "username": user.get("username", ""),
-                }
-    return {"id": None, "display_name": "demo_user", "email": "", "role": "staff", "active": 1, "demo_fallback": True}
-
-
-def staff_can_edit(staff: dict[str, Any]) -> bool:
-    return staff.get("role") in {"admin", "staff"}
-
-
-def staff_can_manage(staff: dict[str, Any]) -> bool:
-    return staff.get("role") == "admin"
-
-
-def staff_display(staff: dict[str, Any] | None) -> str:
-    return normalize_staff_name((staff or {}).get("display_name"))
-
-
-def require_staff_edit(staff: dict[str, Any]) -> None:
-    if not staff_can_edit(staff):
-        raise HTTPException(status_code=403, detail="Read-only staff cannot update cases.")
 
 
 def require_staff_admin(staff: dict[str, Any]) -> None:
