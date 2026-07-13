@@ -58,3 +58,8 @@ def staff_display(staff: dict[str, Any] | None) -> str:
 def require_staff_edit(staff: dict[str, Any]) -> None:
     if not staff_can_edit(staff):
         raise HTTPException(status_code=403, detail="Read-only staff cannot update cases.")
+
+
+def require_staff_admin(staff: dict[str, Any]) -> None:
+    if not staff_can_manage(staff):
+        raise HTTPException(status_code=403, detail="Admin staff required.")
