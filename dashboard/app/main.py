@@ -22,6 +22,34 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from .audit import write_audit_event
+from .consts import (
+    AUTH_PUBLIC_PATHS,
+    AUTH_PUBLIC_PREFIXES,
+    DATE_RANGE_OPTIONS,
+    DEFAULT_ACTION_NEEDED,
+    DEFAULT_OUTCOME_NOTES,
+    DEMO_CALL_PREFIXES,
+    IDENTITY_REVIEW_STATUSES,
+    IN_PROGRESS_STATUS_NAMES,
+    LOCAL_SERVICE_URLS,
+    LOCKED_DETAIL_FIELDS,
+    LOCKED_FIELD_CATEGORIES,
+    MODAL_ALERT_TYPE_KEYWORDS,
+    N8NTEST_ARCHIVE_FOLDERS,
+    NON_MODAL_ALERT_TYPE_KEYWORDS,
+    OPEN_BATCH_STATUSES,
+    REQUEST_TYPE_CANONICAL,
+    REQUEST_TYPE_CHIPS,
+    REQUEST_TYPE_LABELS,
+    RESOLVED_STATUSES,
+    SAFE_MATCH_STATUSES,
+    SESSION_COOKIE,
+    SORT_OPTIONS,
+    STAFF_ROLES,
+    STAFF_REVIEW_STATUS_NAMES,
+    SUMMARY_REQUEST_TYPES,
+    TERMINAL_CASE_STATUSES,
+)
 from .observability import (
     HealthStatus,
     StructuredFormatter,
@@ -66,23 +94,7 @@ _log = logging.getLogger(__name__)
 BASE_DIR = Path(__file__).resolve().parents[1]
 ROOT_DIR = Path(os.environ["JEFFLOCAL_ROOT_DIR"]) if os.environ.get("JEFFLOCAL_ROOT_DIR") else BASE_DIR.parent
 ALERT_DIR = ROOT_DIR / "logs" / "alerts"
-N8NTEST_ARCHIVE_FOLDERS = [
-    "queue/encrypted_raw",
-    "queue/incoming",
-    "queue/processed",
-    "queue/failed",
-    "queue/deadletter",
-    "outputs/handoff_json",
-    "outputs/debug",
-    "outputs/ollama_raw",
-    "logs/transcripts",
-]
 SERVICE_START_SCRIPT = ROOT_DIR / "scripts" / "service_control" / "start_jefflocal_services.ps1"
-LOCAL_SERVICE_URLS = {
-    "dashboard": "http://127.0.0.1:8765",  # production dashboard port (display label only)
-    "n8n": "http://localhost:5678",
-    "voice_agent": "local webhook/test intake",
-}
 
 app = FastAPI(title="JeffLocal Staff Dashboard")
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
@@ -103,9 +115,6 @@ def _nav_alert_count() -> int:
 
 templates.env.globals["nav_alert_count"] = _nav_alert_count
 
-SESSION_COOKIE = "jefflocal_session"
-AUTH_PUBLIC_PATHS = {"/login", "/logout", "/forgot", "/reset", "/favicon.ico"}
-AUTH_PUBLIC_PREFIXES = ("/static/", "/api/health", "/api/n8n/")
 
 
 def _is_public_path(path: str) -> bool:
@@ -425,163 +434,6 @@ async def profile_sign_out_all(request: Request):
     return resp
 
 
-LOCKED_DETAIL_FIELDS = [
-    ("Open Details", "open_details"),
-    ("Timestamp", "timestamp"),
-    ("Last Updated", "last_updated"),
-    ("Call ID", "call_id"),
-    ("Request Type", "request_type"),
-    ("Patient Name", "patient_name"),
-    ("DOB", "dob"),
-    ("Postcode", "postcode"),
-    ("Gender", "gender"),
-    ("Age", "age"),
-    ("Callback Number", "callback_number"),
-    ("Verification Status", "verification_status"),
-    ("Verification Reason", "verification_reason"),
-    ("Matched Patient Ref", "matched_patient_ref"),
-    ("EMIS Number", "emis_number"),
-    ("NHS Number", "nhs_number"),
-    ("Top Candidate Name", "top_candidate_name"),
-    ("Priority", "priority"),
-    ("Safe To Queue", "safe_to_queue"),
-    ("Task Title", "task_title"),
-    ("Task Body", "task_body"),
-    ("Staff Task Title", "staff_task_title"),
-    ("Staff Task Body", "staff_task_body"),
-    ("Call Summary", "call_summary"),
-    ("AI Summary", "ai_summary"),
-    ("Patient Record Note", "patient_record_note"),
-    ("Call Duration Seconds", "call_duration_seconds"),
-    ("Caller Sentiment", "caller_sentiment"),
-    ("Caller Difficulty", "caller_difficulty"),
-    ("Transcript Quality", "transcript_quality"),
-    ("Handoff Confidence", "handoff_confidence"),
-    ("Extraction Confidence", "extraction_confidence"),
-    ("Staff Review Required", "staff_review_required"),
-    ("Red Flags Present", "red_flags_present"),
-    ("Resolved At", "resolved_at"),
-    ("Last Edited At", "last_edited_at"),
-    ("Turnaround Minutes", "turnaround_minutes"),
-]
-
-LOCKED_FIELD_CATEGORIES = [
-    {
-        "title": "Call Details",
-        "fields": ["call_id", "timestamp", "last_updated", "call_duration_seconds", "open_details"],
-    },
-    {
-        "title": "Patient Identity",
-        "fields": ["patient_name", "dob", "age", "gender", "postcode", "callback_number"],
-    },
-    {
-        "title": "Verification & Matching",
-        "fields": ["verification_status", "verification_reason", "matched_patient_ref", "emis_number", "nhs_number", "top_candidate_name"],
-    },
-    {
-        "title": "Request & Routing",
-        "fields": ["request_type", "priority", "safe_to_queue", "staff_review_required", "red_flags_present"],
-    },
-    {
-        "title": "Task Content",
-        "fields": ["task_title", "task_body", "staff_task_title", "staff_task_body"],
-    },
-    {
-        "title": "AI & Quality Signals",
-        "fields": ["ai_summary", "call_summary", "patient_record_note", "caller_sentiment", "caller_difficulty", "transcript_quality", "handoff_confidence", "extraction_confidence"],
-    },
-    {
-        "title": "Audit & Timing",
-        "fields": ["resolved_at", "last_edited_at", "turnaround_minutes"],
-    },
-]
-
-SORT_OPTIONS = [
-    {"value": "newest", "label": "Newest first"},
-    {"value": "oldest", "label": "Oldest first"},
-    {"value": "priority", "label": "Priority"},
-    {"value": "unresolved", "label": "Unresolved first"},
-]
-
-RESOLVED_STATUSES = ("Resolved", "Unable to Complete")
-TERMINAL_CASE_STATUSES = (
-    "resolved",
-    "closed",
-    "completed",
-    "complete",
-    "cancelled",
-    "canceled",
-    "archived",
-    "duplicate",
-    "dismissed",
-    "unable to complete",
-)
-STAFF_REVIEW_STATUS_NAMES = ("staff review", "needs review", "urgent review", "escalated")
-IN_PROGRESS_STATUS_NAMES = ("in progress", "active processing")
-IDENTITY_REVIEW_STATUSES = {
-    "possible_match", "possible_match_weak", "no_match", "insufficient_data", "needs_review",
-    # Additional statuses that require staff identity verification before processing
-    "partial", "unverified", "unable to verify", "failed",
-}
-SAFE_MATCH_STATUSES = {"matched", "exact_match", "verified_match"}
-OPEN_BATCH_STATUSES = {"New", "In Progress", "Waiting for Patient", "Waiting for GP"}
-DEMO_CALL_PREFIXES = ("TC-", "RX-TEST", "PRODSIM", "DEMO", "GPDEMO", "GPTDEMO", "AVA-TEST")
-MODAL_ALERT_TYPE_KEYWORDS = ("red flag", "system error", "error", "missing", "required field", "validation")
-NON_MODAL_ALERT_TYPE_KEYWORDS = ("daily summary", "summary")
-STAFF_ROLES = {"admin", "staff", "readonly"}
-DEFAULT_OUTCOME_NOTES = "Processed according to JeffLocal workflow."
-DEFAULT_ACTION_NEEDED = "Review and process according to local workflow."
-REQUEST_TYPE_LABELS = {
-    "prescription": "Prescription",
-    "sick_note": "Sick Note",
-    "referral": "Referral",
-    "test_result": "Test Result",
-    "appointment_redirect": "Appointment",
-    "appointment": "Appointment",
-    "admin": "Admin",
-    "unknown": "Unknown",
-}
-
-# Normalise pipeline subtypes and legacy values to the canonical set above.
-# Raw DB value is preserved; only display (label + CSS class) is normalised.
-REQUEST_TYPE_CANONICAL = {
-    "prescription_request": "prescription",
-    "medication_query":     "prescription",
-    "sick_note_request":    "sick_note",
-    "referral_chase":       "referral",
-    "test_results_enquiry": "test_result",
-    "appointment_request":  "appointment_redirect",
-    "appointment":          "appointment_redirect",
-    "admin_callback":       "admin",
-    "urgent_callback":      "appointment_redirect",
-    "needs_review":         "unknown",
-}
-REQUEST_TYPE_CHIPS = [
-    ("prescription", "Prescription"),
-    ("sick_note", "Sick Note"),
-    ("referral", "Referral"),
-    ("test_result", "Test Result"),
-    ("appointment_redirect", "Appointment"),
-    ("admin", "Admin"),
-    ("unknown", "Unknown"),
-]
-
-DATE_RANGE_OPTIONS = [
-    {"value": "today", "label": "Today"},
-    {"value": "7d", "label": "Last 7 days"},
-    {"value": "30d", "label": "Last 30 days"},
-    {"value": "all", "label": "All"},
-]
-
-SUMMARY_REQUEST_TYPES = [
-    ("prescription", "Prescription"),
-    ("sick_note", "Sick Note"),
-    ("referral", "Referral"),
-    ("test_result", "Test Result"),
-    ("appointment_redirect", "Appointment"),
-    ("admin", "Admin"),
-    ("unknown", "Unknown"),
-]
 
 
 def ensure_ready() -> None:

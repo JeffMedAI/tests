@@ -1,6 +1,6 @@
 ﻿# PROJECT MEMORY â€” JeffLocal
 # READ THIS FIRST at every session start, before doing anything else.
-# Last updated: 2026-07-11 (auto-updated 18:00)
+# Last updated: 2026-07-12 (auto-updated 18:00)
 # Maintained by: Claude (update at end of every session)
 
 ---
@@ -75,7 +75,7 @@ strategy | Docs, reports, governance, marketing
 
 ---
 
-## CURRENT STATUS -- 2026-07-11
+## CURRENT STATUS -- 2026-07-12
 
 ### What is working
 - Production dashboard LIVE at dashboard.app-avamed.uk (port 8765)
@@ -221,7 +221,7 @@ C:\JeffLocal\config\model_monitoring.json
 Repo:    https://github.com/JeffMedAI/tests
 Branch:  sandbox (production code) — [UNVERIFIED — confirm before proceeding] actual current branch checked out is feature/refactor-2-5-6, see 2026-07-08-1800 session log
 Main:    merged 2026-06-19 (sandbox → main via worktree)
-Latest:  1b10906 memory: session end protocol 2026-07-10 18:00 — no new commits 2026-07-11 (flagged: large uncommitted diff + stray untracked files in working tree, unresolved 3rd day running, see 2026-07-11-1800 session log)
+Latest:  ea0a30f memory: session end protocol 2026-07-11 18:00 — no new commits 2026-07-12 (flagged: large uncommitted diff + stray untracked files in working tree, unresolved 4th day running, see 2026-07-12-1800 session log)
 test_user: id=5, role=staff, username=test_user (Playwright E2E)
 ```
 
