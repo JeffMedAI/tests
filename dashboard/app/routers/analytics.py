@@ -140,20 +140,19 @@ def api_search(request: Request, q: str = "") -> dict[str, Any]:
         term = f"%{q.strip()}%"
         rows = conn.execute(
             """
-            SELECT call_id, patient_name, batch_id, status, priority
+            SELECT call_id, patient_name, status, priority
             FROM cases
             WHERE patient_name LIKE ?
-               OR batch_id      LIKE ?
                OR call_id       LIKE ?
             ORDER BY COALESCE(call_timestamp_sort, 0) DESC
             LIMIT 8
             """,
-            (term, term, term),
+            (term, term),
         ).fetchall()
 
     results = []
     for row in rows:
-        call_id, patient_name, batch_id, status, priority = row
+        call_id, patient_name, status, priority = row
         if patient_name and q.lower() in (patient_name or "").lower():
             results.append({
                 "type": "patient",
@@ -163,7 +162,7 @@ def api_search(request: Request, q: str = "") -> dict[str, Any]:
         else:
             results.append({
                 "type": "case",
-                "label": f"{batch_id or call_id} — {patient_name or 'Unknown'}",
+                "label": f"{call_id} — {patient_name or 'Unknown'}",
                 "url": f"/case/{call_id}",
             })
 

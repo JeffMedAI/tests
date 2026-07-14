@@ -452,15 +452,17 @@ def update_case(
                 submitted["resolved_by"] = submitted["resolved_by"] or selected_staff_name
         submitted["assigned_to"] = submitted["assigned_to"] or old.get("assigned_to") or selected_staff_name
         submitted["action_needed"] = submitted["action_needed"] or old.get("action_needed") or DEFAULT_ACTION_NEEDED
-        submitted["outcome_notes"] = submitted["outcome_notes"] or old.get("outcome_notes") or (DEFAULT_OUTCOME_NOTES if wants_resolve and mark_checked else "")
+        needs_notes = (
+            old["red_flags_present"]
+            or old["priority"] == "999 Emergency"
+            or old.get("verification_status") in IDENTITY_REVIEW_STATUSES
+        )
+        submitted["outcome_notes"] = submitted["outcome_notes"] or old.get("outcome_notes") or (
+            "" if needs_notes else (DEFAULT_OUTCOME_NOTES if wants_resolve and mark_checked else "")
+        )
 
         status_is_terminal = normalize_case_status(submitted["status"]) in TERMINAL_CASE_STATUSES
         if wants_resolve and mark_checked:
-            needs_notes = (
-                old["red_flags_present"]
-                or old["priority"] == "999 Emergency"
-                or old.get("verification_status") in IDENTITY_REVIEW_STATUSES
-            )
             if needs_notes and not submitted["outcome_notes"]:
                 detail_url = detail_case_url(call_id, safe_return_url)
                 sep = "&" if "?" in detail_url else "?"

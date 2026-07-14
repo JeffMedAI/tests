@@ -84,6 +84,7 @@ from .helpers import (
     staff_can_manage,
     staff_display,
 )
+from .alert_queries import alert_row_to_display
 from .importer import import_handoffs
 from .models import (
     ALLOWED_STATUSES,
@@ -1523,21 +1524,6 @@ def compact_workload(workload: dict[str, Any]) -> dict[str, Any]:
         "failed_safety_queue": queue.get("failed_safety_queue", queue.get("deadletter", 0)),
         "last_checked": format_display_timestamp(workload.get("timestamp")),
     }
-
-
-def clean_alert_message(message: object) -> str:
-    text = str(message or "").strip()
-    return text[1:].lstrip() if text.startswith("=") else text
-
-
-def is_modal_worthy_alert(alert_type: object, severity: object) -> bool:
-    alert_text = str(alert_type or "").strip().lower()
-    severity_text = str(severity or "").strip().lower()
-    if any(keyword in alert_text for keyword in NON_MODAL_ALERT_TYPE_KEYWORDS):
-        return False
-    if severity_text == "critical":
-        return True
-    return any(keyword in alert_text for keyword in MODAL_ALERT_TYPE_KEYWORDS)
 
 
 def demo_mode_enabled_from_config() -> bool:

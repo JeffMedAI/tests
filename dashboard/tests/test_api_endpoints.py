@@ -386,6 +386,22 @@ def test_alerts_page_renders_recent_alert_rows(tmp_path, monkeypatch):
     assert "token" not in response.text.lower()
 
 
+def test_get_urgent_attention_resolves_latest_alert_after_router_extraction(tmp_path, monkeypatch):
+    """Regression for the router-split (feature/refactor-2-5-6).
+
+    alert_row_to_display was moved to app.alert_queries, but main.get_urgent_attention
+    still referenced it without importing it. The home page ("/") calls get_urgent_attention,
+    so it raised NameError -> HTTP 500 whenever an unacknowledged critical alert existed.
+    The 323-test suite missed it because no test drove get_urgent_attention with an alert row.
+    """
+    client_context, db_path = make_client(tmp_path, monkeypatch)
+    with connect(db_path) as conn:
+        insert_alert(conn, "alert-index-regression", "critical")
+        result = main_module.get_urgent_attention(conn)
+    assert result["latest"] is not None
+    assert isinstance(result["latest"], dict)
+
+
 def test_alerts_page_severity_filter_works(tmp_path, monkeypatch):
     client_context, db_path = make_client(tmp_path, monkeypatch)
     with connect(db_path) as conn:

@@ -214,3 +214,16 @@
 **Security review:** APPROVE-WITH-NOTES. Two pre-existing latent bugs flagged for Phase 2 (watchdog fallback uses `main:app` not `app.main:app`, and a venv-bootstrap ordering bug — both dead unless the primary launcher is missing). No PII in analytics responses; SQL parameterised; safety split untouched.
 **NOT YET MERGED TO PRODUCTION:** `sandbox` is 17 commits ahead of `main` (last prod merge 2026-06-19). Production merge scope pending Saeed's decision — see session report.
 **Saeed notified:** This session
+
+---
+
+## 2026-07-14 — Bug Fix: NameError on home/requests page after router extraction (feature/refactor-2-5-6)
+**Agent:** Lead Agent (Claude Code session)
+**Approved by:** Saeed (explicit "Fix branch + regression test" in session, 2026-07-14)
+**Description:** During an isolated full-pipeline test run of feature/refactor-2-5-6, the home page (`/`) and requests page (`/requests`) returned HTTP 500 whenever an unacknowledged critical alert existed. Root cause: the alert-helper extraction (commit 678aeac) moved `alert_row_to_display` into `app/alert_queries.py`, but `main.get_urgent_attention` (main.py:1406) still called it without importing it -> NameError. `/requests` routes through `index()` which calls `get_urgent_attention`, so both pages crashed. The 323 unit/integration suite missed it (no test drove `get_urgent_attention` with an alert row); the e2e `TestRequestsPage` suite — not run during the refactor session — does catch it. NOTE: commit 678aeac (13 Jul 07:37) predates the running production process start (13 Jul 10:05), so this bug has been LIVE on production :8765 since 13 Jul, not merely a merge risk.
+**Fix:** Added `from .alert_queries import alert_row_to_display` to main.py imports. Added regression test `test_get_urgent_attention_resolves_latest_alert_after_router_extraction` in tests/test_api_endpoints.py (seeds a critical alert, asserts get_urgent_attention resolves).
+**Files changed:** dashboard/app/main.py, dashboard/tests/test_api_endpoints.py, CHANGELOG.md
+**Tests run:** New regression test PASS. Full non-e2e dashboard suite: 370 passed. Live verification on isolated refactor instance :8799 — `/`, `/requests`, `/patients` all HTTP 200 after fix. The 5 e2e TestRequestsPage failures remain against the un-redeployed production :8765 (old code) and will clear on deploy; identical root cause.
+**Security review:** Not safety-sensitive (alert display helper — not auth, patient identity, or clinical logic). Bug-fix exception applies.
+**Saeed notified:** This session (approved the fix approach directly).
+**Related smell (not fixed):** clean_alert_message / is_modal_worthy_alert are duplicated in both main.py (1528/1533) and alert_queries.py — divergent-copy risk, flagged for the refactor evaluation.
