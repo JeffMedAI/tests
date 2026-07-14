@@ -15,6 +15,7 @@ import app.alert_queries as alert_queries_module
 import app.audit as audit_module
 import app.db as db_module
 import app.main as main_module
+import app.routers.n8n as n8n_router_module
 import app.routers.system as system_router_module
 from app.auth import create_session
 from app.db import connect, init_db
@@ -302,14 +303,14 @@ def test_api_n8n_test_intake_rejects_more_than_five_calls(tmp_path, monkeypatch)
 
 def test_api_n8n_test_intake_accepts_valid_five_call_batch(tmp_path, monkeypatch):
     client_context, _db_path = make_client(tmp_path, monkeypatch)
-    monkeypatch.setattr(main_module, "archive_n8ntest_artifacts", lambda: {"total_archived": 0, "folders": []})
-    monkeypatch.setattr(main_module, "write_n8ntest_envelopes", lambda calls: [call["call_id"] for call in calls])
-    monkeypatch.setattr(main_module, "run_encrypted_cycle_disable_google_push", lambda: {"returncode": 0, "stdout": "", "stderr": ""})
-    monkeypatch.setattr(main_module, "count_n8ntest_files", lambda folder, pattern="*N8NTEST*": 5 if folder in {"queue/processed", "outputs/handoff_json"} else 0)
-    monkeypatch.setattr(main_module, "import_handoffs", lambda conn, pattern="*_handoff.json": 5)
+    monkeypatch.setattr(n8n_router_module, "_archive_n8ntest_artifacts", lambda: {"total_archived": 0, "folders": []})
+    monkeypatch.setattr(n8n_router_module, "_write_n8ntest_envelopes", lambda calls: [call["call_id"] for call in calls])
+    monkeypatch.setattr(n8n_router_module, "_run_encrypted_cycle_disable_google_push", lambda: {"returncode": 0, "stdout": "", "stderr": ""})
+    monkeypatch.setattr(n8n_router_module, "_count_n8ntest_files", lambda folder, pattern="*N8NTEST*": 5 if folder in {"queue/processed", "outputs/handoff_json"} else 0)
+    monkeypatch.setattr(n8n_router_module, "import_handoffs", lambda conn, pattern="*_handoff.json": 5)
     monkeypatch.setattr(
-        main_module,
-        "n8ntest_dashboard_cases",
+        n8n_router_module,
+        "_n8ntest_dashboard_cases",
         lambda: [
             {
                 "call_id": "N8NTEST-005-REDFLAG",
@@ -717,13 +718,13 @@ def test_staff_performance_and_workload_apis_return_expected_shape(tmp_path, mon
 def test_n8n_test_intake_response_uses_batch_specific_counts(tmp_path, monkeypatch):
     client_context, _db_path = make_client(tmp_path, monkeypatch)
     calls = [{"call_id": f"N8NTEST-PYTEST-BATCH-{index}"} for index in range(5)]
-    monkeypatch.setattr(main_module, "archive_n8ntest_artifacts", lambda: {"total_archived": 0, "folders": []})
-    monkeypatch.setattr(main_module, "write_n8ntest_envelopes", lambda calls: [call["call_id"] for call in calls])
-    monkeypatch.setattr(main_module, "run_encrypted_cycle_disable_google_push", lambda: {"returncode": 0, "stdout": "", "stderr": ""})
-    monkeypatch.setattr(main_module, "count_n8ntest_files", lambda folder, pattern="*N8NTEST*": 10 if folder in {"queue/processed", "outputs/handoff_json"} else 0)
-    monkeypatch.setattr(main_module, "count_batch_files", lambda folder, call_ids, suffix="": 5 if folder in {"queue/processed", "outputs/handoff_json"} else 0)
-    monkeypatch.setattr(main_module, "import_handoffs", lambda conn, pattern="*_handoff.json": 10)
-    monkeypatch.setattr(main_module, "n8ntest_dashboard_cases", lambda call_ids=None: [{"call_id": call_id} for call_id in (call_ids or [])])
+    monkeypatch.setattr(n8n_router_module, "_archive_n8ntest_artifacts", lambda: {"total_archived": 0, "folders": []})
+    monkeypatch.setattr(n8n_router_module, "_write_n8ntest_envelopes", lambda calls: [call["call_id"] for call in calls])
+    monkeypatch.setattr(n8n_router_module, "_run_encrypted_cycle_disable_google_push", lambda: {"returncode": 0, "stdout": "", "stderr": ""})
+    monkeypatch.setattr(n8n_router_module, "_count_n8ntest_files", lambda folder, pattern="*N8NTEST*": 10 if folder in {"queue/processed", "outputs/handoff_json"} else 0)
+    monkeypatch.setattr(n8n_router_module, "_count_batch_files", lambda folder, call_ids, suffix="": 5 if folder in {"queue/processed", "outputs/handoff_json"} else 0)
+    monkeypatch.setattr(n8n_router_module, "import_handoffs", lambda conn, pattern="*_handoff.json": 10)
+    monkeypatch.setattr(n8n_router_module, "_n8ntest_dashboard_cases", lambda call_ids=None: [{"call_id": call_id} for call_id in (call_ids or [])])
 
     with client_context as client:
         response = client.post("/api/n8n/test-intake-batch", json=n8ntest_payload(calls))

@@ -35,3 +35,7 @@ class TestN8nRouterStructure:
     def test_router_has_daily_summary_get(self):
         mbp = self._methods_by_path()
         assert "GET" in mbp.get("/api/n8n/daily-summary", set())
+
+    def test_router_has_test_intake_batch_post(self):
+        mbp = self._methods_by_path()
+        assert "POST" in mbp.get("/api/n8n/test-intake-batch", set())
