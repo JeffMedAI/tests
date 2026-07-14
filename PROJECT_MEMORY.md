@@ -1,6 +1,6 @@
 ﻿# PROJECT MEMORY â€” JeffLocal
 # READ THIS FIRST at every session start, before doing anything else.
-# Last updated: 2026-06-26 (auto-updated 19:00)
+# Last updated: 2026-07-13 (auto-updated 18:00)
 # Maintained by: Claude (update at end of every session)
 
 ---
@@ -75,18 +75,21 @@ strategy | Docs, reports, governance, marketing
 
 ---
 
-## CURRENT STATUS -- 2026-06-26
+## CURRENT STATUS -- 2026-07-14
 
 ### What is working
 - Production dashboard LIVE at dashboard.app-avamed.uk (port 8765)
 - Watchdog monitoring 4 services: ProductionDashboard, N8n, Ollama, CloudflareTunnel -- CLEAN
 - WhatsApp alerts: LIVE
-- **144/144 pytest tests passing** (unit/integration — test_locked_fields.py refactoring added 40 tests)
+- **323/323 pytest tests passing** (unit/integration — feature/refactor-2-5-6 branch)
 - **40/40 Playwright E2E tests passing** (installed 2026-06-19, 4 fixes applied)
 - **sandbox branch merged to main** (2026-06-19, via git worktree, Saeed approved)
-- **Full pipeline test run 2026-06-19**: 5 fresh cases (CSV-FRESH-20260619-1315) sent end-to-end, all 5 resolved via staff simulation. Safety invariants confirmed — LLM cannot override priority or verification_status.
+- **Full pipeline test run 2026-06-19**: 5 fresh cases sent end-to-end, all 5 resolved. Safety invariants confirmed.
 - All security/quality fixes (Phase 1+2+3) APPLIED and in production (main branch)
 - test_user account in DB (id=5, role=staff, PBKDF2 hash, test_pass)
+- **n8n WF03 (Red Flag Scan) FIXED 2026-07-08** -- now succeeds on schedule (08:50 UTC confirmed)
+- **n8n WF04 (Overdue Scan) FIXED 2026-07-08** -- same fix applied, next run 09:00 UTC
+- **Item #2 (split main.py) EXTRACTION COMPLETE** -- branch feature/refactor-2-5-6, ALL routes extracted, main.py: 4,634 → 2,010 lines, zero inline @app routes remain (last commit 7fc1030). PENDING SAEED APPROVAL TO MERGE.
 
 ### Bugs found in 2026-06-19 pipeline test run
 1. **verification_status null** — REANALYSED 2026-06-23. Handoff JSON DOES contain `verification_status = "matched"` (confirmed from actual test JSON files). Pipeline and importer both correct. UX badge added 2026-06-23.
@@ -135,12 +138,56 @@ Full detail: docs/reports/test-run-20260619-172712.md
 ```
 RANK | TASK                                              | AGENT    | STATUS
 -----+---------------------------------------------------+----------+------------------
- 1   | Remove legacy static-salt password fallback       | Backend  | PENDING
- 2   | n8n API key rotation                              | DevOps   | Before go-live
- 3   | Set JEFF_WEBHOOK_SECRET                           | DevOps   | Before live traffic
- 4   | Run full Playwright E2E suite post-UX changes     | Test     | Next session
- 5   | Multi-tenancy tenant_id                           | Database | Phase 2
+ 1   | Merge feature/refactor-2-5-6 → main               | DevOps   | PENDING SAEED APPROVAL
+ 2   | Remove legacy static-salt password fallback       | Backend  | PENDING (already done in auth.py — verify before removing)
+ 3   | n8n API key rotation                              | DevOps   | Before go-live
+ 4   | Set JEFF_WEBHOOK_SECRET                           | DevOps   | Before live traffic
+ 5   | Run full Playwright E2E suite post-UX changes     | Test     | Next session
+ 6   | Multi-tenancy tenant_id (Item #4)                 | Database | Phase 2
+ 7   | PostgreSQL instead of SQLite (Item #3)            | Database | Phase 2
 ```
+
+### Item #2 router extraction log — COMPLETE
+```
+MODULE                        | ROUTES                                          | COMMIT   | STATUS
+------------------------------+-------------------------------------------------+----------+--------
+app/helpers.py                | shared helpers                                  | 6e8b6ed  | DONE
+app/consts.py                 | dashboard constants                             | 9906852  | DONE
+app/templates_config.py       | templates singleton                             | 770d97d  | DONE
+app/routers/auth.py           | /login, /logout, /profile, /api/change-password | 88d8baf  | DONE
+app/routers/staff.py          | /admin/staff/*, /api/staff/*                    | b1a6e87  | DONE
+app/alert_queries.py + alerts | /api/alerts/*, /alerts/*                        | 678aeac  | DONE
+app/routers/analytics.py      | /api/analytics/*, /api/patient-card, /api/search | fedacfb | DONE
+app/routers/n8n.py            | /api/n8n/* (incl. test-intake-batch)            | d71ddf3,7fc1030 | DONE
+app/routers/system.py         | /favicon.ico, /api/health, /api/services/*, etc | 984b9e4  | DONE
+app/routers/pages.py          | /, /requests, /patients, /reports, /settings,   | 7004592  | DONE
+                              | /import, /api/import                            |          |
+app/routers/cases.py          | /case/*, /api/cases/*, /api/calls/*/recording   | abc48e0  | DONE
+```
+main.py: 4,634 → 2,010 lines. Zero inline @app routes. PENDING MERGE TO MAIN.
+
+### Completed this session (2026-07-14 full session)
+- app/routers/pages.py: 7 page routes extracted (commit 7004592), 8 structural tests GREEN
+- app/routers/cases.py: 10 case routes extracted (commit abc48e0), 11 structural tests GREEN
+- app/routers/n8n.py: test-intake-batch + 10 helpers added (commit 7fc1030)
+- test_api_endpoints.py: monkeypatches updated for all moved functions
+- 323/323 tests GREEN (branch feature/refactor-2-5-6)
+- main.py: 4,634 → 2,010 lines — ZERO inline routes remain
+
+### Completed previous session (2026-07-08)
+- gemma4:e4b (9.6 GB) installed — confirmed fallback model available (commit a168af8)
+- SQLite hot backup script: scripts/backup/backup_db.py — 22/22 TDD tests GREEN, Task Scheduler entry JeffLocal-SQLiteBackup at 02:15 daily (commit a168af8)
+- graphify updated: 1801 nodes, 3785 edges
+
+### n8n fix notes (2026-07-08)
+- Root cause: 3 endpoints called by n8n had no auth bypass → 302 HTML redirect → n8n crash
+- Fix: renamed all 3 to `/api/n8n/` prefix (covered by AUTH_PUBLIC_PREFIXES at main.py:101)
+  - GET /api/red-flags → /api/n8n/red-flags (main.py:2497)
+  - GET /api/overdue → /api/n8n/overdue (main.py:2520)
+  - POST /api/alerts/log → /api/n8n/alerts/log (main.py:3390)
+- n8n workflow nodes updated via scripts/service_control/fix_n8n_auth_urls.py
+- WARNING: n8n MCP update_workflow always fails — always use Python HTTP PUT script
+- WARNING: when fixing n8n auth, audit ALL HTTP nodes in a workflow (not just the first)
 DONE 2026-06-26:
 - Investigated missing session log issue. Root cause: auto-generated log used plain prose, brief parser needs bullets.
 - Fixed strategy_daily.ps1: Evening mode now auto-writes bullet-format session log if no human session ran.
@@ -148,7 +195,9 @@ DONE 2026-06-26:
 - Deleted all pre-Phase1AB backup folders (PRE_PHASE1AB_20260602*, RESTORE_POINT_20260529, p1_ux_20260523*) — Saeed approved. All code preserved in git history.
 - Fixed main.py: LOCAL_SERVICE_URLS port 5000→8765; api_hourly_volume and api_performance_summary use imported_at not created_at.
 - Restore tags pruned to 3: restore/2026-06-24-1800, restore/2026-06-25-1800, restore/2026-06-26-1800.
-- Commit: 5591564
+- Added .graphifyignore — scopes code graph to source only, excluding .claude/, docs/, backups/ (graph: 3972→1678 nodes).
+- Logged tech-debt Phase 1 remediation in CHANGELOG.md (B1/D1/DOC1/I1–I3 items). Security verdict: APPROVE-WITH-NOTES.
+- Commits: 5591564 → 22e363a → e12a19c
 
 DONE 2026-06-24:
 - Pipeline batch AVA-LIVE-20260624: 5/5 cases end-to-end, safety invariants confirmed
@@ -199,9 +248,9 @@ C:\JeffLocal\config\model_monitoring.json
 
 ```
 Repo:    https://github.com/JeffMedAI/tests
-Branch:  sandbox (production code)
+Branch:  sandbox (production code) — [UNVERIFIED — confirm before proceeding] actual current branch checked out is feature/refactor-2-5-6, see 2026-07-08-1800 session log
 Main:    merged 2026-06-19 (sandbox → main via worktree)
-Latest:  5591564 chore: remove pre-Phase1AB backup folders, fix main.py port/column refs
+Latest:  d71ddf3 refactor: extract n8n workflow routes into routers/n8n.py — 8 commits 2026-07-13 on feature/refactor-2-5-6, all part of the main.py router-split task (flagged: large uncommitted diff + stray untracked files in working tree still unresolved, 5th day running, see 2026-07-13-1800 session log)
 test_user: id=5, role=staff, username=test_user (Playwright E2E)
 ```
 
@@ -271,6 +320,12 @@ Monitoring:   Watchdog (restarts services if down, checks every 60s)
 4. git push origin HEAD
 5. Tell Saeed: "Session saved. Memory updated. Ready to pick up tomorrow."
 ```
+
+
+
+
+
+
 
 
 

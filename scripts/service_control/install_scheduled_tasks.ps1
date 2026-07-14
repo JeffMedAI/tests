@@ -137,6 +137,31 @@ if (Test-Path $Backup) {
     Write-Host "[SKIP] JeffLocal-DailyBackup - $Backup not found (will be created; re-run installer after)"
 }
 
+# --- Task: SQLite Backup - at 02:15 daily ---------------------------------------
+# Lightweight database-only backup using SQLite's hot backup API.
+# Safe to run while dashboard is live. 30-day rolling retention.
+# Complements JeffLocal-DailyBackup (full restore point) which runs at 01:00.
+$SqliteBackupScript = "C:\JeffLocal\scripts\backup\backup_db.py"
+$SqliteBackupPy = "C:\Python314\python.exe"
+if (Test-Path $SqliteBackupScript) {
+    $SqliteAction  = New-ScheduledTaskAction -Execute $SqliteBackupPy -Argument "`"$SqliteBackupScript`""
+    $SqliteTrigger = New-ScheduledTaskTrigger -Daily -At "02:15"
+    $SqliteSettings= New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Minutes 10) -StartWhenAvailable
+
+    Register-ScheduledTask `
+        -TaskName    "JeffLocal-SQLiteBackup" `
+        -Action      $SqliteAction `
+        -Trigger     $SqliteTrigger `
+        -Settings    $SqliteSettings `
+        -Description "SQLite hot backup of dashboard.sqlite — 30-day rolling retention (daily at 02:15)" `
+        -Force | Out-Null
+
+    $statusSqlite = if ($?) { "OK" } else { "WARN" }
+    Write-Host "[$statusSqlite] JeffLocal-SQLiteBackup task (daily at 02:15) → C:\JeffLocal\backups\"
+} else {
+    Write-Host "[SKIP] JeffLocal-SQLiteBackup - $SqliteBackupScript not found"
+}
+
 Write-Host ""
 Write-Host "Running watchdog now to confirm services are up..."
 & $Watchdog

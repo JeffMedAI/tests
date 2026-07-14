@@ -11,9 +11,12 @@ if str(FIXTURE_DIR) not in sys.path:
 
 from fastapi.testclient import TestClient
 
+import app.alert_queries as alert_queries_module
 import app.audit as audit_module
 import app.db as db_module
 import app.main as main_module
+import app.routers.n8n as n8n_router_module
+import app.routers.system as system_router_module
 from app.auth import create_session
 from app.db import connect, init_db
 from app.importer import import_handoffs, map_handoff_to_case, upsert_case
@@ -88,6 +91,7 @@ def make_client(tmp_path, monkeypatch, login_as_name="Admin Demo"):
     monkeypatch.setattr(db_module, "DB_PATH", db_path)
     monkeypatch.setattr(audit_module, "AUDIT_DIR", tmp_path / "audits")
     monkeypatch.setattr(main_module, "ALERT_DIR", tmp_path / "alerts")
+    monkeypatch.setattr(alert_queries_module, "ALERT_DIR", tmp_path / "alerts")
     seed_rawmock_db(db_path)
     client = TestClient(app)
     if login_as_name:
@@ -118,7 +122,7 @@ def test_api_health_returns_json_case_count(tmp_path, monkeypatch):
 def test_api_red_flags_includes_tc_006(tmp_path, monkeypatch):
     client_context, _db_path = make_client(tmp_path, monkeypatch)
     with client_context as client:
-        response = client.get("/api/red-flags")
+        response = client.get("/api/n8n/red-flags")
 
     assert response.status_code == 200
     assert_json_response(response)
@@ -135,7 +139,7 @@ def test_api_red_flags_includes_tc_006(tmp_path, monkeypatch):
 def test_api_overdue_returns_json(tmp_path, monkeypatch):
     client_context, _db_path = make_client(tmp_path, monkeypatch)
     with client_context as client:
-        response = client.get("/api/overdue?threshold_hours=24")
+        response = client.get("/api/n8n/overdue?threshold_hours=24")
 
     assert response.status_code == 200
     assert_json_response(response)
@@ -149,7 +153,7 @@ def test_api_overdue_returns_json(tmp_path, monkeypatch):
 def test_api_daily_summary_returns_request_type_counts(tmp_path, monkeypatch):
     client_context, _db_path = make_client(tmp_path, monkeypatch)
     with client_context as client:
-        response = client.get("/api/daily-summary")
+        response = client.get("/api/n8n/daily-summary")
 
     assert response.status_code == 200
     assert_json_response(response)
@@ -184,7 +188,7 @@ def alert_payload():
 def test_api_alert_log_writes_sqlite_and_jsonl(tmp_path, monkeypatch):
     client_context, _db_path = make_client(tmp_path, monkeypatch)
     with client_context as client:
-        response = client.post("/api/alerts/log", json=alert_payload())
+        response = client.post("/api/n8n/alerts/log", json=alert_payload())
 
     assert response.status_code == 200
     assert_json_response(response)
@@ -200,8 +204,8 @@ def test_api_alert_log_writes_sqlite_and_jsonl(tmp_path, monkeypatch):
 def test_api_alert_log_dedupes_recent_duplicate(tmp_path, monkeypatch):
     client_context, _db_path = make_client(tmp_path, monkeypatch)
     with client_context as client:
-        first = client.post("/api/alerts/log", json=alert_payload())
-        second = client.post("/api/alerts/log", json=alert_payload())
+        first = client.post("/api/n8n/alerts/log", json=alert_payload())
+        second = client.post("/api/n8n/alerts/log", json=alert_payload())
 
     assert first.status_code == 200
     assert second.status_code == 200
@@ -215,7 +219,7 @@ def test_api_alert_log_dedupes_recent_duplicate(tmp_path, monkeypatch):
 def test_api_alerts_recent_returns_logged_alerts(tmp_path, monkeypatch):
     client_context, _db_path = make_client(tmp_path, monkeypatch)
     with client_context as client:
-        client.post("/api/alerts/log", json=alert_payload())
+        client.post("/api/n8n/alerts/log", json=alert_payload())
         response = client.get("/api/alerts/recent?limit=5")
 
     assert response.status_code == 200
@@ -242,7 +246,7 @@ def test_api_alert_logging_does_not_alter_locked_case_fields(tmp_path, monkeypat
             ).fetchone()
         )
     with client_context as client:
-        response = client.post("/api/alerts/log", json=alert_payload())
+        response = client.post("/api/n8n/alerts/log", json=alert_payload())
     with connect(db_path) as conn:
         after = dict(
             conn.execute(
@@ -299,14 +303,14 @@ def test_api_n8n_test_intake_rejects_more_than_five_calls(tmp_path, monkeypatch)
 
 def test_api_n8n_test_intake_accepts_valid_five_call_batch(tmp_path, monkeypatch):
     client_context, _db_path = make_client(tmp_path, monkeypatch)
-    monkeypatch.setattr(main_module, "archive_n8ntest_artifacts", lambda: {"total_archived": 0, "folders": []})
-    monkeypatch.setattr(main_module, "write_n8ntest_envelopes", lambda calls: [call["call_id"] for call in calls])
-    monkeypatch.setattr(main_module, "run_encrypted_cycle_disable_google_push", lambda: {"returncode": 0, "stdout": "", "stderr": ""})
-    monkeypatch.setattr(main_module, "count_n8ntest_files", lambda folder, pattern="*N8NTEST*": 5 if folder in {"queue/processed", "outputs/handoff_json"} else 0)
-    monkeypatch.setattr(main_module, "import_handoffs", lambda conn, pattern="*_handoff.json": 5)
+    monkeypatch.setattr(n8n_router_module, "_archive_n8ntest_artifacts", lambda: {"total_archived": 0, "folders": []})
+    monkeypatch.setattr(n8n_router_module, "_write_n8ntest_envelopes", lambda calls: [call["call_id"] for call in calls])
+    monkeypatch.setattr(n8n_router_module, "_run_encrypted_cycle_disable_google_push", lambda: {"returncode": 0, "stdout": "", "stderr": ""})
+    monkeypatch.setattr(n8n_router_module, "_count_n8ntest_files", lambda folder, pattern="*N8NTEST*": 5 if folder in {"queue/processed", "outputs/handoff_json"} else 0)
+    monkeypatch.setattr(n8n_router_module, "import_handoffs", lambda conn, pattern="*_handoff.json": 5)
     monkeypatch.setattr(
-        main_module,
-        "n8ntest_dashboard_cases",
+        n8n_router_module,
+        "_n8ntest_dashboard_cases",
         lambda: [
             {
                 "call_id": "N8NTEST-005-REDFLAG",
@@ -382,6 +386,22 @@ def test_alerts_page_renders_recent_alert_rows(tmp_path, monkeypatch):
     assert "token" not in response.text.lower()
 
 
+def test_get_urgent_attention_resolves_latest_alert_after_router_extraction(tmp_path, monkeypatch):
+    """Regression for the router-split (feature/refactor-2-5-6).
+
+    alert_row_to_display was moved to app.alert_queries, but main.get_urgent_attention
+    still referenced it without importing it. The home page ("/") calls get_urgent_attention,
+    so it raised NameError -> HTTP 500 whenever an unacknowledged critical alert existed.
+    The 323-test suite missed it because no test drove get_urgent_attention with an alert row.
+    """
+    client_context, db_path = make_client(tmp_path, monkeypatch)
+    with connect(db_path) as conn:
+        insert_alert(conn, "alert-index-regression", "critical")
+        result = main_module.get_urgent_attention(conn)
+    assert result["latest"] is not None
+    assert isinstance(result["latest"], dict)
+
+
 def test_alerts_page_severity_filter_works(tmp_path, monkeypatch):
     client_context, db_path = make_client(tmp_path, monkeypatch)
     with connect(db_path) as conn:
@@ -438,7 +458,7 @@ def test_api_red_flags_sorts_newer_n8ntest_before_older_tc(tmp_path, monkeypatch
         )
 
     with client_context as client:
-        response = client.get("/api/red-flags")
+        response = client.get("/api/n8n/red-flags")
 
     assert response.status_code == 200
     cases = response.json()["cases"]
@@ -450,7 +470,7 @@ def test_api_red_flags_sorts_newer_n8ntest_before_older_tc(tmp_path, monkeypatch
 
 def test_api_services_status_dashboard_online_and_n8n_offline_graceful(tmp_path, monkeypatch):
     client_context, _db_path = make_client(tmp_path, monkeypatch)
-    monkeypatch.setattr(main_module, "check_local_n8n", lambda timeout_seconds=1.5: main_module.service_status("n8n", "offline", "http://localhost:5678", "Localhost check failed: test", main_module.utc_now_iso()))
+    monkeypatch.setattr(system_router_module, "_check_local_n8n", lambda timeout_seconds=1.5: system_router_module._service_status("n8n", "offline", "http://localhost:5678", "Localhost check failed: test", main_module.utc_now_iso()))
 
     with client_context as client:
         response = client.get("/api/services/status")
@@ -470,8 +490,8 @@ def test_api_services_refresh_check_only_does_not_start_services(tmp_path, monke
         called["start"] = True
         raise AssertionError("service start should not run")
 
-    monkeypatch.setattr(main_module.subprocess, "run", fake_run)
-    monkeypatch.setattr(main_module, "check_local_n8n", lambda timeout_seconds=1.5: main_module.service_status("n8n", "offline", "http://localhost:5678", "Localhost check failed: test", main_module.utc_now_iso()))
+    monkeypatch.setattr(system_router_module.subprocess, "run", fake_run)
+    monkeypatch.setattr(system_router_module, "_check_local_n8n", lambda timeout_seconds=1.5: system_router_module._service_status("n8n", "offline", "http://localhost:5678", "Localhost check failed: test", main_module.utc_now_iso()))
 
     with client_context as client:
         response = client.post("/api/services/refresh", json={"start_missing": False})
@@ -483,7 +503,7 @@ def test_api_services_refresh_check_only_does_not_start_services(tmp_path, monke
 
 def test_dashboard_renders_service_status_panel(tmp_path, monkeypatch):
     client_context, _db_path = make_client(tmp_path, monkeypatch)
-    monkeypatch.setattr(main_module, "check_local_n8n", lambda timeout_seconds=1.5: main_module.service_status("n8n", "offline", "http://localhost:5678", "Localhost check failed: test", main_module.utc_now_iso()))
+    monkeypatch.setattr(system_router_module, "_check_local_n8n", lambda timeout_seconds=1.5: system_router_module._service_status("n8n", "offline", "http://localhost:5678", "Localhost check failed: test", main_module.utc_now_iso()))
 
     with client_context as client:
         response = client.get("/?range=all")
@@ -500,7 +520,7 @@ def test_dashboard_renders_when_service_status_check_fails(tmp_path, monkeypatch
     def broken_status():
         raise RuntimeError("service check failure")
 
-    monkeypatch.setattr(main_module, "get_service_statuses", broken_status)
+    monkeypatch.setattr(system_router_module, "_get_service_statuses", broken_status)
 
     with client_context as client:
         response = client.get("/?range=all")
@@ -573,7 +593,7 @@ def test_alert_message_leading_equals_cleaned_for_new_and_existing_alerts(tmp_pa
     payload = alert_payload()
     payload["message"] = "=JeffLocal has a red flag alert"
     with client_context as client:
-        logged = client.post("/api/alerts/log", json=payload)
+        logged = client.post("/api/n8n/alerts/log", json=payload)
         alerts_page = client.get("/alerts")
 
     assert logged.status_code == 200
@@ -695,7 +715,7 @@ def test_staff_identity_populates_quick_action_fields(tmp_path, monkeypatch):
 
 def test_staff_performance_and_workload_apis_return_expected_shape(tmp_path, monkeypatch):
     client_context, _db_path = make_client(tmp_path, monkeypatch)
-    monkeypatch.setattr(main_module, "check_local_n8n", lambda timeout_seconds=1.5: main_module.service_status("n8n", "offline", "http://localhost:5678", "Localhost check failed: test", main_module.utc_now_iso()))
+    monkeypatch.setattr(system_router_module, "_check_local_n8n", lambda timeout_seconds=1.5: system_router_module._service_status("n8n", "offline", "http://localhost:5678", "Localhost check failed: test", main_module.utc_now_iso()))
     with client_context as client:
         performance = client.get("/api/staff/performance?range=today")
         workload = client.get("/api/system/workload")
@@ -714,13 +734,13 @@ def test_staff_performance_and_workload_apis_return_expected_shape(tmp_path, mon
 def test_n8n_test_intake_response_uses_batch_specific_counts(tmp_path, monkeypatch):
     client_context, _db_path = make_client(tmp_path, monkeypatch)
     calls = [{"call_id": f"N8NTEST-PYTEST-BATCH-{index}"} for index in range(5)]
-    monkeypatch.setattr(main_module, "archive_n8ntest_artifacts", lambda: {"total_archived": 0, "folders": []})
-    monkeypatch.setattr(main_module, "write_n8ntest_envelopes", lambda calls: [call["call_id"] for call in calls])
-    monkeypatch.setattr(main_module, "run_encrypted_cycle_disable_google_push", lambda: {"returncode": 0, "stdout": "", "stderr": ""})
-    monkeypatch.setattr(main_module, "count_n8ntest_files", lambda folder, pattern="*N8NTEST*": 10 if folder in {"queue/processed", "outputs/handoff_json"} else 0)
-    monkeypatch.setattr(main_module, "count_batch_files", lambda folder, call_ids, suffix="": 5 if folder in {"queue/processed", "outputs/handoff_json"} else 0)
-    monkeypatch.setattr(main_module, "import_handoffs", lambda conn, pattern="*_handoff.json": 10)
-    monkeypatch.setattr(main_module, "n8ntest_dashboard_cases", lambda call_ids=None: [{"call_id": call_id} for call_id in (call_ids or [])])
+    monkeypatch.setattr(n8n_router_module, "_archive_n8ntest_artifacts", lambda: {"total_archived": 0, "folders": []})
+    monkeypatch.setattr(n8n_router_module, "_write_n8ntest_envelopes", lambda calls: [call["call_id"] for call in calls])
+    monkeypatch.setattr(n8n_router_module, "_run_encrypted_cycle_disable_google_push", lambda: {"returncode": 0, "stdout": "", "stderr": ""})
+    monkeypatch.setattr(n8n_router_module, "_count_n8ntest_files", lambda folder, pattern="*N8NTEST*": 10 if folder in {"queue/processed", "outputs/handoff_json"} else 0)
+    monkeypatch.setattr(n8n_router_module, "_count_batch_files", lambda folder, call_ids, suffix="": 5 if folder in {"queue/processed", "outputs/handoff_json"} else 0)
+    monkeypatch.setattr(n8n_router_module, "import_handoffs", lambda conn, pattern="*_handoff.json": 10)
+    monkeypatch.setattr(n8n_router_module, "_n8ntest_dashboard_cases", lambda call_ids=None: [{"call_id": call_id} for call_id in (call_ids or [])])
 
     with client_context as client:
         response = client.post("/api/n8n/test-intake-batch", json=n8ntest_payload(calls))

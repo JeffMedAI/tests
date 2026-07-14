@@ -13,9 +13,12 @@ Every session begins with two skill invocations before anything else:
 Then read in this order:
 1. This file (CLAUDE.md) — rules
 2. C:\JeffLocal\PROJECT_MEMORY.md — current project state, pending approvals, open tasks
-3. C:\JeffLocal\docs\sessions\ — yesterday's and today's session logs
-4. Git repo state: git log --oneline -10
-5. C:\JeffLocal\docs\reports\{yesterday's date}.md — daily briefing
+3. C:\JeffLocal\HANDOFF.md — plain-English "where we left off" from the last session: work scope, what worked, what didn't, how the session closed, next + blockers. Rolling latest-only (one session, not a history). Read right after PROJECT_MEMORY.md.
+4. C:\JeffLocal\docs\sessions\ — yesterday's and today's session logs
+5. Git repo state: git log --oneline -10
+6. C:\JeffLocal\docs\reports\{yesterday's date}.md — daily briefing
+
+Before relying on graphify to orient, run `graphify update .` if the graph looks stale (uncommitted `graphify-out/graph.json`, or last-updated older than recent code changes) — a stale graph costs tokens to re-verify without saving any.
 
 Then produce the session start report and WAIT for Saeed's go-ahead before doing anything.
 
@@ -322,13 +325,15 @@ Before closing, do ALL of the following in order:
 1. **Write a session log — NON-NEGOTIABLE, EVERY session.** Save to `C:\JeffLocal\docs\sessions\YYYY-MM-DD-HHMM.md` using `SESSION_TEMPLATE.md`. This is a hard gate: a session is NOT closed until the log exists. The log MUST use the exact section headings the brief parser reads — `## WHAT WE DID`, `## WHAT TO DO NEXT`, `## BLOCKERS`, `## PENDING SAEED` — so the daily briefs pick the content up. No session ends without this file.
    **Write all session log entries in caveman style** — no filler, no hedging, fragments OK. One line per item. Bad: "We successfully implemented the feature that allows...". Good: "Added review checkbox. Amber→green on confirm."
 
-2. Update PROJECT_MEMORY.md: current status, pending approvals, open tasks, git state (latest commit hash)
+2. **Rewrite C:\JeffLocal\HANDOFF.md in full — NON-NEGOTIABLE, EVERY session.** Overwrite the whole file (it is rolling latest-only — do NOT append). Keep the four fixed sections: `## WORK SCOPE` · `## WHAT WORKED / WHAT DIDN'T` · `## HOW THE SESSION CLOSED` · `## NEXT + BLOCKERS`, plus the header block (last session date, closed-by, last commit hash). Plain English (caveman style), short. This is the file the next agent reads to know what to repeat and what to avoid — the "what didn't work" section is the point, do not drop it.
 
-3. Commit: `git add PROJECT_MEMORY.md docs\sessions\ && git commit -m "memory: session summary YYYY-MM-DD"`
+3. Update PROJECT_MEMORY.md: current status, pending approvals, open tasks, git state (latest commit hash)
 
-4. Push: `git push origin HEAD`
+4. Commit: `git add HANDOFF.md PROJECT_MEMORY.md docs\sessions\ && git commit -m "memory: session summary YYYY-MM-DD"`
 
-5. **Create a restore point — MANDATORY before every session close.**
+5. Push: `git push origin HEAD`
+
+6. **Create a restore point — MANDATORY before every session close.**
    A restore point is a git tag on the current HEAD marking the last known working state.
    ```
    git tag restore/YYYY-MM-DD-HHMM
@@ -344,9 +349,9 @@ Before closing, do ALL of the following in order:
    ```
    Archive older tags by renaming: `archive/restore/YYYY-MM-DD-HHMM` before deleting the plain `restore/` tag.
 
-6. Tell Saeed: "Session saved. Memory updated. Restore point created. Ready to pick up tomorrow."
+7. Tell Saeed: "Session saved. Memory updated. Restore point created. Ready to pick up tomorrow."
 
-**Lead Agent verifies the session log exists and the restore tag is pushed before declaring the session closed.** If either is missing, the session is not closed.
+**Lead Agent verifies the session log AND HANDOFF.md exist and the restore tag is pushed before declaring the session closed.** If any is missing, the session is not closed.
 
 ---
 
@@ -372,3 +377,22 @@ Rules:
 - If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
 - Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
 - After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
+
+## Skill routing
+
+When the user's request matches an available skill, invoke it via the Skill tool. When in doubt, invoke the skill.
+
+Key routing rules:
+- Product ideas/brainstorming → invoke /office-hours
+- Strategy/scope → invoke /plan-ceo-review
+- Architecture → invoke /plan-eng-review
+- Design system/plan review → invoke /design-consultation or /plan-design-review
+- Full review pipeline → invoke /autoplan
+- Bugs/errors → invoke /investigate
+- QA/testing site behavior → invoke /qa or /qa-only
+- Code review/diff check → invoke /review
+- Visual polish → invoke /design-review
+- Ship/deploy/PR → invoke /ship or /land-and-deploy
+- Save progress → invoke /context-save
+- Resume context → invoke /context-restore
+- Author a backlog-ready spec/issue → invoke /spec

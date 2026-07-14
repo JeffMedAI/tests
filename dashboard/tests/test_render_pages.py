@@ -1176,7 +1176,8 @@ def test_pathway_question_responses_render_without_raw_json(tmp_path, monkeypatc
     assert "pathway_responses" not in response.text
 
 
-def test_pathway_question_responses_grouped_sections_and_new_fields(tmp_path):
+def test_pathway_question_responses_grouped_sections_and_new_fields(tmp_path, monkeypatch):
+    monkeypatch.setattr(main_module, "ROOT_DIR", tmp_path)
     payload = {
         "call_id": "TEST-TRIAGE-001",
         "request_type": "prescription",
@@ -1231,7 +1232,8 @@ def test_pathway_question_responses_grouped_sections_and_new_fields(tmp_path):
     assert "Any chest pain? — No" in labels.get("Red-flag follow-up Q&A", "")
 
 
-def test_pathway_question_responses_handles_non_caller_request_type(tmp_path):
+def test_pathway_question_responses_handles_non_caller_request_type(tmp_path, monkeypatch):
+    monkeypatch.setattr(main_module, "ROOT_DIR", tmp_path)
     # Safety-net / unclassified cases are no longer caller pathways but must still render.
     payload = {
         "call_id": "TEST-TRIAGE-UNK",

@@ -199,7 +199,17 @@
       "Bash(mcp__Claude_Preview__preview_screenshot)",
       "mcp__Claude_Preview__preview_screenshot",
       "mcp__Claude_Preview__preview_start",
-      "mcp__Claude_Preview__preview_list"
+      "mcp__Claude_Preview__preview_list",
+      "Bash(graphify query *)",
+      "Bash(graphify explain *)",
+      "Bash(graphify path *)",
+      "mcp__n8n__get_workflow",
+      "mcp__n8n__list_workflows",
+      "mcp__n8n__list_executions",
+      "mcp__n8n__get_execution",
+      "mcp__ccd_session__mark_chapter",
+      "mcp__firecrawl__firecrawl_search",
+      "mcp__firecrawl__firecrawl_scrape"
     ],
     "deny": [
       "Read(./.env)",

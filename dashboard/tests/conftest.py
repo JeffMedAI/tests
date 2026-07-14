@@ -1,4 +1,5 @@
 import pytest
+import app.helpers as helpers_module
 import app.main as main_module
 from app.main import SESSION_COOKIE, app
 from fastapi.testclient import TestClient
@@ -22,7 +23,9 @@ def _bypass_session_lookup(monkeypatch):
             return _TEST_READONLY_USER
         return real_lookup(conn, token)
 
+    # Patch in both main and helpers — helpers has its own import reference
     monkeypatch.setattr(main_module, "get_session_user", _patched)
+    monkeypatch.setattr(helpers_module, "get_session_user", _patched)
 
 
 @pytest.fixture
