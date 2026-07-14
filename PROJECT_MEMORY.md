@@ -1,6 +1,6 @@
 ﻿# PROJECT MEMORY â€” JeffLocal
 # READ THIS FIRST at every session start, before doing anything else.
-# Last updated: 2026-07-13 (auto-updated 18:00)
+# Last updated: 2026-07-14 (auto-updated 18:00)
 # Maintained by: Claude (update at end of every session)
 
 ---
@@ -75,7 +75,7 @@ strategy | Docs, reports, governance, marketing
 
 ---
 
-## CURRENT STATUS -- 2026-07-14
+## CURRENT STATUS -- 2026-07-14 (updated 18:00)
 
 ### What is working
 - Production dashboard LIVE at dashboard.app-avamed.uk (port 8765)
@@ -89,7 +89,7 @@ strategy | Docs, reports, governance, marketing
 - test_user account in DB (id=5, role=staff, PBKDF2 hash, test_pass)
 - **n8n WF03 (Red Flag Scan) FIXED 2026-07-08** -- now succeeds on schedule (08:50 UTC confirmed)
 - **n8n WF04 (Overdue Scan) FIXED 2026-07-08** -- same fix applied, next run 09:00 UTC
-- **Item #2 (split main.py) EXTRACTION COMPLETE** -- branch feature/refactor-2-5-6, ALL routes extracted, main.py: 4,634 → 2,010 lines, zero inline @app routes remain (last commit 7fc1030). PENDING SAEED APPROVAL TO MERGE.
+- **Item #2 (split main.py) COMPLETE AND MERGED TO MAIN 2026-07-14** -- main.py: 4,782 → 2,011 lines, zero inline @app routes remain, all routes in app/routers/. 3 bugs found and fixed pre-merge (see CHANGELOG 2026-07-14). Saeed approved, commit 79bd895. Production :8765 not yet redeployed with this code.
 
 ### Bugs found in 2026-06-19 pipeline test run
 1. **verification_status null** — REANALYSED 2026-06-23. Handoff JSON DOES contain `verification_status = "matched"` (confirmed from actual test JSON files). Pipeline and importer both correct. UX badge added 2026-06-23.
@@ -249,8 +249,8 @@ C:\JeffLocal\config\model_monitoring.json
 ```
 Repo:    https://github.com/JeffMedAI/tests
 Branch:  sandbox (production code) — [UNVERIFIED — confirm before proceeding] actual current branch checked out is feature/refactor-2-5-6, see 2026-07-08-1800 session log
-Main:    merged 2026-06-19 (sandbox → main via worktree)
-Latest:  d71ddf3 refactor: extract n8n workflow routes into routers/n8n.py — 8 commits 2026-07-13 on feature/refactor-2-5-6, all part of the main.py router-split task (flagged: large uncommitted diff + stray untracked files in working tree still unresolved, 5th day running, see 2026-07-13-1800 session log)
+Main:    merged 2026-07-14 (feature/refactor-2-5-6 → main, Saeed approved, commit 79bd895)
+Latest:  79bd895 Merge feature/refactor-2-5-6 into main (Saeed approved 2026-07-14) — router-split complete (main.py 4,782→2,011 lines), 3 bugs fixed and Security-reviewed pre-merge (alert-import crash, /api/search batch_id, notes-gate bypass). NOTE: production process at :8765 not yet redeployed with this code — see 2026-07-14-1800 session log.
 test_user: id=5, role=staff, username=test_user (Playwright E2E)
 ```
 
@@ -317,44 +317,4 @@ Monitoring:   Watchdog (restarts services if down, checks every 60s)
 1. Write session summary to docs\sessions\YYYY-MM-DD-HHMM.md
 2. Update this file â€” status, tasks, git state
 3. git add PROJECT_MEMORY.md docs\sessions\ && git commit -m "memory: session YYYY-MM-DD"
-4. git push origin HEAD
-5. Tell Saeed: "Session saved. Memory updated. Ready to pick up tomorrow."
-```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+4. g
