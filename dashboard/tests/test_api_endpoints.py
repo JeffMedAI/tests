@@ -15,6 +15,7 @@ import app.alert_queries as alert_queries_module
 import app.audit as audit_module
 import app.db as db_module
 import app.main as main_module
+import app.routers.system as system_router_module
 from app.auth import create_session
 from app.db import connect, init_db
 from app.importer import import_handoffs, map_handoff_to_case, upsert_case
@@ -452,7 +453,7 @@ def test_api_red_flags_sorts_newer_n8ntest_before_older_tc(tmp_path, monkeypatch
 
 def test_api_services_status_dashboard_online_and_n8n_offline_graceful(tmp_path, monkeypatch):
     client_context, _db_path = make_client(tmp_path, monkeypatch)
-    monkeypatch.setattr(main_module, "check_local_n8n", lambda timeout_seconds=1.5: main_module.service_status("n8n", "offline", "http://localhost:5678", "Localhost check failed: test", main_module.utc_now_iso()))
+    monkeypatch.setattr(system_router_module, "_check_local_n8n", lambda timeout_seconds=1.5: system_router_module._service_status("n8n", "offline", "http://localhost:5678", "Localhost check failed: test", main_module.utc_now_iso()))
 
     with client_context as client:
         response = client.get("/api/services/status")
@@ -472,8 +473,8 @@ def test_api_services_refresh_check_only_does_not_start_services(tmp_path, monke
         called["start"] = True
         raise AssertionError("service start should not run")
 
-    monkeypatch.setattr(main_module.subprocess, "run", fake_run)
-    monkeypatch.setattr(main_module, "check_local_n8n", lambda timeout_seconds=1.5: main_module.service_status("n8n", "offline", "http://localhost:5678", "Localhost check failed: test", main_module.utc_now_iso()))
+    monkeypatch.setattr(system_router_module.subprocess, "run", fake_run)
+    monkeypatch.setattr(system_router_module, "_check_local_n8n", lambda timeout_seconds=1.5: system_router_module._service_status("n8n", "offline", "http://localhost:5678", "Localhost check failed: test", main_module.utc_now_iso()))
 
     with client_context as client:
         response = client.post("/api/services/refresh", json={"start_missing": False})
@@ -485,7 +486,7 @@ def test_api_services_refresh_check_only_does_not_start_services(tmp_path, monke
 
 def test_dashboard_renders_service_status_panel(tmp_path, monkeypatch):
     client_context, _db_path = make_client(tmp_path, monkeypatch)
-    monkeypatch.setattr(main_module, "check_local_n8n", lambda timeout_seconds=1.5: main_module.service_status("n8n", "offline", "http://localhost:5678", "Localhost check failed: test", main_module.utc_now_iso()))
+    monkeypatch.setattr(system_router_module, "_check_local_n8n", lambda timeout_seconds=1.5: system_router_module._service_status("n8n", "offline", "http://localhost:5678", "Localhost check failed: test", main_module.utc_now_iso()))
 
     with client_context as client:
         response = client.get("/?range=all")
@@ -502,7 +503,7 @@ def test_dashboard_renders_when_service_status_check_fails(tmp_path, monkeypatch
     def broken_status():
         raise RuntimeError("service check failure")
 
-    monkeypatch.setattr(main_module, "get_service_statuses", broken_status)
+    monkeypatch.setattr(system_router_module, "_get_service_statuses", broken_status)
 
     with client_context as client:
         response = client.get("/?range=all")
@@ -697,7 +698,7 @@ def test_staff_identity_populates_quick_action_fields(tmp_path, monkeypatch):
 
 def test_staff_performance_and_workload_apis_return_expected_shape(tmp_path, monkeypatch):
     client_context, _db_path = make_client(tmp_path, monkeypatch)
-    monkeypatch.setattr(main_module, "check_local_n8n", lambda timeout_seconds=1.5: main_module.service_status("n8n", "offline", "http://localhost:5678", "Localhost check failed: test", main_module.utc_now_iso()))
+    monkeypatch.setattr(system_router_module, "_check_local_n8n", lambda timeout_seconds=1.5: system_router_module._service_status("n8n", "offline", "http://localhost:5678", "Localhost check failed: test", main_module.utc_now_iso()))
     with client_context as client:
         performance = client.get("/api/staff/performance?range=today")
         workload = client.get("/api/system/workload")
