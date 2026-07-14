@@ -11,70 +11,69 @@
 
 ---
 
-**Last session:** 2026-07-08 (continuation session)
+**Last session:** 2026-07-14 (continuation — Item #2 main.py split)
 **Closed by:** Claude (Sonnet 4.6)
-**Last commit:** a168af8 feat: SQLite hot backup — TDD tests, script, Task Scheduler entry
+**Last commit:** 984b9e4 refactor: extract system/infrastructure routes into routers/system.py
+**Branch:** feature/refactor-2-5-6
 **Production:** dashboard.app-avamed.uk (Cloudflare tunnel → localhost:8765), watchdog-managed, LIVE
 
 ---
 
 ## WORK SCOPE
 
-Production-readiness sprint: 3 tasks approved by Saeed — install gemma4:e4b fallback, SQLite backup script, split main.py into modules. First two complete this session. Third documented but NOT started (Saeed's instruction).
+Item #2 of 10 approved architectural improvements: split monolithic main.py (was 4,634 lines) into FastAPI APIRouter modules. TDD Red-Green-Refactor cycle throughout. Branch: `feature/refactor-2-5-6`.
 
 ## WHAT WORKED / WHAT DIDN'T
 
 **Worked:**
-- gemma4:e4b (9.6 GB) pulled and confirmed in ollama list
-- TDD backup script: 22/22 tests GREEN. Failure on first run was Windows temp dir permissions — fix: use `--basetemp` flag pointing to scratchpad directory
-- SQLite hot backup confirmed on real DB (568 KB, integrity OK, pruned 0)
-- JeffLocal-SQLiteBackup Task Scheduler entry registered (daily 02:15) without admin rights — key: do NOT use `-RunLevel Highest` flag
-- `.gitignore` needed `!scripts/backup/` exception — `backup/` rule was blocking the new script files
+- TDD structural tests written first, confirmed RED (collection error), then GREEN after router created — cycle working cleanly
+- Late import pattern for main.py functions (e.g. `from ..main import active_red_flag_clause`) prevents circular imports — confirmed working across all 6 routers
+- Monkeypatch scope rule: when a function moves to a new module, ALL tests must patch BOTH `main_module.X` AND `new_module.X` if both paths exist, OR just `new_module.X` if main.py no longer has it
+- `--basetemp` flag required for pytest on Windows (temp dir permission issue)
+- PowerShell heredoc: use `@'...'@` not `$(cat <<'EOF'...)` — bash heredoc syntax fails in PowerShell
 
 **Didn't work / Gotchas:**
-- `Register-ScheduledTask -RunLevel Highest` → Access Denied (not admin). Remove that flag to register as current user
-- pytest `tmp_path` fixture crashes on Windows if `C:\Users\s5256\AppData\Local\Temp\pytest-of-s5256` has a permissions lock — use `--basetemp=<scratchpad>` to work around
-- PowerShell `git commit -m "$(cat <<'EOF'..."` heredoc syntax does NOT work in PowerShell — use `$msg = @'...'@; git commit -m $msg` instead
-- `2>&1` redirect on native executables in PowerShell triggers cosmetic NativeCommandError even on exit code 0 — not a real error, just ignore it
+- `fallback_service_statuses` and `get_service_statuses` were called directly in main.py's `index` route AND `get_system_workload` — removing them without updating those call sites caused NameError. Fixed with late imports (`from .routers.system import _get_service_statuses, _service_status`).
+- `subprocess` patch for `api_services_refresh` test must target `system_router_module.subprocess`, not `main_module.subprocess` — the route is now in system.py
+- git `HEAD.lock` file appeared mid-session (pre-compact hook left it) — `Remove-Item .git\HEAD.lock -Force` clears it
 
-**Files changed this session:**
-- `scripts/backup/backup_db.py` — new: SQLite hot backup with 30-day rolling retention
-- `scripts/backup/test_backup.py` — new: 22 TDD tests
-- `scripts/service_control/install_scheduled_tasks.ps1` — added JeffLocal-SQLiteBackup entry
-- `.gitignore` — added `!scripts/backup/` exception
+**Routers extracted this session:**
+- `app/routers/n8n.py` — 4 routes (commit d71ddf3)
+- `app/routers/system.py` — 7 routes + 3 helpers (commit 984b9e4)
+
+**Routers extracted in prior sessions:**
+- `app/helpers.py`, `app/consts.py`, `app/templates_config.py`
+- `app/routers/auth.py`, `app/routers/staff.py`, `app/routers/alerts.py`, `app/routers/analytics.py`
 
 ## HOW THE SESSION CLOSED
 
-- Task 1 (gemma4:e4b): DONE
-- Task 2 (SQLite backup): DONE — tests GREEN, script runs, scheduled
-- Task 3 (main.py split): PLAN WRITTEN, NOT STARTED — Saeed said "add to pending list"
-- PROJECT_MEMORY, HANDOFF, graphify updated
-- Commit a168af8 on sandbox branch
+- 314/314 tests GREEN (excluding e2e and intentional RED `test_routers_cases.py`)
+- main.py: 4,634 → 3,292 lines
+- Compacting mid-session at Saeed's request to free context window
+- Session NOT fully closed — work continues after compact
 
 ## NEXT + BLOCKERS
 
-**Next actions:**
-1. **Task 3: Split main.py** — branch `refactor/split-main-py`, extraction order in PROJECT_MEMORY task list. Multi-session. Do NOT start without Saeed's go-ahead each session.
-2. Remove legacy static-salt task from PROJECT_MEMORY (already done in auth.py — verify first)
-3. Saeed to provide real staff accounts → pilot go-live unblocked
+**Next actions (in order):**
+1. **`routers/pages.py`** — extract page-rendering routes: `/`, `/requests`, `/patients`, `/reports`, `/settings`, `/import`, `/api/import`. These render Jinja2 templates and call many helper functions in main.py. Use late imports for all of them.
+2. **`routers/cases.py`** — DEFERRED. Too many entangled helper functions (`prepare_case`, `update_staff_fields`, `batch_resolve_cases`, etc.). Extract `case_queries.py` first, then move routes. Do not attempt until pages.py is done.
+3. After all routers done: merge `feature/refactor-2-5-6` → main (Saeed approval required)
 
 **Blockers:**
-- No real staff accounts (Saeed must provide names, roles, emails)
+- No real staff accounts (Saeed must provide names, roles, emails) — pilot blocked
 - Governance gates 1-7 unsigned
-- JEFF_WEBHOOK_SECRET not set (required before any live Jeff traffic)
+- JEFF_WEBHOOK_SECRET not set
 
 **Pending Saeed:**
-- Staff account details
-- Governance gates 1-7 sign-off
-- JEFF_WEBHOOK_SECRET in Windows env
-- n8n API key rotation ("later")
-- Go-ahead to start Task 3 (main.py split) each session
+- Staff account details for pilot
+- Governance sign-off
+- Go-ahead to continue pages.py extraction (already given implicitly — "continue")
 
 **Durable gotchas:**
 - PRODUCTION is always `C:\JeffLocal\dashboard\` (port 8765). Git branch named "sandbox" — irrelevant to paths.
 - n8n MCP `update_workflow` always fails. Use Python HTTP PUT script instead.
-- Audit ALL HTTP nodes in ALL workflows when fixing n8n auth — not just the ones currently failing.
 - LLM output must NEVER set verification_status, safe_to_queue, priority, or patient-identity fields.
-- Git lock files can pile up — check `.git/*.lock` if commit fails.
-- pytest `tmp_path` on Windows: use `--basetemp=<scratchpad>` if access denied on default temp dir.
-- Task Scheduler registration: do NOT use `-RunLevel Highest`, it requires admin. Omit it to register as current user.
+- pytest `tmp_path` on Windows: use `--basetemp=<scratchpad>` flag.
+- Task Scheduler: do NOT use `-RunLevel Highest`, requires admin. Omit it.
+- git lock files: check `.git/*.lock` if commit fails.
+- `test_routers_cases.py` is intentional RED — always `--ignore` it until cases router is built.

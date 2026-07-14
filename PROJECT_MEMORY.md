@@ -75,13 +75,13 @@ strategy | Docs, reports, governance, marketing
 
 ---
 
-## CURRENT STATUS -- 2026-07-13
+## CURRENT STATUS -- 2026-07-14
 
 ### What is working
 - Production dashboard LIVE at dashboard.app-avamed.uk (port 8765)
 - Watchdog monitoring 4 services: ProductionDashboard, N8n, Ollama, CloudflareTunnel -- CLEAN
 - WhatsApp alerts: LIVE
-- **144/144 pytest tests passing** (unit/integration — test_locked_fields.py refactoring added 40 tests)
+- **314/314 pytest tests passing** (unit/integration — feature/refactor-2-5-6 branch)
 - **40/40 Playwright E2E tests passing** (installed 2026-06-19, 4 fixes applied)
 - **sandbox branch merged to main** (2026-06-19, via git worktree, Saeed approved)
 - **Full pipeline test run 2026-06-19**: 5 fresh cases (CSV-FRESH-20260619-1315) sent end-to-end, all 5 resolved via staff simulation. Safety invariants confirmed — LLM cannot override priority or verification_status.
@@ -89,6 +89,7 @@ strategy | Docs, reports, governance, marketing
 - test_user account in DB (id=5, role=staff, PBKDF2 hash, test_pass)
 - **n8n WF03 (Red Flag Scan) FIXED 2026-07-08** -- now succeeds on schedule (08:50 UTC confirmed)
 - **n8n WF04 (Overdue Scan) FIXED 2026-07-08** -- same fix applied, next run 09:00 UTC
+- **Item #2 (split main.py) IN PROGRESS** -- branch feature/refactor-2-5-6, 6 routers extracted so far (auth, staff, alerts, analytics, n8n, system), main.py: 4,634 → 3,292 lines (commit 984b9e4)
 
 ### Bugs found in 2026-06-19 pipeline test run
 1. **verification_status null** — REANALYSED 2026-06-23. Handoff JSON DOES contain `verification_status = "matched"` (confirmed from actual test JSON files). Pipeline and importer both correct. UX badge added 2026-06-23.
@@ -141,11 +142,39 @@ RANK | TASK                                              | AGENT    | STATUS
  2   | n8n API key rotation                              | DevOps   | Before go-live
  3   | Set JEFF_WEBHOOK_SECRET                           | DevOps   | Before live traffic
  4   | Run full Playwright E2E suite post-UX changes     | Test     | Next session
- 5   | Split main.py into modules (refactor/split-main-py branch) | Backend | PENDING — plan written, not started
- 6   | Multi-tenancy tenant_id                           | Database | Phase 2
+ 5   | Split main.py — pages.py router next              | Backend  | IN PROGRESS — see feature/refactor-2-5-6
+ 6   | Split main.py — cases.py router (deferred)        | Backend  | BLOCKED — extract case_queries.py first
+ 7   | Multi-tenancy tenant_id                           | Database | Phase 2
 ```
 
-### Completed this session (2026-07-08)
+### Item #2 router extraction log
+```
+MODULE                        | ROUTES                                          | COMMIT   | STATUS
+------------------------------+-------------------------------------------------+----------+--------
+app/helpers.py                | shared helpers                                  | 6e8b6ed  | DONE
+app/consts.py                 | dashboard constants                             | 9906852  | DONE
+app/templates_config.py       | templates singleton                             | 770d97d  | DONE
+app/routers/auth.py           | /login, /logout, /profile, /api/change-password | 88d8baf  | DONE
+app/routers/staff.py          | /admin/staff/*, /api/staff/*                    | b1a6e87  | DONE
+app/alert_queries.py + alerts | /api/alerts/*, /alerts/*                        | 678aeac  | DONE
+app/routers/analytics.py      | /api/analytics/*, /api/patient-card, /api/search | fedacfb | DONE
+app/routers/n8n.py            | /api/n8n/*                                      | d71ddf3  | DONE
+app/routers/system.py         | /favicon.ico, /api/health, /api/staff-workload, | 984b9e4  | DONE
+                              | /api/services/*, /api/system/workload           |          |
+app/routers/pages.py          | /, /requests, /patients, /reports, /settings,   | —        | NEXT
+                              | /import, /api/import                            |          |
+app/routers/cases.py          | /case/*, /api/cases/*                           | —        | DEFERRED
+```
+
+### Completed this session (2026-07-14 mid-session compact)
+- app/routers/n8n.py extracted: 4 n8n routes (commit d71ddf3), 5 structural tests GREEN
+- app/routers/system.py extracted: 7 system/infra routes, 3 helpers (commit 984b9e4), 7 structural tests GREEN
+- test_api_endpoints.py: 5 monkeypatch sites updated to target new modules
+- main.py NameErrors fixed: get_service_statuses/fallback_service_statuses replaced with late imports
+- 314/314 tests GREEN (branch feature/refactor-2-5-6)
+- main.py: 4,634 → 3,292 lines
+
+### Completed previous session (2026-07-08)
 - gemma4:e4b (9.6 GB) installed — confirmed fallback model available (commit a168af8)
 - SQLite hot backup script: scripts/backup/backup_db.py — 22/22 TDD tests GREEN, Task Scheduler entry JeffLocal-SQLiteBackup at 02:15 daily (commit a168af8)
 - graphify updated: 1801 nodes, 3785 edges
@@ -289,4 +318,43 @@ Monitoring:   Watchdog (restarts services if down, checks every 60s)
 2. Update this file â€” status, tasks, git state
 3. git add PROJECT_MEMORY.md docs\sessions\ && git commit -m "memory: session YYYY-MM-DD"
 4. git push origin HEAD
-5. Tell Saeed: "Session saved. Memory updated. Ready to pick up tomorrow."
+5. Tell Saeed: "Session saved. Memory updated. Ready to pick up tomorrow."
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
