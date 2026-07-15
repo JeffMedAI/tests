@@ -1,6 +1,6 @@
-﻿# PROJECT MEMORY â€” JeffLocal
+﻿# PROJECT MEMORY — JeffLocal
 # READ THIS FIRST at every session start, before doing anything else.
-# Last updated: 2026-07-14 (auto-updated 18:00)
+# Last updated: 2026-07-15 09:50
 # Maintained by: Claude (update at end of every session)
 
 ---
@@ -75,21 +75,27 @@ strategy | Docs, reports, governance, marketing
 
 ---
 
-## CURRENT STATUS -- 2026-07-14 (updated 18:00)
+## CURRENT STATUS -- 2026-07-15 (updated 09:50)
 
 ### What is working
-- Production dashboard LIVE at dashboard.app-avamed.uk (port 8765)
+- Production dashboard LIVE at dashboard.app-avamed.uk (port 8765) — **redeployed 2026-07-15 on merged main (79bd895)**, health-checked, batch-tested
 - Watchdog monitoring 4 services: ProductionDashboard, N8n, Ollama, CloudflareTunnel -- CLEAN
 - WhatsApp alerts: LIVE
-- **323/323 pytest tests passing** (unit/integration — feature/refactor-2-5-6 branch)
-- **40/40 Playwright E2E tests passing** (installed 2026-06-19, 4 fixes applied)
-- **sandbox branch merged to main** (2026-06-19, via git worktree, Saeed approved)
-- **Full pipeline test run 2026-06-19**: 5 fresh cases sent end-to-end, all 5 resolved. Safety invariants confirmed.
+- **375/375 tests passing** (335 unit/integration + 40 Playwright e2e — main branch, post-merge)
+- **Item #2 (split main.py) COMPLETE, MERGED, AND DEPLOYED 2026-07-15** -- main.py: 4,782 → 2,011 lines (verified byte count, not estimated), zero inline @app routes remain, all routes in app/routers/. 3 bugs found and fixed pre-merge, Security Agent approved, independent Fable 5 evaluation done (honest score 4.5/10 — code moved cleanly but didn't reduce coupling; 107 back-references from routers into main.py remain, real follow-up work). Commit 79bd895 on main, production redeployed and confirmed running this code.
+- **Full 25-case isolated pipeline test 2026-07-14/15**: safety invariant held, all 6 red flags caught (incl. one buried mid-ramble), all 25 resolved correctly.
+- **Fresh 5-case PRODUCTION batch test 2026-07-15**: all 5 imported and resolved via genuine browser clicks post-redeploy, 0 deadletter, locked safety fields (priority/safe_to_queue) confirmed unchanged after resolving the red-flag case.
 - All security/quality fixes (Phase 1+2+3) APPLIED and in production (main branch)
 - test_user account in DB (id=5, role=staff, PBKDF2 hash, test_pass)
 - **n8n WF03 (Red Flag Scan) FIXED 2026-07-08** -- now succeeds on schedule (08:50 UTC confirmed)
 - **n8n WF04 (Overdue Scan) FIXED 2026-07-08** -- same fix applied, next run 09:00 UTC
-- **Item #2 (split main.py) COMPLETE AND MERGED TO MAIN 2026-07-14** -- main.py: 4,782 → 2,011 lines, zero inline @app routes remain, all routes in app/routers/. 3 bugs found and fixed pre-merge (see CHANGELOG 2026-07-14). Saeed approved, commit 79bd895. Production :8765 not yet redeployed with this code.
+- **19 previously-approved backlog commits (20-26 Jun) found stranded, unpushed, in a side worktree** -- folded into the 2026-07-15 push to origin/main. GitHub `main` was nearly 3 weeks behind local state before this.
+
+### Bugs found + fixed 2026-07-14/15 (pre-merge, Security Agent approved)
+1. **`alert_row_to_display` NameError** -- `/` and `/requests` crashed (500) whenever a critical alert exists. Live on production since 13 Jul (predates process start). FIXED: added missing import, regression test added.
+2. **`/api/search` batch_id column** -- queried a non-existent column, 500 on every page's search. Pre-existing (inherited from pre-refactor main.py, not introduced by the split). FIXED: removed batch_id, falls back to call_id.
+3. **Notes-gate bypass** -- `update_case()` auto-filled a default outcome note before checking whether the case needed real staff notes, so red-flag/identity cases could resolve via the full-update path with no notes. Pre-existing (same bug in old main.py). FIXED: reordered to match the already-correct `quick_action()` pattern.
+4. Also removed 2 dead duplicate functions (`clean_alert_message`, `is_modal_worthy_alert`) left behind in main.py after the alert extraction — real copies live in alert_queries.py.
 
 ### Bugs found in 2026-06-19 pipeline test run
 1. **verification_status null** — REANALYSED 2026-06-23. Handoff JSON DOES contain `verification_status = "matched"` (confirmed from actual test JSON files). Pipeline and importer both correct. UX badge added 2026-06-23.
@@ -138,13 +144,18 @@ Full detail: docs/reports/test-run-20260619-172712.md
 ```
 RANK | TASK                                              | AGENT    | STATUS
 -----+---------------------------------------------------+----------+------------------
- 1   | Merge feature/refactor-2-5-6 → main               | DevOps   | PENDING SAEED APPROVAL
- 2   | Remove legacy static-salt password fallback       | Backend  | PENDING (already done in auth.py — verify before removing)
- 3   | n8n API key rotation                              | DevOps   | Before go-live
- 4   | Set JEFF_WEBHOOK_SECRET                           | DevOps   | Before live traffic
- 5   | Run full Playwright E2E suite post-UX changes     | Test     | Next session
- 6   | Multi-tenancy tenant_id (Item #4)                 | Database | Phase 2
- 7   | PostgreSQL instead of SQLite (Item #3)            | Database | Phase 2
+ 1   | Fix restart_all.ps1 (out of sync with watchdog.ps1| DevOps   | Found 2026-07-15, not fixed
+     | params -DashOnly/-N8nOnly don't exist there)       |          |
+ 2   | Run Playwright e2e suite directly against :8765   | Test     | Next session
+     | (proven equivalent on isolated instance already)  |          |
+ 3   | Reduce router->main.py coupling (107 back-refs)    | Backend  | Fable 5 finding, real Item #2 follow-up
+ 4   | Add lint (ruff/pyflakes) to test gate              | DevOps   | Would've caught the crash bug in 1s
+ 5   | Fix evening-brief script's corrupted-tail bug      | DevOps   | strategy_daily.ps1
+ 6   | Remove legacy static-salt password fallback       | Backend  | PENDING (already done in auth.py — verify before removing)
+ 7   | n8n API key rotation                              | DevOps   | Before go-live
+ 8   | Set JEFF_WEBHOOK_SECRET                           | DevOps   | Before live traffic
+ 9   | Multi-tenancy tenant_id (Item #4)                 | Database | Phase 2
+ 10  | PostgreSQL instead of SQLite (Item #3)            | Database | Phase 2
 ```
 
 ### Item #2 router extraction log — COMPLETE
@@ -164,9 +175,17 @@ app/routers/pages.py          | /, /requests, /patients, /reports, /settings,   
                               | /import, /api/import                            |          |
 app/routers/cases.py          | /case/*, /api/cases/*, /api/calls/*/recording   | abc48e0  | DONE
 ```
-main.py: 4,634 → 2,010 lines. Zero inline @app routes. PENDING MERGE TO MAIN.
+main.py: 4,782 → 2,011 lines. Zero inline @app routes. MERGED TO MAIN 2026-07-14, DEPLOYED TO PRODUCTION 2026-07-15 (commit 79bd895).
 
-### Completed this session (2026-07-14 full session)
+### Completed this session (2026-07-15, continuation)
+- Full isolated 25-case pipeline test (real n8n webhook, live Ollama, production untouched) — safety invariant held, all 6 red flags caught, all 25 resolved correctly
+- Independent Fable 5 evaluation of the refactor — score 4.5/10, corrected 2 of the Lead's own claims (pre-existing vs refactor-caused), found 107 main.py<->router back-references (coupling not reduced)
+- Fixed 3 bugs (alert import NameError, /api/search batch_id, notes-gate ordering), Security Agent APPROVE
+- Merged feature/refactor-2-5-6 into main (79bd895), discovered + pushed 19 stranded Saeed-approved backlog commits
+- Redeployed production :8765 onto merged main (C:\JeffLocal itself is the production directory — was checked out on the feature branch, which is how the crash bug went live)
+- Fresh 5-case batch sent through real n8n webhook into production, resolved via genuine browser clicks incl. the red-flag case — locked fields (priority/safe_to_queue) confirmed unchanged after resolve
+
+### Completed previous session (2026-07-14 full session)
 - app/routers/pages.py: 7 page routes extracted (commit 7004592), 8 structural tests GREEN
 - app/routers/cases.py: 10 case routes extracted (commit abc48e0), 11 structural tests GREEN
 - app/routers/n8n.py: test-intake-batch + 10 helpers added (commit 7fc1030)
@@ -248,9 +267,16 @@ C:\JeffLocal\config\model_monitoring.json
 
 ```
 Repo:    https://github.com/JeffMedAI/tests
-Branch:  sandbox (production code) — [UNVERIFIED — confirm before proceeding] actual current branch checked out is feature/refactor-2-5-6, see 2026-07-08-1800 session log
-Main:    merged 2026-07-14 (feature/refactor-2-5-6 → main, Saeed approved, commit 79bd895)
-Latest:  79bd895 Merge feature/refactor-2-5-6 into main (Saeed approved 2026-07-14) — router-split complete (main.py 4,782→2,011 lines), 3 bugs fixed and Security-reviewed pre-merge (alert-import crash, /api/search batch_id, notes-gate bypass). NOTE: production process at :8765 not yet redeployed with this code — see 2026-07-14-1800 session log.
+Branch:  main. C:\JeffLocal (the repo root) IS the production directory — its checked-out
+         branch determines what code runs on :8765. Confirmed on main as of 2026-07-15.
+         ALWAYS verify with `git branch --show-current` before assuming this.
+Main:    merged 2026-07-14 (feature/refactor-2-5-6 → main, Saeed approved, commit 79bd895),
+         deployed to production 2026-07-15.
+Latest:  79bd895 Merge feature/refactor-2-5-6 into main — router-split complete (main.py
+         4,782→2,011 lines), 3 bugs fixed and Security-reviewed pre-merge (alert-import crash,
+         /api/search batch_id, notes-gate bypass). Plus 19 previously-unpushed backlog commits
+         (20-26 Jun) folded into the same push — found stranded in a side worktree, now on
+         origin/main. Production redeployed 2026-07-15 and confirmed running this code.
 test_user: id=5, role=staff, username=test_user (Playwright E2E)
 ```
 
@@ -296,6 +322,25 @@ Monitoring:   Watchdog (restarts services if down, checks every 60s)
 8. **Legacy static-salt password fallback** -- auth.py verify_password() still accepts old
    static-salt format for accounts not yet upgraded. Remove once all staff have logged in once.
 
+9. **C:\JeffLocal is the production directory itself** -- its git branch determines what code
+   actually runs on :8765 (uvicorn serves these files directly, no separate deploy copy).
+   Switching branches here changes production code under the running process; a restart is
+   required to load it. Always check `git branch --show-current` in C:\JeffLocal before
+   assuming production is on main — this is how a crash bug shipped live 13 Jul (2026-07-15).
+
+10. **restart_all.ps1 is broken** -- passes `-DashOnly`/`-N8nOnly` through to watchdog.ps1,
+    which only accepts `-Once`/`-Force`/`-IntervalSeconds`. Use
+    `scripts\service_control\_launch_dashboard.ps1` directly for a dashboard-only restart, or
+    `watchdog.ps1 -Force` to restart everything. Not fixed yet (found 2026-07-15).
+
+11. **Session cookies expire after 1 hour** (max_age=3600). Long manual dashboard sessions can
+    get logged out mid-form — re-login and retry, no data loss.
+
+12. **19:00 evening-brief automation can commit to main mid-session** (documented, by design —
+    fallback session-end write if no human close has happened yet). Fetch before assuming your
+    local view of main is current. It also has a bug: leaves PROJECT_MEMORY.md's session-end
+    checklist truncated — check scripts\daily\strategy_daily.ps1 if this recurs.
+
 ---
 
 ## SESSION STARTUP CHECKLIST
@@ -317,4 +362,6 @@ Monitoring:   Watchdog (restarts services if down, checks every 60s)
 1. Write session summary to docs\sessions\YYYY-MM-DD-HHMM.md
 2. Update this file â€” status, tasks, git state
 3. git add PROJECT_MEMORY.md docs\sessions\ && git commit -m "memory: session YYYY-MM-DD"
-4. g
+4. git push origin HEAD
+5. Tell Saeed: "Session saved. Memory updated. Ready to pick up tomorrow."
+```
