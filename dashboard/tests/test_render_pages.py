@@ -12,6 +12,7 @@ if str(DASHBOARD_ROOT) not in sys.path:
 from fastapi.testclient import TestClient
 
 import app.audit as audit_module
+import app.case_domain as case_domain_module
 import app.db as db_module
 import app.main as main_module
 from app.db import connect, init_db
@@ -1143,7 +1144,7 @@ def test_pathway_question_responses_render_without_raw_json(tmp_path, monkeypatc
     monkeypatch.setattr(db_module, "DB_PATH", db_path)
     monkeypatch.setattr(audit_module, "AUDIT_DIR", tmp_path / "audits")
     monkeypatch.setattr(main_module, "import_handoffs", lambda conn: 0)
-    monkeypatch.setattr(main_module, "ROOT_DIR", tmp_path)
+    monkeypatch.setattr(case_domain_module, "ROOT_DIR", tmp_path)
     payload = {
         "call_id": "RAWMOCK-UX-PATHWAY",
         "request_type": "prescription",
@@ -1177,7 +1178,7 @@ def test_pathway_question_responses_render_without_raw_json(tmp_path, monkeypatc
 
 
 def test_pathway_question_responses_grouped_sections_and_new_fields(tmp_path, monkeypatch):
-    monkeypatch.setattr(main_module, "ROOT_DIR", tmp_path)
+    monkeypatch.setattr(case_domain_module, "ROOT_DIR", tmp_path)
     payload = {
         "call_id": "TEST-TRIAGE-001",
         "request_type": "prescription",
@@ -1233,7 +1234,7 @@ def test_pathway_question_responses_grouped_sections_and_new_fields(tmp_path, mo
 
 
 def test_pathway_question_responses_handles_non_caller_request_type(tmp_path, monkeypatch):
-    monkeypatch.setattr(main_module, "ROOT_DIR", tmp_path)
+    monkeypatch.setattr(case_domain_module, "ROOT_DIR", tmp_path)
     # Safety-net / unclassified cases are no longer caller pathways but must still render.
     payload = {
         "call_id": "TEST-TRIAGE-UNK",

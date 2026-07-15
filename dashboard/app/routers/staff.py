@@ -14,6 +14,7 @@ from fastapi.responses import RedirectResponse
 
 from ..audit import write_audit_event
 from ..auth import hash_password, hash_pin
+from ..case_domain import get_team_activity
 from ..consts import STAFF_ROLES
 from ..db import connect, row_to_dict
 from ..helpers import (
@@ -273,7 +274,7 @@ def staff_invitation_cancel(request: Request, invitation_id: int) -> RedirectRes
 
 @router.get("/api/staff/performance")
 def api_staff_performance(range: str = "today") -> dict[str, Any]:
-    from ..main import get_team_activity
+
     ensure_ready()
     with connect() as conn:
         return get_team_activity(conn, range)
