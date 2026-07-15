@@ -1,6 +1,6 @@
 ﻿# PROJECT MEMORY — JeffLocal
 # READ THIS FIRST at every session start, before doing anything else.
-# Last updated: 2026-07-15 09:50
+# Last updated: 2026-07-15 18:00
 # Maintained by: Claude (update at end of every session)
 
 ---
@@ -75,7 +75,7 @@ strategy | Docs, reports, governance, marketing
 
 ---
 
-## CURRENT STATUS -- 2026-07-15 (updated 09:50)
+## CURRENT STATUS -- 2026-07-15 (updated 18:00)
 
 ### What is working
 - Production dashboard LIVE at dashboard.app-avamed.uk (port 8765) — **redeployed 2026-07-15 on merged main (79bd895)**, health-checked, batch-tested
@@ -144,7 +144,7 @@ Full detail: docs/reports/test-run-20260619-172712.md
 ```
 RANK | TASK                                              | AGENT    | STATUS
 -----+---------------------------------------------------+----------+------------------
- 1   | Fix restart_all.ps1 (out of sync with watchdog.ps1| DevOps   | Found 2026-07-15, not fixed
+ 1   | Fix restart_all.ps1 (out of sync with watchdog.ps1| DevOps   | DONE 2026-07-15 (6a4e59f)
      | params -DashOnly/-N8nOnly don't exist there)       |          |
  2   | Run Playwright e2e suite directly against :8765   | Test     | Next session
      | (proven equivalent on isolated instance already)  |          |
@@ -266,102 +266,4 @@ C:\JeffLocal\config\model_monitoring.json
 ## GIT STATE
 
 ```
-Repo:    https://github.com/JeffMedAI/tests
-Branch:  main. C:\JeffLocal (the repo root) IS the production directory — its checked-out
-         branch determines what code runs on :8765. Confirmed on main as of 2026-07-15.
-         ALWAYS verify with `git branch --show-current` before assuming this.
-Main:    merged 2026-07-14 (feature/refactor-2-5-6 → main, Saeed approved, commit 79bd895),
-         deployed to production 2026-07-15.
-Latest:  79bd895 Merge feature/refactor-2-5-6 into main — router-split complete (main.py
-         4,782→2,011 lines), 3 bugs fixed and Security-reviewed pre-merge (alert-import crash,
-         /api/search batch_id, notes-gate bypass). Plus 19 previously-unpushed backlog commits
-         (20-26 Jun) folded into the same push — found stranded in a side worktree, now on
-         origin/main. Production redeployed 2026-07-15 and confirmed running this code.
-test_user: id=5, role=staff, username=test_user (Playwright E2E)
-```
-
----
-
-## TECHNICAL STACK
-
-```
-Dashboard:    FastAPI (Python 3.14), Jinja2 templates, SQLite
-AI:           Ollama / gemma4:e2b (confidence floor 0.72, fallback gemma4:e4b)
-Auth:         Session cookies (httponly, samesite=lax) â€” tokens hashed in DB
-Database:     SQLite at dashboard\data\dashboard.sqlite
-Remote:       Cloudflare tunnel (HTTPS termination external)
-Workflow:     n8n (localhost:5678, webhook: ava-live-intake)
-Voice agent:  Jeff (Hostcomm UK, external, posts to n8n webhook)
-Monitoring:   Watchdog (restarts services if down, checks every 60s)
-```
-
----
-
-## KNOWN PROCESS RULES (hard lessons)
-
-1. **Sandbox removed 2026-06-07.** No sandbox directory exists. Dev work on git branches.
-   Production = port 8765, C:\JeffLocal\dashboard\. Always verify path before editing.
-
-2. **Cookie security:** All cookie-setting calls must work correctly under Cloudflare HTTPS.
-
-3. **Agents do not self-authorise production changes.** Saeed's "approved" in chat required.
-
-4. **Approvals do not carry over between sessions.** Re-confirm every session.
-
-5. **Security Agent reviews ALL PRs** â€” even one-line changes. Veto is independent.
-
-6. **WhatsApp incident 2026-06-01** â€” NEVER use coordinate-based navigation to select a
-   WhatsApp chat recipient. ALWAYS use search-by-name/number, verify header, THEN send.
-   If header does not match: ABORT. Rule enforced in send_whatsapp.py.
-
-7. **Watchdog elevated process** -- Task Scheduler registered watchdog as elevated.
-   Cannot be killed by non-elevated code. Only admin Task Manager can kill it.
-   Resolved 2026-06-08: ghost process killed via admin Task Manager, alerts re-enabled.
-   Lock file guard prevents duplicate instances going forward.
-
-8. **Legacy static-salt password fallback** -- auth.py verify_password() still accepts old
-   static-salt format for accounts not yet upgraded. Remove once all staff have logged in once.
-
-9. **C:\JeffLocal is the production directory itself** -- its git branch determines what code
-   actually runs on :8765 (uvicorn serves these files directly, no separate deploy copy).
-   Switching branches here changes production code under the running process; a restart is
-   required to load it. Always check `git branch --show-current` in C:\JeffLocal before
-   assuming production is on main — this is how a crash bug shipped live 13 Jul (2026-07-15).
-
-10. **restart_all.ps1 is broken** -- passes `-DashOnly`/`-N8nOnly` through to watchdog.ps1,
-    which only accepts `-Once`/`-Force`/`-IntervalSeconds`. Use
-    `scripts\service_control\_launch_dashboard.ps1` directly for a dashboard-only restart, or
-    `watchdog.ps1 -Force` to restart everything. Not fixed yet (found 2026-07-15).
-
-11. **Session cookies expire after 1 hour** (max_age=3600). Long manual dashboard sessions can
-    get logged out mid-form — re-login and retry, no data loss.
-
-12. **19:00 evening-brief automation can commit to main mid-session** (documented, by design —
-    fallback session-end write if no human close has happened yet). Fetch before assuming your
-    local view of main is current. It also has a bug: leaves PROJECT_MEMORY.md's session-end
-    checklist truncated — check scripts\daily\strategy_daily.ps1 if this recurs.
-
----
-
-## SESSION STARTUP CHECKLIST
-
-```
-1. Read CLAUDE.md
-2. Read this file (PROJECT_MEMORY.md)
-3. Read docs\sessions\ â€” yesterday's and today's logs
-4. git log --oneline -10
-5. Read docs\reports\{yesterday}.md
-6. Produce session start report, WAIT for Saeed's go-ahead
-```
-
----
-
-## SESSION END CHECKLIST
-
-```
-1. Write session summary to docs\sessions\YYYY-MM-DD-HHMM.md
-2. Update this file â€” status, tasks, git state
-3. git add PROJECT_MEMORY.md docs\sessions\ && git commit -m "memory: session YYYY-MM-DD"
-4. git push origin HEAD
-5. Tell Saeed: "Session saved. Memory updated. Ready to pick up tomorrow."
-```
+Repo:    htt
