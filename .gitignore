@@ -31,6 +31,9 @@ config/local_secrets.json
 config/*secret*
 config/*token*
 config/*key*
+# ...but the template documenting WHICH keys exist is tracked. It holds no real
+# values. Without this negation the `config/*secret*` rule above would hide it.
+!config/secrets.env.example
 *.key
 *.pem
 

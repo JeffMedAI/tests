@@ -15,6 +15,18 @@ if (-not (Test-Path $python)) {
     exit 1
 }
 
+# Load config\secrets.env into the environment so uvicorn inherits it. Never
+# fatal: a missing/empty secrets file leaves the dependent endpoints failing
+# closed on their own, which is safer than refusing to start the dashboard.
+$secretsLoader = Join-Path $PSScriptRoot "_load_secrets.ps1"
+if (Test-Path $secretsLoader) {
+    . $secretsLoader
+    Import-JeffSecrets -LogFile $logFile
+} else {
+    "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') [SECRETS] loader not found at $secretsLoader - starting without secrets" |
+        Out-File $logFile -Append
+}
+
 Push-Location $workDir
 try {
     "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') [START] uvicorn starting" | Out-File $logFile -Append
