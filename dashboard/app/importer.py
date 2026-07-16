@@ -28,6 +28,20 @@ STAFF_PRESERVED_FIELDS = (
     "turnaround_minutes",
 )
 
+# Set once, when a case first lands. NEVER re-stamped on a re-import.
+# `imported_at` means "when this case first arrived", not "when we last touched
+# its file". /api/cases/new-since and the analytics volume queries both read it
+# as an arrival time, so re-stamping it made two-day-old cases look brand new on
+# every 60s importer pass: the dashboard beeped at staff once a minute and
+# hourly volume counted stale cases as today's arrivals. Use `last_updated` for
+# "when did this change".
+FIRST_SEEN_FIELDS = ("imported_at",)
+
+# Successfully imported files are moved here so the 60s importer loop stops
+# re-reading them forever. Mirrors the existing failed/ handling and the
+# documented queue stages (processed / failed / deadletter).
+PROCESSED_SUBDIR = "processed"
+
 FALLBACK_TASK_TITLE = "Processing output unavailable - staff review required"
 FALLBACK_TASK_BODY = "AI-generated task output was unavailable or invalid. Staff must review the transcript and structured call data."
 FALLBACK_SUMMARY = "AI summary unavailable - staff review required."
@@ -408,6 +422,9 @@ def upsert_case(conn: sqlite3.Connection, case: dict[str, Any]) -> None:
         staff_edited = bool(existing["last_edited_at"] or existing["last_edited_by"])
         for staff_field in STAFF_PRESERVED_FIELDS:
             case[staff_field] = existing[staff_field]
+        for first_seen_field in FIRST_SEEN_FIELDS:
+            if existing[first_seen_field]:
+                case[first_seen_field] = existing[first_seen_field]
         if staff_edited:
             case["action_needed"] = existing["action_needed"]
             case["last_updated"] = existing["last_updated"]
@@ -424,6 +441,75 @@ def upsert_case(conn: sqlite3.Connection, case: dict[str, Any]) -> None:
     conn.commit()
 
 
+_retire_failures: dict[str, int] = {}
+_RETIRE_FAILURE_ALERT_THRESHOLD = 5
+
+
+def _retire_to(path: Path, dest_dir: Path, logger: Any) -> None:
+    """Move an imported file out of the inbox into dest_dir.
+
+    These files contain patient data, so the rules here are strict:
+
+    - os.replace ONLY, never shutil.move. shutil.move falls back to copy2 +
+      unlink when os.rename fails (locked file, AV scan, backup handle). If the
+      unlink then fails you get a copy in dest AND the original still in the
+      inbox — and the next pass mints another copy, forever. That is unbounded
+      PII duplication (~1440 copies/day at a 60s interval). os.replace either
+      moves the file or raises, leaving nothing behind. dest_dir is a subdir of
+      the source, so a cross-filesystem rename can't happen.
+    - Idempotent. If an identical file is already retired, drop the source
+      rather than minting copy N+1 — this is the path a retry takes.
+    - Only a genuinely DIFFERENT file with the same name gets a numeric suffix:
+      the same call_id can legitimately re-arrive re-processed, and the earlier
+      copy is evidence, not garbage.
+    - Repeated failures are surfaced, not swallowed. A file that can never be
+      retired would otherwise be silently re-imported every 60s forever.
+
+    A failure never fails the import: the case is already committed to the DB by
+    this point, and a re-read is now harmless because imported_at is stable.
+    """
+    key = str(path)
+    try:
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        target = dest_dir / path.name
+        if target.exists():
+            if _same_contents(path, target):
+                # Already retired (a previous pass got as far as the copy).
+                # Removing the source is what completes that move.
+                path.unlink()
+                _retire_failures.pop(key, None)
+                return
+            stem, suffix = path.stem, path.suffix
+            n = 2
+            while (dest_dir / f"{stem}.{n}{suffix}").exists():
+                n += 1
+            target = dest_dir / f"{stem}.{n}{suffix}"
+        os.replace(path, target)
+        _retire_failures.pop(key, None)
+    except Exception as exc:
+        fails = _retire_failures[key] = _retire_failures.get(key, 0) + 1
+        log = logger.error if fails >= _RETIRE_FAILURE_ALERT_THRESHOLD else logger.warning
+        log(
+            "importer: imported %s but could not retire it to %s (failure #%d) — %s: %s. "
+            "It will be re-read next pass. If this persists the file is stuck and "
+            "needs manual attention.",
+            path.name,
+            dest_dir.name,
+            fails,
+            type(exc).__name__,
+            exc,
+        )
+
+
+def _same_contents(a: Path, b: Path) -> bool:
+    try:
+        if a.stat().st_size != b.stat().st_size:
+            return False
+        return a.read_bytes() == b.read_bytes()
+    except Exception:
+        return False
+
+
 def import_handoffs(
     conn: sqlite3.Connection,
     handoff_dir: Path | None = None,
@@ -435,7 +521,10 @@ def import_handoffs(
     logger = logging.getLogger(__name__)
     source_dir = handoff_dir or HANDOFF_DIR
     failed_dir = source_dir / "failed"
+    processed_dir = source_dir / PROCESSED_SUBDIR
     count = 0
+    # glob() is deliberately non-recursive: it must not reach into processed/ or
+    # failed/, or retiring files there would achieve nothing.
     for path in sorted(source_dir.glob(pattern)):
         try:
             raw = path.read_bytes()
@@ -447,6 +536,8 @@ def import_handoffs(
             data = json.loads(raw.decode("utf-8-sig"))
             upsert_case(conn, map_handoff_to_case(data, path))
             count += 1
+            # Retire it so the 60s loop stops re-importing it forever.
+            _retire_to(path, processed_dir, logger)
         except Exception as exc:
             logger.error(
                 "importer: failed to import %s — %s: %s — moving to failed/",

@@ -28,7 +28,8 @@ Jeff voice AI → queue/encrypted_raw/ → queue/incoming/ → processing → qu
 | queue/deadletter/ count | `(ls C:\JeffLocal\queue\deadletter\).Count` | 0 | 1–5 (investigate) | > 5 (stop and fix) |
 | Ollama response time | Pipeline log: `encrypted_intake_cycle_YYYY-MM-DD.log` | < 60s | 60–120s | > 120s |
 | Cases in DB today | See health_check.md quick check | Matches expected call volume | — | 0 when calls expected |
-| Handoff JSON files | `(ls C:\JeffLocal\outputs\handoff_json\).Count` | Matches case count in DB | — | More files than DB rows (importer problem) |
+| Handoff inbox (waiting to import) | `(ls C:\JeffLocal\outputs\handoff_json\ -File).Count` | 0 (between calls) | 1–5 (mid-import) | Files persisting > 5 min (import failing, or retire blocked by a file lock) |
+| Handoff JSON files (imported) | `(ls C:\JeffLocal\outputs\handoff_json\processed\ -File).Count` | Matches case count in DB | — | Fewer than DB rows (files removed outside the purge) |
 
 ---
 

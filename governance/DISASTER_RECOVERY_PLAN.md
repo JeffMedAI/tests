@@ -45,7 +45,18 @@ If the system goes down, here is what we do:
 3. Run restore: `C:\JeffLocal\devops\backup_recovery\restore_scripts\restore_from_backup.ps1`
 4. Restart dashboard.
 5. Verify data integrity: check case count in dashboard matches expected.
-**RPO:** Up to 24 hours of cases may need re-import from `outputs/handoff_json/` if the backup is from the previous night.
+**RPO:** Up to 24 hours of cases may need re-import if the backup is from the previous night.
+
+> **Re-import source CHANGED 2026-07-16 — read before recovering.** The importer now
+> retires successfully imported handoffs into `outputs/handoff_json/processed/`, so the
+> inbox is normally EMPTY. Re-importing from the inbox recovers **nothing, silently,
+> with no error** — an operator would believe recovery worked. Replay from `processed/`:
+> ```powershell
+> cd C:\JeffLocal\dashboard
+> .\.venv\Scripts\python.exe -c "from app.db import connect; from app.importer import import_handoffs, HANDOFF_DIR; conn = connect(); print('re-imported:', import_handoffs(conn, HANDOFF_DIR / 'processed'))"
+> ```
+> Confirm the printed count is non-zero before declaring recovery successful.
+> (Staff edits on surviving rows are preserved on re-import; `imported_at` is not reset.)
 
 ### Scenario 4 — Machine restart / power loss
 **Detection:** All services down after unplanned restart.  

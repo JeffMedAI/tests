@@ -42,7 +42,13 @@ python -c "from app.db import connect; conn = connect(); r = conn.execute(\"SELE
 ### 3. Pipeline
 - queue/incoming/ should be empty between calls (files process within ~90 seconds)
 - queue/deadletter/ should be 0 (or explain why not)
-- outputs/handoff_json/ should have a file for each case in the DB
+- outputs/handoff_json/ should be EMPTY between calls. **Changed 2026-07-16:** the
+  importer now retires each handoff into `outputs/handoff_json/processed/` once it is
+  imported, so files LEFT SITTING in the inbox are the fault signal (import failing, or
+  retire blocked by a file lock), not the healthy state. Previously this line said the
+  inbox should hold a file per case — that is now inverted.
+- outputs/handoff_json/processed/ should have a file for each case in the DB:
+  `(ls C:\JeffLocal\outputs\handoff_json\processed\).Count`
 
 ### 4. Safety invariant
 Spot-check: pick any case in the DB, confirm:
