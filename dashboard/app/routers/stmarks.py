@@ -8,11 +8,12 @@ cases, tagged by call_id prefix and task text (no schema change, no EMIS/NHS
 matching — this is a general pharmacy enquiry, not a GP patient identity case).
 
 Auth: shared secret via X-StMarks-Secret header, same pattern as the n8n
-webhook HMAC check — /api/intake/ is public-path-exempted from session auth
-in consts.AUTH_PUBLIC_PREFIXES, so this header is the only gate.
+webhook HMAC check — the exact path (not a prefix) is exempted from session
+auth in consts.AUTH_PUBLIC_PATHS, so this header is the only gate.
 """
 from __future__ import annotations
 
+import hmac
 import os
 from datetime import datetime, timezone
 from typing import Any
@@ -28,12 +29,17 @@ router = APIRouter()
 
 STMARKS_SECRET_ENV = "STMARKS_INTAKE_SECRET"
 
+_NAME_MAX = 200
+_CONTACT_MAX = 200
+_MESSAGE_MAX = 5000
+_PAGE_MAX = 300
+
 
 def _check_secret(secret: str | None) -> None:
     expected = os.environ.get(STMARKS_SECRET_ENV)
     if not expected:
-        raise HTTPException(status_code=503, detail=f"St Marks intake not configured — set {STMARKS_SECRET_ENV}")
-    if not secret or secret != expected:
+        raise HTTPException(status_code=503, detail="St Marks intake not configured")
+    if not secret or not hmac.compare_digest(secret, expected):
         raise HTTPException(status_code=401, detail="Invalid or missing intake secret")
 
 
@@ -44,11 +50,11 @@ def api_stmarks_contact(
 ) -> dict[str, Any]:
     _check_secret(x_stmarks_secret)
 
-    name = str(payload.get("name") or "").strip()
-    phone = str(payload.get("phone") or "").strip()
-    email = str(payload.get("email") or "").strip()
-    message = str(payload.get("message") or "").strip()
-    page = str(payload.get("page") or "").strip()
+    name = str(payload.get("name") or "").strip()[:_NAME_MAX]
+    phone = str(payload.get("phone") or "").strip()[:_CONTACT_MAX]
+    email = str(payload.get("email") or "").strip()[:_CONTACT_MAX]
+    message = str(payload.get("message") or "").strip()[:_MESSAGE_MAX]
+    page = str(payload.get("page") or "").strip()[:_PAGE_MAX]
 
     if not name or not message:
         raise HTTPException(status_code=422, detail="name and message are required")
