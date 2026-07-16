@@ -18,11 +18,19 @@ from typing import Any
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Request
 
-from ..consts import N8NTEST_ARCHIVE_FOLDERS
+from ..case_domain import (
+    active_case_clause,
+    active_identity_check_clause,
+    active_red_flag_clause,
+    api_case,
+    resolved_case_clause,
+)
+from ..consts import N8NTEST_ARCHIVE_FOLDERS, SUMMARY_REQUEST_TYPES
 from ..db import connect, row_to_dict
 from ..helpers import ensure_ready
 from ..importer import import_handoffs
 from ..models import utc_now_iso
+from ..paths import BASE_DIR, ROOT_DIR
 
 _log = logging.getLogger(__name__)
 
@@ -46,7 +54,7 @@ def api_sync(rawmock_only: bool = False) -> dict[str, Any]:
 @router.get("/api/n8n/red-flags")
 def api_red_flags() -> dict[str, Any]:
     ensure_ready()
-    from ..main import active_red_flag_clause, api_case
+
     red_flag_sql, red_flag_params = active_red_flag_clause()
     with connect() as conn:
         rows = conn.execute(
@@ -70,7 +78,7 @@ def api_red_flags() -> dict[str, Any]:
 @router.get("/api/n8n/overdue")
 def api_overdue(threshold_hours: float = 24) -> dict[str, Any]:
     ensure_ready()
-    from ..main import active_case_clause, api_case
+
     cutoff = datetime.now(timezone.utc).timestamp() - (threshold_hours * 3600)
     active_sql, active_params = active_case_clause()
     with connect() as conn:
@@ -98,13 +106,7 @@ def api_overdue(threshold_hours: float = 24) -> dict[str, Any]:
 @router.get("/api/n8n/daily-summary")
 def api_daily_summary() -> dict[str, Any]:
     ensure_ready()
-    from ..main import (
-        SUMMARY_REQUEST_TYPES,
-        active_case_clause,
-        active_identity_check_clause,
-        active_red_flag_clause,
-        resolved_case_clause,
-    )
+
     with connect() as conn:
         active_sql, active_params = active_case_clause()
         resolved_sql, resolved_params = resolved_case_clause()
@@ -172,7 +174,7 @@ def _call_id_from_test_call(call: dict[str, Any]) -> str:
 
 
 def _encrypt_local_test_call(call: dict[str, Any]) -> dict[str, Any]:
-    from ..main import ROOT_DIR
+
     fixtures_dir = ROOT_DIR / "tests" / "fixtures"
     if str(fixtures_dir) not in sys.path:
         sys.path.insert(0, str(fixtures_dir))
@@ -181,7 +183,7 @@ def _encrypt_local_test_call(call: dict[str, Any]) -> dict[str, Any]:
 
 
 def _archive_n8ntest_artifacts() -> dict[str, Any]:
-    from ..main import ROOT_DIR
+
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     archive_root = ROOT_DIR / "backup" / f"n8ntest_regeneration_{timestamp}"
     summary = []
@@ -207,7 +209,7 @@ def _archive_n8ntest_artifacts() -> dict[str, Any]:
 
 
 def _write_n8ntest_envelopes(calls: list[dict[str, Any]]) -> list[str]:
-    from ..main import ROOT_DIR
+
     output_dir = ROOT_DIR / "queue" / "encrypted_raw"
     output_dir.mkdir(parents=True, exist_ok=True)
     written = []
@@ -221,7 +223,7 @@ def _write_n8ntest_envelopes(calls: list[dict[str, Any]]) -> list[str]:
 
 
 def _run_encrypted_cycle_disable_google_push() -> dict[str, Any]:
-    from ..main import BASE_DIR, ROOT_DIR
+
     command = [
         "powershell.exe",
         "-NoProfile",
@@ -252,7 +254,7 @@ def _run_encrypted_cycle_disable_google_push() -> dict[str, Any]:
 
 
 def _count_n8ntest_files(relative_folder: str, pattern: str = "*N8NTEST*") -> int:
-    from ..main import ROOT_DIR
+
     folder = ROOT_DIR / relative_folder
     if not folder.exists():
         return 0
@@ -260,7 +262,7 @@ def _count_n8ntest_files(relative_folder: str, pattern: str = "*N8NTEST*") -> in
 
 
 def _count_batch_files(relative_folder: str, call_ids: list[str], suffix: str = "") -> int:
-    from ..main import ROOT_DIR
+
     folder = ROOT_DIR / relative_folder
     if not folder.exists():
         return 0

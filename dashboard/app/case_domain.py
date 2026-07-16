@@ -1,0 +1,1898 @@
+"""Case/query domain layer for the dashboard.
+
+Pure business logic (case shaping, SQL clause builders, dashboard summary
+cards, staff/audit helpers) extracted out of main.py so routers depend on
+this module instead of reaching into main.py at request time.
+"""
+from __future__ import annotations
+
+import json
+import re
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+from typing import Any
+from urllib.parse import quote, urlencode, urlsplit
+from uuid import uuid4
+
+from fastapi import HTTPException, Request
+
+from .alert_queries import alert_row_to_display
+from .audit import write_audit_event
+from .consts import (
+    DATE_RANGE_OPTIONS,
+    DEFAULT_ACTION_NEEDED,
+    DEFAULT_OUTCOME_NOTES,
+    DEMO_CALL_PREFIXES,
+    IDENTITY_REVIEW_STATUSES,
+    IN_PROGRESS_STATUS_NAMES,
+    LOCAL_SERVICE_URLS,
+    OPEN_BATCH_STATUSES,
+    REQUEST_TYPE_CANONICAL,
+    REQUEST_TYPE_LABELS,
+    SAFE_MATCH_STATUSES,
+    STAFF_REVIEW_STATUS_NAMES,
+    SUMMARY_REQUEST_TYPES,
+    TERMINAL_CASE_STATUSES,
+)
+from .db import connect, row_to_dict
+from .helpers import staff_can_manage
+from .models import (
+    format_display_timestamp,
+    format_dob_uk,
+    format_phone_uk,
+    format_turnaround_time,
+    utc_now_iso,
+)
+from .paths import ROOT_DIR
+
+__all__ = [
+    'DEFAULT_RETURN_URL',
+    'PHARMACY_FIRST_LABELS',
+    'active_case_clause',
+    'active_identity_check_clause',
+    'active_red_flag_clause',
+    'active_staff_review_clause',
+    'add_pathway_item',
+    'api_case',
+    'as_optional_int',
+    'attach_recent_audit_events',
+    'attach_recording_metadata',
+    'batch_resolve_block_reason',
+    'batch_resolve_cases',
+    'build_suggested_actions',
+    'bulk_action_cases',
+    'calculate_age_label',
+    'calculate_turnaround_minutes',
+    'canonical_request_type',
+    'compact_workload',
+    'dedupe_repeated_display_sentences',
+    'demo_data_present',
+    'demo_mode_enabled_from_config',
+    'detail_case_url',
+    'emis_workflow_steps',
+    'filter_clause',
+    'folder_file_count',
+    'format_red_flag_followups',
+    'format_safe_to_queue',
+    'format_staff_review',
+    'friendly_audit_text',
+    'friendly_request_type',
+    'friendly_status',
+    'get_call_analytics_card',
+    'get_kpi_cards',
+    'get_peak_hour',
+    'get_queue_status_card',
+    'get_recording_for_case',
+    'get_request_type_breakdown',
+    'get_staff_any_by_id',
+    'get_staff_users',
+    'get_summary_cards',
+    'get_system_health_card',
+    'get_system_workload',
+    'get_team_activity',
+    'get_urgent_attention',
+    'has_text',
+    'health_indicator',
+    'is_active_case',
+    'is_active_identity_check',
+    'is_active_red_flag',
+    'is_active_staff_review',
+    'is_resolved_case',
+    'load_case_source_payload',
+    'make_query',
+    'normalize_case_status',
+    'normalize_lookup_value',
+    'normalized_lookup_sql',
+    'normalized_status_sql',
+    'paged_worklist_url',
+    'pathway_display_value',
+    'pathway_question_responses',
+    'prepare_case',
+    'primary_display_status',
+    'range_clause',
+    'require_staff_admin',
+    'requires_staff_action',
+    'resolve_date_range',
+    'resolve_skip_reason',
+    'resolved_at_range_clause',
+    'resolved_case_clause',
+    'return_url_with_notice',
+    'safe_local_return_url',
+    'sanitize_internal_codes',
+    'sort_clause',
+    'sql_column',
+    'sql_placeholders',
+    'summary_chips_for_case',
+    'transcript_conversation_lines',
+    'update_staff_fields',
+    'worklist_order_clause',
+    'worklist_url',
+]
+
+def calculate_turnaround_minutes(start_timestamp: str, end_timestamp: str) -> int | None:
+    if not start_timestamp:
+        return None
+    try:
+        start = datetime.fromisoformat(start_timestamp.replace("Z", "+00:00"))
+        end = datetime.fromisoformat(end_timestamp.replace("Z", "+00:00"))
+        if start.tzinfo is None:
+            start = start.replace(tzinfo=timezone.utc)
+        if end.tzinfo is None:
+            end = end.replace(tzinfo=timezone.utc)
+    except ValueError:
+        return None
+    minutes = int((end - start).total_seconds() // 60)
+    return max(minutes, 0)
+
+
+def resolve_date_range(range_name: str, conn) -> str:
+    valid = {item["value"] for item in DATE_RANGE_OPTIONS}
+    if range_name in valid:
+        return range_name
+
+    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0).timestamp()
+    today_count = conn.execute(
+        "SELECT COUNT(*) FROM cases WHERE COALESCE(call_timestamp_sort, 0) >= ?",
+        (today_start,),
+    ).fetchone()[0]
+    return "today" if today_count else "all"
+
+
+def range_clause(range_name: str) -> tuple[str, tuple[Any, ...]]:
+    now = datetime.now(timezone.utc)
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0).timestamp()
+    if range_name == "today":
+        return "COALESCE(call_timestamp_sort, 0) >= ?", (today_start,)
+    if range_name == "7d":
+        return "COALESCE(call_timestamp_sort, 0) >= ?", (today_start - 6 * 86400,)
+    if range_name == "30d":
+        return "COALESCE(call_timestamp_sort, 0) >= ?", (today_start - 29 * 86400,)
+    return "1=1", ()
+
+
+def resolved_at_range_clause(range_name: str) -> tuple[str, tuple[Any, ...]]:
+    now = datetime.now(timezone.utc)
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    if range_name == "today":
+        return "resolved_at >= ?", (today_start.isoformat(),)
+    if range_name == "7d":
+        return "resolved_at >= ?", ((today_start - timedelta(days=6)).isoformat(),)
+    if range_name == "30d":
+        return "resolved_at >= ?", ((today_start - timedelta(days=29)).isoformat(),)
+    return "COALESCE(TRIM(resolved_at), '') <> ''", ()
+
+
+def normalize_case_status(value: object) -> str:
+    return str(value or "").replace("_", " ").strip().lower()
+
+
+def normalize_lookup_value(value: object) -> str:
+    return str(value or "").strip().lower()
+
+
+def has_text(value: object) -> bool:
+    return bool(str(value or "").strip())
+
+
+def is_resolved_case(case: dict[str, Any]) -> bool:
+    status = normalize_case_status(case.get("status"))
+    if status in TERMINAL_CASE_STATUSES:
+        return True
+    return has_text(case.get("resolved_at"))
+
+
+def is_active_case(case: dict[str, Any]) -> bool:
+    return not is_resolved_case(case)
+
+
+def requires_staff_action(case: dict[str, Any]) -> bool:
+    return bool(
+        is_active_red_flag(case)
+        or is_active_staff_review(case)
+        or is_active_identity_check(case)
+        or normalize_case_status(case.get("status")) in {"failed", "failed safety queue", "awaiting processing", "active processing"}
+    )
+
+
+def is_active_red_flag(case: dict[str, Any]) -> bool:
+    return is_active_case(case) and bool(case.get("red_flags_present") or str(case.get("priority") or "").strip() == "999 Emergency")
+
+
+def is_active_identity_check(case: dict[str, Any]) -> bool:
+    return is_active_case(case) and normalize_lookup_value(case.get("verification_status")) in IDENTITY_REVIEW_STATUSES
+
+
+def is_active_staff_review(case: dict[str, Any]) -> bool:
+    return is_active_case(case) and bool(case.get("staff_review_required") or normalize_case_status(case.get("status")) in STAFF_REVIEW_STATUS_NAMES)
+
+
+def sql_placeholders(values: tuple[Any, ...]) -> str:
+    return ", ".join(["?"] * len(values))
+
+
+def sql_column(column: str, table_alias: str = "") -> str:
+    return f"{table_alias}.{column}" if table_alias else column
+
+
+def normalized_status_sql(table_alias: str = "", column: str = "status") -> str:
+    return f"LOWER(REPLACE(TRIM(COALESCE({sql_column(column, table_alias)}, '')), '_', ' '))"
+
+
+def normalized_lookup_sql(table_alias: str = "", column: str = "status") -> str:
+    return f"LOWER(TRIM(COALESCE({sql_column(column, table_alias)}, '')))"
+
+
+def active_case_clause(table_alias: str = "") -> tuple[str, tuple[Any, ...]]:
+    status_expr = normalized_status_sql(table_alias)
+    resolved_at_expr = f"COALESCE(TRIM({sql_column('resolved_at', table_alias)}), '') <> ''"
+    clause = f"NOT ({status_expr} IN ({sql_placeholders(TERMINAL_CASE_STATUSES)}) OR {resolved_at_expr})"
+    return clause, TERMINAL_CASE_STATUSES
+
+
+def resolved_case_clause(table_alias: str = "") -> tuple[str, tuple[Any, ...]]:
+    active_sql, active_params = active_case_clause(table_alias)
+    return f"NOT ({active_sql})", active_params
+
+
+def active_red_flag_clause(table_alias: str = "") -> tuple[str, tuple[Any, ...]]:
+    active_sql, active_params = active_case_clause(table_alias)
+    return f"({active_sql}) AND ({sql_column('red_flags_present', table_alias)} = 1 OR {sql_column('priority', table_alias)} = ?)", (*active_params, "999 Emergency")
+
+
+def active_staff_review_clause(table_alias: str = "") -> tuple[str, tuple[Any, ...]]:
+    active_sql, active_params = active_case_clause(table_alias)
+    status_expr = normalized_status_sql(table_alias)
+    clause = (
+        f"({active_sql}) AND ({sql_column('staff_review_required', table_alias)} = 1 "
+        f"OR {status_expr} IN ({sql_placeholders(STAFF_REVIEW_STATUS_NAMES)}))"
+    )
+    return clause, (*active_params, *STAFF_REVIEW_STATUS_NAMES)
+
+
+def active_identity_check_clause(table_alias: str = "") -> tuple[str, tuple[Any, ...]]:
+    active_sql, active_params = active_case_clause(table_alias)
+    verification_expr = normalized_lookup_sql(table_alias, "verification_status")
+    clause = f"({active_sql}) AND {verification_expr} IN ({sql_placeholders(tuple(IDENTITY_REVIEW_STATUSES))})"
+    return clause, (*active_params, *tuple(IDENTITY_REVIEW_STATUSES))
+
+
+def update_staff_fields(
+    conn,
+    call_id: str,
+    allowed_updates: dict[str, Any],
+    edited_by: str,
+    known_old: dict[str, Any] | None = None,
+) -> bool:
+    if known_old is not None:
+        old = known_old
+    else:
+        row = conn.execute("SELECT * FROM cases WHERE call_id = ?", (call_id,)).fetchone()
+        old = row_to_dict(row)
+    if old is None:
+        raise HTTPException(status_code=404, detail="Case not found")
+
+    changed_fields = [key for key, value in allowed_updates.items() if old.get(key) != value]
+    if not changed_fields:
+        return False
+
+    assignments = ", ".join([f"{key} = ?" for key in allowed_updates])
+    conn.execute(
+        f"UPDATE cases SET {assignments} WHERE call_id = ?",
+        [allowed_updates[key] for key in allowed_updates] + [call_id],
+    )
+    write_audit_event(
+        conn,
+        call_id=call_id,
+        action="staff_update",
+        edited_by=edited_by,
+        changed_fields=changed_fields,
+        old_values={key: old.get(key) for key in changed_fields},
+        new_values={key: allowed_updates.get(key) for key in changed_fields},
+    )
+    return True
+
+
+def filter_clause(filter_name: str) -> tuple[str, tuple[Any, ...]]:
+    today = datetime.now(timezone.utc).date().isoformat()
+    active_sql, active_params = active_case_clause()
+    resolved_sql, resolved_params = resolved_case_clause()
+    red_flag_sql, red_flag_params = active_red_flag_clause()
+    staff_review_sql, staff_review_params = active_staff_review_clause()
+    identity_sql, identity_params = active_identity_check_clause()
+    resolved_today_sql = f"({resolved_sql}) AND resolved_at LIKE ?"
+    filters: dict[str, tuple[str, tuple[Any, ...]]] = {
+        "all": ("1=1", ()),
+        "urgent_red_flags": (red_flag_sql, red_flag_params),
+        "needs_review": (staff_review_sql, staff_review_params),
+        "identity_issues": (identity_sql, identity_params),
+        "open": (active_sql, active_params),
+        "unresolved": (active_sql, active_params),
+        "resolved": (resolved_sql, resolved_params),
+        "resolved_today": (resolved_today_sql, (*resolved_params, f"{today}%")),
+    }
+    return filters.get(filter_name, filters["all"])
+
+
+_TS_SORT = "COALESCE(NULLIF(call_timestamp_sort, 0), CAST(strftime('%s', imported_at) AS REAL), 0)"
+
+
+def sort_clause(sort: str) -> str:
+    ts = _TS_SORT
+    clauses = {
+        "newest": f"{ts} DESC, call_id ASC",
+        "oldest": f"{ts} ASC, call_id ASC",
+        "priority": f"""
+            CASE priority
+                WHEN '999 Emergency' THEN 0
+                WHEN 'urgent_same_day' THEN 1
+                WHEN 'urgent_review' THEN 2
+                WHEN 'review_required' THEN 3
+                WHEN 'routine' THEN 4
+                WHEN 'normal' THEN 5
+                ELSE 6
+            END ASC,
+            {ts} DESC,
+            call_id ASC
+        """,
+        "unresolved": f"""
+            CASE WHEN LOWER(REPLACE(TRIM(COALESCE(status, '')), '_', ' ')) IN ('resolved', 'closed', 'completed', 'complete', 'cancelled', 'canceled', 'archived', 'duplicate', 'dismissed', 'unable to complete') THEN 1 ELSE 0 END ASC,
+            red_flags_present DESC,
+            staff_review_required DESC,
+            {ts} DESC,
+            call_id ASC
+        """,
+    }
+    return clauses.get(sort, clauses["newest"])
+
+
+def worklist_order_clause(sort: str, filter_name: str, explicit_sort: bool) -> str:
+    ts = _TS_SORT
+    if not explicit_sort and filter_name in {"all", "open", "unresolved"}:
+        return f"""
+            CASE WHEN red_flags_present = 1 OR priority = '999 Emergency' THEN 0 ELSE 1 END ASC,
+            {ts} DESC,
+            call_id ASC
+        """
+    return sort_clause(sort)
+
+
+def make_query(filter_name: str, sort: str, q: str, request_type: str) -> tuple[str, tuple[Any, ...]]:
+    where, params = filter_clause(filter_name)
+    parts = [where]
+    values: list[Any] = list(params)
+    if request_type:
+        parts.append("request_type = ?")
+        values.append(request_type)
+    if q:
+        like = f"%{q}%"
+        # Digit-normalized search: strip spaces/dashes/dots/+ for phone/NHS/EMIS lookups.
+        # Allows "472 935 6187" to match nhs_number stored as "4729356187".
+        q_digits = "".join(ch for ch in q if ch.isdigit())
+        digit_like = f"%{q_digits}%" if q_digits else like
+        parts.append(
+            """
+            (
+                call_id LIKE ? OR patient_name LIKE ? OR dob LIKE ? OR postcode LIKE ?
+                OR callback_number LIKE ? OR emis_number LIKE ? OR nhs_number LIKE ?
+                OR call_summary LIKE ? OR ai_summary LIKE ? OR task_title LIKE ? OR task_body LIKE ?
+                OR staff_task_title LIKE ? OR staff_task_body LIKE ? OR patient_record_note LIKE ?
+                OR verification_status LIKE ?
+                OR REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(callback_number, ''), ' ', ''), '-', ''), '.', ''), '+', '') LIKE ?
+                OR REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(nhs_number, ''), ' ', ''), '-', ''), '.', ''), '+', '') LIKE ?
+                OR REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(emis_number, ''), ' ', ''), '-', ''), '.', ''), '+', '') LIKE ?
+            )
+            """
+        )
+        values.extend([like] * 15)
+        values.extend([digit_like, digit_like, digit_like])
+    return " AND ".join(f"({part})" for part in parts), tuple(values)
+
+
+def worklist_url(filter_name: str, sort: str, q: str, request_type: str, date_range: str) -> str:
+    params = {
+        "filter": filter_name,
+        "sort": sort,
+        "range": date_range,
+    }
+    if q:
+        params["q"] = q
+    if request_type:
+        params["request_type"] = request_type
+    return "/requests?" + urlencode(params)
+
+
+def paged_worklist_url(filter_name: str, sort: str, q: str, request_type: str, date_range: str, page: int, page_size: int) -> str:
+    params = {
+        "filter": filter_name,
+        "sort": sort,
+        "range": date_range,
+        "page": page,
+        "page_size": page_size,
+    }
+    if q:
+        params["q"] = q
+    if request_type:
+        params["request_type"] = request_type
+    return "/requests?" + urlencode(params)
+
+
+DEFAULT_RETURN_URL = "/requests?filter=all&sort=newest&range=today&page_size=20"
+
+
+def safe_local_return_url(request: Request, value: str | None, default: str = DEFAULT_RETURN_URL) -> str:
+    candidate = (value or "").strip()
+    if not candidate:
+        return default
+    parsed = urlsplit(candidate)
+    if parsed.scheme or parsed.netloc or not candidate.startswith("/") or candidate.startswith("//"):
+        return default
+    return candidate
+
+
+def detail_case_url(call_id: str, return_url: str) -> str:
+    params = {"return_url": return_url} if return_url else {}
+    suffix = f"?{urlencode(params)}" if params else ""
+    return f"/case/{quote(call_id)}{suffix}"
+
+
+def return_url_with_notice(return_url: str, notice: str) -> str:
+    if not notice:
+        return return_url
+    separator = "&" if "?" in return_url else "?"
+    return f"{return_url}{separator}{urlencode({'notice': notice})}"
+
+
+def canonical_request_type(value: str) -> str:
+    """Return the canonical type key used for CSS class and label lookup."""
+    raw = (value or "").strip()
+    return REQUEST_TYPE_CANONICAL.get(raw, raw)
+
+def friendly_request_type(value: str) -> str:
+    canon = canonical_request_type(value)
+    return REQUEST_TYPE_LABELS.get(canon, (canon or "Unknown").replace("_", " ").title())
+
+
+def friendly_status(value: str) -> str:
+    return (value or "New").replace("_", " ").title()
+
+
+def calculate_age_label(dob: object, age: object = None) -> str:
+    if age not in ("", None):
+        return str(age)
+    text = str(dob or "").strip()
+    if not text:
+        return ""
+    try:
+        born = datetime.fromisoformat(text.replace("Z", "+00:00")).date()
+    except ValueError:
+        return ""
+    today = datetime.now(timezone.utc).date()
+    years = today.year - born.year - ((today.month, today.day) < (born.month, born.day))
+    return str(years) if years >= 0 else ""
+
+
+def get_staff_users(conn, active_only: bool = True) -> list[dict[str, Any]]:
+    where = "WHERE active = 1" if active_only else ""
+    rows = conn.execute(
+        f"""
+        SELECT id, username, display_name, email, role, active, created_at, updated_at
+        FROM staff_users
+        {where}
+        ORDER BY active DESC, role ASC, display_name ASC
+        """
+    ).fetchall()
+    return [row_to_dict(row) or {} for row in rows]
+
+
+def get_staff_any_by_id(conn, staff_id: object) -> dict[str, Any] | None:
+    try:
+        numeric_id = int(str(staff_id))
+    except (TypeError, ValueError):
+        return None
+    row = conn.execute(
+        """
+        SELECT id, display_name, email, role, active, created_at, updated_at
+        FROM staff_users
+        WHERE id = ?
+        """,
+        (numeric_id,),
+    ).fetchone()
+    return row_to_dict(row)
+
+
+
+
+def require_staff_admin(staff: dict[str, Any]) -> None:
+    if not staff_can_manage(staff):
+        raise HTTPException(status_code=403, detail="Admin staff required.")
+
+
+def format_staff_review(value: object) -> str:
+    return "Review Required" if value else "routine"
+
+
+def format_safe_to_queue(value: object) -> str:
+    return "Safe To Queue" if value else "Not Safe To Queue"
+
+
+def primary_display_status(case: dict[str, Any]) -> tuple[str, str]:
+    status = str(case.get("status") or "").replace("_", " ").strip().lower()
+    if is_resolved_case(case):
+        return "RESOLVED", "resolved"
+    if status in {"in review", "in progress"}:
+        return "IN REVIEW", "in-review"
+    if status == "reopened":
+        return "REOPENED", "review"
+    if status == "escalated":
+        return "ESCALATED", "review"
+    if status in {"failed", "error", "failed / error"}:
+        return "FAILED / ERROR", "danger"
+    if status in {"new", "open", ""}:
+        return "OPEN", "open"
+    return "OPEN", "open"
+
+
+def build_suggested_actions(case: dict[str, Any]) -> list[str]:
+    """Return 3-5 clinical triage action strings derived from case data."""
+    actions: list[str] = []
+    priority = str(case.get("priority") or "routine").strip().lower()
+    red_flag = bool(case.get("red_flags_present"))
+    verification = str(case.get("verification_status") or "").strip().lower()
+    request_type = str(case.get("request_type") or "").strip().lower()
+    staff_review = bool(case.get("staff_review_required"))
+    is_emergency = red_flag or priority in {"999 emergency", "urgent"}
+
+    if is_emergency:
+        actions.append("Escalate immediately — possible urgent / emergency presentation")
+    actions.append("Assess urgency and triage category")
+    if red_flag:
+        actions.append("Check for red flag symptoms — follow local emergency protocol")
+    if verification in {"failed", "unverified", "partial", "unable to verify"}:
+        actions.append("Verify patient identity before routing")
+    if request_type in {"appointment", "gp appointment", "urgent appointment"}:
+        actions.append("Route to appropriate GP or duty clinician")
+    elif request_type in {"prescription", "repeat prescription"}:
+        actions.append("Route to prescribing team for authorisation")
+    elif request_type in {"sick note", "sick_note", "fit note"}:
+        actions.append("Assign to GP for fit note review")
+    elif request_type in {"test result", "test_result"}:
+        actions.append("Check if results are available and notify clinician")
+    elif request_type in {"referral"}:
+        actions.append("Check referral pathway and confirm with GP")
+    else:
+        actions.append("Route to appropriate GP or team")
+    if staff_review and not is_emergency:
+        actions.append("Staff review required before processing")
+    return actions[:5]
+
+
+_EMIS_STEPS: dict[str, list[str]] = {
+    "prescription": [
+        "Find patient on EMIS",
+        "Paste AI-generated record note into patient record",
+        "Assign task to Medicines Management",
+    ],
+    "sick_note": [
+        "Find patient on EMIS",
+        "Check GP fit note policy and prior sick notes",
+        "Create task for GP to authorise and issue fit note",
+    ],
+    "referral": [
+        "Find patient on EMIS",
+        "Confirm referral pathway with GP or clinical lead",
+        "Raise referral via EMIS task or e-Referrals (eRS)",
+    ],
+    "test_result": [
+        "Find patient on EMIS",
+        "File result in patient record",
+        "Assign to responsible clinician for review and action",
+    ],
+    "admin": [
+        "Find patient on EMIS",
+        "Log contact in patient record",
+        "Action or route to appropriate team",
+    ],
+    "appointment_redirect": [
+        "Find patient on EMIS",
+        "Check appointment availability or redirect protocol",
+        "Book or redirect as appropriate",
+    ],
+}
+
+
+def emis_workflow_steps(request_type: str | None) -> list[str]:
+    rt = str(request_type or "").strip().lower()
+    return _EMIS_STEPS.get(rt, _EMIS_STEPS["admin"])
+
+
+_VS_LABEL: dict[str, str] = {
+    "no_match":         "No ID Match",
+    "unverified":       "Unverified",
+    "partial":          "Partial Match",
+    "unable to verify": "Unverifiable",
+    "insufficient_data":"No Data",
+    "failed":           "ID Failed",
+}
+
+
+def summary_chips_for_case(case: dict[str, Any]) -> list[dict[str, str]]:
+    """Generate status pills for case display.
+
+    Design rule: one pill per concern. Never show both a priority pill and an
+    identity/review pill that convey the same thing. Identity cases get a single
+    combined pill — 'Review (No ID Match)' etc. — so the card stays readable.
+    """
+    chips: list[dict[str, str]] = []
+    is_emergency = bool(case.get("red_flags_present") or str(case.get("priority") or "").strip() == "999 Emergency")
+    verification_status = str(case.get("verification_status") or "").strip().lower()
+    staff_review = case.get("staff_review_required")
+    priority_raw = str(case.get("priority") or "routine").replace("_", " ").strip()
+    # Human-readable priority — never leak internal codes like "review_required"
+    priority_internal = {"review required", "review_required", "needs review"}
+    priority_display = priority_raw if priority_raw.lower() not in priority_internal else "routine"
+
+    # Resolved cases: no action chips — type badge + RESOLVED footer is sufficient.
+    # Emergency resolved cases keep Red Flag for audit visibility.
+    if case.get("is_resolved") or is_resolved_case(case):
+        if is_emergency:
+            chips.append({"label": "Red Flag", "class": "danger"})
+        return chips
+
+    # Emergency: Safe To Queue + Red Flag (CALL NOW attn-badge handles the urgency label)
+    if is_emergency:
+        chips.append({"label": "Red Flag", "class": "danger"})
+        chips.append({"label": format_safe_to_queue(case.get("safe_to_queue")), "class": "safe" if case.get("safe_to_queue") else "not-safe"})
+        return chips[:2]
+
+    # Identity check: ONE combined pill — "Review (No ID Match)" / "Review (Partial Match)" etc.
+    # Avoids showing separate priority + ID + Review attn-badge for the same concern.
+    if verification_status in IDENTITY_REVIEW_STATUSES:
+        vs_label = _VS_LABEL.get(verification_status, verification_status.replace("_", " ").title())
+        chips.append({
+            "label": f"Review ({vs_label})",
+            "class": "review",
+            "tooltip": f"Staff review required · Verification: {vs_label}",
+        })
+        return chips[:1]
+
+    # Staff review (non-identity): one review pill + safe-to-queue
+    if staff_review:
+        chips.append({"label": "Review Required", "class": "review"})
+        chips.append({"label": format_safe_to_queue(case.get("safe_to_queue")), "class": "safe" if case.get("safe_to_queue") else "not-safe"})
+        return chips[:2]
+
+    # Default: priority (if non-routine) + safe-to-queue
+    if priority_display.lower() not in ("routine", ""):
+        chips.append({
+            "label": priority_display.title(),
+            "class": "danger" if case.get("priority") == "999 Emergency" else "review",
+        })
+    chips.append({
+        "label": format_safe_to_queue(case.get("safe_to_queue")),
+        "class": "safe" if case.get("safe_to_queue") else "not-safe",
+    })
+    return chips[:2]
+
+
+_INTERNAL_CODE_MAP: dict[str, str] = {
+    "review_required":    "Review Required",
+    "no_match":           "No ID Match",
+    "possible_match":     "Possible Match",
+    "possible_match_weak":"Possible Match",
+    "insufficient_data":  "Insufficient Data",
+    "unverified":         "Unverified",
+    "unable to verify":   "Unable to Verify",
+    "failed":             "Verification Failed",
+    "999 emergency":      "999 Emergency",
+    "urgent_review":      "Urgent Review",
+    "needs_review":       "Needs Review",
+}
+
+def sanitize_internal_codes(text: object) -> str:
+    """Replace pipeline-internal codes with human-readable equivalents in display text."""
+    if not text:
+        return str(text or "")
+    result = str(text)
+    for code, label in _INTERNAL_CODE_MAP.items():
+        # whole-word replacement, case-insensitive
+        result = re.sub(rf"\b{re.escape(code)}\b", label, result, flags=re.IGNORECASE)
+    return result
+
+
+def dedupe_repeated_display_sentences(value: object) -> str:
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    parts = re.split(r"(?<=[.!?])\s+", text)
+    cleaned: list[str] = []
+    previous = ""
+    for part in parts:
+        normalized = re.sub(r"\s+", " ", part).strip().lower()
+        if normalized and normalized != previous:
+            cleaned.append(part.strip())
+        previous = normalized
+    return " ".join(cleaned)
+
+
+def prepare_case(row: dict[str, Any]) -> dict[str, Any]:
+    case = dict(row)
+    case["staff_task_title"] = dedupe_repeated_display_sentences(case.get("staff_task_title") or case.get("task_title") or "")
+    case["staff_task_body"] = dedupe_repeated_display_sentences(case.get("staff_task_body") or case.get("task_body") or "")
+    case["ai_summary"] = dedupe_repeated_display_sentences(case.get("ai_summary") or case.get("call_summary") or "")
+    case["patient_record_note"] = dedupe_repeated_display_sentences(case.get("patient_record_note") or "")
+    case["request_type_label"] = friendly_request_type(str(case.get("request_type", "")))
+    case["request_type_class"] = canonical_request_type(str(case.get("request_type", "")))
+    case["status_label"] = friendly_status(str(case.get("status", "")))
+    case["safe_to_queue_label"] = format_safe_to_queue(case.get("safe_to_queue"))
+    case["staff_review_label"] = format_staff_review(case.get("staff_review_required"))
+    case["red_flag_label"] = "EMERGENCY / RED FLAG" if case.get("red_flags_present") or case.get("priority") == "999 Emergency" else ""
+    # Human-readable priority — never expose internal codes like "review_required"
+    _p_code = str(case.get("priority") or "routine").strip()
+    _p_raw = _p_code.replace("_", " ").strip()
+    _p_internal = {"review required", "needs review"}
+    _p_explicit = {"urgent_same_day": "Urgent – Same Day"}
+    if _p_code in _p_explicit:
+        case["priority_label"] = _p_explicit[_p_code]
+    else:
+        case["priority_label"] = "Routine" if _p_raw.lower() in _p_internal or not _p_raw else _p_raw.title()
+    case["identity_review_required"] = str(case.get("verification_status", "")) in IDENTITY_REVIEW_STATUSES
+    case["identity_label"] = "Identity review required" if case["identity_review_required"] else str(case.get("verification_status", "")).replace("_", " ").title()
+    case["age_label"] = calculate_age_label(case.get("dob"), case.get("age"))
+    case["call_summary_short"] = case.get("ai_summary") or case.get("staff_task_body") or ""
+    case["duration_label"] = f"{case.get('call_duration_seconds')}s" if case.get("call_duration_seconds") not in ("", None) else ""
+    case["is_resolved"] = is_resolved_case(case)
+    case["is_emergency"] = bool(case.get("red_flags_present") or case.get("priority") == "999 Emergency")
+    case["timestamp_display"] = format_display_timestamp(case.get("timestamp"))
+    case["last_updated_display"] = format_display_timestamp(case.get("last_updated"))
+    case["resolved_at_display"] = format_display_timestamp(case.get("resolved_at"))
+    case["last_edited_at_display"] = format_display_timestamp(case.get("last_edited_at"))
+    # Format resolved_by staff name (fallback to empty if not available)
+    case["resolved_by_display"] = str(case.get("resolved_by") or "").strip()
+    # Format turnaround time (show as "2h 15m" or "45 mins")
+    case["turnaround_minutes_display"] = format_turnaround_time(case.get("turnaround_minutes"))
+    # Format DOB and phone number to NHS/UK standards
+    case["dob_display"] = format_dob_uk(case.get("dob")) if case.get("dob") else ""
+    case["callback_number_display"] = format_phone_uk(case.get("callback_number")) if case.get("callback_number") else ""
+    case["primary_status_label"], case["primary_status_class"] = primary_display_status(case)
+    case["summary_chips"] = summary_chips_for_case(case)
+    case["suggested_actions"] = build_suggested_actions(case)
+    # Age since the call (used for card age colouring)
+    try:
+        ts_raw = str(case.get("timestamp") or "").strip()
+        if ts_raw:
+            _dt = datetime.fromisoformat(ts_raw.replace("Z", "+00:00").replace(" ", "T"))
+            _age_secs = max(0, int((datetime.now(timezone.utc) - _dt).total_seconds()))
+            _age_mins = _age_secs // 60
+            case["age_minutes"] = _age_mins
+            if _age_mins < 60:
+                case["age_label_short"] = f"{_age_mins}m ago"
+            elif _age_mins < 1440:
+                case["age_label_short"] = f"{_age_mins // 60}h {_age_mins % 60}m ago"
+            else:
+                case["age_label_short"] = f"{_age_mins // 1440}d ago"
+            case["age_class"] = "fresh" if _age_mins < 15 else "recent" if _age_mins < 60 else "old"
+        else:
+            case["age_minutes"] = None
+            case["age_label_short"] = ""
+            case["age_class"] = ""
+    except Exception:
+        case["age_minutes"] = None
+        case["age_label_short"] = ""
+        case["age_class"] = ""
+    # Short time display: extract HH:MM from timestamp_display ("DD-MM-YYYY T HH:MM")
+    _ts_disp = case.get("timestamp_display") or ""
+    case["time_display"] = _ts_disp.split(" T ")[-1] if " T " in _ts_disp else _ts_disp
+    case["processing_output_missing"] = not (
+        str(case.get("staff_task_title") or "").strip()
+        and str(case.get("staff_task_body") or "").strip()
+        and str(case.get("ai_summary") or "").strip()
+        and str(case.get("patient_record_note") or "").strip()
+    )
+    missing_message = "Processing output missing - staff review required."
+    case["staff_task_display"] = sanitize_internal_codes(case.get("staff_task_body") or missing_message)
+    case["ai_summary_display"] = sanitize_internal_codes(case.get("ai_summary") or missing_message)
+    case["patient_record_note_display"] = sanitize_internal_codes(case.get("patient_record_note") or missing_message)
+    if case["processing_output_missing"]:
+        case["call_summary_short"] = missing_message
+    case["recording_badge_class"] = "safe" if case.get("recording_status") == "available" else "neutral"
+    emis_value = case.get("emis_number") or case.get("matched_patient_ref") or "not available"
+    nhs_value = case.get("nhs_number") or "not available"
+    identifier_warning = "" if (case.get("emis_number") or case.get("matched_patient_ref") or case.get("nhs_number")) else "Patient identifier unavailable - verify patient before documenting."
+    case["identifier_warning"] = identifier_warning
+    identifier_header = "\n".join(
+        [
+            f"EMIS: {emis_value}",
+            f"NHS: {nhs_value}",
+            identifier_warning,
+        ]
+    ).replace("\n\n", "\n")
+    urgent_copy_footer = (
+        "\nUrgent/red-flag case: follow local urgent escalation protocol. Do not rely on copied note alone."
+        if case["is_emergency"]
+        else ""
+    )
+    case["emis_note"] = "\n".join(
+        [
+            "JeffLocal call summary:",
+            f"Call ID: {case.get('call_id') or ''}",
+            f"Request type: {case.get('request_type') or ''}",
+            f"EMIS: {emis_value}",
+            f"NHS: {nhs_value}",
+            identifier_warning,
+            f"DOB: {case.get('dob') or ''}",
+            f"Callback: {case.get('callback_number') or ''}",
+            f"Verification: {case.get('verification_status') or ''}",
+            f"Priority: {case.get('priority') or ''}",
+            f"Safe to queue: {case.get('safe_to_queue_label') or ''}",
+            f"Summary: {case.get('ai_summary_display') or ''}",
+            f"Action needed: {case.get('action_needed') or ''}",
+            urgent_copy_footer,
+        ]
+    ).replace("\n\n", "\n")
+    patient_name = str(case.get("patient_name") or "").strip()
+    def copy_safe(value: object) -> str:
+        text = str(value or "")
+        return text.replace(patient_name, "[patient]") if patient_name else text
+
+    case["copy_safe_summary"] = copy_safe("\n".join([identifier_header, str(case.get("ai_summary_display") or ""), urgent_copy_footer]).strip())
+    case["copy_safe_task"] = copy_safe("\n".join([identifier_header, str(case.get("staff_task_title") or ""), str(case.get("staff_task_display") or ""), urgent_copy_footer]).strip())
+    case["copy_safe_identifiers"] = copy_safe(
+        "\n".join(
+            [
+                f"EMIS: {emis_value}",
+                f"NHS: {nhs_value}",
+                f"Callback: {case.get('callback_number') or 'not available'}",
+                identifier_warning,
+            ]
+        ).replace("\n\n", "\n").strip()
+    )
+    patient_note = str(case.get("patient_record_note_display") or "")
+    if case.get("emis_number") or case.get("matched_patient_ref") or case.get("nhs_number"):
+        patient_note = copy_safe(patient_note)
+    case["copy_safe_emis_note"] = patient_note
+    case["resolve_eligible"] = (
+        not case["is_resolved"]
+        and str(case.get("priority") or "").lower() == "routine"
+        and not case.get("red_flags_present")
+        and bool(case.get("safe_to_queue"))
+        and not case.get("staff_review_required")
+        and str(case.get("verification_status") or "").lower() in SAFE_MATCH_STATUSES
+        and bool(case.get("callback_number"))
+        and bool(case.get("emis_number") or case.get("matched_patient_ref") or case.get("nhs_number") or case.get("patient_name"))
+    )
+    _already_in_review = normalize_case_status(str(case.get("status") or "")) in {"in review", "in progress"}
+    case["requires_individual_review"] = bool(
+        not _already_in_review
+        and (case["is_emergency"] or case["identity_review_required"] or case.get("staff_review_required"))
+    )
+    case["audit_events"] = []
+    return case
+
+
+def attach_recent_audit_events(conn, cases: list[dict[str, Any]]) -> None:
+    call_ids = [case["call_id"] for case in cases]
+    if not call_ids:
+        return
+    placeholders = ", ".join(["?"] * len(call_ids))
+    rows = conn.execute(
+        f"""
+        SELECT timestamp, call_id, action, edited_by, changed_fields, new_values
+        FROM audit_events
+        WHERE call_id IN ({placeholders})
+        ORDER BY timestamp DESC, id DESC
+        """,
+        tuple(call_ids),
+    ).fetchall()
+    by_call_id: dict[str, list[dict[str, Any]]] = {call_id: [] for call_id in call_ids}
+    for row in rows:
+        if len(by_call_id[row["call_id"]]) >= 5:
+            continue
+        audit_row = row_to_dict(row)
+        audit_row["timestamp_display"] = format_display_timestamp(audit_row.get("timestamp"))
+        audit_row["friendly_text"] = friendly_audit_text(audit_row)
+        by_call_id[row["call_id"]].append(audit_row)
+    for case in cases:
+        case["audit_events"] = by_call_id.get(case["call_id"], [])
+
+
+def transcript_conversation_lines(transcript: object) -> list[dict[str, str]]:
+    text = str(transcript or "").strip()
+    if not text:
+        return []
+    speaker_pattern = re.compile(r"\b(Jeff|Agent|Jackie|Digital Receptionist|Caller|Patient)\s*:", re.IGNORECASE)
+    matches = list(speaker_pattern.finditer(text))
+    if matches:
+        parsed_lines: list[dict[str, str]] = []
+        for index, match in enumerate(matches):
+            speaker = match.group(1).strip()
+            start = match.end()
+            end = matches[index + 1].start() if index + 1 < len(matches) else len(text)
+            content = re.sub(r"\s+", " ", text[start:end]).strip()
+            if not content:
+                continue
+            speaker_lower = speaker.lower()
+            if speaker_lower in {"agent", "digital receptionist", "jackie", "jeff"}:
+                parsed_lines.append({"speaker": "Jeff", "role": "agent", "text": content})
+            else:
+                parsed_lines.append({"speaker": "Caller", "role": "caller", "text": content})
+        if parsed_lines:
+            return parsed_lines
+    lines: list[dict[str, str]] = []
+    raw_lines = [line.strip() for line in text.splitlines() if line.strip()]
+    if len(raw_lines) <= 1:
+        return [{"speaker": "Transcript", "role": "system", "text": text}]
+    for line in raw_lines:
+        if ":" in line:
+            speaker, content = line.split(":", 1)
+            speaker = speaker.strip() or "Speaker"
+            content = content.strip()
+        else:
+            speaker, content = "Transcript", line
+        speaker_lower = speaker.lower()
+        if speaker_lower in {"agent", "digital receptionist", "jackie", "assistant"}:
+            display_speaker = "Digital Receptionist"
+            role = "agent"
+        elif speaker_lower in {"caller", "patient", "user"}:
+            display_speaker = "Caller"
+            role = "caller"
+        else:
+            display_speaker = speaker.title()
+            role = "system"
+        if content:
+            lines.append({"speaker": display_speaker, "role": role, "text": content})
+    return lines
+
+
+def load_case_source_payload(case: dict[str, Any]) -> dict[str, Any]:
+    source_path = str(case.get("source_path") or "").strip()
+    if not source_path:
+        return {}
+    path = Path(source_path)
+    if not path.is_absolute():
+        path = ROOT_DIR / path
+    try:
+        resolved = path.resolve()
+        if ROOT_DIR.resolve() not in resolved.parents and resolved != ROOT_DIR.resolve():
+            return {}
+        if not resolved.exists() or not resolved.is_file():
+            return {}
+        return json.loads(resolved.read_text(encoding="utf-8-sig"))
+    except (OSError, json.JSONDecodeError, RuntimeError):
+        return {}
+
+
+def pathway_display_value(value: Any) -> str:
+    if value in ("", None, [], {}):
+        return ""
+    if isinstance(value, bool):
+        return "Yes" if value else "No"
+    if isinstance(value, list):
+        cleaned = [str(item).strip() for item in value if str(item).strip()]
+        return ", ".join(cleaned) if cleaned else "None"
+    return str(value).strip()
+
+
+def add_pathway_item(
+    items: list[dict[str, str]],
+    label: str,
+    value: Any,
+    section: str = "Pathway Q&A",
+) -> None:
+    display = pathway_display_value(value)
+    if display:
+        items.append({"label": label, "value": display, "section": section})
+
+
+# Pharmacy First conditions (caller can be directed to the pharmacy without a GP prescription).
+# Maps the machine code captured by Jeff to a human-readable label for the Triage tab.
+PHARMACY_FIRST_LABELS: dict[str, str] = {
+    "uti_women_16_64": "UTI (women 16–64)",
+    "shingles_18_plus": "Shingles (18+)",
+    "impetigo_1_plus": "Impetigo (1+)",
+    "infected_insect_bites_1_plus": "Infected insect bites (1+)",
+    "sore_throat_5_plus": "Sore throat (5+)",
+    "sinusitis_12_plus": "Sinusitis (12+)",
+    "acute_otitis_media_1_17": "Acute otitis media / earache (1–17)",
+    "none": "",
+}
+
+
+def format_red_flag_followups(value: Any) -> str:
+    """Format the red-flag follow-up Q&A list (list of strings or {question, answer} dicts)."""
+    if not isinstance(value, list):
+        return pathway_display_value(value)
+    parts: list[str] = []
+    for entry in value:
+        if isinstance(entry, dict):
+            q = str(entry.get("question") or entry.get("q") or "").strip()
+            a = str(entry.get("answer") or entry.get("a") or "").strip()
+            if q and a:
+                parts.append(f"{q} — {a}")
+            elif q or a:
+                parts.append(q or a)
+        else:
+            text = str(entry).strip()
+            if text:
+                parts.append(text)
+    return "; ".join(parts)
+
+
+def pathway_question_responses(case: dict[str, Any]) -> list[dict[str, str]]:
+    payload = load_case_source_payload(case)
+    pathway = payload.get("pathway_responses") if isinstance(payload.get("pathway_responses"), dict) else {}
+    normalized = payload.get("normalized_input") if isinstance(payload.get("normalized_input"), dict) else {}
+    items: list[dict[str, str]] = []
+    request_type = str(case.get("request_type") or payload.get("request_type") or "").strip()
+
+    SEC_CALLER = "Caller"
+    SEC_IDENTITY = "Identity"
+    SEC_PATHWAY = "Pathway Q&A"
+    SEC_REDFLAG = "Red flag & urgency"
+
+    # ── Caller section ────────────────────────────────────────────────
+    caller_for = (
+        pathway.get("caller_for")
+        or normalized.get("caller_for")
+        or ((pathway.get("admin") or {}).get("caller_relationship") if isinstance(pathway.get("admin"), dict) else None)
+    )
+    add_pathway_item(items, "Calling for", caller_for, SEC_CALLER)
+    add_pathway_item(items, "Caller name", pathway.get("caller_name") or normalized.get("caller_name"), SEC_CALLER)
+    add_pathway_item(items, "Caller relationship", pathway.get("caller_relationship") or normalized.get("caller_relationship"), SEC_CALLER)
+
+    # ── Identity section ──────────────────────────────────────────────
+    # Reads from payload.identity (top-level, set by Ollama) or pathway.identity (legacy)
+    identity = (
+        payload.get("identity") if isinstance(payload.get("identity"), dict)
+        else pathway.get("identity") if isinstance(pathway.get("identity"), dict)
+        else {}
+    )
+    add_pathway_item(items, "DOB stated", identity.get("dob_stated"), SEC_IDENTITY)
+    add_pathway_item(items, "Name stated", identity.get("name_stated"), SEC_IDENTITY)
+    add_pathway_item(items, "Postcode stated", normalized.get("postcode") or identity.get("postcode"), SEC_IDENTITY)
+    add_pathway_item(items, "Callback confirmed", identity.get("callback_confirmed"), SEC_IDENTITY)
+    add_pathway_item(items, "Verification", case.get("verification_status"), SEC_IDENTITY)
+
+    # ── Pathway-specific Q&A section (the five caller pathways) ────────
+    section = pathway.get(request_type) if isinstance(pathway.get(request_type), dict) else {}
+
+    if request_type == "prescription":
+        add_pathway_item(items, "Prescription type", section.get("prescription_type"), SEC_PATHWAY)
+        add_pathway_item(items, "New-medication symptom", section.get("new_medication_symptom"), SEC_PATHWAY)
+        add_pathway_item(items, "Medication requested", section.get("medications_requested") or normalized.get("medications_requested"), SEC_PATHWAY)
+        add_pathway_item(items, "Run-out status", section.get("run_out_status"), SEC_PATHWAY)
+        add_pathway_item(items, "Pharmacy", section.get("pharmacy") or normalized.get("pharmacy"), SEC_PATHWAY)
+        pf_code = str(section.get("pharmacy_first_condition") or "").strip()
+        pf_label = PHARMACY_FIRST_LABELS.get(pf_code, pf_code if pf_code else "")
+        add_pathway_item(items, "Pharmacy First condition", pf_label, SEC_PATHWAY)
+        add_pathway_item(items, "Pharmacy First advice given", section.get("pharmacy_first_advised"), SEC_PATHWAY)
+
+    elif request_type == "referral":
+        add_pathway_item(items, "Referral type", section.get("referral_type"), SEC_PATHWAY)
+        add_pathway_item(items, "Hospital", section.get("hospital_name"), SEC_PATHWAY)
+        add_pathway_item(items, "Approx submission date", section.get("approx_submission_date"), SEC_PATHWAY)
+        add_pathway_item(items, "Doctor already discussed", section.get("doctor_already_discussed"), SEC_PATHWAY)
+
+    elif request_type == "sick_note":
+        add_pathway_item(items, "Note type", section.get("request_type"), SEC_PATHWAY)
+        add_pathway_item(items, "Over 7 days", section.get("over_7_days"), SEC_PATHWAY)
+        add_pathway_item(items, "Start date requested", section.get("start_date_requested") or section.get("start_date"), SEC_PATHWAY)
+        add_pathway_item(items, "Duration requested", section.get("duration_requested") or section.get("requested_duration"), SEC_PATHWAY)
+        add_pathway_item(items, "Calculated end date", section.get("calculated_end_date"), SEC_PATHWAY)
+        add_pathway_item(items, "Purpose", section.get("purpose"), SEC_PATHWAY)
+        add_pathway_item(items, "Reason", section.get("reason"), SEC_PATHWAY)
+        add_pathway_item(items, "Already spoken to doctor", section.get("already_spoken_to_doctor"), SEC_PATHWAY)
+        add_pathway_item(items, "Workplace adjustments discussed", section.get("workplace_adjustments_discussed"), SEC_PATHWAY)
+        add_pathway_item(items, "Current note end date", section.get("current_note_end_date"), SEC_PATHWAY)
+
+    elif request_type == "test_result":
+        add_pathway_item(items, "Test type", section.get("test_type"), SEC_PATHWAY)
+        add_pathway_item(items, "Approx test date", section.get("approx_test_date"), SEC_PATHWAY)
+        add_pathway_item(items, "Reference number", section.get("reference_number"), SEC_PATHWAY)
+
+    elif request_type == "admin":
+        add_pathway_item(items, "Admin reason", section.get("admin_reason"), SEC_PATHWAY)
+        add_pathway_item(items, "Website answer available", section.get("website_answer_available"), SEC_PATHWAY)
+        add_pathway_item(items, "Callback needed", section.get("callback_needed"), SEC_PATHWAY)
+        add_pathway_item(items, "Identity check taken", section.get("needs_identity_check"), SEC_PATHWAY)
+        add_pathway_item(items, "Caller relationship", section.get("caller_relationship"), SEC_PATHWAY)
+
+    else:
+        # Safety-net cases (unclassified / forced staff review) are no longer caller pathways,
+        # but still surface whatever Jeff captured so reception can review them.
+        generic = pathway.get(request_type) if isinstance(pathway.get(request_type), dict) else {}
+        add_pathway_item(items, "Caller stated reason", generic.get("caller_stated_reason") or payload.get("stated_request"), SEC_PATHWAY)
+        add_pathway_item(items, "Suggested pathway", generic.get("suggested_pathway"), SEC_PATHWAY)
+
+    # ── Red flag & urgency section ────────────────────────────────────
+    # Reads from payload top-level (Ollama places it there) with legacy fallback.
+    urgency = (
+        payload.get("urgency_assessment") if isinstance(payload.get("urgency_assessment"), dict)
+        else pathway.get("urgency_assessment") if isinstance(pathway.get("urgency_assessment"), dict)
+        else {}
+    )
+    add_pathway_item(items, "Urgency level", urgency.get("urgency_level") or case.get("priority"), SEC_REDFLAG)
+    red_flags_mentioned = urgency.get("red_flags_mentioned")
+    add_pathway_item(items, "Red flags mentioned", red_flags_mentioned if red_flags_mentioned else "None", SEC_REDFLAG)
+    add_pathway_item(items, "Red-flag follow-up Q&A", format_red_flag_followups(urgency.get("red_flag_followup_questions")), SEC_REDFLAG)
+    add_pathway_item(items, "Emergency advice given", urgency.get("emergency_advice_given"), SEC_REDFLAG)
+    appt_redirected = payload.get("appointment_redirected") or pathway.get("appointment_redirected")
+    add_pathway_item(items, "Appointment redirected", appt_redirected, SEC_REDFLAG)
+
+    return items
+
+
+def friendly_audit_text(event: dict[str, Any]) -> str:
+    actor = event.get("edited_by") or "Staff"
+    action = str(event.get("action") or "").replace("_", " ")
+    try:
+        new_values = json.loads(event.get("new_values") or "{}")
+    except (TypeError, json.JSONDecodeError):
+        new_values = {}
+    if event.get("action") == "staff_update":
+        if new_values.get("status"):
+            return f"{actor} updated case status to {new_values['status']}."
+        if new_values.get("assigned_to"):
+            return f"{actor} assigned the case to {new_values['assigned_to']}."
+        if new_values.get("resolved_by"):
+            return f"{actor} resolved the case."
+        return f"{actor} updated the case."
+    if event.get("action") == "batch_resolve":
+        return f"{actor} batch resolved this case."
+    if event.get("action") == "case_reopened":
+        return f"{actor} reopened the case for staff review."
+    if event.get("action") == "alert_acknowledged":
+        return f"{actor} acknowledged a local alert."
+    return f"{actor} recorded {action}."
+
+
+def get_summary_cards(conn, date_range: str) -> list[dict[str, Any]]:
+    range_where, range_params = range_clause(date_range)
+    active_sql, active_params = active_case_clause()
+    resolved_sql, resolved_params = resolved_case_clause()
+    red_flag_sql, red_flag_params = active_red_flag_clause()
+    staff_review_sql, staff_review_params = active_staff_review_clause()
+    identity_sql, identity_params = active_identity_check_clause()
+    total_open = conn.execute(
+        f"SELECT COUNT(*) FROM cases WHERE ({range_where}) AND ({active_sql})",
+        (*range_params, *active_params),
+    ).fetchone()[0]
+    red_flags = conn.execute(
+        f"SELECT COUNT(*) FROM cases WHERE ({range_where}) AND ({red_flag_sql})",
+        (*range_params, *red_flag_params),
+    ).fetchone()[0]
+    needs_review = conn.execute(
+        f"SELECT COUNT(*) FROM cases WHERE ({range_where}) AND ({staff_review_sql})",
+        (*range_params, *staff_review_params),
+    ).fetchone()[0]
+    identity_issues = conn.execute(
+        f"SELECT COUNT(*) FROM cases WHERE ({range_where}) AND ({identity_sql})",
+        (*range_params, *identity_params),
+    ).fetchone()[0]
+    resolved_label = "Resolved Today" if date_range == "today" else "Resolved in Range"
+    resolved_range_where, resolved_range_params = resolved_at_range_clause(date_range)
+    resolved_count = conn.execute(
+        f"SELECT COUNT(*) FROM cases WHERE ({resolved_range_where}) AND ({resolved_sql})",
+        (*resolved_range_params, *resolved_params),
+    ).fetchone()[0]
+    return [
+        {"label": "Total Open", "value": total_open, "url": worklist_url("open", "newest", "", "", date_range)},
+        {"label": "Emergency / Red Flags", "value": red_flags, "url": worklist_url("urgent_red_flags", "newest", "", "", date_range)},
+        {"label": "Needs Review", "value": needs_review, "url": worklist_url("needs_review", "newest", "", "", date_range)},
+        {"label": "Identity Issues", "value": identity_issues, "url": worklist_url("identity_issues", "newest", "", "", date_range)},
+        {"label": resolved_label, "value": resolved_count, "url": worklist_url("resolved", "newest", "", "", date_range)},
+    ]
+
+
+def get_request_type_breakdown(conn, date_range: str) -> list[dict[str, Any]]:
+    range_where, range_params = range_clause(date_range)
+    # Count ALL cases in the date range (including resolved) — shows full request volume
+    rows = conn.execute(
+        f"""
+        SELECT COALESCE(request_type, 'unknown') AS request_type, COUNT(*) AS count
+        FROM cases
+        WHERE ({range_where})
+        GROUP BY COALESCE(request_type, 'unknown')
+        """,
+        range_params,
+    ).fetchall()
+    counts = {row["request_type"] or "unknown": row["count"] for row in rows}
+    max_count = max(counts.values(), default=0)
+    breakdown = []
+    for value, label in SUMMARY_REQUEST_TYPES:
+        count = counts.get(value, 0)
+        width = 0 if max_count == 0 else int((count / max_count) * 100)
+        breakdown.append(
+            {
+                "value": value,
+                "label": label,
+                "count": count,
+                "width": width,
+                "url": worklist_url("open", "newest", "", value, date_range),
+            }
+        )
+    return breakdown
+
+
+def get_kpi_cards(conn, date_range: str) -> list[dict[str, Any]]:
+    range_where, range_params = range_clause(date_range)
+    today = datetime.now(timezone.utc).date().isoformat()
+    active_sql, active_params = active_case_clause()
+    resolved_sql, resolved_params = resolved_case_clause()
+    red_flag_sql, red_flag_params = active_red_flag_clause()
+    staff_review_sql, staff_review_params = active_staff_review_clause()
+    identity_sql, identity_params = active_identity_check_clause()
+    open_cases = conn.execute(
+        f"SELECT COUNT(*) FROM cases WHERE ({range_where}) AND ({active_sql})",
+        (*range_params, *active_params),
+    ).fetchone()[0]
+    red_flags = conn.execute(
+        f"SELECT COUNT(*) FROM cases WHERE ({range_where}) AND ({red_flag_sql})",
+        (*range_params, *red_flag_params),
+    ).fetchone()[0]
+    staff_review = conn.execute(
+        f"SELECT COUNT(*) FROM cases WHERE ({range_where}) AND ({staff_review_sql})",
+        (*range_params, *staff_review_params),
+    ).fetchone()[0]
+    identity_checks = conn.execute(
+        f"SELECT COUNT(*) FROM cases WHERE ({range_where}) AND ({identity_sql})",
+        (*range_params, *identity_params),
+    ).fetchone()[0]
+    resolved_today = conn.execute(
+        f"SELECT COUNT(*) FROM cases WHERE resolved_at LIKE ? AND ({resolved_sql})",
+        (f"{today}%", *resolved_params),
+    ).fetchone()[0]
+    return [
+        {"label": "Open Cases", "value": open_cases, "url": worklist_url("open", "newest", "", "", date_range)},
+        {"label": "Red Flags", "value": red_flags, "url": worklist_url("urgent_red_flags", "newest", "", "", date_range)},
+        {"label": "Staff Review", "value": staff_review, "url": worklist_url("needs_review", "newest", "", "", date_range)},
+        {"label": "Identity Checks", "value": identity_checks, "url": worklist_url("identity_issues", "newest", "", "", date_range)},
+        {"label": "Processed Today", "value": resolved_today, "url": worklist_url("resolved_today", "newest", "", "", date_range)},
+    ]
+
+
+def get_urgent_attention(conn) -> dict[str, Any]:
+    red_flag_sql, red_flag_params = active_red_flag_clause()
+    staff_review_sql, staff_review_params = active_staff_review_clause()
+    identity_sql, identity_params = active_identity_check_clause()
+    alert_case_active_sql, alert_case_active_params = active_case_clause("c")
+    red_flags = conn.execute(
+        f"SELECT COUNT(*) FROM cases WHERE {red_flag_sql}",
+        red_flag_params,
+    ).fetchone()[0]
+    staff_review = conn.execute(
+        f"SELECT COUNT(*) FROM cases WHERE {staff_review_sql}",
+        staff_review_params,
+    ).fetchone()[0]
+    identity_checks = conn.execute(
+        f"SELECT COUNT(*) FROM cases WHERE {identity_sql}",
+        identity_params,
+    ).fetchone()[0]
+    alert_row = conn.execute(
+        f"""
+        SELECT ae.alert_id, ae.timestamp, ae.alert_type, ae.severity, ae.count, ae.message,
+               ae.first_call_id, ae.first_patient, ae.first_priority, ae.source_workflow,
+               ae.dedupe_key, ae.acknowledged_at, ae.acknowledged_by, ae.acknowledgement_source
+        FROM alert_events ae
+        LEFT JOIN cases c ON c.call_id = ae.first_call_id
+        WHERE ae.acknowledged_at IS NULL
+          AND LOWER(COALESCE(ae.severity, '')) = 'critical'
+          AND (
+            COALESCE(TRIM(ae.first_call_id), '') = ''
+            OR c.call_id IS NULL
+            OR ({alert_case_active_sql})
+          )
+        ORDER BY ae.timestamp DESC, ae.id DESC
+        LIMIT 1
+        """,
+        alert_case_active_params,
+    ).fetchone()
+    latest = alert_row_to_display(alert_row) if alert_row is not None else None
+    return {
+        "red_flags": red_flags,
+        "staff_review": staff_review,
+        "identity_checks": identity_checks,
+        "latest": latest,
+    }
+
+
+def get_queue_status_card(conn, date_range: str) -> dict[str, Any]:
+    """Return queue status counts matching the Churchtown sidebar design."""
+    today = datetime.now(timezone.utc).date().isoformat()
+    active_sql, active_params = active_case_clause()
+    resolved_sql, resolved_params = resolved_case_clause()
+    red_flag_sql, red_flag_params = active_red_flag_clause()
+    open_count = conn.execute(
+        f"SELECT COUNT(*) FROM cases WHERE {active_sql}", active_params
+    ).fetchone()[0]
+    resolved_today = conn.execute(
+        f"SELECT COUNT(*) FROM cases WHERE resolved_at LIKE ? AND ({resolved_sql})",
+        (f"{today}%", *resolved_params),
+    ).fetchone()[0]
+    red_flags = conn.execute(
+        f"SELECT COUNT(*) FROM cases WHERE {red_flag_sql}", red_flag_params
+    ).fetchone()[0]
+    # Overdue: active cases older than 2 hours (7200 seconds)
+    cutoff = datetime.now(timezone.utc).timestamp() - 7200
+    overdue = conn.execute(
+        f"SELECT COUNT(*) FROM cases WHERE ({active_sql}) AND COALESCE(call_timestamp_sort,0) > 0 AND call_timestamp_sort <= ?",
+        (*active_params, cutoff),
+    ).fetchone()[0]
+    return {
+        "open": open_count,
+        "overdue": overdue,
+        "resolved_today": resolved_today,
+        "red_flags": red_flags,
+    }
+
+
+def get_call_analytics_card(conn) -> dict[str, Any]:
+    """Return call analytics metrics for the sidebar."""
+    total = conn.execute("SELECT COUNT(*) FROM cases").fetchone()[0]
+    safe = conn.execute("SELECT COUNT(*) FROM cases WHERE safe_to_queue = 1").fetchone()[0]
+    avg_row = conn.execute(
+        "SELECT AVG(turnaround_minutes) FROM cases WHERE turnaround_minutes IS NOT NULL AND turnaround_minutes > 0"
+    ).fetchone()[0]
+    avg_turnaround = round(avg_row) if avg_row else None
+    success_rate = round((safe / total) * 100, 1) if total else 0.0
+    resolved_sql, resolved_params = resolved_case_clause()
+    dropped = conn.execute(
+        f"SELECT COUNT(*) FROM cases WHERE LOWER(COALESCE(status,'')) LIKE '%unable%' OR LOWER(COALESCE(status,'')) LIKE '%fail%'"
+    ).fetchone()[0]
+    return {
+        "total_calls": total,
+        "safe_to_queue": safe,
+        "dropped": dropped,
+        "avg_turnaround": avg_turnaround,
+        "success_rate": success_rate,
+    }
+
+
+def get_peak_hour(conn) -> str | None:
+    """Return the busiest hour today as a human-readable string, e.g. '10–11am'."""
+    today = datetime.now(timezone.utc).date().isoformat()
+    row = conn.execute(
+        "SELECT CAST(strftime('%H', imported_at) AS INTEGER) AS hr, COUNT(*) AS cnt "
+        "FROM cases WHERE DATE(imported_at) = ? AND imported_at IS NOT NULL "
+        "GROUP BY hr ORDER BY cnt DESC LIMIT 1",
+        (today,),
+    ).fetchone()
+    if not row:
+        return None
+    hr = row[0]
+
+    def _fmt(h: int) -> str:
+        if h == 0:
+            return "12am"
+        if h < 12:
+            return f"{h}am"
+        if h == 12:
+            return "12pm"
+        return f"{h - 12}pm"
+
+    return f"{_fmt(hr)}–{_fmt((hr + 1) % 24)}"
+
+
+def health_indicator(status: str, label: str = "") -> dict[str, str]:
+    value = (status or "unknown").lower()
+    if value in {"online", "test_ready", "active", "healthy"}:
+        return {"state": "good", "label": label or "Active"}
+    if value in {"offline", "error", "failed"}:
+        return {"state": "bad", "label": label or "Offline"}
+    if value in {"unknown", "degraded"}:
+        return {"state": "warn", "label": label or "Degraded"}
+    return {"state": "idle", "label": label or value.replace("_", " ").title()}
+
+
+def get_system_health_card(services_status: dict[str, Any], demo_mode: bool) -> dict[str, Any]:
+    services = services_status.get("services", {}) if services_status else {}
+    return {
+        "dashboard": health_indicator(services.get("dashboard", {}).get("status", "unknown")),
+        "n8n": health_indicator(services.get("n8n", {}).get("status", "unknown")),
+        "voice_agent": health_indicator(services.get("voice_agent", {}).get("status", "not_configured"), "Test Ready" if services.get("voice_agent", {}).get("status") == "test_ready" else ""),
+        "google_push": {"state": "idle", "label": "Disabled for demo" if demo_mode else "Configured"},
+    }
+
+
+def compact_workload(workload: dict[str, Any]) -> dict[str, Any]:
+    queue = workload.get("queue_depth", {})
+    active = workload.get("active_processing", "not available")
+    return {
+        "status": str(workload.get("status", "unknown")).replace("_", " ").title(),
+        "incoming": queue.get("incoming", 0),
+        "awaiting_processing": queue.get("encrypted_raw", 0),
+        "active_processing": "Not tracked" if str(active).lower() == "not available" else active,
+        "processed_today": queue.get("processed_today", 0),
+        "failed": queue.get("failed", 0),
+        "failed_safety_queue": queue.get("failed_safety_queue", queue.get("deadletter", 0)),
+        "last_checked": format_display_timestamp(workload.get("timestamp")),
+    }
+
+
+def demo_mode_enabled_from_config() -> bool:
+    config_dir = ROOT_DIR / "config"
+    for path in (config_dir / "app_settings.json", config_dir / "dashboard_settings.json"):
+        if not path.exists():
+            continue
+        try:
+            data = json.loads(path.read_text(encoding="utf-8-sig"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        for key in ("demo_mode", "test_mode", "demo_data_mode", "enable_demo_mode"):
+            if data.get(key) is True:
+                return True
+    return False
+
+
+def demo_data_present(conn) -> bool:
+    clauses = " OR ".join(["call_id LIKE ?" for _prefix in DEMO_CALL_PREFIXES])
+    params = tuple(f"{prefix}%" for prefix in DEMO_CALL_PREFIXES)
+    count = conn.execute(f"SELECT COUNT(*) FROM cases WHERE {clauses}", params).fetchone()[0]
+    return bool(count) or demo_mode_enabled_from_config()
+
+
+def get_team_activity(conn, range_name: str = "today") -> dict[str, Any]:
+    range_name = range_name if range_name in {"today", "7d", "30d"} else "today"
+    resolved_range_where, resolved_range_params = resolved_at_range_clause(range_name)
+    active_sql, active_params = active_case_clause()
+    resolved_sql, resolved_params = resolved_case_clause()
+    status_expr = normalized_status_sql()
+    resolved_today = conn.execute(
+        f"SELECT COUNT(*) FROM cases WHERE ({resolved_range_where}) AND ({resolved_sql})",
+        (*resolved_range_params, *resolved_params),
+    ).fetchone()[0]
+    in_progress = conn.execute(
+        f"""
+        SELECT COUNT(*) FROM cases
+        WHERE ({active_sql})
+          AND ({status_expr} IN ({sql_placeholders(IN_PROGRESS_STATUS_NAMES)}) OR COALESCE(TRIM(assigned_to), '') <> '')
+        """,
+        (*active_params, *IN_PROGRESS_STATUS_NAMES),
+    ).fetchone()[0]
+    avg_turnaround = conn.execute(
+        f"SELECT AVG(turnaround_minutes) FROM cases WHERE ({resolved_range_where}) AND turnaround_minutes IS NOT NULL",
+        resolved_range_params,
+    ).fetchone()[0]
+    escalations = conn.execute(
+        f"SELECT COUNT(*) FROM cases WHERE ({active_sql}) AND {status_expr} = ?",
+        (*active_params, "escalated"),
+    ).fetchone()[0]
+    reopened = conn.execute(
+        """
+        SELECT COUNT(*) FROM audit_events
+        WHERE action = ? AND timestamp >= ?
+        """,
+        ("staff_update", datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0).isoformat()),
+    ).fetchone()[0]
+    acknowledged_since = {
+        "today": datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0),
+        "7d": datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=6),
+        "30d": datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=29),
+    }[range_name].isoformat()
+    alerts_acknowledged = conn.execute(
+        "SELECT COUNT(*) FROM alert_events WHERE acknowledged_at IS NOT NULL AND acknowledged_at >= ?",
+        (acknowledged_since,),
+    ).fetchone()[0]
+    staff_rows = get_staff_users(conn, active_only=False)
+    rows: list[dict[str, Any]] = []
+    for staff in staff_rows:
+        name = staff["display_name"]
+        assigned_open = conn.execute(
+            f"SELECT COUNT(*) FROM cases WHERE assigned_to = ? AND ({active_sql})",
+            (name, *active_params),
+        ).fetchone()[0]
+        staff_resolved = conn.execute(
+            f"SELECT COUNT(*) FROM cases WHERE ({resolved_range_where}) AND (resolved_by = ? OR assigned_to = ?) AND ({resolved_sql})",
+            (*resolved_range_params, name, name, *resolved_params),
+        ).fetchone()[0]
+        staff_avg = conn.execute(
+            f"SELECT AVG(turnaround_minutes) FROM cases WHERE ({resolved_range_where}) AND (resolved_by = ? OR assigned_to = ?) AND turnaround_minutes IS NOT NULL",
+            (*resolved_range_params, name, name),
+        ).fetchone()[0]
+        staff_alerts = conn.execute(
+            "SELECT COUNT(*) FROM alert_events WHERE acknowledged_by = ?",
+            (name,),
+        ).fetchone()[0]
+        staff_escalations = conn.execute(
+            f"SELECT COUNT(*) FROM cases WHERE last_edited_by = ? AND ({active_sql}) AND {status_expr} = ?",
+            (name, *active_params, "escalated"),
+        ).fetchone()[0]
+        rows.append(
+            {
+                "staff_name": name,
+                "role": staff["role"],
+                "assigned_open": assigned_open,
+                "resolved_today": staff_resolved,
+                "avg_turnaround": "" if staff_avg is None else f"{int(staff_avg)} min",
+                "alerts_acknowledged": staff_alerts,
+                "escalations_handled": staff_escalations,
+            }
+        )
+    rows.sort(key=lambda item: (item["resolved_today"], item["assigned_open"], item["alerts_acknowledged"]), reverse=True)
+    return {
+        "ok": True,
+        "range": range_name,
+        "team": {
+            "resolved_today": resolved_today,
+            "in_progress": in_progress,
+            "average_turnaround": None if avg_turnaround is None else int(avg_turnaround),
+            "escalations": escalations,
+            "reopened": reopened,
+            "alerts_acknowledged": alerts_acknowledged,
+        },
+        "rows": rows[:5],
+    }
+
+
+def folder_file_count(relative_folder: str, pattern: str = "*") -> int:
+    folder = ROOT_DIR / relative_folder
+    if not folder.exists():
+        return 0
+    return len([path for path in folder.glob(pattern) if path.is_file()])
+
+
+def get_system_workload() -> dict[str, Any]:
+    from .routers.system import _get_service_statuses, _service_status
+    try:
+        services = _get_service_statuses().get("services", {})
+    except Exception:
+        services = {"dashboard": _service_status("JeffLocal Dashboard", "unknown", LOCAL_SERVICE_URLS["dashboard"], "Status unavailable", utc_now_iso()),
+                    "n8n": _service_status("n8n", "unknown", LOCAL_SERVICE_URLS["n8n"], "Status unavailable", utc_now_iso()),
+                    "voice_agent": _service_status("Voice Agent Intake", "not_configured", LOCAL_SERVICE_URLS["voice_agent"], "Live voice provider not configured.", utc_now_iso())}.copy()
+    queue_depth = {
+        "incoming": folder_file_count("queue/incoming"),
+        "encrypted_raw": folder_file_count("queue/encrypted_raw"),
+        "processing": folder_file_count("queue/processing"),
+        "processed_today": 0,
+        "failed": folder_file_count("queue/failed"),
+        "deadletter": folder_file_count("queue/deadletter"),
+        "failed_safety_queue": folder_file_count("queue/deadletter"),
+    }
+    processed_folder = ROOT_DIR / "queue" / "processed"
+    today = datetime.now(timezone.utc).date()
+    if processed_folder.exists():
+        queue_depth["processed_today"] = sum(
+            1
+            for path in processed_folder.glob("*")
+            if path.is_file() and datetime.fromtimestamp(path.stat().st_mtime, timezone.utc).date() == today
+        )
+    with connect() as conn:
+        active_sql, active_params = active_case_clause()
+        status_expr = normalized_status_sql()
+        awaiting_cases = conn.execute(
+            f"SELECT COUNT(*) FROM cases WHERE ({active_sql}) AND {status_expr} = ?",
+            (*active_params, "awaiting processing"),
+        ).fetchone()[0]
+        active_processing_cases = conn.execute(
+            f"SELECT COUNT(*) FROM cases WHERE ({active_sql}) AND {status_expr} = ?",
+            (*active_params, "active processing"),
+        ).fetchone()[0]
+        failed_cases = conn.execute(
+            f"SELECT COUNT(*) FROM cases WHERE ({active_sql}) AND {status_expr} = ?",
+            (*active_params, "failed"),
+        ).fetchone()[0]
+        failed_safety_cases = conn.execute(
+            f"SELECT COUNT(*) FROM cases WHERE ({active_sql}) AND {status_expr} = ?",
+            (*active_params, "failed safety queue"),
+        ).fetchone()[0]
+        queue_depth["encrypted_raw"] += awaiting_cases
+        queue_depth["processing"] += active_processing_cases
+        queue_depth["failed"] += failed_cases
+        queue_depth["failed_safety_queue"] += failed_safety_cases
+        processed_cases_today = conn.execute(
+            f"SELECT COUNT(*) FROM cases WHERE resolved_at LIKE ? AND ({resolved_case_clause()[0]})",
+            (f"{today.isoformat()}%", *resolved_case_clause()[1]),
+        ).fetchone()[0]
+        queue_depth["processed_today"] = max(queue_depth["processed_today"], processed_cases_today)
+        avg_turnaround = conn.execute(
+            f"SELECT AVG(turnaround_minutes) FROM cases WHERE resolved_at LIKE ? AND ({resolved_case_clause()[0]}) AND turnaround_minutes IS NOT NULL",
+            (f"{today.isoformat()}%", *resolved_case_clause()[1]),
+        ).fetchone()[0]
+    active_queue = queue_depth["incoming"] + queue_depth["encrypted_raw"] + queue_depth["processing"]
+    status = "idle"
+    if queue_depth["failed"] or queue_depth["deadletter"] or any(service.get("status") == "offline" for service in services.values()):
+        status = "attention_needed"
+    elif active_queue >= 10:
+        status = "busy"
+    elif active_queue or queue_depth["processed_today"]:
+        status = "normal"
+    return {
+        "ok": True,
+        "timestamp": utc_now_iso(),
+        "status": status,
+        "services": {
+            "dashboard": services.get("dashboard", {}).get("status", "unknown"),
+            "n8n": services.get("n8n", {}).get("status", "unknown"),
+            "voice_agent": services.get("voice_agent", {}).get("status", "not_configured"),
+        },
+        "queue_depth": queue_depth,
+        "active_processing": "not available" if queue_depth["processing"] == 0 else queue_depth["processing"],
+        "throughput": {
+            "calls_processed_today": processed_cases_today,
+            "average_processing_time": "" if avg_turnaround is None else f"{int(avg_turnaround)} min",
+        },
+    }
+
+
+def batch_resolve_block_reason(case: dict[str, Any], baseline: dict[str, Any]) -> str | None:
+    if case.get("request_type") != baseline.get("request_type") or case.get("priority") != baseline.get("priority"):
+        return "selected cases must have the same request type and priority"
+    if case.get("priority") != "routine":
+        return "priority is not eligible for batch resolve"
+    if case.get("red_flags_present"):
+        return "red flag cases cannot be batch resolved"
+    if not case.get("safe_to_queue"):
+        return "case is not safe to queue"
+    if case.get("staff_review_required"):
+        return "case requires staff review"
+    if str(case.get("verification_status") or "").lower() not in SAFE_MATCH_STATUSES:
+        return "case is not safely matched"
+    if case.get("status") not in OPEN_BATCH_STATUSES:
+        return "case status is not eligible"
+    if case.get("status") in {"Escalated", "Needs Review", "Urgent Review"}:
+        return "case is escalated or review-required"
+    if not case.get("patient_name") or not case.get("callback_number"):
+        return "case is missing required patient or callback details"
+    return None
+
+
+def batch_resolve_cases(conn, call_ids: list[str], staff_name: str, outcome_note: str) -> dict[str, Any]:
+    if not call_ids:
+        raise HTTPException(status_code=400, detail="call_ids is required")
+    if len(set(call_ids)) != len(call_ids):
+        raise HTTPException(status_code=400, detail="duplicate call_id values")
+    placeholders = ", ".join(["?"] * len(call_ids))
+    rows = conn.execute(f"SELECT * FROM cases WHERE call_id IN ({placeholders})", tuple(call_ids)).fetchall()
+    cases = [row_to_dict(row) or {} for row in rows]
+    found = {case["call_id"] for case in cases}
+    missing = [call_id for call_id in call_ids if call_id not in found]
+    if missing:
+        raise HTTPException(status_code=404, detail={"message": "Cases not found", "call_ids": missing})
+    baseline = cases[0]
+    invalid = []
+    for case in cases:
+        reason = batch_resolve_block_reason(case, baseline)
+        if reason:
+            invalid.append({"call_id": case["call_id"], "ok": False, "reason": reason})
+    if invalid:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "message": "Batch resolve unavailable: selected cases must be same request type, routine, matched, safe to queue, and not require review.",
+                "results": invalid,
+            },
+        )
+    now = utc_now_iso()
+    batch_id = f"batch-{uuid4()}"
+    results = []
+    for case in cases:
+        updates = {
+            "status": "Resolved",
+            "outcome_notes": outcome_note,
+            "staff_action": "Batch resolved",
+            "resolved_by": staff_name,
+            "resolved_at": case["resolved_at"] or now,
+            "last_updated": now,
+            "last_edited_at": now,
+            "last_edited_by": staff_name,
+            "turnaround_minutes": calculate_turnaround_minutes(case["timestamp"], case["resolved_at"] or now),
+        }
+        update_staff_fields(conn, case["call_id"], updates, staff_name, known_old=case)
+        write_audit_event(
+            conn,
+            call_id=case["call_id"],
+            action="batch_resolve",
+            edited_by=staff_name,
+            changed_fields=["batch_id", "status", "resolved_by"],
+            old_values={"status": case.get("status"), "batch_id": None},
+            new_values={"status": "Resolved", "batch_id": batch_id, "resolved_by": staff_name},
+        )
+        results.append({"call_id": case["call_id"], "ok": True, "batch_id": batch_id})
+    return {"ok": True, "batch_id": batch_id, "resolved": len(results), "results": results}
+
+
+def get_recording_for_case(conn, call_id: str) -> dict[str, Any]:
+    row = conn.execute(
+        """
+        SELECT *
+        FROM call_recordings
+        WHERE call_id = ?
+        ORDER BY updated_at DESC, id DESC
+        LIMIT 1
+        """,
+        (call_id,),
+    ).fetchone()
+    recording = row_to_dict(row)
+    if recording is None:
+        return {
+            "recording_status": "pending",
+            "recording_label": "Pending",
+            "recording_reference": "",
+            "recording_help": "Recording expected after call completion.",
+        }
+    reference = recording.get("recording_local_path") or recording.get("recording_url") or ""
+    recording["recording_label"] = str(recording.get("recording_status") or "pending").replace("_", " ").title()
+    recording["recording_reference"] = reference
+    recording["recording_help"] = "Recording metadata is stored locally. External URLs are not fetched."
+    return recording
+
+
+def attach_recording_metadata(
+    conn,
+    call_id: str,
+    payload: dict[str, Any],
+    staff_name: str,
+) -> dict[str, Any]:
+    case = conn.execute("SELECT call_id FROM cases WHERE call_id = ?", (call_id,)).fetchone()
+    if case is None:
+        raise HTTPException(status_code=404, detail="Call not found; recording attachment can be retried after the call is imported.")
+    recording_url = str(payload.get("recording_url") or "").strip()
+    recording_local_path = str(payload.get("recording_local_path") or "").strip()
+    if not recording_url and not recording_local_path:
+        raise HTTPException(status_code=400, detail="recording_url or recording_local_path is required")
+    replace = payload.get("replace") is True
+    existing = conn.execute(
+        "SELECT * FROM call_recordings WHERE call_id = ? ORDER BY updated_at DESC, id DESC LIMIT 1",
+        (call_id,),
+    ).fetchone()
+    if existing is not None and not replace:
+        raise HTTPException(status_code=409, detail="Recording already attached; use replace=true to update metadata")
+    now = utc_now_iso()
+    status = "available" if recording_url or recording_local_path else "pending"
+    metadata = payload.get("metadata") if isinstance(payload.get("metadata"), dict) else {}
+    values = (
+        call_id,
+        recording_url,
+        recording_local_path,
+        now,
+        as_optional_int(payload.get("duration_seconds")),
+        status,
+        json.dumps(metadata, sort_keys=True),
+        staff_name,
+        str(payload.get("source") or "dashboard").strip(),
+        now,
+        now,
+    )
+    conn.execute(
+        """
+        INSERT INTO call_recordings (
+            call_id, recording_url, recording_local_path, recording_received_at,
+            recording_duration_seconds, recording_status, recording_metadata_json,
+            attached_by, source, created_at, updated_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        values,
+    )
+    write_audit_event(
+        conn,
+        call_id=call_id,
+        action="recording_attached",
+        edited_by=staff_name,
+        changed_fields=["recording_status", "recording_reference"],
+        old_values={},
+        new_values={"recording_status": status, "recording_reference": recording_local_path or recording_url},
+    )
+    return get_recording_for_case(conn, call_id)
+
+
+def as_optional_int(value: Any) -> int | None:
+    if value in ("", None):
+        return None
+    try:
+        return int(float(value))
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="duration_seconds must be numeric")
+
+
+def resolve_skip_reason(case: dict[str, Any]) -> str | None:
+    if is_resolved_case(case):
+        return "already_resolved"
+    if case.get("red_flags_present") or case.get("priority") == "999 Emergency":
+        return "red_flag"
+    if case.get("staff_review_required") or case.get("status") in {"Needs Review", "Urgent Review", "Escalated"}:
+        return "requires_individual_review"
+    if str(case.get("verification_status") or "").lower() not in SAFE_MATCH_STATUSES:
+        return "identity_issue"
+    if case.get("priority") != "routine":
+        return "not_routine"
+    if not case.get("safe_to_queue"):
+        return "not_safe_to_queue"
+    if not case.get("patient_name") or not case.get("callback_number"):
+        return "missing_required_details"
+    return None
+
+
+def bulk_action_cases(conn, call_ids: list[str], action: str, staff_name: str, note: str) -> dict[str, Any]:
+    if action not in {"assign_to_me", "start_review", "resolve_eligible_only"}:
+        raise HTTPException(status_code=400, detail="Unsupported bulk action")
+    if not call_ids:
+        raise HTTPException(status_code=400, detail="call_ids is required")
+    placeholders = ", ".join(["?"] * len(call_ids))
+    rows = conn.execute(f"SELECT * FROM cases WHERE call_id IN ({placeholders})", tuple(call_ids)).fetchall()
+    cases = [row_to_dict(row) or {} for row in rows]
+    by_id = {case["call_id"]: case for case in cases}
+    now = utc_now_iso()
+    updated: list[dict[str, Any]] = []
+    skipped: list[dict[str, Any]] = []
+    for call_id in call_ids:
+        case = by_id.get(call_id)
+        if case is None:
+            skipped.append({"call_id": call_id, "reason": "not_found"})
+            continue
+        if action in {"assign_to_me", "start_review"}:
+            if is_resolved_case(case):
+                skipped.append({"call_id": call_id, "reason": "already_resolved"})
+                continue
+            updates = {
+                "assigned_to": case.get("assigned_to") or staff_name,
+                "status": "In Progress" if case.get("status") in {"", "New", "Open"} else case.get("status"),
+                "last_updated": now,
+                "last_edited_at": now,
+                "last_edited_by": staff_name,
+            }
+            if action == "start_review":
+                updates["status"] = "In Progress"
+                updates["action_needed"] = case.get("action_needed") or DEFAULT_ACTION_NEEDED
+            update_staff_fields(conn, call_id, updates, staff_name, known_old=case)
+            updated.append({"call_id": call_id})
+            continue
+        reason = resolve_skip_reason(case)
+        if reason:
+            skipped.append({"call_id": call_id, "reason": reason})
+            continue
+        updates = {
+            "status": "Resolved",
+            "outcome_notes": note or case.get("outcome_notes") or DEFAULT_OUTCOME_NOTES,
+            "staff_action": "Bulk resolved eligible case",
+            "resolved_by": case.get("resolved_by") or staff_name,
+            "resolved_at": case.get("resolved_at") or now,
+            "last_updated": now,
+            "last_edited_at": now,
+            "last_edited_by": staff_name,
+            "turnaround_minutes": calculate_turnaround_minutes(case["timestamp"], case.get("resolved_at") or now),
+        }
+        update_staff_fields(conn, call_id, updates, staff_name, known_old=case)
+        updated.append({"call_id": call_id})
+    action_label = action.replace("_", " ")
+    return {
+        "ok": True,
+        "action": action,
+        "updated": updated,
+        "skipped": skipped,
+        "message": f"{action_label.title()}: updated {len(updated)} case(s). Skipped {len(skipped)}.",
+    }
+
+
+def api_case(row: Any) -> dict[str, Any]:
+    case = row_to_dict(row) or {}
+    return {
+        "call_id": case.get("call_id", ""),
+        "patient_name": case.get("patient_name", ""),
+        "request_type": case.get("request_type", ""),
+        "priority": case.get("priority", ""),
+        "red_flags_present": bool(case.get("red_flags_present")),
+        "safe_to_queue": bool(case.get("safe_to_queue")),
+        "status": case.get("status", ""),
+        "call_summary": case.get("call_summary", ""),
+    }
+

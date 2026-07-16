@@ -14,10 +14,13 @@ from typing import Any
 from fastapi import APIRouter, Body
 from fastapi.responses import Response
 
+from ..case_domain import get_system_workload
+from ..consts import LOCAL_SERVICE_URLS
 from ..db import connect, init_db
 from ..helpers import ensure_ready
 from ..models import utc_now_iso
 from ..observability import build_health_response
+from ..paths import BASE_DIR, ROOT_DIR, SERVICE_START_SCRIPT
 
 router = APIRouter()
 
@@ -33,7 +36,7 @@ def _service_status(name: str, status: str, url: str, details: str, checked_at: 
 
 
 def _check_local_n8n(timeout_seconds: float = 2.0) -> dict[str, Any]:
-    from ..main import LOCAL_SERVICE_URLS
+
     checked_at = utc_now_iso()
     try:
         conn = http.client.HTTPConnection("localhost", 5678, timeout=timeout_seconds)
@@ -59,7 +62,7 @@ def _check_local_n8n(timeout_seconds: float = 2.0) -> dict[str, Any]:
 
 
 def _get_service_statuses() -> dict[str, Any]:
-    from ..main import BASE_DIR, LOCAL_SERVICE_URLS, app
+
     timestamp = utc_now_iso()
     try:
         with connect() as conn:
@@ -85,6 +88,7 @@ def _get_service_statuses() -> dict[str, Any]:
         )
 
     try:
+        from ..main import app  # deferred: main.py imports this router before `app` exists
         test_endpoint_ready = any(
             getattr(route, "path", "") == "/api/n8n/test-intake-batch"
             for route in app.routes
@@ -132,7 +136,7 @@ def favicon() -> Response:
 
 @router.get("/api/health")
 def api_health() -> dict[str, Any]:
-    from ..main import BASE_DIR
+
     ensure_ready()
     handoff_folder = BASE_DIR.parent / "outputs" / "handoff_json"
     with connect() as conn:
@@ -213,7 +217,7 @@ def api_services_status() -> dict[str, Any]:
 
 @router.post("/api/services/refresh")
 def api_services_refresh(payload: dict[str, Any] = Body(default_factory=dict)) -> dict[str, Any]:
-    from ..main import ROOT_DIR, SERVICE_START_SCRIPT
+
     start_missing = payload.get("start_missing") is True
     actions: list[dict[str, Any]] = []
     if start_missing:
@@ -264,6 +268,6 @@ def api_services_refresh(payload: dict[str, Any] = Body(default_factory=dict)) -
 
 @router.get("/api/system/workload")
 def api_system_workload() -> dict[str, Any]:
-    from ..main import get_system_workload
+
     ensure_ready()
     return get_system_workload()

@@ -12,10 +12,40 @@ from fastapi import APIRouter, Query
 from fastapi.requests import Request
 from fastapi.responses import RedirectResponse
 
-from ..db import connect
+from ..case_domain import (
+    active_case_clause,
+    attach_recent_audit_events,
+    compact_workload,
+    demo_data_present,
+    get_call_analytics_card,
+    get_kpi_cards,
+    get_peak_hour,
+    get_queue_status_card,
+    get_recording_for_case,
+    get_request_type_breakdown,
+    get_staff_users,
+    get_summary_cards,
+    get_system_health_card,
+    get_system_workload,
+    get_team_activity,
+    get_urgent_attention,
+    make_query,
+    paged_worklist_url,
+    prepare_case,
+    range_clause,
+    resolve_date_range,
+    resolved_at_range_clause,
+    resolved_case_clause,
+    summary_chips_for_case,
+    worklist_order_clause,
+    worklist_url,
+)
+from ..consts import DATE_RANGE_OPTIONS, LOCAL_SERVICE_URLS, REQUEST_TYPE_CHIPS, SORT_OPTIONS
+from ..db import DB_PATH, connect, row_to_dict
 from ..helpers import current_staff_from_request, ensure_ready
 from ..importer import import_handoffs
-from ..models import utc_now_iso
+from ..models import format_display_timestamp, format_dob_uk, utc_now_iso
+from ..paths import ROOT_DIR
 from ..templates_config import templates
 
 router = APIRouter()
@@ -34,37 +64,7 @@ def index(
     notice: str = "",
     show_requests: bool = False,
 ) -> Any:
-    from ..main import (
-        DATE_RANGE_OPTIONS,
-        LOCAL_SERVICE_URLS,
-        REQUEST_TYPE_CHIPS,
-        SORT_OPTIONS,
-        attach_recent_audit_events,
-        compact_workload,
-        demo_data_present,
-        format_dob_uk,
-        get_call_analytics_card,
-        get_kpi_cards,
-        get_peak_hour,
-        get_queue_status_card,
-        get_recording_for_case,
-        get_request_type_breakdown,
-        get_staff_users,
-        get_summary_cards,
-        get_system_health_card,
-        get_system_workload,
-        get_team_activity,
-        get_urgent_attention,
-        make_query,
-        paged_worklist_url,
-        prepare_case,
-        range_clause,
-        resolve_date_range,
-        row_to_dict,
-        summary_chips_for_case,
-        worklist_order_clause,
-        worklist_url,
-    )
+
     from ..routers.system import _get_service_statuses, _service_status
 
     ensure_ready()
@@ -296,7 +296,7 @@ def requests_page(
 
 @router.get("/patients")
 def patients_page(request: Request, q: str = "") -> Any:
-    from ..main import format_dob_uk, get_staff_users, row_to_dict
+
     ensure_ready()
     search = q.strip()
     with connect() as conn:
@@ -344,15 +344,7 @@ def patients_page(request: Request, q: str = "") -> Any:
 
 @router.get("/reports")
 def reports_page(request: Request, date_range: str = Query("today", alias="range")) -> Any:
-    from ..main import (
-        DATE_RANGE_OPTIONS,
-        get_kpi_cards,
-        get_request_type_breakdown,
-        get_staff_users,
-        get_system_workload,
-        get_team_activity,
-        resolve_date_range,
-    )
+
     ensure_ready()
     with connect() as conn:
         date_range = resolve_date_range(date_range.strip(), conn)
@@ -384,15 +376,7 @@ def reports_page(request: Request, date_range: str = Query("today", alias="range
 
 @router.get("/settings")
 def settings_page(request: Request) -> Any:
-    from ..main import (
-        DB_PATH,
-        ROOT_DIR,
-        active_case_clause,
-        format_display_timestamp,
-        get_staff_users,
-        resolved_at_range_clause,
-        resolved_case_clause,
-    )
+
     import os as _os
     ensure_ready()
     config_files = [

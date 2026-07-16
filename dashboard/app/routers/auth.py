@@ -61,7 +61,6 @@ async def login_post(
     auth_method: str = Form("password"),
     next: str = Form("/"),
 ):
-    from ..main import templates
     username = username.strip().lower()
     error_ctx = {"prefill_username": username, "auth_method": auth_method, "next": next}
 
@@ -123,7 +122,6 @@ def logout(request: Request):
 
 @router.get("/forgot")
 def forgot_page(request: Request):
-    from ..main import templates
     return templates.TemplateResponse(request, "forgot.html", {
         "mode": "request", "error": "", "success": "", "reset_link": None,
     })
@@ -131,7 +129,6 @@ def forgot_page(request: Request):
 
 @router.post("/forgot")
 async def forgot_post(request: Request, username: str = Form(""), reset_type: str = Form("password")):
-    from ..main import templates
     username = username.strip().lower()
     reset_link = None
     success = (
@@ -156,7 +153,6 @@ async def forgot_post(request: Request, username: str = Form(""), reset_type: st
 
 @router.get("/reset")
 def reset_page(request: Request, token: str = "", type: str = "password"):
-    from ..main import templates
     if not token:
         return RedirectResponse(url="/forgot", status_code=302)
     return templates.TemplateResponse(request, "forgot.html", {
@@ -172,7 +168,6 @@ async def reset_post(
     new_value: str = Form(""),
     confirm_value: str = Form(""),
 ):
-    from ..main import templates
     error = ""
     if new_value != confirm_value:
         error = "Values do not match."
@@ -208,7 +203,6 @@ def profile_page(
     pw_error: str = "", pw_success: str = "",
     pin_error: str = "", pin_success: str = "",
 ):
-    from ..main import templates
     ensure_ready()
     with connect() as conn:
         conn.row_factory = __import__("sqlite3").Row

@@ -15,9 +15,29 @@ from ..consts import (
     LOCKED_FIELD_CATEGORIES,
     TERMINAL_CASE_STATUSES,
 )
+from ..case_domain import (
+    attach_recording_metadata,
+    batch_resolve_cases,
+    build_suggested_actions,
+    bulk_action_cases,
+    calculate_turnaround_minutes,
+    dedupe_repeated_display_sentences,
+    detail_case_url,
+    emis_workflow_steps,
+    friendly_audit_text,
+    get_recording_for_case,
+    is_resolved_case,
+    normalize_case_status,
+    pathway_question_responses,
+    prepare_case,
+    return_url_with_notice,
+    safe_local_return_url,
+    transcript_conversation_lines,
+    update_staff_fields,
+)
 from ..db import connect, row_to_dict
 from ..helpers import current_staff_from_request, ensure_ready, require_staff_edit, staff_display
-from ..models import ALLOWED_STATUSES, EDITABLE_FORM_FIELDS, FINAL_STATUSES, utc_now_iso
+from ..models import ALLOWED_STATUSES, EDITABLE_FORM_FIELDS, FINAL_STATUSES, format_display_timestamp, utc_now_iso
 from ..templates_config import templates
 
 router = APIRouter()
@@ -26,7 +46,7 @@ router = APIRouter()
 @router.post("/api/cases/batch-resolve")
 def api_cases_batch_resolve(request: Request, payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
     ensure_ready()
-    from ..main import batch_resolve_cases
+
     call_ids = payload.get("call_ids")
     if not isinstance(call_ids, list) or not all(isinstance(call_id, str) for call_id in call_ids):
         raise HTTPException(status_code=400, detail="call_ids must be an array of strings")
@@ -46,7 +66,7 @@ def api_cases_batch_resolve(request: Request, payload: dict[str, Any] = Body(...
 @router.post("/api/cases/bulk-action")
 def api_cases_bulk_action(request: Request, payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
     ensure_ready()
-    from ..main import bulk_action_cases
+
     call_ids = payload.get("call_ids")
     if not isinstance(call_ids, list) or not all(isinstance(call_id, str) for call_id in call_ids):
         raise HTTPException(status_code=400, detail="call_ids must be an array of strings")
@@ -64,7 +84,7 @@ def api_cases_bulk_action(request: Request, payload: dict[str, Any] = Body(...))
 @router.post("/api/calls/{call_id}/recording")
 def api_call_recording(call_id: str, request: Request, payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
     ensure_ready()
-    from ..main import attach_recording_metadata
+
     with connect() as conn:
         staff = current_staff_from_request(request, conn)
         require_staff_edit(staff)
@@ -104,7 +124,7 @@ def api_case_action(
 ) -> dict[str, Any]:
     """Perform a quick action (resolve/reopen/escalate/start_review) and return updated case JSON."""
     ensure_ready()
-    from ..main import calculate_turnaround_minutes, prepare_case, update_staff_fields
+
     action = str(payload.get("action") or "").strip()
     if action not in {"resolve", "reopen", "start_review", "escalate", "flag_issue"}:
         raise HTTPException(status_code=400, detail="Unsupported action")
@@ -225,7 +245,7 @@ async def api_case_enrich(call_id: str, request: Request) -> dict[str, Any]:
 def api_case_get(call_id: str) -> dict[str, Any]:
     """Return key case fields as JSON for the inline detail panel."""
     ensure_ready()
-    from ..main import build_suggested_actions, pathway_question_responses, prepare_case
+
     with connect() as conn:
         row = conn.execute("SELECT * FROM cases WHERE call_id = ?", (call_id,)).fetchone()
     if row is None:
@@ -282,18 +302,7 @@ def api_case_get(call_id: str) -> dict[str, Any]:
 @router.get("/case/{call_id}")
 def case_detail(request: Request, call_id: str, return_url: str = "", error: str = "") -> Any:
     ensure_ready()
-    from ..main import (
-        dedupe_repeated_display_sentences,
-        detail_case_url,
-        emis_workflow_steps,
-        format_display_timestamp,
-        friendly_audit_text,
-        get_recording_for_case,
-        pathway_question_responses,
-        prepare_case,
-        safe_local_return_url,
-        transcript_conversation_lines,
-    )
+
     with connect() as conn:
         current_staff = current_staff_from_request(request, conn)
         row = conn.execute("SELECT * FROM cases WHERE call_id = ?", (call_id,)).fetchone()
@@ -407,15 +416,7 @@ def update_case(
     mark_resolved: str = Form(""),
 ) -> RedirectResponse:
     ensure_ready()
-    from ..main import (
-        calculate_turnaround_minutes,
-        detail_case_url,
-        is_resolved_case,
-        normalize_case_status,
-        return_url_with_notice,
-        safe_local_return_url,
-        update_staff_fields,
-    )
+
     if status not in ALLOWED_STATUSES:
         raise HTTPException(status_code=400, detail="Unsupported status")
     safe_return_url = safe_local_return_url(request, return_url)
@@ -521,12 +522,7 @@ def quick_action(
     edited_by: str = Form(""),
 ) -> RedirectResponse:
     ensure_ready()
-    from ..main import (
-        calculate_turnaround_minutes,
-        return_url_with_notice,
-        safe_local_return_url,
-        update_staff_fields,
-    )
+
     now = utc_now_iso()
     safe_return_url = safe_local_return_url(request, return_url)
 
