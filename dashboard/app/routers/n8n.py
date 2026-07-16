@@ -258,7 +258,15 @@ def _count_n8ntest_files(relative_folder: str, pattern: str = "*N8NTEST*") -> in
     folder = ROOT_DIR / relative_folder
     if not folder.exists():
         return 0
-    return len([path for path in folder.glob(pattern) if path.is_file()])
+    # Look in processed/ as well as the inbox. The importer now retires
+    # successfully imported handoff files into processed/ instead of leaving
+    # them to be re-read every 60s, so counting only the inbox would report 0
+    # for a batch that actually succeeded.
+    paths = [path for path in folder.glob(pattern) if path.is_file()]
+    processed = folder / "processed"
+    if processed.exists():
+        paths += [path for path in processed.glob(pattern) if path.is_file()]
+    return len(paths)
 
 
 def _count_batch_files(relative_folder: str, call_ids: list[str], suffix: str = "") -> int:
@@ -266,9 +274,13 @@ def _count_batch_files(relative_folder: str, call_ids: list[str], suffix: str = 
     folder = ROOT_DIR / relative_folder
     if not folder.exists():
         return 0
+    # Same reason as _count_n8ntest_files: a retired file still counts as
+    # produced.
+    search_dirs = [folder, folder / "processed"]
     count = 0
     for call_id in call_ids:
-        candidates = [folder / f"{call_id}{suffix}", folder / f"{call_id}.json"] if suffix else [folder / f"{call_id}.json"]
+        names = [f"{call_id}{suffix}", f"{call_id}.json"] if suffix else [f"{call_id}.json"]
+        candidates = [d / name for d in search_dirs for name in names]
         if any(path.exists() and path.is_file() for path in candidates):
             count += 1
     return count

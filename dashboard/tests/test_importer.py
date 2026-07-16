@@ -92,8 +92,94 @@ def test_importer_reads_and_upserts_without_duplicates(tmp_path):
         case_count = conn.execute("SELECT COUNT(*) FROM cases").fetchone()[0]
 
     assert first_count >= 12
-    assert second_count >= 12
+    # Second pass imports nothing: the first pass retired those files to
+    # processed/. Before this was fixed the importer re-imported every file on
+    # every 60s pass forever, which re-stamped imported_at and made the
+    # dashboard beep at staff once a minute for two-day-old cases.
+    assert second_count == 0
     assert case_count == 12
+
+
+def test_reimport_does_not_restamp_imported_at(tmp_path):
+    """imported_at means 'when this case FIRST landed', not 'when we last
+    touched the file'. /api/cases/new-since and the analytics volume queries
+    both read it as an arrival time, so re-stamping it makes old cases look
+    brand new (the every-60s beep, and skewed hourly volume)."""
+    handoff_dir = tmp_path / "handoffs"
+    handoff_dir.mkdir(parents=True, exist_ok=True)
+    _write_handoff(handoff_dir, "TC-REIMPORT-STAMP")
+    db_path = tmp_path / "dashboard.sqlite"
+
+    with connect(db_path) as conn:
+        init_db(conn)
+        import_handoffs(conn, handoff_dir)
+        first_seen = conn.execute(
+            "SELECT imported_at FROM cases WHERE call_id = ?", ("TC-REIMPORT-STAMP",)
+        ).fetchone()[0]
+
+        # Put the file back and re-import, exactly as the 60s loop used to.
+        shutil.move(
+            str(handoff_dir / "processed" / "TC-REIMPORT-STAMP_handoff.json"),
+            str(handoff_dir / "TC-REIMPORT-STAMP_handoff.json"),
+        )
+        import_handoffs(conn, handoff_dir)
+        after_reimport = conn.execute(
+            "SELECT imported_at FROM cases WHERE call_id = ?", ("TC-REIMPORT-STAMP",)
+        ).fetchone()[0]
+
+    assert after_reimport == first_seen
+
+
+def test_importer_retires_successful_files_to_processed(tmp_path):
+    """Successful files must leave the inbox. Only failures moved before, so
+    successes were re-read on every pass forever."""
+    handoff_dir = tmp_path / "handoffs"
+    handoff_dir.mkdir(parents=True, exist_ok=True)
+    _write_handoff(handoff_dir, "TC-RETIRE-ME")
+    db_path = tmp_path / "dashboard.sqlite"
+
+    with connect(db_path) as conn:
+        init_db(conn)
+        import_handoffs(conn, handoff_dir)
+
+    assert not (handoff_dir / "TC-RETIRE-ME_handoff.json").exists()
+    assert (handoff_dir / "processed" / "TC-RETIRE-ME_handoff.json").exists()
+
+
+def test_importer_ignores_already_processed_subfolder(tmp_path):
+    """glob() must not reach into processed/ — otherwise retiring files
+    achieves nothing and the re-import loop returns."""
+    handoff_dir = tmp_path / "handoffs"
+    processed = handoff_dir / "processed"
+    processed.mkdir(parents=True, exist_ok=True)
+    _write_handoff(processed, "TC-ALREADY-DONE")
+    db_path = tmp_path / "dashboard.sqlite"
+
+    with connect(db_path) as conn:
+        init_db(conn)
+        count = import_handoffs(conn, handoff_dir)
+        case_count = conn.execute("SELECT COUNT(*) FROM cases").fetchone()[0]
+
+    assert count == 0
+    assert case_count == 0
+
+
+def test_retiring_survives_a_name_collision_in_processed(tmp_path):
+    """Same call_id arriving twice must not crash the importer. shutil.move
+    onto an existing path raises on Windows, which would kill the 60s loop."""
+    handoff_dir = tmp_path / "handoffs"
+    processed = handoff_dir / "processed"
+    processed.mkdir(parents=True, exist_ok=True)
+    _write_handoff(processed, "TC-COLLIDE")          # already retired earlier
+    _write_handoff(handoff_dir, "TC-COLLIDE")        # arrives again
+    db_path = tmp_path / "dashboard.sqlite"
+
+    with connect(db_path) as conn:
+        init_db(conn)
+        count = import_handoffs(conn, handoff_dir)
+
+    assert count == 1
+    assert not (handoff_dir / "TC-COLLIDE_handoff.json").exists()
 
 
 def test_importer_supports_pattern_filtered_import(tmp_path):

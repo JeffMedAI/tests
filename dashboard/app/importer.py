@@ -28,6 +28,20 @@ STAFF_PRESERVED_FIELDS = (
     "turnaround_minutes",
 )
 
+# Set once, when a case first lands. NEVER re-stamped on a re-import.
+# `imported_at` means "when this case first arrived", not "when we last touched
+# its file". /api/cases/new-since and the analytics volume queries both read it
+# as an arrival time, so re-stamping it made two-day-old cases look brand new on
+# every 60s importer pass: the dashboard beeped at staff once a minute and
+# hourly volume counted stale cases as today's arrivals. Use `last_updated` for
+# "when did this change".
+FIRST_SEEN_FIELDS = ("imported_at",)
+
+# Successfully imported files are moved here so the 60s importer loop stops
+# re-reading them forever. Mirrors the existing failed/ handling and the
+# documented queue stages (processed / failed / deadletter).
+PROCESSED_SUBDIR = "processed"
+
 FALLBACK_TASK_TITLE = "Processing output unavailable - staff review required"
 FALLBACK_TASK_BODY = "AI-generated task output was unavailable or invalid. Staff must review the transcript and structured call data."
 FALLBACK_SUMMARY = "AI summary unavailable - staff review required."
@@ -408,6 +422,9 @@ def upsert_case(conn: sqlite3.Connection, case: dict[str, Any]) -> None:
         staff_edited = bool(existing["last_edited_at"] or existing["last_edited_by"])
         for staff_field in STAFF_PRESERVED_FIELDS:
             case[staff_field] = existing[staff_field]
+        for first_seen_field in FIRST_SEEN_FIELDS:
+            if existing[first_seen_field]:
+                case[first_seen_field] = existing[first_seen_field]
         if staff_edited:
             case["action_needed"] = existing["action_needed"]
             case["last_updated"] = existing["last_updated"]
@@ -424,6 +441,41 @@ def upsert_case(conn: sqlite3.Connection, case: dict[str, Any]) -> None:
     conn.commit()
 
 
+def _retire_to(path: Path, dest_dir: Path, logger: Any) -> None:
+    """Move an imported file out of the inbox into dest_dir.
+
+    Never overwrites: the same call_id can legitimately arrive more than once
+    (a re-processed call), and the earlier copy is evidence we don't get to
+    destroy. On a name clash the incoming file gets a numeric suffix.
+
+    A failure here must not fail the import — the case is already safely in the
+    DB by this point. Worst case the file is re-imported next pass, which is
+    exactly the old behaviour and is now harmless because imported_at no longer
+    moves.
+    """
+    import shutil
+
+    try:
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        target = dest_dir / path.name
+        if target.exists():
+            stem, suffix = path.stem, path.suffix
+            n = 2
+            while (dest_dir / f"{stem}.{n}{suffix}").exists():
+                n += 1
+            target = dest_dir / f"{stem}.{n}{suffix}"
+        shutil.move(str(path), str(target))
+    except Exception as exc:
+        logger.warning(
+            "importer: imported %s but could not retire it to %s — %s: %s. "
+            "It will be re-read next pass (harmless).",
+            path.name,
+            dest_dir.name,
+            type(exc).__name__,
+            exc,
+        )
+
+
 def import_handoffs(
     conn: sqlite3.Connection,
     handoff_dir: Path | None = None,
@@ -435,7 +487,10 @@ def import_handoffs(
     logger = logging.getLogger(__name__)
     source_dir = handoff_dir or HANDOFF_DIR
     failed_dir = source_dir / "failed"
+    processed_dir = source_dir / PROCESSED_SUBDIR
     count = 0
+    # glob() is deliberately non-recursive: it must not reach into processed/ or
+    # failed/, or retiring files there would achieve nothing.
     for path in sorted(source_dir.glob(pattern)):
         try:
             raw = path.read_bytes()
@@ -447,6 +502,8 @@ def import_handoffs(
             data = json.loads(raw.decode("utf-8-sig"))
             upsert_case(conn, map_handoff_to_case(data, path))
             count += 1
+            # Retire it so the 60s loop stops re-importing it forever.
+            _retire_to(path, processed_dir, logger)
         except Exception as exc:
             logger.error(
                 "importer: failed to import %s — %s: %s — moving to failed/",
