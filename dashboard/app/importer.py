@@ -441,39 +441,73 @@ def upsert_case(conn: sqlite3.Connection, case: dict[str, Any]) -> None:
     conn.commit()
 
 
+_retire_failures: dict[str, int] = {}
+_RETIRE_FAILURE_ALERT_THRESHOLD = 5
+
+
 def _retire_to(path: Path, dest_dir: Path, logger: Any) -> None:
     """Move an imported file out of the inbox into dest_dir.
 
-    Never overwrites: the same call_id can legitimately arrive more than once
-    (a re-processed call), and the earlier copy is evidence we don't get to
-    destroy. On a name clash the incoming file gets a numeric suffix.
+    These files contain patient data, so the rules here are strict:
 
-    A failure here must not fail the import — the case is already safely in the
-    DB by this point. Worst case the file is re-imported next pass, which is
-    exactly the old behaviour and is now harmless because imported_at no longer
-    moves.
+    - os.replace ONLY, never shutil.move. shutil.move falls back to copy2 +
+      unlink when os.rename fails (locked file, AV scan, backup handle). If the
+      unlink then fails you get a copy in dest AND the original still in the
+      inbox — and the next pass mints another copy, forever. That is unbounded
+      PII duplication (~1440 copies/day at a 60s interval). os.replace either
+      moves the file or raises, leaving nothing behind. dest_dir is a subdir of
+      the source, so a cross-filesystem rename can't happen.
+    - Idempotent. If an identical file is already retired, drop the source
+      rather than minting copy N+1 — this is the path a retry takes.
+    - Only a genuinely DIFFERENT file with the same name gets a numeric suffix:
+      the same call_id can legitimately re-arrive re-processed, and the earlier
+      copy is evidence, not garbage.
+    - Repeated failures are surfaced, not swallowed. A file that can never be
+      retired would otherwise be silently re-imported every 60s forever.
+
+    A failure never fails the import: the case is already committed to the DB by
+    this point, and a re-read is now harmless because imported_at is stable.
     """
-    import shutil
-
+    key = str(path)
     try:
         dest_dir.mkdir(parents=True, exist_ok=True)
         target = dest_dir / path.name
         if target.exists():
+            if _same_contents(path, target):
+                # Already retired (a previous pass got as far as the copy).
+                # Removing the source is what completes that move.
+                path.unlink()
+                _retire_failures.pop(key, None)
+                return
             stem, suffix = path.stem, path.suffix
             n = 2
             while (dest_dir / f"{stem}.{n}{suffix}").exists():
                 n += 1
             target = dest_dir / f"{stem}.{n}{suffix}"
-        shutil.move(str(path), str(target))
+        os.replace(path, target)
+        _retire_failures.pop(key, None)
     except Exception as exc:
-        logger.warning(
-            "importer: imported %s but could not retire it to %s — %s: %s. "
-            "It will be re-read next pass (harmless).",
+        fails = _retire_failures[key] = _retire_failures.get(key, 0) + 1
+        log = logger.error if fails >= _RETIRE_FAILURE_ALERT_THRESHOLD else logger.warning
+        log(
+            "importer: imported %s but could not retire it to %s (failure #%d) — %s: %s. "
+            "It will be re-read next pass. If this persists the file is stuck and "
+            "needs manual attention.",
             path.name,
             dest_dir.name,
+            fails,
             type(exc).__name__,
             exc,
         )
+
+
+def _same_contents(a: Path, b: Path) -> bool:
+    try:
+        if a.stat().st_size != b.stat().st_size:
+            return False
+        return a.read_bytes() == b.read_bytes()
+    except Exception:
+        return False
 
 
 def import_handoffs(

@@ -289,8 +289,26 @@ function Test-HandoffAlreadyExists {
         [string]$CallId
     )
 
+    # Check the inbox AND processed/. The dashboard importer retires handoffs it
+    # has imported into processed/, so the inbox alone is no longer a record of
+    # "we have seen this call_id". Without the processed/ check this guard goes
+    # blind and a re-submitted call_id is fully re-processed: Ollama re-runs and
+    # rewrites the handoff, and task_body/ai_summary/patient_record_note are NOT
+    # in the importer's STAFF_PRESERVED_FIELDS — so the AI narrative can change
+    # underneath a staff member who is mid-triage on that case.
     $handoffPath = Join-Path $HandoffDir "$CallId`_handoff.json"
-    return (Test-Path -LiteralPath $handoffPath)
+    if (Test-Path -LiteralPath $handoffPath) { return $true }
+
+    $processedDir = Join-Path $HandoffDir "processed"
+    if (Test-Path -LiteralPath $processedDir) {
+        $processedPath = Join-Path $processedDir "$CallId`_handoff.json"
+        if (Test-Path -LiteralPath $processedPath) { return $true }
+        # Collision-suffixed variants written by the importer: <call_id>_handoff.2.json
+        $variants = @(Get-ChildItem -LiteralPath $processedDir -Filter "$CallId`_handoff.*.json" -File -ErrorAction SilentlyContinue)
+        if ($variants.Count -gt 0) { return $true }
+    }
+
+    return $false
 }
 
 function Get-DuplicateCallIdsInBatch {

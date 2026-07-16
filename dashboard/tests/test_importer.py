@@ -164,20 +164,87 @@ def test_importer_ignores_already_processed_subfolder(tmp_path):
     assert case_count == 0
 
 
-def test_retiring_survives_a_name_collision_in_processed(tmp_path):
-    """Same call_id arriving twice must not crash the importer. shutil.move
-    onto an existing path raises on Windows, which would kill the 60s loop."""
+def test_repeated_retire_failure_never_accumulates_pii_copies(tmp_path, monkeypatch):
+    """A retire that fails every pass must not mint a new copy each time.
+
+    These files hold patient data. shutil.move falls back to copy2+unlink when
+    os.rename fails; if the unlink then fails, a copy lands in processed/ AND
+    the original stays in the inbox, so the next pass writes copy N+1 — ~1440
+    PII copies/day at the 60s import interval. os.replace either moves or
+    raises, leaving nothing behind.
+    """
+    import app.importer as importer_module
+
+    handoff_dir = tmp_path / "handoffs"
+    handoff_dir.mkdir(parents=True, exist_ok=True)
+    _write_handoff(handoff_dir, "TC-STUCK")
+    db_path = tmp_path / "dashboard.sqlite"
+
+    calls = {"n": 0}
+
+    def _always_fails(src, dst):
+        calls["n"] += 1
+        raise PermissionError("simulated AV/backup lock on the file")
+
+    monkeypatch.setattr(importer_module.os, "replace", _always_fails)
+    importer_module._retire_failures.clear()
+
+    with connect(db_path) as conn:
+        init_db(conn)
+        for _ in range(10):  # ten 60s passes
+            import_handoffs(conn, handoff_dir)
+        case_count = conn.execute("SELECT COUNT(*) FROM cases").fetchone()[0]
+
+    processed = handoff_dir / "processed"
+    copies = list(processed.glob("*")) if processed.exists() else []
+
+    assert calls["n"] == 10, "retire should be attempted on each pass"
+    assert copies == [], f"a failing retire must leave NOTHING behind, found: {copies}"
+    assert (handoff_dir / "TC-STUCK_handoff.json").exists(), "source must survive a failed retire"
+    assert case_count == 1, "a stuck file must never block intake"
+    # Failure escalated, not swallowed forever.
+    assert importer_module._retire_failures[str(handoff_dir / "TC-STUCK_handoff.json")] == 10
+
+
+def test_retire_is_idempotent_when_identical_file_already_processed(tmp_path):
+    """The retry path: an identical file is already retired. Drop the source
+    rather than minting copy N+1."""
     handoff_dir = tmp_path / "handoffs"
     processed = handoff_dir / "processed"
     processed.mkdir(parents=True, exist_ok=True)
-    _write_handoff(processed, "TC-COLLIDE")          # already retired earlier
-    _write_handoff(handoff_dir, "TC-COLLIDE")        # arrives again
+    _write_handoff(handoff_dir, "TC-IDEMPOTENT")
+    shutil.copy2(
+        handoff_dir / "TC-IDEMPOTENT_handoff.json",
+        processed / "TC-IDEMPOTENT_handoff.json",
+    )
+    db_path = tmp_path / "dashboard.sqlite"
+
+    with connect(db_path) as conn:
+        init_db(conn)
+        import_handoffs(conn, handoff_dir)
+
+    assert not (handoff_dir / "TC-IDEMPOTENT_handoff.json").exists()
+    assert len(list(processed.glob("TC-IDEMPOTENT*"))) == 1, "must not create a .2 copy of an identical file"
+
+
+def test_retiring_survives_a_name_collision_in_processed(tmp_path):
+    """Same call_id arriving twice with DIFFERENT content must keep both —
+    the earlier copy is evidence, not garbage."""
+    handoff_dir = tmp_path / "handoffs"
+    processed = handoff_dir / "processed"
+    processed.mkdir(parents=True, exist_ok=True)
+    # Content must DIFFER, or this exercises the idempotent path instead.
+    _write_handoff(processed, "TC-COLLIDE", call_summary="first version")
+    _write_handoff(handoff_dir, "TC-COLLIDE", call_summary="re-processed version")
     db_path = tmp_path / "dashboard.sqlite"
 
     with connect(db_path) as conn:
         init_db(conn)
         count = import_handoffs(conn, handoff_dir)
 
+    # Both kept: the earlier copy is evidence.
+    assert len(list(processed.glob("TC-COLLIDE*"))) == 2
+    assert (processed / "TC-COLLIDE_handoff.2.json").exists()
     assert count == 1
     assert not (handoff_dir / "TC-COLLIDE_handoff.json").exists()
 

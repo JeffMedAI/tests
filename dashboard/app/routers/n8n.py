@@ -14,6 +14,7 @@ import os
 import subprocess
 import sys
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Request
@@ -275,13 +276,21 @@ def _count_batch_files(relative_folder: str, call_ids: list[str], suffix: str = 
     if not folder.exists():
         return 0
     # Same reason as _count_n8ntest_files: a retired file still counts as
-    # produced.
+    # produced. Also matches the importer's collision-suffixed variants
+    # (<call_id>_handoff.2.json), which an exact-name lookup alone would miss.
     search_dirs = [folder, folder / "processed"]
     count = 0
     for call_id in call_ids:
         names = [f"{call_id}{suffix}", f"{call_id}.json"] if suffix else [f"{call_id}.json"]
         candidates = [d / name for d in search_dirs for name in names]
-        if any(path.exists() and path.is_file() for path in candidates):
+        found = any(path.exists() and path.is_file() for path in candidates)
+        if not found and suffix:
+            stem, ext = Path(suffix).stem, (Path(suffix).suffix or ".json")
+            found = any(
+                d.exists() and any(d.glob(f"{call_id}{stem}.*{ext}"))
+                for d in search_dirs
+            )
+        if found:
             count += 1
     return count
 
