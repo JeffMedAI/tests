@@ -191,6 +191,6 @@ LOCAL_SERVICE_URLS: dict[str, str] = {
 
 SESSION_COOKIE: str = "jefflocal_session"
 
-AUTH_PUBLIC_PATHS: set[str] = {"/login", "/logout", "/forgot", "/reset", "/favicon.ico"}
+AUTH_PUBLIC_PATHS: set[str] = {"/login", "/logout", "/forgot", "/reset", "/favicon.ico", "/api/intake/stmarks-contact"}
 
 AUTH_PUBLIC_PREFIXES: tuple[str, ...] = ("/static/", "/api/health", "/api/n8n/")
