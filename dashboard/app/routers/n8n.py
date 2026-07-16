@@ -6,6 +6,7 @@ Covers: /api/n8n/sync, /api/n8n/red-flags, /api/n8n/overdue,
 """
 from __future__ import annotations
 
+import glob
 import hashlib
 import hmac
 import json
@@ -286,8 +287,12 @@ def _count_batch_files(relative_folder: str, call_ids: list[str], suffix: str = 
         found = any(path.exists() and path.is_file() for path in candidates)
         if not found and suffix:
             stem, ext = Path(suffix).stem, (Path(suffix).suffix or ".json")
+            # glob.escape: call_id is caller-supplied. '*' and '?' are illegal in
+            # Windows filenames so they fail earlier, but '[' and ']' are legal —
+            # an id like "[VW]ICTIM-A" would over-match as a character class and
+            # inflate the count, letting a test batch falsely report success.
             found = any(
-                d.exists() and any(d.glob(f"{call_id}{stem}.*{ext}"))
+                d.exists() and any(d.glob(f"{glob.escape(call_id)}{stem}.*{ext}"))
                 for d in search_dirs
             )
         if found:
