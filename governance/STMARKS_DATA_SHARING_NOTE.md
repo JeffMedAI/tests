@@ -1,69 +1,105 @@
-# St Marks Pharmacy Intake — Data Controller & Retention Note
+# St Marks Pharmacy Intake — Multi-Controller Data Segregation Note
 **Project:** JeffLocal — Avamed
-**Date:** 2026-07-16
-**Author:** Claude (Security Agent finding, written up by Strategy Agent per Saeed's approval)
-**Status:** DRAFT — unresolved, flagged for Saeed's decision. Not a go-live blocker (endpoint not yet in live use — `STMARKS_INTAKE_SECRET` unset in production).
+**Date:** 2026-07-16 (v2 — supersedes the v1 draft written earlier the same day)
+**Author:** Claude (Security Agent finding; corrected after Saeed's clarification)
+**Status:** OPEN — technical gap identified, not yet fixed. Not currently exploitable (see §4).
 
 ---
+
+## 0. CORRECTION TO v1 — READ THIS FIRST
+
+The first version of this note treated "who is the data controller?" as the open question, and
+described the St Marks records as landing in *"Avamed's GP database"*. **That framing was wrong.**
+
+Saeed confirmed 2026-07-16: **Avamed is the data _processor_ for both JeffLocal and St Marks.**
+It is one company providing a service to two separate controllers.
+
+| Entity | Role |
+|--------|------|
+| Churchtown Medical Centre | Data controller (its patients) |
+| St Marks Pharmacy | Data controller (its customers) |
+| **Avamed** | **Data processor for both** — processes on each controller's instructions |
+
+This is a cleaner position than v1 assumed, and it resolves the "who is the controller" question.
+But it does **not** dissolve the problem — it changes it into a sharper, more concrete one (§2).
+
+**Conflict to resolve:** `WHATSAPP_GDPR_ADDENDUM.md` §3 currently lists
+*"Avamed / Churchtown Medical Centre — Data Controller"*. That contradicts the above and should be
+corrected to match, or one of the two documents is wrong. [UNVERIFIED — Saeed/DPO to confirm which.]
 
 ## 1. WHAT CHANGED
 
-Commit da24bb2 (merged 2026-07-16) added `POST /api/intake/stmarks-contact` — a new endpoint in the
-Avamed/JeffLocal dashboard that receives contact-form submissions from St Marks Pharmacy's public
-website (stmarkspharmacy.co.uk, a separate business, separate Cloudflare Workers site, separate git
-repo at `C:\JeffLocal\SMCPHARMA`). Submissions land in the **same SQLite case queue** as GP triage
-cases from Churchtown Medical Centre, tagged with `call_id` prefix `STMARKS-`.
+Commit da24bb2 (merged and deployed 2026-07-16) added `POST /api/intake/stmarks-contact`, which
+receives contact-form submissions from St Marks Pharmacy's website and lands them in the **same
+SQLite `cases` table** as Churchtown GP triage cases, distinguished only by a `STMARKS-` prefix on
+`call_id`.
 
 Code: [dashboard/app/routers/stmarks.py](../dashboard/app/routers/stmarks.py)
 
-## 2. THE ISSUE
+## 2. THE REAL ISSUE — NO SEGREGATION BETWEEN TWO CONTROLLERS
 
-JeffLocal's database was built and governed as a **GP surgery patient triage system**. Its data
-protection posture (90-day GDPR purge, audit logging, on-premises-only, DCB0129 review) was designed
-around Churchtown Medical Centre being the data controller for patient admin-intake data.
+As processor for two controllers, Avamed's Article 28/32 obligation includes keeping each
+controller's data from being disclosed to the other. **The system currently cannot do that.**
 
-St Marks Pharmacy is a **different business** with its own customers, own privacy policy (draft,
-not yet pharmacist/DPO-reviewed), and — for the pharmacy's purposes — is presumably its own data
-controller for its customer contact-form data.
+Verified 2026-07-16:
+- The `cases` table has **no tenant/controller column**. (`PRAGMA table_info(cases)` — the only
+  vaguely related columns are `source_path` and `source_file_mtime`, which are file-ingest
+  metadata, not a tenant identifier.)
+- The worklist query filters on **status / priority / red-flag only** — there is no per-tenant or
+  per-controller scoping. See `active_case_clause()` / `worklist_order_clause()` in
+  [dashboard/app/case_domain.py](../dashboard/app/case_domain.py) (L245, L368).
+- Therefore **any logged-in staff user sees every case.**
 
-Mixing St Marks' customer PII (name, phone/email, free-text message) into Avamed's GP case database
-raises a question neither project's governance docs currently answer:
+**Consequence:** once Churchtown reception staff accounts exist, those staff would see St Marks
+Pharmacy customers' enquiries — names, phone numbers, and free-text messages that may contain
+health information — in their worklist. That is an unauthorised disclosure of St Marks' customers'
+data to a different controller's staff, and as processor it is Avamed's failure, not the
+pharmacy's.
 
-- **Who is the data controller for the St Marks records once they land in JeffLocal's database?**
-  Avamed (as operator of the system the data physically sits in) or St Marks (as the business that
-  collected it from its own customer)?
-- Does JeffLocal's 90-day purge cycle apply to St Marks records the same way it applies to GP cases?
-- Does storing pharmacy-customer PII inside a system built for patient health-admin data change
-  JeffLocal's own data protection classification (e.g. does it complicate the DCB0129/ICO picture)?
-- St Marks' own draft privacy policy does not yet mention this data flow (see open question below).
+The reverse is equally true: St Marks staff with dashboard access would see Churchtown patients.
 
-## 3. CURRENT STATE (as of 2026-07-16)
+Multi-tenancy (`tenant_id`, "Item #4") is on the backlog as **Phase 2, unbuilt** — see
+PROJECT_MEMORY.md. This note is the compliance argument for why that item is no longer merely a
+scaling nicety.
 
-- Endpoint is deployed to production but **inert** — `STMARKS_INTAKE_SECRET` is not set in the
-  production environment, so every request fails closed with `503`. No real customer data has
-  flowed through it yet.
-- Saeed decided (2026-07-16): **no** privacy-policy disclosure line will be added to St Marks'
-  draft policy at this time. This note exists so the underlying data-controller/retention question
-  is not lost, not to force an immediate change.
-- St Marks-side forwarding code (`SMCPHARMA/src/index.js`) is still being built and tested locally
-  — nothing live end-to-end yet.
+## 3. OTHER OPEN POINTS
 
-## 4. WHAT THIS NOTE DOES NOT DO
+- **Article 28 processor agreement.** A written contract between each controller and Avamed is
+  required. [UNVERIFIED — is one in place with St Marks? With Churchtown?] Avamed is also not yet
+  a registered company (PROJECT_MEMORY.md), which complicates signing one.
+- **Retention.** JeffLocal runs a 90-day purge designed around GP admin-intake records. St Marks
+  enquiries are general pharmacy enquiries with a different natural lifespan. Each controller
+  should set its own retention instruction; right now both inherit one rule by accident.
+- **Privacy notice.** Added 2026-07-16 to St Marks' draft policy: a paragraph naming Avamed as a
+  processor for the enquiry task list (`site/privacy-policy.html`, "How your booking is sent to
+  us"). Still requires superintendent pharmacist + DPO review, like the rest of that draft policy.
 
-This is not a DPIA and not legal advice. It records the open question for Saeed/DPO review before
-the St Marks → JeffLocal flow goes live with real customer data. Recommend treating this the same
-way as `WHATSAPP_GDPR_ADDENDUM.md` — a pre-go-live gate, not a blocker on current dev/test work.
+## 4. CURRENT EXPOSURE — WHY THIS IS NOT AN INCIDENT TODAY
 
-## 5. OPEN QUESTIONS FOR SAEED / DPO
+- The endpoint is deployed but **inert**: `STMARKS_INTAKE_SECRET` is unset in production, so every
+  request fails closed with `503`. No real St Marks customer data has ever flowed through it.
+- Churchtown has **no real staff accounts** and is **not live with patients** (PROJECT_MEMORY.md).
+  There is currently nobody who could see the other controller's data.
 
-1. Should St Marks records be stored in a logically separate table/store from GP cases, rather than
-   the same `cases` table distinguished only by `call_id` prefix?
-2. Does the 90-day purge need a distinct (possibly shorter) retention rule for `STMARKS-*` records,
-   given they are general pharmacy enquiries, not clinical admin intake?
-3. Confirm data-controller position in writing before real customer data flows — this affects who is
-   accountable for a subject access request, breach notification, etc.
+So the gap is real but **not yet exploitable**. It becomes live the moment either side is switched
+on. That ordering is the whole point of this note.
+
+## 5. RECOMMENDATION
+
+Do not enable the St Marks flow (i.e. do not set `STMARKS_INTAKE_SECRET` on both sides) into a
+database that Churchtown staff will later be given accounts on, until at least one of:
+
+1. **Tenant scoping is implemented** — a `tenant_id` on `cases`, set deterministically at ingest,
+   with every case-listing query scoped to the logged-in user's tenant (fail-closed default). This
+   is the correct fix and also unblocks Item #4.
+2. **Separate instances** — St Marks gets its own dashboard instance and its own database. Heavier
+   operationally, but total segregation and no shared-query risk.
+
+Interim option if the flow must go live sooner: keep it live only while Churchtown has no staff
+accounts, and treat "first Churchtown staff account created" as a hard gate that requires (1) or
+(2) first. This is a schedule dependency, not a technical control — it relies on nobody forgetting.
 
 ---
 
-*STMARKS_DATA_SHARING_NOTE.md | Created: 2026-07-16 | Status: DRAFT — unresolved*
-*This document does not constitute legal advice. Review with DPO before live customer data flows.*
+*STMARKS_DATA_SHARING_NOTE.md | v2 2026-07-16 | Status: OPEN — segregation gap unfixed*
+*Not legal advice. Review with DPO before any real customer data flows.*
