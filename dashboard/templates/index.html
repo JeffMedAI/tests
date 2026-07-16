@@ -1991,6 +1991,25 @@
     } catch (_) {}
   }
 
+  // ── New-case poll — beeps once per new case received ───────────
+  // Baseline is the moment this page was rendered, so pre-existing cases
+  // already on screen never beep — only cases that land after page load.
+  var _newCaseSince = {{ page_updated_at | tojson }};
+
+  async function pollNewCases() {
+    try {
+      var r = await fetch('/api/cases/new-since?since=' + encodeURIComponent(_newCaseSince));
+      if (!r.ok) return;
+      var d = await r.json();
+      if (!d.ok) return;
+      var cases = d.cases || [];
+      cases.forEach(function () { playNewCaseBeep(); });
+      if (d.latest) _newCaseSince = d.latest;
+    } catch (_) {}
+  }
+
+  setInterval(pollNewCases, 15000); // every 15 seconds
+
   // ── AJAX import with audio feedback ────────────────────────────
   var _importBtn = document.getElementById('topbar-import-btn');
   if (_importBtn) {

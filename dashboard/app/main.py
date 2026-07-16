@@ -29,6 +29,7 @@ from .routers import cases as cases_router
 from .routers import n8n as n8n_router
 from .routers import pages as pages_router
 from .routers import staff as staff_router
+from .routers import stmarks as stmarks_router
 from .routers import system as system_router
 from .templates_config import templates as _templates_singleton
 
@@ -44,6 +45,7 @@ app.include_router(cases_router.router)
 app.include_router(n8n_router.router)
 app.include_router(pages_router.router)
 app.include_router(staff_router.router)
+app.include_router(stmarks_router.router)
 app.include_router(system_router.router)
 
 

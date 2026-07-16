@@ -193,4 +193,4 @@ SESSION_COOKIE: str = "jefflocal_session"
 
 AUTH_PUBLIC_PATHS: set[str] = {"/login", "/logout", "/forgot", "/reset", "/favicon.ico"}
 
-AUTH_PUBLIC_PREFIXES: tuple[str, ...] = ("/static/", "/api/health", "/api/n8n/")
+AUTH_PUBLIC_PREFIXES: tuple[str, ...] = ("/static/", "/api/health", "/api/n8n/", "/api/intake/")

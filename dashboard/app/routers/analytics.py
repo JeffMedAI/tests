@@ -88,6 +88,25 @@ def api_performance_summary(request: Request) -> dict[str, Any]:
     }
 
 
+@router.get("/api/cases/new-since")
+def api_cases_new_since(request: Request, since: str) -> dict[str, Any]:
+    """Lightweight poll target for the dashboard's new-case beep. Returns cases
+    imported after `since` (an ISO timestamp), plus the latest imported_at seen
+    so the client can advance its own marker without re-querying old rows."""
+    ensure_ready()
+    with connect() as conn:
+        staff = current_staff_from_request(request, conn)
+        if staff.get("demo_fallback"):
+            raise HTTPException(status_code=401, detail="Authentication required")
+        rows = conn.execute(
+            "SELECT call_id, imported_at FROM cases WHERE imported_at > ? ORDER BY imported_at ASC LIMIT 50",
+            (since,),
+        ).fetchall()
+    cases = [{"call_id": row[0], "imported_at": row[1]} for row in rows]
+    latest = cases[-1]["imported_at"] if cases else since
+    return {"ok": True, "cases": cases, "latest": latest}
+
+
 @router.get("/api/patient-card")
 def api_patient_card(request: Request, name: str = "") -> dict[str, Any]:
     ensure_ready()
