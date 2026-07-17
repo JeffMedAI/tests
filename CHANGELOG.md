@@ -242,3 +242,41 @@
 **Security review:** APPROVE WITH CHANGES on the pre-merge script (source==dest guard, exception handling) — both applied before merge. The post-merge table-name fix is non-security (naming only, same guards apply) — bug-fix autonomy exception applies, logged here per protocol.
 **Also this session:** ran `/fewer-permission-prompts` — scanned 27 recent transcripts, added a handful of genuinely read-only Bash/MCP patterns to `.claude/settings.json` (schtasks query variants, browser read_page/get_page_text/find/read_network_requests/screenshot). Wrote (did not run) `scripts/service_control/fix_directory_acl.ps1` — the C:\JeffLocal + config folder permission fix (open item #3) — for Saeed or another admin to run manually; NTFS permission changes are outside what this session executes directly.
 **Saeed notified:** This session (step 3 approval was given live; write-up for later on the ACL fix was requested and delivered).
+
+---
+
+## 2026-07-17 (evening, continued) — Daily briefs rewritten in plain English + 4 real bugs fixed
+**Agent:** Lead Agent (Claude Code session)
+**Approved by:** Saeed (explicit instruction to make the morning/evening briefs 4th-grade simple)
+**Description:** Both brief scripts (`scripts/daily/strategy_daily.ps1`, `scripts/daily/combined_brief.ps1`) now
+try a local-AI rewrite (Ollama, gemma4:e2b) of every bullet into short, plain sentences before sending,
+falling back to a deterministic word-glossary version if the AI call fails for any reason — the brief always
+sends something readable, never nothing. Not security-sensitive (internal reporting scripts, no auth/patient
+data/compliance logic touched) — bug-fix autonomy exception applies, logged here per protocol.
+**Bugs found and fixed while testing against real data:**
+1. Line extraction only grabbed lines starting with "-" or "1." — session logs are plain one-sentence-per-line
+   (CLAUDE.md's own style), so almost everything except nested sub-lists was silently dropped from every past
+   brief. Now grabs every real content line.
+2. PowerShell array-unwrapping gotcha: helper functions correctly used `return ,$x` to stop a 0/1-element array
+   collapsing, but callers then wrapped that already-safe return in an extra `@(...)` or piped it into
+   Select-Object — which flattens the whole array back into ONE object. Every section was rendering as a single
+   giant run-on bullet. Fixed by capturing to a plain variable first, then re-wrapping/piping that.
+3. Windows PowerShell 5.1's Invoke-RestMethod sent a string body with a leading UTF-8 BOM; Ollama's Go JSON
+   parser rejects that outright ("invalid character 'ï' looking for beginning of value"), so every AI call
+   400'd. Fixed by encoding the JSON body to UTF-8 bytes with no BOM explicitly before sending.
+4. `Get-Content -Encoding UTF8` on Windows PowerShell 5.1 misdetects non-BOM UTF-8 files and mangles multi-byte
+   characters (em dashes, curly quotes) into mojibake — traced a corrupted "—" all the way through to the JSON
+   400 above. Fixed by reading files via `[System.IO.File]::ReadAllText` with an explicit UTF8 encoding.
+**Also:** relabeled sections in plain words, dropped raw git-commit-hash lists and the internal "memory drift"
+diagnostic from what Saeed reads (still logged for troubleshooting), added a near-duplicate filter for restated
+standing notices. Removed a stray 0-byte junk file (`scripts/daily/found`, the documented recurring
+unquoted-redirect artifact).
+**Files changed:** scripts/daily/strategy_daily.ps1, scripts/daily/combined_brief.ps1, CHANGELOG.md
+**Tests run:** Full combined evening brief run against real session logs + real production data (not synthetic)
+for both projects (JeffLocal + St Marks) — every section came back genuinely simplified, no fallbacks needed,
+~4.5 min total runtime. `strategy_daily.ps1`'s standalone (non-forwarding) path shares the same functions but
+was not independently live-tested this session — only `combined_brief.ps1`, which is what Task Scheduler
+actually runs, was.
+**Security review:** Not applicable — no auth/patient-data/compliance logic touched (internal reporting/
+formatting only). Bug-fix autonomy exception applies.
+**Saeed notified:** This session.
