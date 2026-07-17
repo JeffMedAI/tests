@@ -11,11 +11,19 @@
 
 ---
 
-**Last session:** 2026-07-16 (ran past midnight; closed 2026-07-17 09:45)
+**Last session:** 2026-07-16 (ran past midnight; closed 2026-07-17 ~10:00)
 **Closed by:** Claude (Sonnet 5)
-**Last commit:** ebd395f (fix: tests must never touch the production handoff inbox)
 **Branch:** main. C:\JeffLocal IS the production directory, checked out on main.
 **Production:** dashboard.app-avamed.uk (tunnel → localhost:8765). Redeployed and verified this session.
+
+> **NOTHING IS LIVE. ALL PATIENT DATA IS FAKE.** (Saeed, 2026-07-17.) Neither Churchtown nor
+> St Marks goes live until compliant, tested, and approved by the partners. Read the security
+> items below as **pre-go-live debt**, not active incidents — no real patient data is at risk.
+> There is no time pressure; build things properly.
+>
+> **A tenant = a GP practice (Churchtown + 4 more planned) OR St Marks.** St Marks is simply
+> tenant #2 — a stand-alone pharmacy that will never have "tenant pharmacies" beneath it. It is
+> not a special case. Multi-tenancy is for the GP practices; St Marks just exposed the gap first.
 
 ---
 
@@ -71,13 +79,17 @@ found two real bugs plus one I introduced myself.
 ## NEXT + BLOCKERS
 
 **Next actions (in order):**
-1. **Multi-tenancy** — Saeed decided SEPARATE DATABASE PER TENANT. Design is written and
-   cheap to build: `paths.py:7` already reads an env var, `db.py:9` funnels everything
-   through one `DB_PATH`, and `connect()` takes an override. One uvicorn per tenant, each
-   pointed at its own SQLite. Auth isolates for free (staff_users lives in each tenant DB).
-   See `governance/MULTI_TENANCY_PROPOSAL.md`. **Blocked on Saeed confirming §6** (super-admin
-   shape — a merged cross-tenant view rebuilds the exact risk separate DBs remove;
-   recommended per-tenant accounts + a picker page instead).
+1. **Multi-tenancy — DECIDED, NOT BLOCKED, START HERE.** Separate database per tenant. §6
+   (Avamed super-admin) settled 2026-07-17: it is a **tenant switcher** — switch tenant on the
+   dashboard, view each tenant's data individually to provide support. NOT a merged view, NOT
+   for practice staff. (The first draft argued against a merged view; Saeed never asked for
+   one. My misreading, now removed from the proposal.)
+   Design is written and cheap to build: `paths.py:7` already reads an env var, `db.py:9`
+   funnels everything through one `DB_PATH`, and `connect()` takes an override. One uvicorn
+   per tenant, each pointed at its own SQLite. Auth isolates for free (`staff_users` lives in
+   each tenant DB, so a tenant's staff physically cannot log into another's instance).
+   See `governance/MULTI_TENANCY_PROPOSAL.md` §8 for the step sequence.
+   **This gates go-live for EVERY tenant, not just St Marks.**
 2. **feature/secrets-loader** — before merging: remove the "gated by test_mode" claim
    (test_mode is read from the attacker's own payload — zero security value), stop calling
    the directory-ACL gate a trust boundary (it is advisory; bypassable via CodexSandboxUsers,
@@ -85,12 +97,13 @@ found two real bugs plus one I introduced myself.
 3. Lint (ruff/pyflakes) in the test gate. pyflakes caught 2 real bugs this session that the
    tests did not (a missing `Path` import, a missing `format_display_timestamp` import).
 
-**Blockers needing Saeed (priority order):**
+**Blockers needing Saeed (priority order) — all pre-go-live debt, none an active incident:**
 1. **`/api/n8n/test-intake-batch` accepts UNAUTHENTICATED requests.** `JEFF_WEBHOOK_SECRET`
    is unset → `n8n.py:319` skips HMAC and returns. Reachable via the Cloudflare tunnel;
-   writes queue envelopes and spawns a pipeline subprocess. Fabricated triage tasks could
-   land in front of reception staff. Its own docstring says remove before production. The
-   2026-05-30 HMAC review recommended this fix (N1) and it was never done.
+   writes queue envelopes and spawns a pipeline subprocess. Its own docstring says remove
+   before production. The 2026-05-30 HMAC review recommended this fix (N1); never done.
+   Impact today is limited — no real patients, no staff accounts — but it must close before
+   go-live.
 2. **Real HMAC secret committed to git** — `config/security/keys/voice_agent_hmac_secret.txt`,
    64 bytes, tracked since ff699b5. Needs **rotation**; it is in history, so untracking is
    not enough. `config/*secret*` never matched it because gitignore globs don't cross `/`.
@@ -99,12 +112,13 @@ found two real bugs plus one I introduced myself.
    orphan SID, and a generic-rights ACE also grant write. Needs BOTH dirs + a restart test.
 4. Standing: no real staff accounts; governance gates 1-7 unsigned; Avamed not registered.
 
-**Pending Saeed:** §6 super-admin shape. The 3 blockers above. St Marks privacy line needs
-pharmacist/DPO review.
+**Pending Saeed:** the 3 blockers above. St Marks privacy line needs pharmacist/DPO review.
+(§6 is settled — do not re-raise it.)
 
 **St Marks status:** both sides code-complete, **deliberately OFF**. Do NOT set
-`STMARKS_INTAKE_SECRET` — the flow must stay off until multi-tenancy lands, or St Marks
-customer data lands in a DB Churchtown staff will later have accounts on.
+`STMARKS_INTAKE_SECRET` — the flow stays off until multi-tenancy lands, or its data lands in a
+DB Churchtown staff will later have accounts on. **The same rule applies to standing up GP
+practice #2** — no tenant's intake goes on into a shared database.
 
 **Durable gotchas:**
 - PRODUCTION is `C:\JeffLocal\dashboard\` (8765) but the git branch of `C:\JeffLocal` decides

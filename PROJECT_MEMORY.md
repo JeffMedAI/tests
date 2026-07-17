@@ -77,14 +77,22 @@ strategy | Docs, reports, governance, marketing
 
 ## CURRENT STATUS -- 2026-07-17 (updated)
 
+### NOTHING IS LIVE — READ BEFORE JUDGING SEVERITY BELOW
+**All patient data in the system is FAKE** (Saeed, 2026-07-17). Neither Churchtown nor St Marks is
+live. Neither goes live until compliant, tested, and approved by the partners. So the items below
+are **pre-go-live debt to clear, not active incidents** — no real patient data is at risk today.
+They must all be closed before either business goes live. (An earlier version of this section used
+incident language; that was overstated.)
+
 ### TOP OF THE LIST — SECURITY, NEEDS SAEED (found 2026-07-16)
 1. **`/api/n8n/test-intake-batch` accepts UNAUTHENTICATED requests.** `JEFF_WEBHOOK_SECRET`
    is unset, so `n8n.py:319` skips HMAC verification and returns — the request proceeds. The
    route is reachable via the Cloudflare tunnel, writes queue envelopes and spawns a pipeline
-   subprocess. Fabricated triage tasks could be injected in front of reception staff. Its own
-   docstring says it "will be removed before production deployment" — it wasn't. `test_mode`
-   is NOT a guard: it is read from the caller's own payload. The 2026-05-30 HMAC review
-   recommended the fix (N1); never implemented. Touches auth → Saeed's sign-off required.
+   subprocess. Its own docstring says it "will be removed before production deployment" — it
+   wasn't. `test_mode` is NOT a guard: it is read from the caller's own payload. The 2026-05-30
+   HMAC review recommended the fix (N1); never implemented. **Impact today is limited — no real
+   patients, no staff accounts** — but this must close before go-live. Touches auth → Saeed's
+   sign-off required.
 2. **Real HMAC secret COMMITTED TO GIT** — `config/security/keys/voice_agent_hmac_secret.txt`,
    64 bytes, tracked since ff699b5, pushed to GitHub. Needs **ROTATION** — it is in history,
    so deleting/untracking does not help. The `config/*secret*` ignore rule never matched it
@@ -176,11 +184,15 @@ Full detail: docs/reports/test-run-20260619-172712.md
 ### Pending Saeed approvals / actions
 1. **The 3 security items at the top of this file** — unauthenticated intake endpoint, HMAC
    secret in git history (needs rotation), directory ACLs on C:\JeffLocal + config
-2. **Multi-tenancy §6 — super-admin shape.** Saeed decided (2026-07-16): SEPARATE DATABASE PER
-   TENANT; St Marks staff get their own logins; wants an Avamed cross-tenant super-admin. That
-   last one pulls against the isolation separate DBs buy — a merged view is a component that can
-   read every tenant's data. Recommended instead: an Avamed account inside each tenant + a
-   tenant-picker page. **Saeed to confirm before build.** See governance/MULTI_TENANCY_PROPOSAL.md
+2. **Multi-tenancy — DECIDED, ready to build.** Saeed decided (2026-07-16, clarified 2026-07-17):
+   **separate database per tenant.** A tenant = a GP practice (Churchtown + 4 more planned) **or**
+   St Marks. St Marks is simply tenant #2, a stand-alone pharmacy — NOT a special case, and it will
+   never have "tenant pharmacies" beneath it. Each tenant's staff get logins scoped to their own
+   tenant. **Avamed super-admin = a tenant switcher** (SETTLED 2026-07-17): switch tenant on the
+   dashboard, view each tenant's data individually to provide support. NOT a merged cross-tenant
+   view; NOT for practice staff. This is what the earlier draft recommended — the "tension" it
+   flagged was a misreading of Saeed's ask, now removed. See governance/MULTI_TENANCY_PROPOSAL.md
+   (§6 settled). **Gates every tenant's go-live, including St Marks.**
 3. **Real staff accounts** -- provide names, roles, emails to unblock pilot go-live
 4. **Governance gates 1-7 sign-off** -- cannot be delegated
 5. **JEFF_WEBHOOK_SECRET** -- set before any live Jeff traffic (see #1 — endpoint is open until then)
@@ -189,10 +201,16 @@ Full detail: docs/reports/test-run-20260619-172712.md
    SMCPHARMA, NOT pushed (that repo auto-deploys). Needs pharmacist/DPO review.
 
 ### St Marks integration — CODE COMPLETE, DELIBERATELY OFF
-Both sides built and tested. **Do NOT set `STMARKS_INTAKE_SECRET` on either side.** The flow must
-stay off until multi-tenancy lands, otherwise St Marks customer data lands in the same database
-Churchtown staff will later have accounts on — Avamed is the PROCESSOR for both controllers, so
-keeping their data apart is our Article 28/32 obligation. See governance/STMARKS_DATA_SHARING_NOTE.md.
+**St Marks is a TENANT** — a stand-alone pharmacy, tenant #2 alongside the GP practices. It is not
+a special case and will never have "tenant pharmacies" beneath it. Multi-tenancy itself is for the
+GP practices under JeffLocal (Churchtown + 4 more planned); St Marks just happens to be the tenant
+that made the missing segregation visible first.
+
+Both sides built and tested. **Do NOT set `STMARKS_INTAKE_SECRET` on either side.** The flow stays
+off until multi-tenancy lands, otherwise St Marks data lands in the same database Churchtown staff
+will later have accounts on. Avamed is the PROCESSOR for both controllers, so keeping tenants' data
+apart is our Article 28/32 obligation. The same rule applies to standing up GP practice #2 — no
+tenant's intake goes on into a shared database. See governance/STMARKS_DATA_SHARING_NOTE.md.
 - JeffLocal side: `POST /api/intake/stmarks-contact` merged + deployed (da24bb2). Inert — fails
   closed with 503 while the secret is unset.
 - St Marks side: `forwardToJeffLocal()` in SMCPHARMA/src/index.js, committed+pushed (f9209d9),
@@ -206,9 +224,10 @@ RANK | TASK                                               | AGENT    | STATUS
      | /api/n8n/test-intake-batch                         |          | Endpoint is OPEN right now.
  2   | Rotate voice_agent_hmac_secret.txt (in git history) | Security | SAEED. Rotation, not untracking.
  3   | ACLs on C:\JeffLocal + config (Auth'd Users write)  | DevOps   | SAEED. Both dirs, all ACEs.
- 4   | Multi-tenancy: SEPARATE DB PER TENANT              | Backend  | DECIDED 2026-07-16. Blocked on
-     | (supersedes the old "tenant_id / Phase 2" item)    |          | Saeed confirming proposal §6.
-     |                                                    |          | GATES the St Marks go-live.
+ 4   | Multi-tenancy: SEPARATE DB PER TENANT              | Backend  | DECIDED + §6 SETTLED 2026-07-17.
+     | tenant = a GP practice OR St Marks. Avamed         |          | READY TO BUILD. GATES go-live
+     | super-admin = tenant switcher, one tenant at a     |          | of EVERY tenant, not just
+     | time. (supersedes old "tenant_id / Phase 2")       |          | St Marks.
  5   | Merge feature/secrets-loader                       | DevOps   | Security APPROVE-WITH-CHANGES:
      |                                                    |          | strike overclaims first (HANDOFF)
  6   | Add lint (ruff/pyflakes) to test gate              | DevOps   | pyflakes caught 2 real bugs on
