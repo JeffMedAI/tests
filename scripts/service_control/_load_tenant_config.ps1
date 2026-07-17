@@ -47,8 +47,36 @@ function Import-JeffTenantConfig {
     # charset up front so it cannot be used for path traversal (e.g.
     # "..\..\secrets" is rejected before it ever reaches Join-Path).
     if ($Tenant -notmatch '^[a-zA-Z0-9_-]+$') {
-        Write-TenantLog "[TENANT] REFUSING TO START: tenant name '$Tenant' contains characters outside [a-zA-Z0-9_-]"
-        throw "Invalid tenant name: $Tenant"
+        # Sanitise before logging: same reasoning as the refused-key log
+        # below — an attacker-controlled string must never reach a log file
+        # unfiltered.
+        $safeTenant = ($Tenant -replace '[^\x20-\x7E]', '?')
+        if ($safeTenant.Length -gt 64) { $safeTenant = $safeTenant.Substring(0, 64) + '...' }
+        Write-TenantLog "[TENANT] REFUSING TO START: tenant name '$safeTenant' contains characters outside [a-zA-Z0-9_-]"
+        throw "Invalid tenant name: $safeTenant"
+    }
+
+    # Directory-ACL check, same reasoning and same caveats as
+    # _load_secrets.ps1's threat-model comment: advisory, not a trust
+    # boundary (misses non-standard SIDs, generic-rights ACEs, and
+    # reparse-point redirection), but still worth doing — JEFFLOCAL_DB_PATH
+    # is an arbitrary-database-repoint lever if this directory is writable
+    # by an untrusted account.
+    try {
+        $dirAcl  = Get-Acl -LiteralPath $ConfigRoot -ErrorAction Stop
+        $writers = $dirAcl.Access | Where-Object {
+            $_.AccessControlType -eq 'Allow' -and
+            $_.IdentityReference -match 'Everyone|BUILTIN\\Users|Authenticated Users|INTERACTIVE' -and
+            $_.FileSystemRights -match 'Write|Modify|FullControl|CreateFiles|AppendData'
+        }
+        if ($writers) {
+            $who = (($writers.IdentityReference | ForEach-Object { $_.ToString() }) | Select-Object -Unique) -join ', '
+            Write-TenantLog "[TENANT] REFUSING TO START: $ConfigRoot is writable by: $who"
+            throw "Tenant config directory $ConfigRoot is writable by untrusted accounts: $who"
+        }
+    } catch [System.Management.Automation.ItemNotFoundException] {
+        Write-TenantLog "[TENANT] REFUSING TO START: $ConfigRoot does not exist"
+        throw "Tenant config directory does not exist: $ConfigRoot"
     }
 
     $envFile = Join-Path $ConfigRoot "$Tenant.env"
@@ -75,12 +103,29 @@ function Import-JeffTenantConfig {
         }
 
         if ($key -notin $script:AllowedTenantKeys) {
-            Write-TenantLog "[TENANT] REFUSED key not on allowlist: $key"
+            # Sanitise before logging: strip non-printable chars and cap
+            # length, same as the tenant-name case above and the refused-key
+            # handling in _load_secrets.ps1.
+            $safeKey = ($key -replace '[^\x20-\x7E]', '?')
+            if ($safeKey.Length -gt 64) { $safeKey = $safeKey.Substring(0, 64) + '...' }
+            Write-TenantLog "[TENANT] REFUSED key not on allowlist: $safeKey"
             continue
         }
 
-        Set-Item -Path "Env:$key" -Value $val
-        $loaded += $key
+        # -ErrorAction Stop is required: Set-Item's failures are
+        # non-terminating, so without it the catch never runs and a failed
+        # set would still be recorded as loaded. That matters more here than
+        # almost anywhere else in this codebase — if JEFFLOCAL_DB_PATH
+        # silently fails to set but is reported as loaded, the completeness
+        # check below passes and this tenant falls through to db.py's
+        # DEFAULT database, silently mixing this tenant's data with
+        # whichever tenant (or the production instance) owns that database.
+        try {
+            Set-Item -Path "Env:$key" -Value $val -ErrorAction Stop
+            $loaded += $key
+        } catch {
+            Write-TenantLog "[TENANT] FAILED to set $key"
+        }
     }
 
     if ('JEFFLOCAL_DB_PATH' -notin $loaded -or 'JEFFLOCAL_PORT' -notin $loaded) {

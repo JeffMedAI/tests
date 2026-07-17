@@ -34,6 +34,15 @@ config/*key*
 # ...but the template documenting WHICH keys exist is tracked. It holds no real
 # values. Without this negation the `config/*secret*` rule above would hide it.
 !config/secrets.env.example
+
+# Tenant config is non-secret plumbing by design (see
+# config/tenants/_template.env.example), but future tenant .env files are
+# ignored by default anyway — a mistake that puts a secret in one should not
+# also commit it. Explicitly allow the template and the placeholder test
+# fixture used to build this feature.
+config/tenants/*.env
+!config/tenants/_template.env.example
+!config/tenants/test-tenant-1.env
 *.key
 *.pem
 
