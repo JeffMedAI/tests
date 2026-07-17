@@ -20,11 +20,20 @@
 #     not a regex for "looks like a variable name". A name-shape regex accepts
 #     PYTHONPATH / PATH / PSModulePath and hands over arbitrary code execution.
 #     Adding a key here is a deliberate, reviewable code change. That is the point.
-#   - The DIRECTORY's write ACL is what matters, not the file's. An attacker who
-#     plants secrets.env owns it and can give it a pristine ACL, so a file-ACL
+#   - The DIRECTORY's write ACL is checked, not the file's, because an attacker
+#     who plants secrets.env owns it and can give it a pristine ACL — a file-ACL
 #     check is structurally incapable of catching a hostile file. If an untrusted
-#     account can write into the directory, this HARD-FAILS rather than load
+#     account can write into the directory, this refuses to load rather than use
 #     attacker-controlled values.
+#     THIS CHECK IS ADVISORY, NOT A TRUST BOUNDARY. A standard ACL enumeration
+#     misses: non-standard principals (e.g. CodexSandboxUsers or other SIDs not
+#     matched by the identity patterns below), generic-rights ACEs (GENERIC_ALL/
+#     GENERIC_WRITE do not always surface as the named FileSystemRights this
+#     checks for), and reparse points/junctions redirecting the "directory" this
+#     code inspects to a different, writable location on disk. Do not describe
+#     this gate as sufficient on its own — it is one layer, and host-level write
+#     access to C:\JeffLocal already implies compromise this script cannot fully
+#     detect. The real trust boundary is who can write to that machine at all.
 #   - Secret VALUES are never logged. Only key names. The log must never become a
 #     secrets file.
 #   - A key is only reported as loaded if Set-Item actually succeeded. A log that
@@ -42,11 +51,14 @@
 #   - Jeff n8n webhook — FAILS OPEN. routers/n8n.py skips HMAC verification and
 #                        ACCEPTS the request when JEFF_WEBHOOK_SECRET is unset.
 #                        This is a REAL GAP, flagged by the 2026-05-30 HMAC review
-#                        (recommendation N1) and still unimplemented. It is gated
-#                        by test_mode today. Fixing it touches auth logic and
-#                        needs Saeed's sign-off — tracked separately. Until then,
-#                        do NOT describe this loader as safe because "endpoints
-#                        fail closed": only one of them does.
+#                        (recommendation N1) and still unimplemented. test_mode is
+#                        read from the request's OWN payload, so it is attacker-
+#                        controlled and gates nothing — do not describe this
+#                        endpoint as gated by test_mode. Fixing the open-fail
+#                        touches auth logic and needs Saeed's sign-off — tracked
+#                        separately. Until then, do NOT describe this loader as
+#                        safe because "endpoints fail closed": only one of them
+#                        does, and the other's condition is not a real gate.
 
 # Every key this loader is permitted to set. Anything else is refused and logged.
 # Extending this list is a security-relevant change — get it reviewed.
@@ -116,7 +128,12 @@ function Import-JeffSecrets {
 
         # ALLOWLIST OF NAMES, not a shape check. See threat model above.
         if ($key -notin $script:AllowedSecretKeys) {
-            $refused += $key
+            # Sanitise before it ever reaches a log: strip non-printable/control
+            # characters and cap length, so a hostile secrets.env cannot use a
+            # bogus "key" to inject log lines or blow up the log file size.
+            $safeKey = ($key -replace '[^\x20-\x7E]', '?')
+            if ($safeKey.Length -gt 64) { $safeKey = $safeKey.Substring(0, 64) + '...' }
+            $refused += $safeKey
             continue
         }
 
@@ -150,8 +167,12 @@ function Import-JeffSecrets {
     }
     if ($refused.Count -gt 0) {
         # Refused key NAMES are safe and important to log: an unexpected key in
-        # this file is a strong tamper signal.
-        Write-SecretLog "[SECRETS] REFUSED $($refused.Count) key(s) not on the allowlist: $($refused -join ', ')"
+        # this file is a strong tamper signal. Cap how many we print — a hostile
+        # or corrupt file with thousands of bogus "keys" must not blow up the
+        # log file. The count above is always the true total either way.
+        $shown = $refused | Select-Object -First 20
+        $more  = if ($refused.Count -gt 20) { " (+$($refused.Count - 20) more, not shown)" } else { "" }
+        Write-SecretLog "[SECRETS] REFUSED $($refused.Count) key(s) not on the allowlist: $($shown -join ', ')$more"
     }
     if ($skipped -gt 0) {
         Write-SecretLog "[SECRETS] skipped $skipped malformed or failed line(s)"
