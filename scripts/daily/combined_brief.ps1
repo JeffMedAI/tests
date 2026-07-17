@@ -367,7 +367,7 @@ if ($Mode -eq 'Evening') {
 }
 
 $CombinedReport = @"
-$Title — $Today $Clock
+$Title - $Today $Clock
 Your two projects: the AI reception helper (Avamed) and the pharmacy website (St Marks)
 ================================================================
 

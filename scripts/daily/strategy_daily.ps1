@@ -254,7 +254,7 @@ if ($SessionSummaries.Count -eq 0 -and (Test-Path $SessionsDir)) {
             Age     = [math]::Round(((Get-Date) - $MostRecent.LastWriteTime).TotalHours, 1)
             Content = $content
         }
-        Write-Log "No logs in last 24h — fell back to most recent: $($MostRecent.Name)"
+        Write-Log "No logs in last 24h - fell back to most recent: $($MostRecent.Name)"
     } else {
         Write-Log "WARNING: docs\sessions\ has no session logs at all. Session-close protocol was skipped."
     }
@@ -467,7 +467,7 @@ $FallbackNote = if ($UsedFallbackLog) {
 } else { "" }
 
 $Report = @"
-$BriefTitle — $Today — $BriefClock
+$BriefTitle - $Today - $BriefClock
 $FallbackNote
 ---
 
@@ -512,7 +512,7 @@ if ($Mode -eq 'Evening') {
     if (-not $TodayLogs) {
         $SessionLogPath = "$SessionsDir\$Today-1800.md"
         $NoWorkContent = @"
-# SESSION SUMMARY — [$Today 18:00]
+# SESSION SUMMARY - [$Today 18:00]
 # Tool: Cowork (automated session end)
 # Written by: Claude scheduled task at $BriefClock
 
@@ -520,7 +520,7 @@ if ($Mode -eq 'Evening') {
 
 ## WHAT WE DID
 
-- No human session today — automated close.
+- No human session today - automated close.
 
 ---
 
@@ -549,7 +549,7 @@ Branch: sandbox
 "@
         if (-not $DryRun) {
             Set-Content -Path $SessionLogPath -Value $NoWorkContent -Encoding UTF8
-            Write-Log "No session log for today — wrote automated placeholder: $SessionLogPath"
+            Write-Log "No session log for today - wrote automated placeholder: $SessionLogPath"
         } else {
             Write-Log "DryRun: would write session log: $SessionLogPath"
         }
