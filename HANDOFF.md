@@ -11,13 +11,13 @@
 
 ---
 
-**Last session:** 2026-07-17 (afternoon/evening)
+**Last session:** 2026-07-17 (evening, continued)
 **Closed by:** Claude (Sonnet 5)
 **Branch:** main. C:\JeffLocal IS the production directory, checked out on main.
-**Latest commit:** 390f774 (Merge feature/multitenancy-db-path into main)
-**Production:** dashboard.app-avamed.uk (tunnel → localhost:8765). Not redeployed/restarted this
-session — the changes merged are launcher/config plumbing, not live Python code, so no restart was
-needed for them to be present on disk. Dashboard process itself is untouched since 2026-07-17 AM.
+**Latest commit:** 5413466 (memory: multi-tenancy step 3 done — churchtown.sqlite created and verified)
+**Production:** dashboard.app-avamed.uk (tunnel → localhost:8765). Health-checked after this
+session's DB migration work — still up, still shows 78 cases, untouched. Dashboard process itself
+was not restarted this session (no code path it serves changed).
 
 > **NOTHING IS LIVE. ALL PATIENT DATA IS FAKE.** Neither Churchtown nor St Marks goes live until
 > compliant, tested, and approved by the partners. Read blockers below as pre-go-live debt, not
@@ -27,110 +27,105 @@ needed for them to be present on disk. Dashboard process itself is untouched sin
 
 ## WORK SCOPE
 
-Started as: stray-file cleanup + resume multi-tenancy build. Became: multi-tenancy steps 1
-(secrets loader) and 2 (`JEFFLOCAL_DB_PATH` + `-Tenant` launcher param) built, security-reviewed
-twice, TDD'd, merged to main, and pushed. Plus a real bug caught and fixed before it could ever
-run in production.
+Started as: fewer-permission-prompts cleanup + write up (not run) the folder-permission fix +
+multi-tenancy step 3. All three done. Also updated CLAUDE.md per Saeed's direct instruction
+(honesty rule, confidence tags, always-on caveman/superpowers, fourth-grade plain English).
 
 ## WHAT WORKED / WHAT DIDN'T
 
 **Worked:**
-- **"Check EVERYTHING before merging" caught a real gap.** The PowerShell changes had only been
-  manually smoke-tested and thrown away — not TDD'd, no automated regression test, because this
-  repo has no PS test framework. Wrote one (`scripts/service_control/tests/test_load_tenant_config.ps1`,
-  12 assertions), then **mutation-tested it**: deliberately broke the ACL check, confirmed the
-  suite caught the regression (not a tautology), restored, confirmed green again, then committed.
-  Do this every time a PS change is claimed "tested" — a deleted one-off smoke test is not a test.
-- **Security Agent earned its keep again.** Round 1 on the tenant loader found a real bug: a
-  silently-failed `Set-Item` (PowerShell's failures are non-terminating by default) was still
-  recorded as "loaded," which would have let a tenant silently fall through to db.py's DEFAULT
-  database — cross-tenant patient data mixing, the exact thing separate databases exist to
-  prevent. Caught before merge, not after.
-  For maximum rigor, ask Security to read the actual files rather than trust a summary, and to
-  try to defeat the controls adversarially — both rounds this session did that and it mattered.
-- **Verifying a claim before writing it down, live.** Rather than assume "directory ACL is fine,"
-  ran a read-only `Get-Acl` against the REAL `C:\JeffLocal\config` and confirmed it IS writable by
-  Authenticated Users — turning a theoretical open item into a concrete, currently-blocking fact
-  (see Blockers). This is the same discipline flagged as a gap in the previous session (memory:
-  "verify before claiming something is safe") — applied correctly this time.
-- Worktrees for everything risky (`C:\JeffLocal_secrets`, `C:\JeffLocal_multitenancy`). Neither
-  touched C:\JeffLocal's own branch. Both are fully merged now and safe to remove, not yet cleaned up.
-- Merges were blocked by the auto-mode tool-permission classifier even after Saeed said "approved"
-  in chat — that approval doesn't satisfy the harness-level gate. Had to exit auto mode and retry
-  directly. If a `git merge`/`rm` silently refuses after chat approval, this is why — not a bug.
+- **Security review caught a real bug again, before merge — third time this happened across
+  steps 1/2/3.** The DB migration script had no check stopping source and dest from being the
+  same file. With `force=True` (a flag the script itself supports) that would have deleted the
+  live database. Fixed before merge, not after. Keep sending new scripts through Security even
+  when they feel "small and obviously safe."
+- **TDD caught nothing itself this time, but running against REAL data did.** The 15 tests all
+  passed against synthetic tables, but the script's assumed table names (`staff`, `audit_log`)
+  were wrong for the real schema (`staff_users`, `audit_events`). Lesson: synthetic-fixture tests
+  can't catch a wrong assumption baked into both the fixture AND the code — only a real dry-run
+  against real data can. The actual file copy was never at risk (SQLite's backup API copies the
+  whole file regardless of table names) — only the "did it work" verification step crashed. Worth
+  remembering: a crash in verification is not the same as a crash in the operation itself — check
+  which one actually failed before panicking.
+- Worktree pattern again for the script build (`C:\JeffLocal_dbmigrate`), never touched
+  C:\JeffLocal's own branch for WIP. Cleaned up (worktree + branch removed) immediately after merge
+  this time, no stragglers left behind.
+- Refusing to run the folder-permission (ACL) fix myself, even with Saeed's "write for later" and
+  earlier "go ahead" — that's a Windows security-settings change, outside what gets executed
+  directly. Wrote the exact commands to a script file instead, for Saeed/an admin to run by hand.
 
 **Didn't work / gotchas — READ THESE:**
-- **Stray 0-byte files are a recurring leak, not a one-off.** Root cause: unquoted `<`/`>`
-  characters (from pasted error text, tracebacks, or command fragments) reaching git-bash, which
-  silently creates an empty file named after the next word instead of erroring. Been happening
-  since 26 June, cleaned 19 of them this session. If you see single-word 0-byte files appear again,
-  this is why — check what command produced text containing `<`/`>` and wasn't quoted.
-- **A worktree is not a full copy of production's runtime state.** The fresh `C:\JeffLocal_multitenancy`
-  worktree was missing gitignored runtime directories (`outputs/handoff_json`) that only exist in
-  the real `C:\JeffLocal`, causing 2 tests to fail for environmental reasons that looked like a
-  regression at first. Confirmed by creating the missing dir and re-running — not a code bug. Don't
-  panic-diagnose a worktree test failure as a regression before checking this.
-- **Hardening a check can turn a known-but-dormant issue into an active blocker.** Adding the
-  directory-ACL check to the tenant loader (Security's recommendation, correctly implemented) means
-  the pre-existing "config writable by Authenticated Users" issue now actively blocks tenant
-  onboarding, not just secrets. This is the check doing its job, not a defect — but it changes the
-  priority of fixing that ACL issue from "should do" to "blocking the next step."
-- `.pyc` files under `tests/fixtures/__pycache__/` are tracked in git and get touched by running
-  pytest — `git checkout -- <file>` before every commit to avoid an unrelated diff riding along.
+- **Don't assume table names — check the real schema first.** Would have saved one crash-and-fix
+  cycle. `SELECT name FROM sqlite_master WHERE type='table'` takes two seconds; guessing from
+  memory of "cases/staff/audit_log"-style naming from other projects doesn't hold up.
+- **pytest's temp folder was locked (`PermissionError` on `AppData\Local\Temp\pytest-of-s5256`)** —
+  unrelated to this session's code, looks environmental (possibly related to the same
+  overly-open/locked-down folder mess as open item #3, not confirmed). Workaround: always pass
+  `--basetemp=<somewhere in the scratchpad>` when running pytest on this machine until the root
+  cause is found.
+- **Fresh worktrees have no `.venv`.** Running the full 391-test dashboard suite needs
+  `dashboard\.venv\Scripts\python.exe`, which only exists in the real `C:\JeffLocal` tree (gitignored,
+  not copied into worktrees). For an isolated new script with zero coupling to `app/` modules,
+  running just its own test file is enough — don't force a full-suite run that can't actually work
+  in a bare worktree.
+- `.pyc` files under `tests/__pycache__/` get touched by running pytest in a worktree — `git
+  checkout --` them before committing, same as previous sessions.
 
 ## HOW THE SESSION CLOSED
 
-- Merged and pushed: `feature/secrets-loader` (06af07e) and `feature/multitenancy-db-path`
-  (390f774) into main. Both Security-approved, both Saeed-approved in chat before merge.
-- 391 Python tests + 12 PowerShell regression assertions green on the production tree post-merge.
-- 19 stray 0-byte garbage files removed (root + dashboard/), Saeed-approved.
-- Two worktrees (`C:\JeffLocal_secrets`, `C:\JeffLocal_multitenancy`) still exist on disk, fully
-  merged, not removed — safe to `git worktree remove` whenever convenient.
-- PROJECT_MEMORY.md updated: multi-tenancy status, open item #3 (ACL) now flagged as also blocking
-  tenant onboarding, secrets-loader item marked done.
+- Merged and pushed: `feature/multitenancy-db-migrate` (migration script, Security APPROVE WITH
+  CHANGES, fix applied pre-merge) + a same-day post-merge fix (wrong table names, non-security).
+- Real migration run against production, Saeed-approved on the day: `churchtown.sqlite` created,
+  verified matching (78 cases / 5 staff_users / 1,251 audit_events, integrity OK both sides).
+  `dashboard.sqlite` untouched. Live dashboard NOT yet repointed at the new database.
+- `.claude/settings.json` updated with a short read-only permission allowlist (fewer-permission-prompts run).
+- `scripts/service_control/fix_directory_acl.ps1` written, not run — Saeed to run manually, and
+  asked to be reminded.
+- CLAUDE.md updated per Saeed's direct instruction — see next session's read of it for full detail.
+- CHANGELOG.md, PROJECT_MEMORY.md, this file, and today's session log all written/updated and
+  committed.
 
 ## NEXT + BLOCKERS
 
 **Next action, in order:**
-1. **Multi-tenancy step 3** (governance/MULTI_TENANCY_PROPOSAL.md §8): backup, then migrate
-   `dashboard.sqlite` → `churchtown.sqlite`. Needs Saeed's sign-off on the day — it's the
-   production database, even though every row in it is fake test data.
-2. Before step 3 is useful in practice: the config directory ACL issue (blocker #1 below) needs
-   fixing, or no tenant config — including a future real `churchtown.env` — will actually load.
-3. Steps 4-8 of the sequence are entirely unstarted (St Marks instance, tenant picker UI, per-tenant
-   backup/purge, STMARKS_INTAKE_SECRET, go-live sign-off). Honest estimate given to Saeed this
-   session: **2 of 8 steps done — this is the foundation, not the building.**
+1. **REMINDER for Saeed:** run `scripts/service_control/fix_directory_acl.ps1` (admin PowerShell) —
+   fixes the folder-permission issue blocking tenant onboarding. Carry this reminder forward every
+   session until it's done.
+2. Step 4 (governance/MULTI_TENANCY_PROPOSAL.md §8): stand up the St Marks tenant instance,
+   hostname, and staff accounts. Still blocked by item 1 above.
+3. Steps 5-8 unstarted: tenant picker UI + Avamed admin accounts, per-tenant backup/purge +
+   migration runner, `STMARKS_INTAKE_SECRET`, go-live sign-off.
 
 **Blockers needing Saeed (priority order) — all pre-go-live debt, none an active incident:**
-1. **`C:\JeffLocal` and `C:\JeffLocal\config` writable by Authenticated Users.** Was already open
-   (root cause of a prior RCE finding). Now ALSO confirmed blocking: the new tenant-config loader
-   correctly refuses to start any tenant while this is true. This has become a practical
-   prerequisite for multi-tenancy step 3 onward, not just a standing recommendation.
+1. **Folder-permission fix — script written, waiting on Saeed to run it (admin PowerShell).**
+   `scripts\service_control\fix_directory_acl.ps1`. Blocks step 4 the same way it blocked step 3
+   setup.
 2. Real staff accounts (names, roles, emails) — still open, blocks pilot go-live.
 3. Governance gates 1-7 — still open, cannot be delegated.
-4. `JEFF_WEBHOOK_SECRET` unset — n8n webhook endpoint still fails OPEN (accepts unauthenticated
-   requests) until set. Not yet touched this session; still the standing item.
-5. Real HMAC secret in git history (`voice_agent_hmac_secret.txt`) — needs rotation, not just
-   untracking. Still open.
+4. `JEFF_WEBHOOK_SECRET` unset — n8n webhook endpoint still fails OPEN. Not touched this session.
+5. Real HMAC secret in git history (`voice_agent_hmac_secret.txt`) — needs rotation. Still open.
 
-**Pending Saeed:** items 1-5 above, plus a nice-to-have (remove the two now-merged worktrees
-whenever convenient — zero urgency).
+**Pending Saeed:** items 1-5 above, plus two low-priority nice-to-haves carried from last session
+(remove the two now-merged worktrees `C:\JeffLocal_secrets` / `C:\JeffLocal_multitenancy` whenever
+convenient — zero urgency, untouched this session).
 
-**St Marks status:** unchanged — code-complete, deliberately OFF, `STMARKS_INTAKE_SECRET` must
-stay unset until multi-tenancy lands further (at minimum step 3, realistically step 4). Confirmed
-this session: St Marks Pharmacy is the first REAL tenant to onboard once the scaffolding is ready,
-separate from JeffLocal's GP-triage scope — consistent with existing design, nothing new decided.
+**St Marks status:** unchanged — code-complete, deliberately OFF, `STMARKS_INTAKE_SECRET` must stay
+unset until multi-tenancy reaches at least step 4.
 
 **Durable gotchas (carried forward, still true):**
-- PRODUCTION is `C:\JeffLocal\dashboard\` (8765) but the git branch of `C:\JeffLocal` decides
-  what runs. Check it every session. Merging changes prod code on disk; a restart loads it for
-  live Python code (this session's merges were launcher/config plumbing, not live code paths, so
-  no restart was needed for them specifically — don't assume that's true of every future merge).
+- PRODUCTION is `C:\JeffLocal\dashboard\` (8765) but the git branch of `C:\JeffLocal` decides what
+  runs. Check it every session.
 - Never switch C:\JeffLocal's own branch for WIP — use a worktree.
 - LLM output must NEVER set verification_status, safe_to_queue, priority, or identity fields.
 - Session cookies expire after 1 hour.
-- `.pyc` files under `tests/fixtures/__pycache__/` are tracked in git; `git checkout --` them
-  before committing if a test run touched them.
+- `.pyc` files under `tests/__pycache__/` (and `tests/fixtures/__pycache__/`) are tracked in git;
+  `git checkout --` them before committing if a test run touched them.
+- pytest's default temp folder can be permission-locked on this machine — pass `--basetemp=`
+  pointing somewhere writable (e.g. the session scratchpad) if you see a `PermissionError` on
+  `AppData\Local\Temp\pytest-of-*`.
+- Fresh git worktrees have no `.venv` — don't try to run the full dashboard test suite inside one;
+  run only tests for code with zero `app/` coupling, or copy/create a venv first.
+- Before writing ANY code that assumes table/column names in a real database, check the real
+  schema first (`SELECT name FROM sqlite_master WHERE type='table'`) — don't guess from convention.
 - `git merge`/`rm` can be blocked by the tool-permission classifier even after Saeed approves in
-  chat — that's a harness-level gate distinct from chat approval. Exit auto mode and retry directly
-  if this happens; it is not a bug to route around.
+  chat — exit auto mode and retry directly if this happens; not a bug.

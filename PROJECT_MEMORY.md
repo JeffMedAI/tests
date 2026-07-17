@@ -1,6 +1,6 @@
 ﻿# PROJECT MEMORY — JeffLocal
 # READ THIS FIRST at every session start, before doing anything else.
-# Last updated: 2026-07-17 (evening session, multi-tenancy steps 1-2)
+# Last updated: 2026-07-17 (evening, continued — multi-tenancy step 3 done, ACL fix script written)
 # Maintained by: Claude (update at end of every session)
 
 ---
@@ -102,8 +102,20 @@ incident language; that was overstated.)
    flagged `Authenticated Users` ACE is NOT enough — `CodexSandboxUsers`, an orphan SID, and a
    generic-rights ACE (renders as `-536805376`) also grant write. Needs BOTH directories, plus
    a service-restart test.
+   **FIX SCRIPT READY 2026-07-17 evening:** `scripts\service_control\fix_directory_acl.ps1` — reads
+   current permissions, removes the 4 bad grantees from both folders, verifies, reminds you to
+   restart-test. Written but NOT run (changing Windows security settings is not something Claude
+   runs directly). **REMINDER: Saeed asked to be reminded to run this — carry forward every
+   session until done.**
 
 ### What is working
+- **CLAUDE.md updated 2026-07-17 evening per Saeed's direct instruction:** honesty rule and
+  confidence-tag rule reaffirmed (both already existed as rules 4/5), /caveman + /superpowers now
+  explicitly always-on for every response (not just session start), fourth-grade-simple-English
+  language added throughout. Read CLAUDE.md itself for the exact wording, don't rely on this bullet.
+- **`.claude/settings.json` permission allowlist expanded 2026-07-17 evening** (`/fewer-permission-prompts`
+  run) — added genuinely read-only Bash/MCP patterns found in 27 recent transcripts. Full list in
+  git history / CHANGELOG.
 - **Multi-tenancy steps 1-2 MERGED AND DEPLOYED 2026-07-17** (06af07e, 390f774). Secrets loader
   (allowlisted, ACL-checked, never logs values) + `JEFFLOCAL_DB_PATH` env var (TDD'd) +
   `-Tenant` launcher param (no-flag path verified byte-for-byte unchanged) + tenant onboarding
@@ -194,7 +206,9 @@ Full detail: docs/reports/test-run-20260619-172712.md
 
 ### Pending Saeed approvals / actions
 1. **The 3 security items at the top of this file** — unauthenticated intake endpoint, HMAC
-   secret in git history (needs rotation), directory ACLs on C:\JeffLocal + config
+   secret in git history (needs rotation), directory ACLs on C:\JeffLocal + config.
+   **REMINDER — fix script for item 3 is ready:** `scripts\service_control\fix_directory_acl.ps1`.
+   Saeed to run manually (admin PowerShell). Carry this reminder forward every session until done.
 2. **Multi-tenancy — IN BUILD, steps 1-3 of 8 done and deployed 2026-07-17.** Saeed decided
    (2026-07-16, clarified 2026-07-17): **separate database per tenant.** A tenant = a GP practice
    (Churchtown + 4 more planned) **or** St Marks. St Marks is simply tenant #2, a stand-alone
