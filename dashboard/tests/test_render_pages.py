@@ -20,7 +20,34 @@ from app.importer import map_handoff_to_case, import_handoffs, upsert_case
 from app.main import app
 
 
-HANDOFF_DIR = DASHBOARD_ROOT.parent / "outputs" / "handoff_json"
+_PRODUCTION_HANDOFF_DIR = DASHBOARD_ROOT.parent / "outputs" / "handoff_json"
+
+
+def _handoff_copy(tmp_path):
+    """Give a test its OWN copy of the real handoff files.
+
+    NEVER pass the production directory to import_handoffs. C:\\JeffLocal is the
+    production directory and running this suite here is a routine release check;
+    the importer RETIRES files it imports (moves them to processed/). Importing
+    straight from production therefore MOVES a pending real handoff out of the
+    inbox while importing it only into this test's throwaway DB — production's
+    own importer never sees the file again and the patient's case is silently
+    lost. Proven 2026-07-17 with a canary file.
+
+    Reads the inbox AND processed/, since after a normal import the inbox is
+    empty and the files live in processed/.
+    """
+    import shutil
+
+    dest = tmp_path / "handoff_copy"
+    dest.mkdir(parents=True, exist_ok=True)
+    for source in (_PRODUCTION_HANDOFF_DIR, _PRODUCTION_HANDOFF_DIR / "processed"):
+        if not source.exists():
+            continue
+        for path in source.glob("*_handoff.json"):
+            if not (dest / path.name).exists():
+                shutil.copy2(path, dest / path.name)
+    return dest
 
 
 def test_dashboard_pages_render_after_import(tmp_path, monkeypatch, authed_client):
@@ -145,7 +172,7 @@ def test_default_date_range_selects_today(tmp_path, monkeypatch, authed_client):
 
     with connect(db_path) as conn:
         init_db(conn)
-        import_handoffs(conn, HANDOFF_DIR)
+        import_handoffs(conn, _handoff_copy(tmp_path))
 
     with authed_client as client:
         response = client.get("/requests")
@@ -596,7 +623,7 @@ def test_batch_resolve_frontend_messages_and_disabled_button_state_render(tmp_pa
 
     with connect(db_path) as conn:
         init_db(conn)
-        import_handoffs(conn, HANDOFF_DIR)
+        import_handoffs(conn, _handoff_copy(tmp_path))
 
     with authed_client as client:
         response = client.get("/requests?range=all")

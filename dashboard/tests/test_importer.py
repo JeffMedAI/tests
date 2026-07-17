@@ -545,3 +545,30 @@ def test_missing_processing_output_uses_safe_fallback_for_dashboard_warning():
     assert case["task_body"].startswith("AI-generated task output was unavailable")
     assert case["call_summary"] == "AI summary unavailable - staff review required."
     assert case["patient_record_note"]
+
+
+def test_test_suite_never_touches_the_production_handoff_inbox():
+    """Guard: constructing a TestClient must not reach production's inbox.
+
+    C:\JeffLocal is the production directory and running this suite here is a
+    routine release check. main.py's startup hook calls import_handoffs(conn)
+    with no dir argument -> module-level HANDOFF_DIR -> the REAL
+    outputs/handoff_json. TestClient fires that hook. Once the importer began
+    retiring imported files, a test run would MOVE a pending real handoff out of
+    the inbox while importing it only into a throwaway DB — production's
+    importer would never see it and the patient's case would be silently lost.
+
+    The autouse _isolate_handoff_dir_from_production fixture in conftest.py
+    redirects HANDOFF_DIR. This asserts that guard is actually in force, so it
+    can never be quietly removed.
+    """
+    import app.importer as importer_module
+
+    real_prod_inbox = Path(r"C:\JeffLocal\outputs\handoff_json")
+    active = Path(importer_module.HANDOFF_DIR)
+
+    assert active != real_prod_inbox, (
+        "HANDOFF_DIR points at the PRODUCTION inbox during tests — a test run "
+        "would retire real pending handoffs and lose the cases. The autouse "
+        "fixture in conftest.py must redirect it."
+    )
