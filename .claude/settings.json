@@ -191,6 +191,8 @@
       "Bash(Get-Process *)",
       "Bash(Get-WmiObject *)",
       "Bash(schtasks /Query*)",
+      "Bash(schtasks /query*)",
+      "Bash(schtasks //query*)",
       "Bash(tasklist *)",
       "Bash(netstat *)",
       "Bash(python3 -c *)",
@@ -209,7 +211,13 @@
       "mcp__n8n__get_execution",
       "mcp__ccd_session__mark_chapter",
       "mcp__firecrawl__firecrawl_search",
-      "mcp__firecrawl__firecrawl_scrape"
+      "mcp__firecrawl__firecrawl_scrape",
+      "mcp__Claude_Browser__read_page",
+      "mcp__Claude_Browser__get_page_text",
+      "mcp__Claude_Browser__find",
+      "mcp__claude-in-chrome__read_page",
+      "mcp__claude-in-chrome__read_network_requests",
+      "mcp__plugin_playwright_playwright__browser_take_screenshot"
     ],
     "deny": [
       "Read(./.env)",
