@@ -29,7 +29,7 @@ DEFAULT_DEST = Path(r"C:\JeffLocal\dashboard\data\churchtown.sqlite")
 # Tables to compare row counts for during verification. Kept explicit rather
 # than "all tables" so a schema surprise (e.g. a view) can't silently break
 # verification — extend this list if the schema gains a new data table.
-VERIFY_TABLES = ["cases", "staff", "audit_log"]
+VERIFY_TABLES = ["cases", "staff_users", "audit_events"]
 
 
 def migrate_tenant_db(source_db: Path, dest_db: Path, force: bool = False) -> Path:
@@ -140,7 +140,11 @@ def run_migration(
         log.error("Migration failed: %s", exc)
         return {"status": "error", "dest_file": None, "verify": None, "error": str(exc)}
 
-    verify_report = verify_migration(source_db, dest_file, tables=tables)
+    try:
+        verify_report = verify_migration(source_db, dest_file, tables=tables)
+    except Exception as exc:
+        log.error("Verification failed: %s", exc)
+        return {"status": "error", "dest_file": str(dest_file), "verify": None, "error": str(exc)}
 
     return {
         "status": "ok",

@@ -20,14 +20,14 @@ from migrate_to_tenant_db import migrate_tenant_db, verify_migration, run_migrat
 def _make_source_db(path: Path, cases=1, staff=1, audit=1) -> None:
     conn = sqlite3.connect(path)
     conn.execute("CREATE TABLE cases (id INTEGER PRIMARY KEY, name TEXT)")
-    conn.execute("CREATE TABLE staff (id INTEGER PRIMARY KEY, username TEXT)")
-    conn.execute("CREATE TABLE audit_log (id INTEGER PRIMARY KEY, event TEXT)")
+    conn.execute("CREATE TABLE staff_users (id INTEGER PRIMARY KEY, username TEXT)")
+    conn.execute("CREATE TABLE audit_events (id INTEGER PRIMARY KEY, event TEXT)")
     for i in range(cases):
         conn.execute("INSERT INTO cases (name) VALUES (?)", (f"case_{i}",))
     for i in range(staff):
-        conn.execute("INSERT INTO staff (username) VALUES (?)", (f"staff_{i}",))
+        conn.execute("INSERT INTO staff_users (username) VALUES (?)", (f"staff_{i}",))
     for i in range(audit):
-        conn.execute("INSERT INTO audit_log (event) VALUES (?)", (f"event_{i}",))
+        conn.execute("INSERT INTO audit_events (event) VALUES (?)", (f"event_{i}",))
     conn.commit()
     conn.close()
 
@@ -48,7 +48,7 @@ class TestMigrateTenantDb:
 
         conn = sqlite3.connect(dest)
         case_count = conn.execute("SELECT COUNT(*) FROM cases").fetchone()[0]
-        staff_count = conn.execute("SELECT COUNT(*) FROM staff").fetchone()[0]
+        staff_count = conn.execute("SELECT COUNT(*) FROM staff_users").fetchone()[0]
         conn.close()
         assert case_count == 3
         assert staff_count == 2
@@ -116,8 +116,8 @@ class TestVerifyMigration:
         assert report["match"] is True
         assert report["tables"]["cases"]["source"] == 4
         assert report["tables"]["cases"]["dest"] == 4
-        assert report["tables"]["staff"]["source"] == 2
-        assert report["tables"]["staff"]["dest"] == 2
+        assert report["tables"]["staff_users"]["source"] == 2
+        assert report["tables"]["staff_users"]["dest"] == 2
 
     def test_reports_match_false_when_row_counts_differ(self, tmp_path):
         source = tmp_path / "dashboard.sqlite"
