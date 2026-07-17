@@ -15,6 +15,21 @@ if (-not (Test-Path $python)) {
     exit 1
 }
 
+# Load config\secrets.env into the environment so uvicorn inherits it.
+# A missing file is not fatal (see _load_secrets.ps1). Note: only the St Marks
+# intake fails closed without its secret; the Jeff n8n webhook currently fails
+# OPEN when JEFF_WEBHOOK_SECRET is unset. Do not treat "no secrets file" as a
+# safe state for that endpoint — see the FAIL-CLOSED STATUS block in
+# _load_secrets.ps1.
+$secretsLoader = Join-Path $PSScriptRoot "_load_secrets.ps1"
+if (Test-Path $secretsLoader) {
+    . $secretsLoader
+    Import-JeffSecrets -LogFile $logFile
+} else {
+    "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') [SECRETS] loader not found at $secretsLoader - starting without secrets" |
+        Out-File $logFile -Append
+}
+
 Push-Location $workDir
 try {
     "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') [START] uvicorn starting" | Out-File $logFile -Append
