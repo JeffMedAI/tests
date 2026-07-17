@@ -1,6 +1,6 @@
 ﻿# PROJECT MEMORY — JeffLocal
 # READ THIS FIRST at every session start, before doing anything else.
-# Last updated: 2026-07-17
+# Last updated: 2026-07-17 (evening session, multi-tenancy steps 1-2)
 # Maintained by: Claude (update at end of every session)
 
 ---
@@ -104,6 +104,17 @@ incident language; that was overstated.)
    a service-restart test.
 
 ### What is working
+- **Multi-tenancy steps 1-2 MERGED AND DEPLOYED 2026-07-17** (06af07e, 390f774). Secrets loader
+  (allowlisted, ACL-checked, never logs values) + `JEFFLOCAL_DB_PATH` env var (TDD'd) +
+  `-Tenant` launcher param (no-flag path verified byte-for-byte unchanged) + tenant onboarding
+  scaffolding (template + Test Tenant 1 placeholder). Security Agent: APPROVE, two rounds, one
+  real bug caught and fixed before merge (silently-failed env var set could have let a tenant
+  fall through to the DEFAULT database — cross-tenant data mixing). New committed, mutation-tested
+  PowerShell regression suite (`scripts/service_control/tests/test_load_tenant_config.ps1`) —
+  this repo had no PS test framework before today. 391 Python tests + 12 PS assertions, all green
+  on the production tree post-merge. Also cleaned ~19 stray 0-byte files (root + dashboard/) left
+  by unquoted `<`/`>` characters reaching git-bash as real redirect operators — recurring since
+  26 June, harmless (all empty), root cause documented in session log.
 - Production dashboard LIVE at dashboard.app-avamed.uk (port 8765) — **redeployed 2026-07-17 on merged main (ebd395f)**, health-checked (case_count 78)
 - **Dashboard beep FIXED and DEPLOYED 2026-07-17** (merge b53847a). Saeed reported a beep ~every
   minute. Root cause was two stacked bugs: (1) `import_handoffs()` re-upserted EVERY handoff file
@@ -184,15 +195,22 @@ Full detail: docs/reports/test-run-20260619-172712.md
 ### Pending Saeed approvals / actions
 1. **The 3 security items at the top of this file** — unauthenticated intake endpoint, HMAC
    secret in git history (needs rotation), directory ACLs on C:\JeffLocal + config
-2. **Multi-tenancy — DECIDED, ready to build.** Saeed decided (2026-07-16, clarified 2026-07-17):
-   **separate database per tenant.** A tenant = a GP practice (Churchtown + 4 more planned) **or**
-   St Marks. St Marks is simply tenant #2, a stand-alone pharmacy — NOT a special case, and it will
-   never have "tenant pharmacies" beneath it. Each tenant's staff get logins scoped to their own
-   tenant. **Avamed super-admin = a tenant switcher** (SETTLED 2026-07-17): switch tenant on the
-   dashboard, view each tenant's data individually to provide support. NOT a merged cross-tenant
-   view; NOT for practice staff. This is what the earlier draft recommended — the "tension" it
-   flagged was a misreading of Saeed's ask, now removed. See governance/MULTI_TENANCY_PROPOSAL.md
-   (§6 settled). **Gates every tenant's go-live, including St Marks.**
+2. **Multi-tenancy — IN BUILD, steps 1-2 of 8 done and deployed 2026-07-17.** Saeed decided
+   (2026-07-16, clarified 2026-07-17): **separate database per tenant.** A tenant = a GP practice
+   (Churchtown + 4 more planned) **or** St Marks. St Marks is simply tenant #2, a stand-alone
+   pharmacy — NOT a special case, and it will never have "tenant pharmacies" beneath it. Each
+   tenant's staff get logins scoped to their own tenant. **Avamed super-admin = a tenant switcher**
+   (SETTLED 2026-07-17): switch tenant on the dashboard, view each tenant's data individually to
+   provide support. NOT a merged cross-tenant view; NOT for practice staff. See
+   governance/MULTI_TENANCY_PROPOSAL.md (§6 settled, §8 sequence). **Gates every tenant's go-live,
+   including St Marks.**
+   **Built and merged to main 2026-07-17:** step 1 (secrets loader, 06af07e) and step 2
+   (`JEFFLOCAL_DB_PATH` env var + `-Tenant` launcher param + tenant onboarding scaffolding,
+   390f774). No-tenant behaviour (today's production) is unchanged — verified. Test Tenant 1 is
+   a placeholder fixture; St Marks confirmed by Saeed as the first REAL tenant to onboard (step 4).
+   **Blocked from actually running any tenant** by open item #3 (config dir ACL) — see that item.
+   **Next:** step 3, migrate `dashboard.sqlite` → `churchtown.sqlite`, needs Saeed on the day
+   (production DB, though the data is fake).
 3. **Real staff accounts** -- provide names, roles, emails to unblock pilot go-live
 4. **Governance gates 1-7 sign-off** -- cannot be delegated
 5. **JEFF_WEBHOOK_SECRET** -- set before any live Jeff traffic (see #1 — endpoint is open until then)
@@ -223,13 +241,20 @@ RANK | TASK                                               | AGENT    | STATUS
  1   | Fix n8n.py:319 HMAC fail-open; remove              | Security | SAEED SIGN-OFF (auth logic).
      | /api/n8n/test-intake-batch                         |          | Endpoint is OPEN right now.
  2   | Rotate voice_agent_hmac_secret.txt (in git history) | Security | SAEED. Rotation, not untracking.
- 3   | ACLs on C:\JeffLocal + config (Auth'd Users write)  | DevOps   | SAEED. Both dirs, all ACEs.
- 4   | Multi-tenancy: SEPARATE DB PER TENANT              | Backend  | DECIDED + §6 SETTLED 2026-07-17.
-     | tenant = a GP practice OR St Marks. Avamed         |          | READY TO BUILD. GATES go-live
-     | super-admin = tenant switcher, one tenant at a     |          | of EVERY tenant, not just
-     | time. (supersedes old "tenant_id / Phase 2")       |          | St Marks.
- 5   | Merge feature/secrets-loader                       | DevOps   | Security APPROVE-WITH-CHANGES:
-     |                                                    |          | strike overclaims first (HANDOFF)
+ 3   | ACLs on C:\JeffLocal + config (Auth'd Users write)  | DevOps   | SAEED. Both dirs, all ACEs. NOW
+     |                                                    |          | ALSO BLOCKS TENANT ONBOARDING:
+     |                                                    |          | verified 2026-07-17 the new
+     |                                                    |          | tenant-config ACL check correctly
+     |                                                    |          | refuses to start ANY tenant while
+     |                                                    |          | config/ is writable like this.
+ 4   | Multi-tenancy: SEPARATE DB PER TENANT              | Backend  | STEPS 1-2 DONE + DEPLOYED
+     | tenant = a GP practice OR St Marks. Avamed         |          | 2026-07-17 (commits 06af07e,
+     | super-admin = tenant switcher, one tenant at a     |          | 390f774). Step 3 (migrate
+     | time. (supersedes old "tenant_id / Phase 2")       |          | dashboard.sqlite→churchtown.sqlite)
+     |                                                    |          | NEEDS SAEED ON THE DAY. See
+     |                                                    |          | governance/MULTI_TENANCY_PROPOSAL.md §8.
+ 5   | Merge feature/secrets-loader                       | DevOps   | DONE 2026-07-17 (06af07e).
+     |                                                    |          | Security APPROVE after fixes.
  6   | Add lint (ruff/pyflakes) to test gate              | DevOps   | pyflakes caught 2 real bugs on
      |                                                    |          | 2026-07-16 that tests missed
  7   | Fix evening-brief script's corrupted-tail bug      | DevOps   | strategy_daily.ps1
@@ -358,12 +383,23 @@ Branch:  main. C:\JeffLocal (the repo root) IS the production directory — its 
          ALWAYS verify with `git branch --show-current` before assuming this.
 Main:    merged 2026-07-14 (feature/refactor-2-5-6 → main, Saeed approved, commit 79bd895),
          deployed to production 2026-07-15.
-Latest:  bccc6ed Merge feature/router-decouple-main into main — extracted case_domain.py (81
+Latest:  390f774 Merge feature/multitenancy-db-path into main — multi-tenancy step 2:
+         JEFFLOCAL_DB_PATH env var (TDD'd) + -Tenant launcher param (no-flag path verified
+         unchanged) + tenant onboarding scaffolding (template + Test Tenant 1 placeholder).
+         Security APPROVE after 2 rounds (real bug closed: silently-failed env var set could
+         have let a tenant fall through to the default database). New committed, mutation-tested
+         PS regression suite. 391 tests + 12 PS assertions green. Deployed to disk 2026-07-17
+         (launcher/config plumbing, not live Python — dashboard process itself not restarted).
+Previous: 06af07e Merge feature/secrets-loader into main — step 1 of multi-tenancy. Allowlisted
+         secrets loader for JEFF_WEBHOOK_SECRET/STMARKS_INTAKE_SECRET, directory-ACL checked,
+         never logs values. Security APPROVE after striking overclaims (false test_mode-gating
+         claim, ACL "trust boundary" overclaim) and capping the refused-key log line. 2026-07-17.
+Earlier: bccc6ed Merge feature/router-decouple-main into main — extracted case_domain.py (81
          names) and paths.py out of main.py (2,011→136 lines), cut router↔main.py back-refs
          from 107 to 1 (system.py's documented app.routes exception). Security Agent AST-diff
          approved (byte-identical relocations). 375/375 tests green, production redeployed via
          restart_all.ps1 -DashOnly, live e2e re-run 40/40. Deployed and confirmed 2026-07-16.
-Previous: 6a4e59f fix: restart_all.ps1 no longer passes nonexistent switches to watchdog.ps1 —
+Earlier still: 6a4e59f fix: restart_all.ps1 no longer passes nonexistent switches to watchdog.ps1 —
          was passing -DashOnly/-N8nOnly through to watchdog.ps1 (which only accepts -Once/
          -Force/-IntervalSeconds), crashing with "parameter cannot be found". Now restarts
          each service directly via the same launchers watchdog uses, and passes -Once for the
