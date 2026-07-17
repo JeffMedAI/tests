@@ -1,6 +1,6 @@
 ﻿# PROJECT MEMORY — JeffLocal
 # READ THIS FIRST at every session start, before doing anything else.
-# Last updated: 2026-07-15 18:00
+# Last updated: 2026-07-17
 # Maintained by: Claude (update at end of every session)
 
 ---
@@ -75,14 +75,53 @@ strategy | Docs, reports, governance, marketing
 
 ---
 
-## CURRENT STATUS -- 2026-07-15 (updated 18:00)
+## CURRENT STATUS -- 2026-07-17 (updated)
+
+### TOP OF THE LIST — SECURITY, NEEDS SAEED (found 2026-07-16)
+1. **`/api/n8n/test-intake-batch` accepts UNAUTHENTICATED requests.** `JEFF_WEBHOOK_SECRET`
+   is unset, so `n8n.py:319` skips HMAC verification and returns — the request proceeds. The
+   route is reachable via the Cloudflare tunnel, writes queue envelopes and spawns a pipeline
+   subprocess. Fabricated triage tasks could be injected in front of reception staff. Its own
+   docstring says it "will be removed before production deployment" — it wasn't. `test_mode`
+   is NOT a guard: it is read from the caller's own payload. The 2026-05-30 HMAC review
+   recommended the fix (N1); never implemented. Touches auth → Saeed's sign-off required.
+2. **Real HMAC secret COMMITTED TO GIT** — `config/security/keys/voice_agent_hmac_secret.txt`,
+   64 bytes, tracked since ff699b5, pushed to GitHub. Needs **ROTATION** — it is in history,
+   so deleting/untracking does not help. The `config/*secret*` ignore rule never matched it
+   because gitignore globs do not cross `/`.
+3. **`C:\JeffLocal` AND `C:\JeffLocal\config` are writable by Authenticated Users** (verified
+   directly). This is the root cause that made a secrets-loader RCE reachable. Fixing only the
+   flagged `Authenticated Users` ACE is NOT enough — `CodexSandboxUsers`, an orphan SID, and a
+   generic-rights ACE (renders as `-536805376`) also grant write. Needs BOTH directories, plus
+   a service-restart test.
 
 ### What is working
-- Production dashboard LIVE at dashboard.app-avamed.uk (port 8765) — **redeployed 2026-07-15 on merged main (79bd895)**, health-checked, batch-tested
+- Production dashboard LIVE at dashboard.app-avamed.uk (port 8765) — **redeployed 2026-07-17 on merged main (ebd395f)**, health-checked (case_count 78)
+- **Dashboard beep FIXED and DEPLOYED 2026-07-17** (merge b53847a). Saeed reported a beep ~every
+  minute. Root cause was two stacked bugs: (1) `import_handoffs()` re-upserted EVERY handoff file
+  on every pass — only failures moved out to `failed/`, successes stayed in the inbox and were
+  re-read forever by the 60s in-process `_background_importer()` loop (never appears in the access
+  log); (2) `upsert_case()` preserved 9 staff fields but NOT `imported_at`, so each pass re-stamped
+  it to "now". Five test handoffs from 14 Jul were re-imported every 60s for two days, making
+  two-day-old cases look brand new — `/api/cases/new-since` then correctly reported 5 "new" cases
+  and the client beeped 5x at once, once a minute. The beep poll was never at fault. **Also fixed
+  analytics**: `api_hourly_volume` reads `imported_at`, so stale cases were counted as today's
+  arrivals every day. Fix: `FIRST_SEEN_FIELDS` preserves `imported_at`; successful files retire to
+  `outputs/handoff_json/processed/`. Verified live: `imported_at` held still across 70s.
+- **CASE-LOSS REGRESSION found and fixed same session** (ebd395f). The retire fix made running
+  pytest in the production tree MOVE real pending handoffs: `main.py`'s startup hook calls
+  `import_handoffs(conn)` with no dir → the real inbox, and TestClient fires that hook;
+  `test_render_pages.py` also hardcoded the production dir. A test run imported the case into a
+  throwaway DB and retired the file, so production's importer never saw it → patient's case
+  silently lost. Proven with a canary. Fixed via an autouse fixture in conftest.py + `_handoff_copy()`
+  + a guard test. Canary now survives a full suite run.
+- **389 tests passing** in the production tree
 - Watchdog monitoring 4 services: ProductionDashboard, N8n, Ollama, CloudflareTunnel -- CLEAN
 - WhatsApp alerts: LIVE
-- **375/375 tests passing** (335 unit/integration + 40 Playwright e2e — main branch, post-merge)
-- **Item #2 (split main.py) COMPLETE, MERGED, AND DEPLOYED 2026-07-15** -- main.py: 4,782 → 2,011 lines (verified byte count, not estimated), zero inline @app routes remain, all routes in app/routers/. 3 bugs found and fixed pre-merge, Security Agent approved, independent Fable 5 evaluation done (honest score 4.5/10 — code moved cleanly but didn't reduce coupling; 107 back-references from routers into main.py remain, real follow-up work). Commit 79bd895 on main, production redeployed and confirmed running this code.
+- **375/375 tests passing** (335 unit/integration + 40 Playwright e2e — main branch, post router-decouple merge)
+- **Router-coupling reduction COMPLETE, MERGED, AND DEPLOYED 2026-07-16** (this was the Fable 5 follow-up flagged 2026-07-15: 107 back-references from routers into main.py). main.py: 2,011 → 136 lines. New `app/case_domain.py` (81 names, pure business logic) and `app/paths.py` (path constants) extracted; 6 routers now import directly from case_domain/consts/db/models/paths instead of deferred `from ..main import X`. Back-references cut from 107 to 1 (system.py's `app.routes` inspection — genuine, documented circular-import exception). Security Agent AST-diff confirmed all 79 relocated functions/constants byte-identical, no behaviour change. Commit bccc6ed on main, production redeployed and confirmed via live health check + live Playwright e2e (40/40).
+- **restart_all.ps1 FIXED 2026-07-16** (commit 6a4e59f) — no longer passes nonexistent -DashOnly/-N8nOnly to watchdog.ps1; verified working live for -DashOnly during this session's redeploy. -N8nOnly path still unverified live.
+- **Item #2 (split main.py) COMPLETE, MERGED, AND DEPLOYED 2026-07-15** -- main.py: 4,782 → 2,011 lines (verified byte count, not estimated), zero inline @app routes remain, all routes in app/routers/. 3 bugs found and fixed pre-merge, Security Agent approved, independent Fable 5 evaluation done (honest score 4.5/10 — code moved cleanly but didn't reduce coupling; superseded by the 2026-07-16 decoupling work above). Commit 79bd895 on main.
 - **Full 25-case isolated pipeline test 2026-07-14/15**: safety invariant held, all 6 red flags caught (incl. one buried mid-ramble), all 25 resolved correctly.
 - **Fresh 5-case PRODUCTION batch test 2026-07-15**: all 5 imported and resolved via genuine browser clicks post-redeploy, 0 deadletter, locked safety fields (priority/safe_to_queue) confirmed unchanged after resolving the red-flag case.
 - All security/quality fixes (Phase 1+2+3) APPLIED and in production (main branch)
@@ -135,27 +174,55 @@ Full detail: docs/reports/test-run-20260619-172712.md
 - NHS SBS framework bid postponed to next submission window (Saeed decision 2026-06-19)
 
 ### Pending Saeed approvals / actions
-1. **Real staff accounts** -- provide names, roles, emails to unblock pilot go-live
-2. **Governance gates 1-7 sign-off** -- cannot be delegated
-3. **JEFF_WEBHOOK_SECRET** -- set in environment before any live Jeff traffic
-4. **n8n API key rotation** -- confirmed "later"
+1. **The 3 security items at the top of this file** — unauthenticated intake endpoint, HMAC
+   secret in git history (needs rotation), directory ACLs on C:\JeffLocal + config
+2. **Multi-tenancy §6 — super-admin shape.** Saeed decided (2026-07-16): SEPARATE DATABASE PER
+   TENANT; St Marks staff get their own logins; wants an Avamed cross-tenant super-admin. That
+   last one pulls against the isolation separate DBs buy — a merged view is a component that can
+   read every tenant's data. Recommended instead: an Avamed account inside each tenant + a
+   tenant-picker page. **Saeed to confirm before build.** See governance/MULTI_TENANCY_PROPOSAL.md
+3. **Real staff accounts** -- provide names, roles, emails to unblock pilot go-live
+4. **Governance gates 1-7 sign-off** -- cannot be delegated
+5. **JEFF_WEBHOOK_SECRET** -- set before any live Jeff traffic (see #1 — endpoint is open until then)
+6. **n8n API key rotation** -- confirmed "later"
+7. **St Marks privacy-policy line** — drafted on branch `draft/privacy-avamed-processor` in
+   SMCPHARMA, NOT pushed (that repo auto-deploys). Needs pharmacist/DPO review.
+
+### St Marks integration — CODE COMPLETE, DELIBERATELY OFF
+Both sides built and tested. **Do NOT set `STMARKS_INTAKE_SECRET` on either side.** The flow must
+stay off until multi-tenancy lands, otherwise St Marks customer data lands in the same database
+Churchtown staff will later have accounts on — Avamed is the PROCESSOR for both controllers, so
+keeping their data apart is our Article 28/32 obligation. See governance/STMARKS_DATA_SHARING_NOTE.md.
+- JeffLocal side: `POST /api/intake/stmarks-contact` merged + deployed (da24bb2). Inert — fails
+  closed with 503 while the secret is unset.
+- St Marks side: `forwardToJeffLocal()` in SMCPHARMA/src/index.js, committed+pushed (f9209d9),
+  tested via wrangler dev against an isolated local dashboard. Skips silently with no secret.
 
 ### Open technical tasks (priority order)
 ```
-RANK | TASK                                              | AGENT    | STATUS
------+---------------------------------------------------+----------+------------------
- 1   | Fix restart_all.ps1 (out of sync with watchdog.ps1| DevOps   | DONE 2026-07-15 (6a4e59f)
-     | params -DashOnly/-N8nOnly don't exist there)       |          |
- 2   | Run Playwright e2e suite directly against :8765   | Test     | Next session
-     | (proven equivalent on isolated instance already)  |          |
- 3   | Reduce router->main.py coupling (107 back-refs)    | Backend  | Fable 5 finding, real Item #2 follow-up
- 4   | Add lint (ruff/pyflakes) to test gate              | DevOps   | Would've caught the crash bug in 1s
- 5   | Fix evening-brief script's corrupted-tail bug      | DevOps   | strategy_daily.ps1
- 6   | Remove legacy static-salt password fallback       | Backend  | PENDING (already done in auth.py — verify before removing)
- 7   | n8n API key rotation                              | DevOps   | Before go-live
- 8   | Set JEFF_WEBHOOK_SECRET                           | DevOps   | Before live traffic
- 9   | Multi-tenancy tenant_id (Item #4)                 | Database | Phase 2
- 10  | PostgreSQL instead of SQLite (Item #3)            | Database | Phase 2
+RANK | TASK                                               | AGENT    | STATUS
+-----+----------------------------------------------------+----------+------------------
+ 1   | Fix n8n.py:319 HMAC fail-open; remove              | Security | SAEED SIGN-OFF (auth logic).
+     | /api/n8n/test-intake-batch                         |          | Endpoint is OPEN right now.
+ 2   | Rotate voice_agent_hmac_secret.txt (in git history) | Security | SAEED. Rotation, not untracking.
+ 3   | ACLs on C:\JeffLocal + config (Auth'd Users write)  | DevOps   | SAEED. Both dirs, all ACEs.
+ 4   | Multi-tenancy: SEPARATE DB PER TENANT              | Backend  | DECIDED 2026-07-16. Blocked on
+     | (supersedes the old "tenant_id / Phase 2" item)    |          | Saeed confirming proposal §6.
+     |                                                    |          | GATES the St Marks go-live.
+ 5   | Merge feature/secrets-loader                       | DevOps   | Security APPROVE-WITH-CHANGES:
+     |                                                    |          | strike overclaims first (HANDOFF)
+ 6   | Add lint (ruff/pyflakes) to test gate              | DevOps   | pyflakes caught 2 real bugs on
+     |                                                    |          | 2026-07-16 that tests missed
+ 7   | Fix evening-brief script's corrupted-tail bug      | DevOps   | strategy_daily.ps1
+ 8   | index.html has 96 NUL bytes appended               | Frontend | grep sees it as BINARY and
+     |                                                    |          | silently skips it. Use grep -a.
+ 9   | .pyc files are TRACKED in git (breaks git stash)   | DevOps   | Build artifacts in git
+ 10  | cases.created_at schema drift under GDPR purge     | Database | gdpr_purge.py:286 keys on a column
+     |                                                    |          | absent from db.py/SCHEMA_V1.sql
+ 11  | purge_old_data.ps1 not registered in schtasks      | DevOps   | Security review; pre-existing
+ 12  | Remove legacy static-salt password fallback        | Backend  | verify auth.py before removing
+ 13  | n8n API key rotation                               | DevOps   | Before go-live
+ 14  | PostgreSQL instead of SQLite (Item #3)             | Database | Phase 2 — gives row-level security
 ```
 
 ### Item #2 router extraction log — COMPLETE
@@ -266,4 +333,113 @@ C:\JeffLocal\config\model_monitoring.json
 ## GIT STATE
 
 ```
-Repo:    htt
+Repo:    https://github.com/JeffMedAI/tests
+Branch:  main. C:\JeffLocal (the repo root) IS the production directory — its checked-out
+         branch determines what code runs on :8765. Confirmed on main as of 2026-07-15.
+         ALWAYS verify with `git branch --show-current` before assuming this.
+Main:    merged 2026-07-14 (feature/refactor-2-5-6 → main, Saeed approved, commit 79bd895),
+         deployed to production 2026-07-15.
+Latest:  bccc6ed Merge feature/router-decouple-main into main — extracted case_domain.py (81
+         names) and paths.py out of main.py (2,011→136 lines), cut router↔main.py back-refs
+         from 107 to 1 (system.py's documented app.routes exception). Security Agent AST-diff
+         approved (byte-identical relocations). 375/375 tests green, production redeployed via
+         restart_all.ps1 -DashOnly, live e2e re-run 40/40. Deployed and confirmed 2026-07-16.
+Previous: 6a4e59f fix: restart_all.ps1 no longer passes nonexistent switches to watchdog.ps1 —
+         was passing -DashOnly/-N8nOnly through to watchdog.ps1 (which only accepts -Once/
+         -Force/-IntervalSeconds), crashing with "parameter cannot be found". Now restarts
+         each service directly via the same launchers watchdog uses, and passes -Once for the
+         full-restart path so it no longer hangs.
+Earlier: 79bd895 Merge feature/refactor-2-5-6 into main — router-split complete (main.py
+         4,782→2,011 lines), 3 bugs fixed and Security-reviewed pre-merge (alert-import crash,
+         /api/search batch_id, notes-gate bypass). Plus 19 previously-unpushed backlog commits
+         (20-26 Jun) folded into the same push — found stranded in a side worktree, now on
+         origin/main. Production redeployed 2026-07-15 and confirmed running this code.
+test_user: id=5, role=staff, username=test_user (Playwright E2E)
+```
+
+---
+
+## TECHNICAL STACK
+
+```
+Dashboard:    FastAPI (Python 3.14), Jinja2 templates, SQLite
+AI:           Ollama / gemma4:e2b (confidence floor 0.72, fallback gemma4:e4b)
+Auth:         Session cookies (httponly, samesite=lax) â€” tokens hashed in DB
+Database:     SQLite at dashboard\data\dashboard.sqlite
+Remote:       Cloudflare tunnel (HTTPS termination external)
+Workflow:     n8n (localhost:5678, webhook: ava-live-intake)
+Voice agent:  Jeff (Hostcomm UK, external, posts to n8n webhook)
+Monitoring:   Watchdog (restarts services if down, checks every 60s)
+```
+
+---
+
+## KNOWN PROCESS RULES (hard lessons)
+
+1. **Sandbox removed 2026-06-07.** No sandbox directory exists. Dev work on git branches.
+   Production = port 8765, C:\JeffLocal\dashboard\. Always verify path before editing.
+
+2. **Cookie security:** All cookie-setting calls must work correctly under Cloudflare HTTPS.
+
+3. **Agents do not self-authorise production changes.** Saeed's "approved" in chat required.
+
+4. **Approvals do not carry over between sessions.** Re-confirm every session.
+
+5. **Security Agent reviews ALL PRs** â€” even one-line changes. Veto is independent.
+
+6. **WhatsApp incident 2026-06-01** â€” NEVER use coordinate-based navigation to select a
+   WhatsApp chat recipient. ALWAYS use search-by-name/number, verify header, THEN send.
+   If header does not match: ABORT. Rule enforced in send_whatsapp.py.
+
+7. **Watchdog elevated process** -- Task Scheduler registered watchdog as elevated.
+   Cannot be killed by non-elevated code. Only admin Task Manager can kill it.
+   Resolved 2026-06-08: ghost process killed via admin Task Manager, alerts re-enabled.
+   Lock file guard prevents duplicate instances going forward.
+
+8. **Legacy static-salt password fallback** -- auth.py verify_password() still accepts old
+   static-salt format for accounts not yet upgraded. Remove once all staff have logged in once.
+
+9. **C:\JeffLocal is the production directory itself** -- its git branch determines what code
+   actually runs on :8765 (uvicorn serves these files directly, no separate deploy copy).
+   Switching branches here changes production code under the running process; a restart is
+   required to load it. Always check `git branch --show-current` in C:\JeffLocal before
+   assuming production is on main — this is how a crash bug shipped live 13 Jul (2026-07-15).
+
+10. **restart_all.ps1 fixed 2026-07-15** (commit 6a4e59f) -- previously passed
+    `-DashOnly`/`-N8nOnly` through to watchdog.ps1, which only accepts `-Once`/`-Force`/
+    `-IntervalSeconds`, crashing with "parameter cannot be found". Now restarts each service
+    directly via the same launchers watchdog uses (`_launch_dashboard.ps1`/`_launch_n8n.ps1`),
+    and passes `-Once` to watchdog for the full-restart path so it no longer hangs.
+
+11. **Session cookies expire after 1 hour** (max_age=3600). Long manual dashboard sessions can
+    get logged out mid-form — re-login and retry, no data loss.
+
+12. **19:00 evening-brief automation can commit to main mid-session** (documented, by design —
+    fallback session-end write if no human close has happened yet). Fetch before assuming your
+    local view of main is current. It also has a bug: leaves PROJECT_MEMORY.md's session-end
+    checklist truncated — check scripts\daily\strategy_daily.ps1 if this recurs.
+
+---
+
+## SESSION STARTUP CHECKLIST
+
+```
+1. Read CLAUDE.md
+2. Read this file (PROJECT_MEMORY.md)
+3. Read docs\sessions\ â€” yesterday's and today's logs
+4. git log --oneline -10
+5. Read docs\reports\{yesterday}.md
+6. Produce session start report, WAIT for Saeed's go-ahead
+```
+
+---
+
+## SESSION END CHECKLIST
+
+```
+1. Write session summary to docs\sessions\YYYY-MM-DD-HHMM.md
+2. Update this file â€” status, tasks, git state
+3. git add PROJECT_MEMORY.md docs\sessions\ && git commit -m "memory: session YYYY-MM-DD"
+4. git push origin HEAD
+5. Tell Saeed: "Session saved. Memory updated. Ready to pick up tomorrow."
+```
