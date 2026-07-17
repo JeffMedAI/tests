@@ -195,7 +195,7 @@ Full detail: docs/reports/test-run-20260619-172712.md
 ### Pending Saeed approvals / actions
 1. **The 3 security items at the top of this file** — unauthenticated intake endpoint, HMAC
    secret in git history (needs rotation), directory ACLs on C:\JeffLocal + config
-2. **Multi-tenancy — IN BUILD, steps 1-2 of 8 done and deployed 2026-07-17.** Saeed decided
+2. **Multi-tenancy — IN BUILD, steps 1-3 of 8 done and deployed 2026-07-17.** Saeed decided
    (2026-07-16, clarified 2026-07-17): **separate database per tenant.** A tenant = a GP practice
    (Churchtown + 4 more planned) **or** St Marks. St Marks is simply tenant #2, a stand-alone
    pharmacy — NOT a special case, and it will never have "tenant pharmacies" beneath it. Each
@@ -209,8 +209,17 @@ Full detail: docs/reports/test-run-20260619-172712.md
    390f774). No-tenant behaviour (today's production) is unchanged — verified. Test Tenant 1 is
    a placeholder fixture; St Marks confirmed by Saeed as the first REAL tenant to onboard (step 4).
    **Blocked from actually running any tenant** by open item #3 (config dir ACL) — see that item.
-   **Next:** step 3, migrate `dashboard.sqlite` → `churchtown.sqlite`, needs Saeed on the day
-   (production DB, though the data is fake).
+   **Step 3 DONE 2026-07-17 evening:** `scripts/tenant/migrate_to_tenant_db.py` built (TDD),
+   Security-reviewed (1 real bug caught: missing source==dest guard, fixed pre-merge), merged to
+   main, run against real production data with Saeed's on-the-day sign-off. Verified: 78 cases,
+   5 staff_users, 1251 audit_events, all matching, integrity_check OK on both dashboard.sqlite and
+   the new churchtown.sqlite. dashboard.sqlite untouched; live dashboard NOT yet repointed at
+   churchtown.sqlite (that's step 4/5). One post-merge bug fixed same session: VERIFY_TABLES had
+   wrong table names (staff/audit_log vs real staff_users/audit_events) — migration itself was
+   unaffected (whole-file copy is table-name agnostic), only the verify step crashed; fixed and
+   re-verified without re-copying. See CHANGELOG.md 2026-07-17 (evening) entry for full detail.
+   **Next:** step 4, stand up the stmarks tenant instance + hostname + its staff accounts — still
+   blocked by open item #3 (config dir ACL) below.
 3. **Real staff accounts** -- provide names, roles, emails to unblock pilot go-live
 4. **Governance gates 1-7 sign-off** -- cannot be delegated
 5. **JEFF_WEBHOOK_SECRET** -- set before any live Jeff traffic (see #1 — endpoint is open until then)
@@ -247,12 +256,13 @@ RANK | TASK                                               | AGENT    | STATUS
      |                                                    |          | tenant-config ACL check correctly
      |                                                    |          | refuses to start ANY tenant while
      |                                                    |          | config/ is writable like this.
- 4   | Multi-tenancy: SEPARATE DB PER TENANT              | Backend  | STEPS 1-2 DONE + DEPLOYED
+ 4   | Multi-tenancy: SEPARATE DB PER TENANT              | Backend  | STEPS 1-3 DONE + DEPLOYED
      | tenant = a GP practice OR St Marks. Avamed         |          | 2026-07-17 (commits 06af07e,
-     | super-admin = tenant switcher, one tenant at a     |          | 390f774). Step 3 (migrate
-     | time. (supersedes old "tenant_id / Phase 2")       |          | dashboard.sqlite→churchtown.sqlite)
-     |                                                    |          | NEEDS SAEED ON THE DAY. See
-     |                                                    |          | governance/MULTI_TENANCY_PROPOSAL.md §8.
+     | super-admin = tenant switcher, one tenant at a     |          | 390f774, 7d9792d, d0d1393).
+     | time. (supersedes old "tenant_id / Phase 2")       |          | churchtown.sqlite created +
+     |                                                    |          | verified. Step 4 (stand up
+     |                                                    |          | stmarks instance) next, still
+     |                                                    |          | blocked by item #3 (config ACL).
  5   | Merge feature/secrets-loader                       | DevOps   | DONE 2026-07-17 (06af07e).
      |                                                    |          | Security APPROVE after fixes.
  6   | Add lint (ruff/pyflakes) to test gate              | DevOps   | pyflakes caught 2 real bugs on
@@ -383,7 +393,16 @@ Branch:  main. C:\JeffLocal (the repo root) IS the production directory — its 
          ALWAYS verify with `git branch --show-current` before assuming this.
 Main:    merged 2026-07-14 (feature/refactor-2-5-6 → main, Saeed approved, commit 79bd895),
          deployed to production 2026-07-15.
-Latest:  390f774 Merge feature/multitenancy-db-path into main — multi-tenancy step 2:
+Latest:  d0d1393 fix: correct VERIFY_TABLES to real schema, harden verify error handling —
+         post-merge bug fix, table names corrected (staff_users/audit_events), 15/15 green.
+Previous: 84bea00 chore: expand read-only Bash/MCP permission allowlist (.claude/settings.json).
+Previous: 7d9792d Merge feature/multitenancy-db-migrate into main — multi-tenancy step 3:
+         migrate_to_tenant_db.py (TDD, Security APPROVE WITH CHANGES — source==dest guard added
+         pre-merge). Real migration run against production 2026-07-17 evening, Saeed-approved on
+         the day: churchtown.sqlite created and verified (78 cases, 5 staff_users, 1251
+         audit_events, integrity OK both sides). dashboard.sqlite untouched, live dashboard not
+         yet repointed.
+Previous: 390f774 Merge feature/multitenancy-db-path into main — multi-tenancy step 2:
          JEFFLOCAL_DB_PATH env var (TDD'd) + -Tenant launcher param (no-flag path verified
          unchanged) + tenant onboarding scaffolding (template + Test Tenant 1 placeholder).
          Security APPROVE after 2 rounds (real bug closed: silently-failed env var set could
