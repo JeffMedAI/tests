@@ -1,12 +1,25 @@
 from __future__ import annotations
 
+import os
 import sqlite3
 from pathlib import Path
 from typing import Any
 
 
 BASE_DIR = Path(__file__).resolve().parents[1]
-DB_PATH = BASE_DIR / "data" / "dashboard.sqlite"
+
+
+def _resolve_db_path(env: dict, base_dir: Path) -> Path:
+    """Resolve the database path: JEFFLOCAL_DB_PATH env var if set, else today's default.
+
+    Mirrors the JEFFLOCAL_ROOT_DIR pattern already established in paths.py:7 —
+    this is one instance of an established config convention, not a new one.
+    """
+    value = env.get("JEFFLOCAL_DB_PATH")
+    return Path(value) if value else base_dir / "data" / "dashboard.sqlite"
+
+
+DB_PATH = _resolve_db_path(os.environ, BASE_DIR)
 
 
 def connect(db_path: Path | None = None) -> sqlite3.Connection:
