@@ -17,14 +17,17 @@ sys.path.insert(0, str(Path(__file__).parent))
 from migrate_to_tenant_db import migrate_tenant_db, verify_migration, run_migration
 
 
-def _make_source_db(path: Path, cases=1, staff=1) -> None:
+def _make_source_db(path: Path, cases=1, staff=1, audit=1) -> None:
     conn = sqlite3.connect(path)
     conn.execute("CREATE TABLE cases (id INTEGER PRIMARY KEY, name TEXT)")
     conn.execute("CREATE TABLE staff (id INTEGER PRIMARY KEY, username TEXT)")
+    conn.execute("CREATE TABLE audit_log (id INTEGER PRIMARY KEY, event TEXT)")
     for i in range(cases):
         conn.execute("INSERT INTO cases (name) VALUES (?)", (f"case_{i}",))
     for i in range(staff):
         conn.execute("INSERT INTO staff (username) VALUES (?)", (f"staff_{i}",))
+    for i in range(audit):
+        conn.execute("INSERT INTO audit_log (event) VALUES (?)", (f"event_{i}",))
     conn.commit()
     conn.close()
 
@@ -54,6 +57,12 @@ class TestMigrateTenantDb:
         source = tmp_path / "does_not_exist.sqlite"
         with pytest.raises(FileNotFoundError, match="Source database not found"):
             migrate_tenant_db(source, tmp_path / "churchtown.sqlite")
+
+    def test_refuses_same_path_for_source_and_dest(self, tmp_path):
+        source = tmp_path / "dashboard.sqlite"
+        _make_source_db(source)
+        with pytest.raises(ValueError, match="source and dest must differ"):
+            migrate_tenant_db(source, source, force=True)
 
     def test_refuses_to_overwrite_existing_dest_without_force(self, tmp_path):
         source = tmp_path / "dashboard.sqlite"
