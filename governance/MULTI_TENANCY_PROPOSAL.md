@@ -130,6 +130,106 @@ separate databases exist to remove, and would be the first thing a DPO or NHS as
 If a genuine merged view is ever wanted (e.g. cross-practice reporting), it needs its own security
 review and a much stronger justification than support convenience.
 
+## 6b. STAFF ACCESS & ACCOUNTS — DECIDED (Saeed, 2026-07-17)
+
+### The tenant dropdown is a LINK, not a data switch — this is the load-bearing detail
+
+Saeed's ask: only the super-admin sees a dropdown to select the tenant. Agreed, with one hard
+constraint on *how*.
+
+A dropdown that **switches the data on screen** requires one process holding connections to every
+tenant's database — exactly the component §6 forbids. A dropdown that **navigates to the other
+tenant's hostname** gives identical UX and moves no data: you pick "St Marks", the browser goes to
+`stmarks.app-avamed.uk`, and that instance serves its own data from its own database. It feels like
+switching; it is a link. **Build the link version. Never the data-switch version.**
+
+**Cookie safety — verified 2026-07-17, not assumed.** `set_cookie` in `routers/auth.py:108,262` and
+`main.py:87` passes NO `domain=`, so cookies are host-only: a Churchtown session cookie is never
+sent to `stmarks.app-avamed.uk`. And even if it were, the token lives in Churchtown's own
+`sessions` table, so St Marks could not validate it. It fails closed twice. **If anyone ever adds
+`domain=".app-avamed.uk"` to those calls, that is a cross-tenant auth leak — do not.**
+
+Accepted cost: the super-admin logs in per tenant, one session each. Do NOT solve this with shared
+sign-on yet — that reintroduces a cross-tenant component. Revisit only with its own security review.
+
+Practice/pharmacy staff never see the control.
+
+### Roles — tenant-admin added (Saeed: "yes", 2026-07-17)
+
+| Role | Scope |
+|------|-------|
+| **Avamed super-admin** | Reaches any tenant via the dropdown; one tenant at a time. Support only. |
+| **Tenant admin** (practice manager) | Manages *their own* tenant's staff accounts. Today's `admin` role becomes this. |
+| **Staff** | Their own tenant's cases. |
+| **Readonly** | Their own tenant, view only. |
+
+Rationale for tenant-admin: a practice must add a receptionist without phoning Avamed, or Avamed
+becomes a helpdesk for every new starter. `staff_invitations` already exists and works per-tenant
+unchanged.
+
+**Locums get one account per practice.** Someone working at two practices has two accounts. That is
+correct and intended — record it now so it is not fielded later as a complaint.
+
+### Staff isolation is structural, not enforced
+
+`staff_users` lives inside each tenant's database, so a practice's staff **physically cannot** log
+into another's instance. There is no rule to write and no rule to forget. This is the whole argument
+for separate databases over a shared `tenant_id` column.
+
+### Tenant onboarding — SCRIPTED, not a web UI (Saeed: "scripted", 2026-07-17)
+
+A **tenant registry** is required: name, hostname, port, database path, enabled features. It is the
+one artefact that spans tenants, so the rule is absolute: **ZERO patient data in it, ever.** Config
+only. Practice details and feature flags live in that tenant's own database.
+
+Onboarding is scripted and run by Avamed. A web page that creates tenants is a page that provisions
+databases and hostnames — a lot of power behind a login, for something done five or six times.
+A script is cheaper, reviewable, and adds no attack surface to a patient-facing system. Revisit only
+if onboarding becomes weekly.
+
+Onboarding a tenant is not just a database. The script must cover: DB create + schema init, port
+assignment, Cloudflare hostname, watchdog entry, backup entry, purge entry, and the Avamed admin
+account. Missing any one of these produces a tenant that looks live but is unmonitored or unbacked.
+
+## 6c. REPORTING — SPLIT IN TWO
+
+Saeed's ask: periodic reporting for performance, staff workload, time saved, ROI.
+
+**Per-tenant reports** (a practice sees its own numbers): trivial — their own database, their own
+instance. Build freely.
+
+**Avamed cross-tenant rollup: AGGREGATES ONLY.** Counts, averages, durations, percentages. Never a
+name, an NHS number, or case content. Each tenant instance computes its own metrics and publishes
+them; the rollup **never connects to a tenant database**. This is the one shape that gives Saeed
+cross-practice reporting without rebuilding the forbidden component.
+
+### Two warnings that outweigh the engineering
+
+**1. ROI needs a baseline that was MEASURED, not assumed.** "Time saved" implies knowing how long
+triage took *without* Jeff. These figures land in NHS procurement submissions where someone will ask
+how they were derived. **Capture the Churchtown manual-triage baseline BEFORE go-live** — that
+window closes permanently at go-live.
+Saeed (2026-07-17): will try to supply it; otherwise researched industry figures may be used.
+**If a researched figure is used it MUST be labelled an industry benchmark, never presented as
+"measured at Churchtown".** A benchmark honestly labelled is defensible; a benchmark passed off as a
+measurement is not, and it is the kind of thing that unravels a procurement submission.
+
+**2. "Staff workload" reporting is EMPLOYEE MONITORING.** Different lawful basis from patient data.
+The practice is the employer and controller — not Avamed. Staff must be informed; it may need its
+own assessment. Put it in the contract rather than discovering it when a practice manager objects.
+
+## 6d. AVAMED'S STANDING ACCESS — A DPO WILL ASK
+
+A standing Avamed admin account in every tenant means a practice's DPO will ask: *"can Avamed read
+our patient data whenever they like?"* Today the honest answer is yes. That is normal for a
+processor, but it must be **documented and visible**, not discovered.
+
+The strong answer this design already gives: every Avamed login lands in **that tenant's own audit
+log**, so the practice can see exactly when their processor accessed their data. That is precisely
+what Article 28 expects a processor to evidence.
+
+**Open:** should a practice be able to see and revoke Avamed's account themselves? Not decided.
+
 ## 7. WHAT THIS DOES NOT SOLVE
 
 - **`alert_events`, `audit_events`, `call_recordings` all carry patient data** (`first_patient` is a
@@ -172,5 +272,6 @@ exists is far harder than building it now.
 
 ---
 
-*MULTI_TENANCY_PROPOSAL.md | v2 2026-07-17 | Status: §6 settled; architecture awaiting approval — nothing built*
+*MULTI_TENANCY_PROPOSAL.md | v3 2026-07-17 | Status: architecture + access model (§6/6b/6c/6d) decided; nothing built*
+*Access decisions added 2026-07-17: link-not-switch dropdown, tenant-admin role, scripted onboarding, aggregates-only rollup. Open: Churchtown ROI baseline (time-sensitive), practice revoke of Avamed access.*
 *Supersedes "Item #4 / tenant_id / Phase 2" in PROJECT_MEMORY.md's backlog.*

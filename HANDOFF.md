@@ -90,6 +90,21 @@ found two real bugs plus one I introduced myself.
    each tenant DB, so a tenant's staff physically cannot log into another's instance).
    See `governance/MULTI_TENANCY_PROPOSAL.md` §8 for the step sequence.
    **This gates go-live for EVERY tenant, not just St Marks.**
+   **Access model decided 2026-07-17 (proposal §6b/6c/6d) — do not re-litigate:**
+   - Super-admin tenant dropdown is a **LINK** to the tenant's hostname, NOT a data switch on one
+     screen (a switch needs a process connected to every tenant DB — the forbidden component).
+     Cookies are host-only today (no `domain=`); never add `domain=".app-avamed.uk"`.
+   - Roles: Avamed super-admin · **tenant-admin** (practice manager manages own staff — new; today's
+     `admin` becomes this) · staff · readonly. Staff isolation is structural (`staff_users` per DB).
+     Locums = one account per practice.
+   - Onboarding is **scripted** (Saeed's choice), not a web UI. Needs a tenant registry with ZERO
+     patient data + Cloudflare hostname + watchdog + backup + purge + Avamed admin, per tenant.
+   - Reporting: per-tenant free; Avamed cross-tenant rollup is **aggregates only**, never touches a
+     tenant DB, never sees names/NHS numbers.
+   - **TIME-SENSITIVE:** capture Churchtown's manual-triage baseline BEFORE go-live or ROI "time
+     saved" has no measured basis. Saeed will try to supply it; else use a labelled industry
+     benchmark, never passed off as measured. "Staff workload" reporting = employee monitoring
+     (practice is the employer/controller) — into the contract, staff informed.
 2. **feature/secrets-loader** — before merging: remove the "gated by test_mode" claim
    (test_mode is read from the attacker's own payload — zero security value), stop calling
    the directory-ACL gate a trust boundary (it is advisory; bypassable via CodexSandboxUsers,
