@@ -143,13 +143,13 @@ function Select-NearUnique {
 
 # ── AI rewrite, with a deterministic fallback ─────────────────────────────────
 # Calls the project's local Ollama model to rewrite each line into plain,
-# 4th-grade-simple English — real sentence rewriting, not word-swapping.
+# professional, non-technical business English — real sentence rewriting, not word-swapping.
 # Runs unattended twice a day, so this MUST fail safe: any problem (Ollama
 # down, timeout, wrong line count back, empty response) returns $null, and the
 # caller falls back to the word-glossary version instead of sending nothing or
 # something broken. Added 2026-07-17 per Saeed's instruction, after testing
 # showed the word-glossary alone can't simplify full technical sentences.
-function Get-FourthGradeRewrite {
+function Get-BusinessRewrite {
     param(
         [string[]]$Lines,
         [string]$OllamaUrl = "http://localhost:11434/api/generate",
@@ -168,8 +168,9 @@ function Get-FourthGradeRewrite {
     }
     $numbered = for ($i = 0; $i -lt $trimmedLines.Count; $i++) { "$($i + 1). $($trimmedLines[$i])" }
     $prompt = @"
-Rewrite each numbered line below in one very simple plain-English sentence a
-9-year-old would understand.
+Rewrite each numbered line below in one clear, plain-English sentence a smart,
+non-technical business or project manager would immediately understand. Professional
+in tone, not childish -- no dumbing down, just no jargon.
 
 STRICT OUTPUT FORMAT:
 - Reply with ONLY a numbered list, exactly $($Lines.Count) lines, numbered 1 to $($Lines.Count).
@@ -419,7 +420,7 @@ if (Test-Path $MemoryFile) {
 # ── 7. Build daily briefing ───────────────────────────────────────────────────
 # Dedupe near-identical restated lines, then cap length BEFORE any rewrite —
 # keeps the AI prompt small and the final message short either way.
-# NOTE: Select-NearUnique/Add-PlainEnglishNotes/Get-FourthGradeRewrite all
+# NOTE: Select-NearUnique/Add-PlainEnglishNotes/Get-BusinessRewrite all
 # `return ,$x` to stop PowerShell unwrapping a 0/1-element array result. That
 # means their output must be captured with a plain assignment first — piping
 # the function call straight into Select-Object, or wrapping the call itself
@@ -438,10 +439,10 @@ $NextTasksCapped = @($NextTasksNear | Select-Object -First 5)
 # Try the AI rewrite first (real sentence simplifying); anything it can't
 # handle (Ollama down, timeout, bad output) falls back to the word-glossary
 # version so the brief always sends something readable.
-$WhatWeDidAI = Get-FourthGradeRewrite -Lines $WhatWeDidCapped
-$BlockersAI  = Get-FourthGradeRewrite -Lines $BlockersCapped
-$ApprovalsAI = Get-FourthGradeRewrite -Lines $ApprovalsCapped
-$NextTasksAI = Get-FourthGradeRewrite -Lines $NextTasksCapped
+$WhatWeDidAI = Get-BusinessRewrite -Lines $WhatWeDidCapped
+$BlockersAI  = Get-BusinessRewrite -Lines $BlockersCapped
+$ApprovalsAI = Get-BusinessRewrite -Lines $ApprovalsCapped
+$NextTasksAI = Get-BusinessRewrite -Lines $NextTasksCapped
 
 $WhatWeDidFinal = if ($WhatWeDidAI) { $WhatWeDidAI } else { Write-Log "AI rewrite unavailable for WHAT WE DID - using word-glossary fallback"; Add-PlainEnglishNotes -Lines $WhatWeDidCapped }
 $BlockersFinal  = if ($BlockersAI)  { $BlockersAI }  else { Write-Log "AI rewrite unavailable for WHAT'S STUCK - using word-glossary fallback"; Add-PlainEnglishNotes -Lines $BlockersCapped }
