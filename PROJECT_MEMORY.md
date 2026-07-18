@@ -1,6 +1,6 @@
 ﻿# PROJECT MEMORY — JeffLocal
 # READ THIS FIRST at every session start, before doing anything else.
-# Last updated: 2026-07-17 (evening, continued — multi-tenancy step 3 done, ACL fix script written)
+# Last updated: 2026-07-18 (18:00 automated session-end — no commits today)
 # Maintained by: Claude (update at end of every session)
 
 ---
@@ -75,7 +75,7 @@ strategy | Docs, reports, governance, marketing
 
 ---
 
-## CURRENT STATUS -- 2026-07-17 (updated)
+## CURRENT STATUS -- 2026-07-18 (updated)
 
 ### NOTHING IS LIVE — READ BEFORE JUDGING SEVERITY BELOW
 **All patient data in the system is FAKE** (Saeed, 2026-07-17). Neither Churchtown nor St Marks is
@@ -407,7 +407,10 @@ Branch:  main. C:\JeffLocal (the repo root) IS the production directory — its 
          ALWAYS verify with `git branch --show-current` before assuming this.
 Main:    merged 2026-07-14 (feature/refactor-2-5-6 → main, Saeed approved, commit 79bd895),
          deployed to production 2026-07-15.
-Latest:  d0d1393 fix: correct VERIFY_TABLES to real schema, harden verify error handling —
+Latest:  39ea3d8 fix: replace 4th-grade brief tone with non-technical business/PM tone
+         (2026-07-17 22:21). No commits since — checked 2026-07-18 18:00 automated session-end,
+         nothing landed today.
+Previous: d0d1393 fix: correct VERIFY_TABLES to real schema, harden verify error handling —
          post-merge bug fix, table names corrected (staff_users/audit_events), 15/15 green.
 Previous: 84bea00 chore: expand read-only Bash/MCP permission allowlist (.claude/settings.json).
 Previous: 7d9792d Merge feature/multitenancy-db-migrate into main — multi-tenancy step 3:
