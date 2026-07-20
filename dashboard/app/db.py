@@ -264,7 +264,7 @@ def init_db(conn: sqlite3.Connection) -> None:
     conn.execute("CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions (user_id)")
 
     staff_count = conn.execute("SELECT COUNT(*) FROM staff_users").fetchone()[0]
-    if staff_count == 0:
+    if staff_count == 0 and not os.environ.get("JEFFLOCAL_TENANT_NAME"):
         from datetime import datetime, timezone
 
         now = datetime.now(timezone.utc).replace(microsecond=0).isoformat()

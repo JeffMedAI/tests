@@ -43,6 +43,7 @@ config/*key*
 config/tenants/*.env
 !config/tenants/_template.env.example
 !config/tenants/test-tenant-1.env
+!config/tenants/tenant2.env
 *.key
 *.pem
 

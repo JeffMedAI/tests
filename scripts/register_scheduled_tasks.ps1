@@ -113,6 +113,39 @@ Register-ScheduledTask `
 
 Write-Host "Registered: JeffLocal - GDPR Weekly Purge (weekly Sunday 03:00)" -ForegroundColor Green
 
+# --- Task 5: GDPR weekly purge for tenant2 (placeholder tenant, Sunday 03:15) ---
+# Multi-tenancy step 4. gdpr_purge.py itself needs no code change — it already
+# takes --db PATH (default: the production database). This is a second,
+# independent scheduled action pointed at tenant2's own database, staggered
+# 15 minutes after the default instance's purge so they don't contend for the
+# same log/CPU window. Rename this task (and the --db path) if/when tenant2
+# is renamed for go-live — see governance/TENANT_REGISTRY.md.
+$action5 = New-ScheduledTaskAction `
+    -Execute "C:\JeffLocal\dashboard\.venv\Scripts\python.exe" `
+    -Argument "C:\JeffLocal\scripts\daily\gdpr_purge.py --db C:\JeffLocal\dashboard\data\tenants\tenant2.sqlite --days 90" `
+    -WorkingDirectory "C:\JeffLocal\scripts\daily"
+
+$trigger5 = New-ScheduledTaskTrigger -Weekly -WeeksInterval 1 -DaysOfWeek Sunday -At "03:15"
+
+$settings5 = New-ScheduledTaskSettingsSet `
+    -ExecutionTimeLimit (New-TimeSpan -Hours 1) `
+    -RestartCount 2 `
+    -RestartInterval (New-TimeSpan -Minutes 10) `
+    -StartWhenAvailable `
+    -RunOnlyIfNetworkAvailable $false
+
+Register-ScheduledTask `
+    -TaskName "JeffLocal - GDPR Weekly Purge (tenant2)" `
+    -TaskPath "\JeffLocal\" `
+    -Action $action5 `
+    -Trigger $trigger5 `
+    -Settings $settings5 `
+    -Description "Weekly GDPR 90-day purge for the tenant2 (placeholder identity) tenant database. Same logic as the default instance's purge task, different --db path." `
+    -RunLevel Highest `
+    -Force
+
+Write-Host "Registered: JeffLocal - GDPR Weekly Purge (tenant2) (weekly Sunday 03:15)" -ForegroundColor Green
+
 Write-Host ""
 Write-Host "All tasks registered. Verify in Task Scheduler under \JeffLocal\" -ForegroundColor Cyan
 Write-Host ""

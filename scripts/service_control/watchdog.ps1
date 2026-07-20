@@ -234,6 +234,49 @@ $Services = @(
         }
     },
 
+    # Tenant2Dashboard — second multi-tenancy instance, deliberately generic
+    # placeholder identity (governance/TENANT_REGISTRY.md). Localhost-only for
+    # now, no public hostname configured yet. Rename this entry's Name/Label
+    # (not its logic) whenever this tenant is renamed for go-live.
+    [PSCustomObject]@{
+        Name = "Tenant2Dashboard"
+        Label = "Tenant 2 Dashboard (8766, placeholder identity)"
+        Test = {
+            if (-not (Test-Port 8766)) { return $false }
+            return (Test-Http "http://localhost:8766/api/health")
+        }
+        Restart = {
+            Stop-PortProcess 8766
+            $launch = "$ScriptDir\_launch_dashboard.ps1"
+            if (Test-Path $launch) {
+                # Not Start-HiddenPS — that helper takes no arguments, and this
+                # restart must pass -Tenant tenant2 or it would launch on 8765
+                # and collide with ProductionDashboard.
+                Start-Process -FilePath $PS `
+                    -ArgumentList "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File `"$launch`" -Tenant tenant2" `
+                    -WindowStyle Hidden
+            } else {
+                # Fallback: launch the dashboard (uvicorn / FastAPI) directly.
+                # Mirrors config/tenants/tenant2.env's values — this branch only
+                # runs if _launch_dashboard.ps1 itself is missing, which should
+                # not happen in a normal checkout.
+                $venvPy = "$RepoRoot\dashboard\.venv\Scripts\python.exe"
+                if (-not (Test-Path $venvPy)) {
+                    python -m venv "$RepoRoot\dashboard\.venv" 2>&1 | Out-Null
+                    & $venvPy -m pip install -r "$RepoRoot\dashboard\requirements.txt" --quiet 2>&1 | Out-Null
+                }
+                $env:JEFFLOCAL_TENANT_NAME = "Tenant 2"
+                $env:JEFFLOCAL_DB_PATH = "$RepoRoot\dashboard\data\tenants\tenant2.sqlite"
+                Start-Process -FilePath $venvPy `
+                    -ArgumentList "-m uvicorn main:app --host 0.0.0.0 --port 8766" `
+                    -WorkingDirectory "$RepoRoot\dashboard\app" `
+                    -WindowStyle Hidden
+            }
+            Start-Sleep -Seconds 12
+            return (Test-Http "http://localhost:8766/api/health")
+        }
+    },
+
     [PSCustomObject]@{
         Name = "N8n"
         Label = "n8n (5678)"
