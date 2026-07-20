@@ -135,9 +135,13 @@ function Get-BusinessRewrite {
     # that straight to a small local model makes it slow (tested: 25s timeout
     # wasn't enough) and gives it a harder job than "rewrite one sentence".
     # Trim first — a short, clear input rewrites faster AND simpler.
-    $trimmedLines = $Lines | ForEach-Object {
+    # @(...) wrap is required: piping a single-element array through
+    # ForEach-Object unwraps it to a bare string, and a bare string has no
+    # .Count under Set-StrictMode -Version Latest — found while testing the
+    # Ollama-down fallback with a 1-line brief section.
+    $trimmedLines = @($Lines | ForEach-Object {
         if ($_.Length -gt 300) { $_.Substring(0, 300) + "..." } else { $_ }
-    }
+    })
     $numbered = for ($i = 0; $i -lt $trimmedLines.Count; $i++) { "$($i + 1). $($trimmedLines[$i])" }
     $prompt = @"
 Rewrite each numbered line below in one clear, plain-English sentence a smart,
@@ -289,10 +293,22 @@ function Get-ProjectBrief {
     $ApprovalsAI = Get-BusinessRewrite -Lines $ApprovalsCapped
     $NextTasksAI = Get-BusinessRewrite -Lines $NextTasksCapped
 
-    $WhatWeDidFinal = if ($WhatWeDidAI) { $WhatWeDidAI } else { Write-Log "AI rewrite unavailable ($ProjectLabel WHAT WE DID) - word-glossary fallback"; Add-PlainEnglishNotes -Lines $WhatWeDidCapped }
-    $BlockersFinal  = if ($BlockersAI)  { $BlockersAI }  else { Write-Log "AI rewrite unavailable ($ProjectLabel WHAT'S STUCK) - word-glossary fallback"; Add-PlainEnglishNotes -Lines $BlockersCapped }
-    $ApprovalsFinal = if ($ApprovalsAI) { $ApprovalsAI } else { Write-Log "AI rewrite unavailable ($ProjectLabel THINGS I NEED YOU TO OK) - word-glossary fallback"; Add-PlainEnglishNotes -Lines $ApprovalsCapped }
-    $NextTasksFinal = if ($NextTasksAI) { $NextTasksAI } else { Write-Log "AI rewrite unavailable ($ProjectLabel WHAT'S NEXT) - word-glossary fallback"; Add-PlainEnglishNotes -Lines $NextTasksCapped }
+    # Get-BusinessRewrite returns $null (a real null, not an empty array) only
+    # when the Ollama call itself failed/timed out — flag that up to the caller
+    # so it can be surfaced on the WhatsApp message, not just in the log file.
+    # Compare with -eq $null rather than -not: an empty-but-successful rewrite
+    # (,$Lines of a 0-item array) is falsy too and would be a false positive.
+    $AIFallbackUsed = ($null -eq $WhatWeDidAI) -or ($null -eq $BlockersAI) -or ($null -eq $ApprovalsAI) -or ($null -eq $NextTasksAI)
+
+    # ,$WhatWeDidAI (not bare $WhatWeDidAI) in the true branch: a bare array
+    # variable used as a script block's output gets enumerated element-by-
+    # element same as Write-Output, so a 1-item array collapses to a scalar
+    # string and the .Count check two lines down throws under strict mode —
+    # found while testing the Ollama-down fallback with a 1-line brief section.
+    $WhatWeDidFinal = if ($WhatWeDidAI) { ,$WhatWeDidAI } else { Write-Log "AI rewrite unavailable ($ProjectLabel WHAT WE DID) - word-glossary fallback"; Add-PlainEnglishNotes -Lines $WhatWeDidCapped }
+    $BlockersFinal  = if ($BlockersAI)  { ,$BlockersAI }  else { Write-Log "AI rewrite unavailable ($ProjectLabel WHAT'S STUCK) - word-glossary fallback"; Add-PlainEnglishNotes -Lines $BlockersCapped }
+    $ApprovalsFinal = if ($ApprovalsAI) { ,$ApprovalsAI } else { Write-Log "AI rewrite unavailable ($ProjectLabel THINGS I NEED YOU TO OK) - word-glossary fallback"; Add-PlainEnglishNotes -Lines $ApprovalsCapped }
+    $NextTasksFinal = if ($NextTasksAI) { ,$NextTasksAI } else { Write-Log "AI rewrite unavailable ($ProjectLabel WHAT'S NEXT) - word-glossary fallback"; Add-PlainEnglishNotes -Lines $NextTasksCapped }
 
     $Did      = if ($WhatWeDidFinal.Count -gt 0) { ($WhatWeDidFinal | ForEach-Object { "  - $_" }) -join "`n" } else { "  - Nothing logged in the last day." }
     $Blocking = if ($BlockersFinal.Count -gt 0)  { ($BlockersFinal  | ForEach-Object { "  - $_" }) -join "`n" } else { "  - Nothing stuck right now." }
@@ -301,7 +317,7 @@ function Get-ProjectBrief {
 
     $FallbackLine = if ($FallbackNote) { "`n  $FallbackNote`n" } else { "" }
 
-    return @"
+    $Text = @"
 $ProjectLabel$FallbackLine
   $DidLabel
 $Did
@@ -315,6 +331,8 @@ $Blocking
   THINGS I NEED YOU TO OK
 $Approve
 "@
+
+    return [PSCustomObject]@{ Text = $Text; AIFallbackUsed = $AIFallbackUsed }
 }
 
 # ── 1. Get brief sections for each project ────────────────────────────────────
@@ -367,18 +385,23 @@ if ($Mode -eq 'Evening') {
     $Clock = "07:00"
 }
 
+$OllamaNote = if ($JeffLocalBrief.AIFallbackUsed -or $StMarksBrief.AIFallbackUsed) {
+    "`n[Note: AI rewrite unavailable - raw summary below]`n"
+} else { "" }
+Write-Log "Ollama AI rewrite fallback used: JeffLocal=$($JeffLocalBrief.AIFallbackUsed) StMarks=$($StMarksBrief.AIFallbackUsed)"
+
 $CombinedReport = @"
 $Title - $Today $Clock
 Your two projects: the AI reception helper (Avamed) and the pharmacy website (St Marks)
 ================================================================
-
-$JeffLocalBrief
+$OllamaNote
+$($JeffLocalBrief.Text)
 
 Behind the scenes: $JLGitCount code change(s) saved today.
 
 ----------------------------------------------------------------
 
-$StMarksBrief
+$($StMarksBrief.Text)
 
 Behind the scenes: $SMGitCount code change(s) saved today.
 

@@ -280,3 +280,48 @@ actually runs, was.
 **Security review:** Not applicable — no auth/patient-data/compliance logic touched (internal reporting/
 formatting only). Bug-fix autonomy exception applies.
 **Saeed notified:** This session.
+
+---
+
+## 2026-07-20 — Ollama Autostart + Brief Fallback Hardening
+**Agent:** Lead Agent (Claude Code session)
+**Approved by:** Saeed (explicit instruction in session, 2026-07-20)
+**Description:** Saeed reported the 07:00 WhatsApp brief can fail silently if Ollama isn't running when it
+calls out for the AI rewrite step. Two changes:
+1. **Windows autostart task attempted, blocked — needs Saeed's action.** Tried to register a "Ollama - Auto
+   Start" scheduled task (trigger: system boot, before any login; runs `ollama serve` as user s5256 via S4U
+   logon so it can see the models under `C:\Users\s5256\.ollama`; restarts on failure). `Register-ScheduledTask`
+   returned Access Denied — this session isn't running as Administrator, and a boot-trigger task that runs
+   without anyone logged in requires an elevated session to register. NOT created. Saeed needs to run the
+   command himself in an elevated PowerShell, or ask for the weaker `AtLogOn`-trigger version instead (doesn't
+   need elevation, but only starts Ollama when someone logs in, not on a cold unattended boot). Exact command
+   for the elevated option is in the session's final report to Saeed.
+2. **WhatsApp message now says when the AI rewrite failed, instead of silently degrading.** The Ollama call
+   already had a try/catch that falls back to a deterministic word-glossary version on failure — that part was
+   already in place from 2026-07-17's work. What was missing: nothing told Saeed this had happened. Added a
+   `[Note: AI rewrite unavailable - raw summary below]` line at the top of the WhatsApp message whenever any
+   section fell back, in both `strategy_daily.ps1` and `combined_brief.ps1`.
+**Bugs found and fixed while testing (pre-existing, not introduced by this change — surfaced by running the
+real Ollama-partial-failure case, not a synthetic one):**
+1. `Get-BusinessRewrite`'s prompt-building step piped a single-element array through `ForEach-Object`, which
+   PowerShell silently collapses to a bare string; `.Count` on that string then threw under
+   `Set-StrictMode -Version Latest`, crashing the whole brief the moment any section had exactly 1 line — a
+   more direct cause of "brief fails silently" than Ollama itself. Fixed by wrapping in `@(...)`.
+2. Same collapse, different spot: `$WhatWeDidFinal = if ($WhatWeDidAI) { $WhatWeDidAI } else {...}` — a bare
+   array variable used as a script block's output gets enumerated element-by-element same as `Write-Output`, so
+   a successful 1-line AI rewrite also collapsed to a scalar and crashed on the next `.Count` check. Fixed by
+   using `,$WhatWeDidAI` (and the 3 sibling variables) in the true branch.
+**Files changed:** scripts/daily/strategy_daily.ps1, scripts/daily/combined_brief.ps1, CHANGELOG.md
+**Tests run:** Full `combined_brief.ps1 -Mode Morning -DryRun` against real session logs and real production
+data. Ollama was live and, mid-run, genuinely failed on 2 of 8 AI-rewrite calls (real timeouts, not staged) —
+confirmed the try/catch caught them, those 2 sections fell back to the word-glossary version, the other 6
+completed normally, the `[Note: AI rewrite unavailable...]` banner appeared correctly, and the script finished
+with exit code 0 (no crash). Did not additionally stop Ollama entirely — its desktop app auto-restarts the
+server process within ~2 seconds of being killed, so a true full-outage test would need a firewall rule, which
+was not applied without asking first. The connection-refused and timeout cases share the exact same try/catch
+block, so this is not a separate untested code path — [Likely], not [Certain], flagged here rather than
+overstated.
+**Security review:** Not applicable — no auth/patient-data/compliance logic touched (internal reporting/
+scheduled-task-registration only). Bug-fix autonomy exception applies to the code changes; the scheduled task
+itself was NOT created (see above) so no system-config change actually landed.
+**Saeed notified:** This session.

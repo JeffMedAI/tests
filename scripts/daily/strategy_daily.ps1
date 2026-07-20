@@ -163,9 +163,13 @@ function Get-BusinessRewrite {
     # that straight to a small local model makes it slow (tested: 25s timeout
     # wasn't enough) and gives it a harder job than "rewrite one sentence".
     # Trim first — a short, clear input rewrites faster AND simpler.
-    $trimmedLines = $Lines | ForEach-Object {
+    # @(...) wrap is required: piping a single-element array through
+    # ForEach-Object unwraps it to a bare string, and a bare string has no
+    # .Count under Set-StrictMode -Version Latest — found while testing the
+    # Ollama-down fallback with a 1-line brief section.
+    $trimmedLines = @($Lines | ForEach-Object {
         if ($_.Length -gt 300) { $_.Substring(0, 300) + "..." } else { $_ }
-    }
+    })
     $numbered = for ($i = 0; $i -lt $trimmedLines.Count; $i++) { "$($i + 1). $($trimmedLines[$i])" }
     $prompt = @"
 Rewrite each numbered line below in one clear, plain-English sentence a smart,
@@ -444,10 +448,23 @@ $BlockersAI  = Get-BusinessRewrite -Lines $BlockersCapped
 $ApprovalsAI = Get-BusinessRewrite -Lines $ApprovalsCapped
 $NextTasksAI = Get-BusinessRewrite -Lines $NextTasksCapped
 
-$WhatWeDidFinal = if ($WhatWeDidAI) { $WhatWeDidAI } else { Write-Log "AI rewrite unavailable for WHAT WE DID - using word-glossary fallback"; Add-PlainEnglishNotes -Lines $WhatWeDidCapped }
-$BlockersFinal  = if ($BlockersAI)  { $BlockersAI }  else { Write-Log "AI rewrite unavailable for WHAT'S STUCK - using word-glossary fallback"; Add-PlainEnglishNotes -Lines $BlockersCapped }
-$ApprovalsFinal = if ($ApprovalsAI) { $ApprovalsAI } else { Write-Log "AI rewrite unavailable for THINGS I NEED YOU TO OK - using word-glossary fallback"; Add-PlainEnglishNotes -Lines $ApprovalsCapped }
-$NextTasksFinal = if ($NextTasksAI) { $NextTasksAI } else { Write-Log "AI rewrite unavailable for WHAT'S NEXT - using word-glossary fallback"; Add-PlainEnglishNotes -Lines $NextTasksCapped }
+# Get-BusinessRewrite returns $null (a real null, not an empty array) only when
+# the Ollama call itself failed/timed out — Saeed needs to see that on the
+# WhatsApp message itself, not just in the log file. Compare with -eq $null
+# rather than -not, because an empty-but-successful rewrite (,$Lines of a
+# 0-item array) is falsy too and would be a false positive here.
+$OllamaFallbackUsed = ($null -eq $WhatWeDidAI) -or ($null -eq $BlockersAI) -or ($null -eq $ApprovalsAI) -or ($null -eq $NextTasksAI)
+Write-Log "Ollama AI rewrite fallback used: $OllamaFallbackUsed"
+
+# ,$WhatWeDidAI (not bare $WhatWeDidAI) in the true branch: a bare array
+# variable used as a script block's output gets enumerated element-by-element
+# same as Write-Output, so a 1-item array collapses to a scalar string and the
+# .Count check further down throws under strict mode — found while testing
+# the Ollama-down fallback with a 1-line brief section.
+$WhatWeDidFinal = if ($WhatWeDidAI) { ,$WhatWeDidAI } else { Write-Log "AI rewrite unavailable for WHAT WE DID - using word-glossary fallback"; Add-PlainEnglishNotes -Lines $WhatWeDidCapped }
+$BlockersFinal  = if ($BlockersAI)  { ,$BlockersAI }  else { Write-Log "AI rewrite unavailable for WHAT'S STUCK - using word-glossary fallback"; Add-PlainEnglishNotes -Lines $BlockersCapped }
+$ApprovalsFinal = if ($ApprovalsAI) { ,$ApprovalsAI } else { Write-Log "AI rewrite unavailable for THINGS I NEED YOU TO OK - using word-glossary fallback"; Add-PlainEnglishNotes -Lines $ApprovalsCapped }
+$NextTasksFinal = if ($NextTasksAI) { ,$NextTasksAI } else { Write-Log "AI rewrite unavailable for WHAT'S NEXT - using word-glossary fallback"; Add-PlainEnglishNotes -Lines $NextTasksCapped }
 
 $DidSection      = if ($WhatWeDidFinal.Count -gt 0) { ($WhatWeDidFinal | ForEach-Object { "- $_" }) -join "`n" } else { "- Nothing logged in the last day. Ask me and I'll check for you." }
 $BlockerSection  = if ($BlockersFinal.Count -gt 0)  { ($BlockersFinal  | ForEach-Object { "- $_" }) -join "`n" } else { "- Nothing stuck right now." }
@@ -467,9 +484,11 @@ $FallbackNote = if ($UsedFallbackLog) {
     "`n(Heads up: nothing was logged in the last day, so this is using the last thing we know, from ${FallbackAge} hours ago. Normal on a weekend or a day off.)`n"
 } else { "" }
 
+$OllamaNote = if ($OllamaFallbackUsed) { "`n[Note: AI rewrite unavailable - raw summary below]`n" } else { "" }
+
 $Report = @"
 $BriefTitle - $Today - $BriefClock
-$FallbackNote
+$OllamaNote$FallbackNote
 ---
 
 $DidLabel
