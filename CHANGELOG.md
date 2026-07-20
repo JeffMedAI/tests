@@ -325,3 +325,21 @@ overstated.
 scheduled-task-registration only). Bug-fix autonomy exception applies to the code changes; the scheduled task
 itself was NOT created (see above) so no system-config change actually landed.
 **Saeed notified:** This session.
+
+---
+
+## 2026-07-20 (continued) — Ollama Autostart task confirmed live (closes item 1 above)
+**Agent:** Lead Agent (Claude Code session)
+**Approved by:** Saeed (ran the elevated command himself, same session)
+**Description:** Saeed ran the `Register-ScheduledTask` command from the entry above in an elevated PowerShell
+(the non-admin session couldn't do this itself — see above). Verified from the non-elevated session afterward:
+task "Ollama - Auto Start" exists, State = Ready, Action = `C:\Users\s5256\AppData\Local\Programs\Ollama\ollama.exe serve`,
+UserId = s5256, LogonType = S4U (no password stored), RunLevel = Limited, RestartCount = 999,
+RestartInterval = 1 minute, ExecutionTimeLimit = unlimited (PT0S), MultipleInstances = IgnoreNew. Matches the
+spec exactly. Both Fix 1 and Fix 2 from the 07:00-brief-fails-silently report are now complete.
+**Files changed:** None (system scheduled task only, no repo files).
+**Tests run:** Read-only `Get-ScheduledTask` verification of Action/Triggers/Principal/Settings against the
+task Saeed created — matches spec. Did NOT trigger an actual reboot to confirm end-to-end boot behaviour —
+[UNVERIFIED — confirm after next real reboot/cold start that Ollama actually comes up before anyone logs in].
+**Security review:** Not applicable — no auth/patient-data/compliance logic touched.
+**Saeed notified:** This session.
