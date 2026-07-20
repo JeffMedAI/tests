@@ -1,6 +1,6 @@
 ﻿# PROJECT MEMORY — JeffLocal
 # READ THIS FIRST at every session start, before doing anything else.
-# Last updated: 2026-07-18 (18:00 automated session-end — no commits today)
+# Last updated: 2026-07-20 (session close — ACL fix run, daily-brief crash fixed)
 # Maintained by: Claude (update at end of every session)
 
 ---
@@ -75,7 +75,7 @@ strategy | Docs, reports, governance, marketing
 
 ---
 
-## CURRENT STATUS -- 2026-07-18 (updated)
+## CURRENT STATUS -- 2026-07-20 (updated)
 
 ### NOTHING IS LIVE — READ BEFORE JUDGING SEVERITY BELOW
 **All patient data in the system is FAKE** (Saeed, 2026-07-17). Neither Churchtown nor St Marks is
@@ -97,18 +97,29 @@ incident language; that was overstated.)
    64 bytes, tracked since ff699b5, pushed to GitHub. Needs **ROTATION** — it is in history,
    so deleting/untracking does not help. The `config/*secret*` ignore rule never matched it
    because gitignore globs do not cross `/`.
-3. **`C:\JeffLocal` AND `C:\JeffLocal\config` are writable by Authenticated Users** (verified
-   directly). This is the root cause that made a secrets-loader RCE reachable. Fixing only the
-   flagged `Authenticated Users` ACE is NOT enough — `CodexSandboxUsers`, an orphan SID, and a
-   generic-rights ACE (renders as `-536805376`) also grant write. Needs BOTH directories, plus
-   a service-restart test.
-   **FIX SCRIPT READY 2026-07-17 evening:** `scripts\service_control\fix_directory_acl.ps1` — reads
-   current permissions, removes the 4 bad grantees from both folders, verifies, reminds you to
-   restart-test. Written but NOT run (changing Windows security settings is not something Claude
-   runs directly). **REMINDER: Saeed asked to be reminded to run this — carry forward every
-   session until done.**
+3. **DONE 2026-07-20 — `C:\JeffLocal` AND `C:\JeffLocal\config` ACLs fixed.** Saeed ran
+   `scripts\service_control\fix_directory_acl.ps1` himself (admin PowerShell, as designed — Claude
+   does not run Windows security-setting changes directly). Confirmed after: `Authenticated Users`
+   cut back to read/execute only on both directories; Administrators/SYSTEM keep full control.
+   Dashboard restarted (`restart_all.ps1 -DashOnly`) and health-checked clean afterwards
+   (`/api/health` → all services up, case_count 78 unchanged). This also clears the block on
+   multi-tenancy step 4 (standing up the St Marks tenant instance) — pick that up next session.
 
 ### What is working
+- **Daily WhatsApp brief was silently broken for 3 straight runs (Sat 07-19 AM, 07-19 PM, Mon
+  07-20 AM) — FOUND AND FIXED 2026-07-20.** Root cause: `combined_brief.ps1` /
+  `strategy_daily.ps1` collapse a 1-line brief section (e.g. "No work committed today") down to
+  a bare string instead of a 1-item list; under `Set-StrictMode -Version Latest` that string has
+  no `.Count` property, so the whole script threw `PropertyNotFoundException` and died silently —
+  Task Scheduler showed `LastTaskResult: 1` but nothing was logged anywhere, no error visible until
+  reproduced live with `-DryRun` and explicit try/catch. Fix (comma-wrap the array, `,$X` instead of
+  bare `$X`, plus surface "AI rewrite unavailable" on the WhatsApp message itself instead of
+  silently swallowing it) landed in commits `30814ca`/`67e884a` — committed by a parallel
+  session/Saeed while this session was mid-diagnosis, not by this session. Verified working with a
+  clean `-DryRun` pass, then today's real overdue brief was sent for real: "Sent to Saeed Alam
+  (+447440333938)", 4/4 chunks delivered, confirmed in `combined_brief_last_run.log`. Those same
+  commits also include an Ollama-autostart fix (Saeed ran an elevated command to make it live) —
+  plausibly a contributing factor, not fully separated from the array bug as a distinct root cause.
 - **CLAUDE.md updated 2026-07-17 evening per Saeed's direct instruction:** honesty rule and
   confidence-tag rule reaffirmed (both already existed as rules 4/5), /caveman + /superpowers now
   explicitly always-on for every response (not just session start), fourth-grade-simple-English
@@ -264,12 +275,10 @@ RANK | TASK                                               | AGENT    | STATUS
  1   | Fix n8n.py:319 HMAC fail-open; remove              | Security | SAEED SIGN-OFF (auth logic).
      | /api/n8n/test-intake-batch                         |          | Endpoint is OPEN right now.
  2   | Rotate voice_agent_hmac_secret.txt (in git history) | Security | SAEED. Rotation, not untracking.
- 3   | ACLs on C:\JeffLocal + config (Auth'd Users write)  | DevOps   | SAEED. Both dirs, all ACEs. NOW
-     |                                                    |          | ALSO BLOCKS TENANT ONBOARDING:
-     |                                                    |          | verified 2026-07-17 the new
-     |                                                    |          | tenant-config ACL check correctly
-     |                                                    |          | refuses to start ANY tenant while
-     |                                                    |          | config/ is writable like this.
+ 3   | ACLs on C:\JeffLocal + config (Auth'd Users write)  | DevOps   | DONE 2026-07-20 — Saeed ran the
+     |                                                    |          | fix script, dashboard restarted
+     |                                                    |          | + health-checked clean. Unblocks
+     |                                                    |          | tenant onboarding step 4.
  4   | Multi-tenancy: SEPARATE DB PER TENANT              | Backend  | STEPS 1-3 DONE + DEPLOYED
      | tenant = a GP practice OR St Marks. Avamed         |          | 2026-07-17 (commits 06af07e,
      | super-admin = tenant switcher, one tenant at a     |          | 390f774, 7d9792d, d0d1393).
@@ -281,7 +290,9 @@ RANK | TASK                                               | AGENT    | STATUS
      |                                                    |          | Security APPROVE after fixes.
  6   | Add lint (ruff/pyflakes) to test gate              | DevOps   | pyflakes caught 2 real bugs on
      |                                                    |          | 2026-07-16 that tests missed
- 7   | Fix evening-brief script's corrupted-tail bug      | DevOps   | strategy_daily.ps1
+ 7   | Fix evening-brief script's corrupted-tail bug      | DevOps   | DONE 2026-07-20 (see What is
+     |                                                    |          | working — 1-line array collapse
+     |                                                    |          | under Set-StrictMode).
  8   | index.html has 96 NUL bytes appended               | Frontend | grep sees it as BINARY and
      |                                                    |          | silently skips it. Use grep -a.
  9   | .pyc files are TRACKED in git (breaks git stash)   | DevOps   | Build artifacts in git
@@ -407,9 +418,11 @@ Branch:  main. C:\JeffLocal (the repo root) IS the production directory — its 
          ALWAYS verify with `git branch --show-current` before assuming this.
 Main:    merged 2026-07-14 (feature/refactor-2-5-6 → main, Saeed approved, commit 79bd895),
          deployed to production 2026-07-15.
-Latest:  39ea3d8 fix: replace 4th-grade brief tone with non-technical business/PM tone
-         (2026-07-17 22:21). No commits since — checked 2026-07-18 18:00 automated session-end,
-         nothing landed today.
+Latest:  67e884a docs: confirm Ollama autostart task now live (Saeed ran elevated command)
+         — preceded by 30814ca fix: Ollama autostart task + brief fallback on Ollama unavailable.
+         Both landed 2026-07-20, fixing the 3-missed-brief bug (see What is working). Directory
+         ACL fix (fix_directory_acl.ps1) also run 2026-07-20 but is a permissions change, not a
+         commit.
 Previous: d0d1393 fix: correct VERIFY_TABLES to real schema, harden verify error handling —
          post-merge bug fix, table names corrected (staff_users/audit_events), 15/15 green.
 Previous: 84bea00 chore: expand read-only Bash/MCP permission allowlist (.claude/settings.json).
