@@ -343,3 +343,49 @@ task Saeed created — matches spec. Did NOT trigger an actual reboot to confirm
 [UNVERIFIED — confirm after next real reboot/cold start that Ollama actually comes up before anyone logs in].
 **Security review:** Not applicable — no auth/patient-data/compliance logic touched.
 **Saeed notified:** This session.
+
+---
+
+## 2026-07-20 (continued) — Multi-tenancy step 4: stand up placeholder tenant2 instance (localhost:8766)
+**Agent:** Lead Agent (Claude Code session), plan reviewed and approved by Saeed before build
+**Approved by:** Saeed (plan approved; explicit "yes, go ahead" for the watchdog.ps1 edit; explicit approval
+to merge to main and restart the watchdog same day; explicit approval for Claude to register scheduled tasks)
+**Description:** Built and merged the second tenant instance per governance/MULTI_TENANCY_PROPOSAL.md §8 step 4.
+Saeed's instruction: use a generic placeholder identity ("Tenant 2") rather than binding to a real business
+name until that tenant is actually ready to go live, and seed placeholder admin+staff logins for every tenant
+(to be replaced with real names/emails before go-live — same treatment churchtown's own 5 accounts still need).
+Fixed a real bug found during the build: `db.py`'s `init_db()` unconditionally seeded 3 demo `staff_users` rows
+(including an "Admin Demo" row with `password_hash=NULL`, unusable) whenever a database was empty — would have
+hit every future tenant, not just this one. Now gated to only fire for the default, no-tenant instance.
+New `scripts/tenant/create_tenant_db.py` creates a fresh tenant database and seeds two placeholder accounts
+(admin + staff), both forced to change password on first login, both audit-logged, reusing `auth.py`'s
+existing PBKDF2 hashing unmodified. `backup_db.py` now loops all known tenant databases (a not-yet-provisioned
+tenant is skipped, not a failure). `watchdog.ps1` gained a new `Tenant2Dashboard` entry (port 8766) — the
+existing `ProductionDashboard` block was diffed pre-commit and confirmed byte-identical. Real `tenant2.sqlite`
+created in production's data path with its two placeholder logins seeded.
+**Files changed:** `dashboard/app/db.py`, `scripts/tenant/create_tenant_db.py` (new), `scripts/tenant/test_create_tenant_db.py` (new),
+`dashboard/tests/test_db_tenant_seeding.py` (new), `config/tenants/tenant2.env` (new), `governance/TENANT_REGISTRY.md` (new),
+`scripts/backup/backup_db.py`, `scripts/backup/test_backup_multi_tenant.py` (new), `scripts/service_control/watchdog.ps1`,
+`scripts/service_control/tests/test_watchdog_services.ps1` (new), `scripts/register_scheduled_tasks.ps1`, `.gitignore`.
+**Tests run:** 436 Python tests green (393 dashboard suite post-merge + 54 in scripts/, includes all new tests) +
+2 new PowerShell static regression tests green. Full manual E2E in an isolated worktree before merge: both
+placeholder accounts log in, both correctly forced through the password/PIN-change flow, tenant2's case list
+and audit log fully isolated from churchtown, churchtown (case_count 78) health-checked unaffected before,
+during, and after every step, including after the real merge.
+**Security review:** Security Agent APPROVE (auth/staff_users-touching changes — `db.py` fix and
+`create_tenant_db.py` — reviewed before merge; two optional cosmetic notes raised and both applied: seed
+`pin_hash=NULL` instead of a discarded non-numeric PIN, add `staff_created` audit events for script-seeded
+accounts).
+**Not completed this session — needs Saeed (elevated shell required, same category as the directory-ACL fix):**
+1. `scripts/register_scheduled_tasks.ps1` — attempted from a non-elevated session, failed with "Access is
+   denied" on `Register-ScheduledTask`. Needs Saeed to run it in an admin PowerShell window to register the
+   new "JeffLocal - GDPR Weekly Purge (tenant2)" task (the other 4 tasks re-register idempotently, unchanged).
+2. Watchdog restart — the live, already-running elevated watchdog process only has today's (pre-merge)
+   `$Services` list in memory; it needs to be stopped and restarted (via the Scheduled Task, not killed
+   directly — same "cannot be killed by non-elevated code" constraint noted elsewhere in this file) to pick up
+   the new `Tenant2Dashboard` entry from disk. This also could not be done from a non-elevated session.
+3. Cloudflare hostname for tenant2 — deliberately out of scope this round (Saeed: test via localhost:8766
+   only). Guidance on setting it up (and on the churchtown hostname rename) is a separate future request.
+**Saeed notified:** This session. One-time placeholder passwords for the real `tenant2.sqlite` accounts were
+printed once in-session and are not repeated here or logged anywhere else — Saeed has them from the session
+transcript.
