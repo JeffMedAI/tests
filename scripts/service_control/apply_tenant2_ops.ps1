@@ -56,21 +56,51 @@ if ($tenant2Task) {
 # --- Step 2: restart the watchdog so it reloads watchdog.ps1 from disk ---
 Write-Host ""
 Write-Host "Step 2 of 2: restarting the Service Watchdog to load the new Tenant2Dashboard entry..." -ForegroundColor Cyan
-Stop-ScheduledTask  -TaskPath "\JeffLocal\" -TaskName "JeffLocal - Service Watchdog" -ErrorAction SilentlyContinue
+
+# Stop-ScheduledTask alone is NOT enough here: observed 2026-07-21, an orphaned
+# elevated watchdog.ps1 process (started at an earlier boot) kept running OLD
+# in-memory code - its check pass never listed Tenant2Dashboard and 8766 never
+# came up. Force-kill EVERY lingering watchdog.ps1 process by PID first, so the
+# fresh Start-ScheduledTask genuinely reloads watchdog.ps1 from disk.
+Stop-ScheduledTask -TaskPath "\JeffLocal\" -TaskName "JeffLocal - Service Watchdog" -ErrorAction SilentlyContinue
+$wdProcs = Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" |
+    Where-Object { $_.CommandLine -like "*watchdog.ps1*" }
+foreach ($p in $wdProcs) {
+    Write-Host "  killing lingering watchdog PID $($p.ProcessId) (created $($p.CreationDate))" -ForegroundColor Yellow
+    Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue
+}
 Start-Sleep -Seconds 3
 Start-ScheduledTask -TaskPath "\JeffLocal\" -TaskName "JeffLocal - Service Watchdog"
 Start-Sleep -Seconds 5
 $wd = Get-ScheduledTask -TaskPath "\JeffLocal\" -TaskName "JeffLocal - Service Watchdog"
 Write-Host "Watchdog task State: $($wd.State)" -ForegroundColor Green
 
+# Confirm the running watchdog process is genuinely NEW (created just now, not the old orphan)
+$newProc = Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" |
+    Where-Object { $_.CommandLine -like "*watchdog.ps1*" } | Select-Object -First 1
+if ($newProc) {
+    Write-Host "Running watchdog PID $($newProc.ProcessId), created $($newProc.CreationDate)." -ForegroundColor Green
+} else {
+    Write-Host "WARNING: no watchdog process found after start - check manually." -ForegroundColor Red
+}
+
 # --- Verify ---
 Write-Host ""
-Write-Host "Verifying... (watchdog takes up to ~60s to complete its first check pass)" -ForegroundColor Cyan
+Write-Host "Verifying... (watchdog takes up to ~70s to complete its first check pass and start tenant2)" -ForegroundColor Cyan
 Write-Host "Churchtown (8765) AFTER:  $(Test-Churchtown)" -ForegroundColor Yellow
+Write-Host "Waiting up to 90s for tenant2 (8766) to come up under the watchdog..." -ForegroundColor Cyan
+$tenant2Up = $false
+for ($i = 0; $i -lt 18; $i++) {
+    Start-Sleep -Seconds 5
+    try {
+        $t = Invoke-RestMethod -Uri "http://localhost:8766/api/health" -TimeoutSec 3
+        Write-Host "Tenant2 (8766) UP: ok=$($t.ok) case_count=$($t.checks.case_count)" -ForegroundColor Green
+        $tenant2Up = $true
+        break
+    } catch { }
+}
+if (-not $tenant2Up) {
+    Write-Host "Tenant2 (8766) not up after 90s. Check: Get-Content C:\JeffLocal\logs\service_control\watchdog.log -Tail 20" -ForegroundColor Red
+}
 Write-Host ""
-Write-Host "Watch tenant2 (8766) come up over the next minute with either of:" -ForegroundColor Cyan
-Write-Host "    Invoke-RestMethod http://localhost:8766/api/health" -ForegroundColor Gray
-Write-Host "    Get-Content C:\JeffLocal\logs\service_control\watchdog.log -Tail 20" -ForegroundColor Gray
-Write-Host ""
-Write-Host "Done. Churchtown should read case_count=78 unchanged above; tenant2 should" -ForegroundColor Green
-Write-Host "read case_count=0 (empty placeholder tenant) once the watchdog has started it." -ForegroundColor Green
+Write-Host "Done. Churchtown should read case_count=78 (unchanged); tenant2 should read case_count=0." -ForegroundColor Green
