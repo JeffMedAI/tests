@@ -99,7 +99,7 @@ $settings4 = New-ScheduledTaskSettingsSet `
     -RestartCount 2 `
     -RestartInterval (New-TimeSpan -Minutes 10) `
     -StartWhenAvailable `
-    -RunOnlyIfNetworkAvailable $false
+    -RunOnlyIfNetworkAvailable:$false
 
 Register-ScheduledTask `
     -TaskName "JeffLocal - GDPR Weekly Purge" `
@@ -132,7 +132,7 @@ $settings5 = New-ScheduledTaskSettingsSet `
     -RestartCount 2 `
     -RestartInterval (New-TimeSpan -Minutes 10) `
     -StartWhenAvailable `
-    -RunOnlyIfNetworkAvailable $false
+    -RunOnlyIfNetworkAvailable:$false
 
 Register-ScheduledTask `
     -TaskName "JeffLocal - GDPR Weekly Purge (tenant2)" `
