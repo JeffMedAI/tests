@@ -116,8 +116,16 @@ Built in an isolated worktree, TDD'd, Security-reviewed (APPROVE), full live E2E
     **FIX SCRIPT READY (not yet run): `scripts\service_control\fix_tenant_config_acl.ps1`** — breaks
     inheritance + removes Authenticated Users (and the orphan SID) on config\tenants ONLY (that dir is
     read-only for the app, so safe), re-checks the loader's exact condition, then launches tenant2 and
-    polls 8766. **Saeed to run it (admin).** The watchdog also hit its restart cap (3/3 this hour) for
-    tenant2, which is why the script brings it up manually. [UNVERIFIED until that run: tenant2 up on 8766.]
+    polls 8766.
+  - **2026-07-21 run #4 (fix_tenant_config_acl.ps1): SUCCESS — STEP 4 FULLY VERIFIED COMPLETE.**
+    Saeed ran it (admin). config\tenants no longer writable by Authenticated Users; tenant2 launched.
+    Verified live: tenant2 (8766) ok=True case_count=0 (own isolated DB), churchtown (8765) ok=True
+    case_count=78 (untouched), and the watchdog's 13:43 check pass logs "Tenant 2 Dashboard (8766...) OK"
+    — i.e. the watchdog is now actively managing tenant2. Nothing left [UNVERIFIED] for step 4.
+    LEFTOVER (non-blocking, folds into open security item #3): the orphan SID
+    S-1-5-21-...-2510526684 still has write on config\tenants — `/remove:g` on it didn't strip it, but
+    the loader only flags named principals (Everyone/Users/Authenticated Users/INTERACTIVE), not raw
+    SIDs, so it does NOT block anything. Clean it up as part of the broader ACL fix.
 - **COMPLIANCE FINDING 2026-07-21 (flagged to Saeed):** the `JeffLocal - GDPR Weekly Purge` task was
   **never actually registered** — the switch bug above made task 4 throw every time this script ran.
   Confirmed absent from `Get-ScheduledTask -TaskPath \JeffLocal\` (only Evening Brief, Health Check,
