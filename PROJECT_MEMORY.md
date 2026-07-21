@@ -99,11 +99,17 @@ Built in an isolated worktree, TDD'd, Security-reviewed (APPROVE), full live E2E
   ADMIN PowerShell. It registers the tenant2 GDPR-purge scheduled task AND restarts the watchdog so
   it manages tenant2 on 8766. Non-elevated sessions get "Access denied". Until run, tenant2 works
   but is not watchdog-managed. Script health-checks churchtown before/after.
-  - **2026-07-21: Saeed ran it, hit a bug — now FIXED (commit f88edef), Saeed to RE-RUN.**
-    `register_scheduled_tasks.ps1` had `-RunOnlyIfNetworkAvailable $false` (switch needs the colon
-    form) — threw at task 4 and aborted before registering any purge task or restarting the watchdog.
-    Fixed to `:$false`, proven, pushed. Tasks 1-3 had already re-registered fine on that partial run;
-    churchtown untouched. **Re-run apply_tenant2_ops.ps1 (admin) to finish.**
+  - **2026-07-21 run #1: hit switch-syntax bug — FIXED (f88edef).** `register_scheduled_tasks.ps1`
+    had `-RunOnlyIfNetworkAvailable $false` (switch needs colon form) — threw at task 4, aborted.
+    Fixed to `:$false`.
+  - **2026-07-21 run #2: scheduled tasks all registered OK (both GDPR purges now exist), but the
+    watchdog did NOT pick up tenant2.** Root cause: an ORPHANED elevated `watchdog.ps1` process from
+    an earlier boot (5 days old) kept running OLD in-memory code — Stop/Start-ScheduledTask did not
+    replace it, so its check pass never listed Tenant2Dashboard and 8766 never came up. **FIXED
+    (commit ae1e140):** apply_tenant2_ops.ps1 now force-kills every lingering watchdog.ps1 process by
+    PID before Start-ScheduledTask, and polls 8766 to confirm tenant2 comes up. **Saeed to RE-RUN
+    apply_tenant2_ops.ps1 (admin) once more** — the force-kill needs elevation (the orphan is elevated).
+    [UNVERIFIED until that run: watchdog actually managing tenant2 on 8766.]
 - **COMPLIANCE FINDING 2026-07-21 (flagged to Saeed):** the `JeffLocal - GDPR Weekly Purge` task was
   **never actually registered** — the switch bug above made task 4 throw every time this script ran.
   Confirmed absent from `Get-ScheduledTask -TaskPath \JeffLocal\` (only Evening Brief, Health Check,
