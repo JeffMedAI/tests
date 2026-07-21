@@ -1,6 +1,6 @@
 ﻿# PROJECT MEMORY — JeffLocal
 # READ THIS FIRST at every session start, before doing anything else.
-# Last updated: 2026-07-20 (session close — ACL fix run, daily-brief crash fixed)
+# Last updated: 2026-07-21 (session close — multi-tenancy step 4 built, merged, pushed)
 # Maintained by: Claude (update at end of every session)
 
 ---
@@ -75,7 +75,35 @@ strategy | Docs, reports, governance, marketing
 
 ---
 
-## CURRENT STATUS -- 2026-07-20 (updated)
+## CURRENT STATUS -- 2026-07-21 (updated)
+
+### MULTI-TENANCY STEP 4 DONE + MERGED 2026-07-21 (one elevated step left for Saeed)
+Second tenant instance stood up under a **generic placeholder identity ("Tenant 2", slug `tenant2`)**
+— deliberately NOT a real business name until a tenant is ready for go-live (Saeed's instruction).
+Built in an isolated worktree, TDD'd, Security-reviewed (APPROVE), full live E2E, merged to main
+(85815a1) and pushed. Churchtown (8765, case_count 78) health-checked unaffected throughout.
+- **Real bug fixed:** `db.py` `init_db()` used to seed 3 demo staff rows (incl. an unusable
+  "Admin Demo" with `password_hash=NULL`) on ANY empty DB. Now gated to the default/no-tenant
+  instance only (`and not os.environ.get("JEFFLOCAL_TENANT_NAME")`). Would have hit every future tenant.
+- **New `scripts/tenant/create_tenant_db.py`:** fresh-DB counterpart to migrate_to_tenant_db.py.
+  Seeds TWO placeholder logins per tenant (admin + staff), both `must_change_password=1`, both
+  audit-logged, reuses auth.py hashing. Real `tenant2.sqlite` created in production data path
+  (case_count 0, integrity ok). Placeholder logins: `admin-tenant2` / `staff-tenant2` (one-time
+  passwords issued in-session, forced change on first login).
+- **New files:** `config/tenants/tenant2.env` (port 8766), `governance/TENANT_REGISTRY.md`.
+- **backup_db.py** loops all tenant DBs (missing tenant = skipped, not failure). **watchdog.ps1**
+  has a new `Tenant2Dashboard` entry (8766); ProductionDashboard block diffed byte-identical.
+  **register_scheduled_tasks.ps1** has a 2nd GDPR-purge task for tenant2.
+- **436 Python tests green** (393 dashboard post-merge + 54 scripts) + 2 new PS regression tests.
+- **ONE ELEVATED STEP LEFT FOR SAEED:** run `scripts\service_control\apply_tenant2_ops.ps1` in an
+  ADMIN PowerShell. It registers the tenant2 GDPR-purge scheduled task AND restarts the watchdog so
+  it manages tenant2 on 8766. Non-elevated sessions get "Access denied". Until run, tenant2 works
+  but is not watchdog-managed. Script health-checks churchtown before/after.
+- **Deliberately OUT of scope this round:** any Cloudflare hostname for tenant2, the churchtown
+  hostname rename (dashboard.app-avamed.uk -> churchtown.app-avamed.uk), and the tenant-admin /
+  avamed-super-admin role rename (that belongs to §8 step 5, the tenant picker). Saeed wants
+  Claude's Cloudflare guidance when ready.
+
 
 ### NOTHING IS LIVE — READ BEFORE JUDGING SEVERITY BELOW
 **All patient data in the system is FAKE** (Saeed, 2026-07-17). Neither Churchtown nor St Marks is
@@ -279,13 +307,13 @@ RANK | TASK                                               | AGENT    | STATUS
      |                                                    |          | fix script, dashboard restarted
      |                                                    |          | + health-checked clean. Unblocks
      |                                                    |          | tenant onboarding step 4.
- 4   | Multi-tenancy: SEPARATE DB PER TENANT              | Backend  | STEPS 1-3 DONE + DEPLOYED
-     | tenant = a GP practice OR St Marks. Avamed         |          | 2026-07-17 (commits 06af07e,
-     | super-admin = tenant switcher, one tenant at a     |          | 390f774, 7d9792d, d0d1393).
-     | time. (supersedes old "tenant_id / Phase 2")       |          | churchtown.sqlite created +
-     |                                                    |          | verified. Step 4 (stand up
-     |                                                    |          | stmarks instance) next, still
-     |                                                    |          | blocked by item #3 (config ACL).
+ 4   | Multi-tenancy: SEPARATE DB PER TENANT              | Backend  | STEPS 1-4 DONE + MERGED.
+     | tenant = a GP practice OR a pharmacy. Avamed       |          | Step 4 built 2026-07-21 under
+     | super-admin = tenant switcher, one tenant at a     |          | placeholder identity "Tenant 2"
+     | time. (supersedes old "tenant_id / Phase 2")       |          | (85815a1). ONE elevated step
+     |                                                    |          | left: Saeed runs
+     |                                                    |          | apply_tenant2_ops.ps1. Step 5
+     |                                                    |          | (tenant picker + roles) next.
  5   | Merge feature/secrets-loader                       | DevOps   | DONE 2026-07-17 (06af07e).
      |                                                    |          | Security APPROVE after fixes.
  6   | Add lint (ruff/pyflakes) to test gate              | DevOps   | pyflakes caught 2 real bugs on
@@ -418,7 +446,12 @@ Branch:  main. C:\JeffLocal (the repo root) IS the production directory — its 
          ALWAYS verify with `git branch --show-current` before assuming this.
 Main:    merged 2026-07-14 (feature/refactor-2-5-6 → main, Saeed approved, commit 79bd895),
          deployed to production 2026-07-15.
-Latest:  67e884a docs: confirm Ollama autostart task now live (Saeed ran elevated command)
+Latest:  037dd63 chore: add apply_tenant2_ops.ps1 (one-time admin step for tenant2 go-live).
+         Local == origin/main, pushed 2026-07-21. Preceded by 3d80223 (CHANGELOG entry) and
+         85815a1 (Merge feature/multitenancy-tenant2 into main — multi-tenancy step 4). Step 4
+         built under placeholder identity "Tenant 2", localhost:8766 only. One elevated step left
+         for Saeed: run scripts\service_control\apply_tenant2_ops.ps1 in admin PowerShell.
+Earlier: 67e884a docs: confirm Ollama autostart task now live (Saeed ran elevated command)
          — preceded by 30814ca fix: Ollama autostart task + brief fallback on Ollama unavailable.
          Both landed 2026-07-20, fixing the 3-missed-brief bug (see What is working). Directory
          ACL fix (fix_directory_acl.ps1) also run 2026-07-20 but is a permissions change, not a
