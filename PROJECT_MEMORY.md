@@ -102,14 +102,22 @@ Built in an isolated worktree, TDD'd, Security-reviewed (APPROVE), full live E2E
   - **2026-07-21 run #1: hit switch-syntax bug — FIXED (f88edef).** `register_scheduled_tasks.ps1`
     had `-RunOnlyIfNetworkAvailable $false` (switch needs colon form) — threw at task 4, aborted.
     Fixed to `:$false`.
-  - **2026-07-21 run #2: scheduled tasks all registered OK (both GDPR purges now exist), but the
-    watchdog did NOT pick up tenant2.** Root cause: an ORPHANED elevated `watchdog.ps1` process from
-    an earlier boot (5 days old) kept running OLD in-memory code — Stop/Start-ScheduledTask did not
-    replace it, so its check pass never listed Tenant2Dashboard and 8766 never came up. **FIXED
-    (commit ae1e140):** apply_tenant2_ops.ps1 now force-kills every lingering watchdog.ps1 process by
-    PID before Start-ScheduledTask, and polls 8766 to confirm tenant2 comes up. **Saeed to RE-RUN
-    apply_tenant2_ops.ps1 (admin) once more** — the force-kill needs elevation (the orphan is elevated).
-    [UNVERIFIED until that run: watchdog actually managing tenant2 on 8766.]
+  - **2026-07-21 run #2: scheduled tasks all registered OK (both GDPR purges now exist).** But the
+    watchdog didn't pick up tenant2 — ORPHANED elevated `watchdog.ps1` from an earlier boot kept
+    running OLD code. **FIXED (ae1e140):** apply_tenant2_ops.ps1 force-kills lingering watchdog
+    processes before restart.
+  - **2026-07-21 run #3: watchdog now runs new code (killed old PID 37244, new PID 67872), lists
+    Tenant2Dashboard — but tenant2 STILL won't start.** Real root cause found in
+    `dashboard-tenant2.log`: `[TENANT] REFUSING TO START: C:\JeffLocal\config\tenants is writable by
+    NT AUTHORITY\Authenticated Users`. The tenant loader (_load_tenant_config.ps1:66-75) refuses if
+    the config dir grants Write/Modify to Everyone/Users/Authenticated Users/INTERACTIVE.
+    `Authenticated Users:Modify` is on config\tenants **INHERITED from the C:\ drive root** — the
+    07-20 `icacls /remove:g` fix only strips EXPLICIT grants, so it never cleared the inherited one.
+    **FIX SCRIPT READY (not yet run): `scripts\service_control\fix_tenant_config_acl.ps1`** — breaks
+    inheritance + removes Authenticated Users (and the orphan SID) on config\tenants ONLY (that dir is
+    read-only for the app, so safe), re-checks the loader's exact condition, then launches tenant2 and
+    polls 8766. **Saeed to run it (admin).** The watchdog also hit its restart cap (3/3 this hour) for
+    tenant2, which is why the script brings it up manually. [UNVERIFIED until that run: tenant2 up on 8766.]
 - **COMPLIANCE FINDING 2026-07-21 (flagged to Saeed):** the `JeffLocal - GDPR Weekly Purge` task was
   **never actually registered** — the switch bug above made task 4 throw every time this script ran.
   Confirmed absent from `Get-ScheduledTask -TaskPath \JeffLocal\` (only Evening Brief, Health Check,
@@ -143,13 +151,17 @@ incident language; that was overstated.)
    64 bytes, tracked since ff699b5, pushed to GitHub. Needs **ROTATION** — it is in history,
    so deleting/untracking does not help. The `config/*secret*` ignore rule never matched it
    because gitignore globs do not cross `/`.
-3. **DONE 2026-07-20 — `C:\JeffLocal` AND `C:\JeffLocal\config` ACLs fixed.** Saeed ran
-   `scripts\service_control\fix_directory_acl.ps1` himself (admin PowerShell, as designed — Claude
-   does not run Windows security-setting changes directly). Confirmed after: `Authenticated Users`
-   cut back to read/execute only on both directories; Administrators/SYSTEM keep full control.
-   Dashboard restarted (`restart_all.ps1 -DashOnly`) and health-checked clean afterwards
-   (`/api/health` → all services up, case_count 78 unchanged). This also clears the block on
-   multi-tenancy step 4 (standing up the St Marks tenant instance) — pick that up next session.
+3. **PARTIALLY fixed 2026-07-20 — INCOMPLETE, corrected understanding 2026-07-21.** Saeed ran
+   `scripts\service_control\fix_directory_acl.ps1` (admin). It removed the EXPLICIT
+   `Authenticated Users` / `CodexSandboxUsers` / orphan-SID write grants. **BUT `Authenticated Users:
+   Modify` is ALSO present as an INHERITED ACE flowing from the C:\ drive root, and `icacls /remove:g`
+   only strips explicit ACEs — so `C:\JeffLocal` and `config` are STILL writable by Authenticated
+   Users via inheritance** (verified 2026-07-21 via `icacls`, shows `(I)(M)`). The proper fix is
+   delicate: the dashboard runs as a normal user whose ONLY write access to the DB/logs is via that
+   same Authenticated Users grant, so you must grant the service account explicit write FIRST, then
+   break inheritance and remove Authenticated Users — otherwise production loses write access. NOT yet
+   done. (The `config\tenants` subfolder was unblocked separately for tenant2 — see step 4 status —
+   because that folder is read-only for the app, making its lockdown safe.)
 
 ### What is working
 - **Daily WhatsApp brief was silently broken for 3 straight runs (Sat 07-19 AM, 07-19 PM, Mon
