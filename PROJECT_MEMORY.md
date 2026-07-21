@@ -1,6 +1,6 @@
 ﻿# PROJECT MEMORY — JeffLocal
 # READ THIS FIRST at every session start, before doing anything else.
-# Last updated: 2026-07-21 (session close — multi-tenancy step 4 built, merged, pushed)
+# Last updated: 2026-07-21 18:00 (automated session-end — step 4 verified complete, step 5 queued)
 # Maintained by: Claude (update at end of every session)
 
 ---
@@ -490,12 +490,13 @@ Branch:  main. C:\JeffLocal (the repo root) IS the production directory — its 
          ALWAYS verify with `git branch --show-current` before assuming this.
 Main:    merged 2026-07-14 (feature/refactor-2-5-6 → main, Saeed approved, commit 79bd895),
          deployed to production 2026-07-15.
-Latest:  513ce36 docs: tenant naming convention (stable tenantN slug + real display name).
+Latest:  f4b73d8 memory: session close — step 4 verified complete, step 5 queued.
          Local == origin/main, pushed 2026-07-21. STEP 4 DONE + VERIFIED (tenant2 live on 8766,
          watchdog-managed). Key commits this session: 85815a1 (merge step 4), f88edef (scheduled-task
          switch fix + GDPR-purge-never-registered finding), ae1e140 (watchdog orphan force-kill),
          ffe4bec (config\tenants ACL fix + 07-20 ACL fix was incomplete), 0fdbc0d (staff access model),
-         513ce36 (naming convention). Restore tag restore/2026-07-21-1343. NEXT: step 5.
+         513ce36 (naming convention), c23c12a/f4b73d8 (session close memory). Restore tag
+         restore/2026-07-21-1343 (no new restore tag cut this session — see HANDOFF.md note). NEXT: step 5.
 Earlier: 67e884a docs: confirm Ollama autostart task now live (Saeed ran elevated command)
          — preceded by 30814ca fix: Ollama autostart task + brief fallback on Ollama unavailable.
          Both landed 2026-07-20, fixing the 3-missed-brief bug (see What is working). Directory
