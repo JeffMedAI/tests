@@ -345,13 +345,19 @@ RANK | TASK                                               | AGENT    | STATUS
      |                                                    |          | fix script, dashboard restarted
      |                                                    |          | + health-checked clean. Unblocks
      |                                                    |          | tenant onboarding step 4.
- 4   | Multi-tenancy: SEPARATE DB PER TENANT              | Backend  | STEPS 1-4 DONE + MERGED.
-     | tenant = a GP practice OR a pharmacy. Avamed       |          | Step 4 built 2026-07-21 under
-     | super-admin = tenant switcher, one tenant at a     |          | placeholder identity "Tenant 2"
-     | time. (supersedes old "tenant_id / Phase 2")       |          | (85815a1). ONE elevated step
-     |                                                    |          | left: Saeed runs
-     |                                                    |          | apply_tenant2_ops.ps1. Step 5
-     |                                                    |          | (tenant picker + roles) next.
+ 4   | Multi-tenancy: SEPARATE DB PER TENANT              | Backend  | STEPS 1-4 DONE + VERIFIED
+     | tenant = a GP practice OR a pharmacy. Avamed       |          | (tenant2 live on 8766,
+     | super-admin = tenant switcher, one tenant at a     |          | watchdog-managed, 2026-07-21).
+     | time. (supersedes old "tenant_id / Phase 2")       |          | Step 5 (tenant picker + roles)
+     |                                                    |          | next. NAMING RULE (Saeed
+     |                                                    |          | 2026-07-21): slug = stable
+     |                                                    |          | tenantN, display name = real
+     |                                                    |          | practice name. Step 5 must
+     |                                                    |          | rename churchtown -> slug
+     |                                                    |          | tenant1 (display "Churchtown
+     |                                                    |          | Medical Centre") when it wires
+     |                                                    |          | up the first tenant + repoints
+     |                                                    |          | 8765. See TENANT_REGISTRY.md.
  5   | Merge feature/secrets-loader                       | DevOps   | DONE 2026-07-17 (06af07e).
      |                                                    |          | Security APPROVE after fixes.
  6   | Add lint (ruff/pyflakes) to test gate              | DevOps   | pyflakes caught 2 real bugs on
