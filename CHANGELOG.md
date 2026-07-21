@@ -389,3 +389,30 @@ accounts).
 **Saeed notified:** This session. One-time placeholder passwords for the real `tenant2.sqlite` accounts were
 printed once in-session and are not repeated here or logged anywhere else — Saeed has them from the session
 transcript.
+
+---
+
+## 2026-07-21 — Fix register_scheduled_tasks.ps1 switch syntax + found GDPR purge task never registered
+**Agent:** Lead Agent (Claude Code session)
+**Approved by:** Bug surfaced when Saeed ran apply_tenant2_ops.ps1 in admin PowerShell (screenshot). Fix
+committed same session; Saeed to re-run the admin script.
+**Description:** `register_scheduled_tasks.ps1` used `-RunOnlyIfNetworkAvailable $false` (space form) in the
+GDPR-purge task blocks. `-RunOnlyIfNetworkAvailable` is a SWITCH parameter, so the space form passes `$false`
+as a stray positional argument and `New-ScheduledTaskSettingsSet` throws "A positional parameter cannot be
+found that accepts argument 'False'". The script aborted at task 4 (churchtown GDPR purge) before registering
+any purge task or reaching the watchdog restart. Fixed both occurrences (task 4 pre-existing, task 5 tenant2
+copied it) to the colon form `-RunOnlyIfNetworkAvailable:$false`. Behaviour identical to intent
+(RunOnlyIfNetworkAvailable=False); `gdpr_purge.py` itself untouched.
+**SIDE FINDING (compliance-relevant, flagged to Saeed):** Because task 4 always threw at this line, the
+`JeffLocal - GDPR Weekly Purge` task was **never registered** — confirmed absent from `Get-ScheduledTask
+-TaskPath \JeffLocal\` (only Evening Brief, Health Check, Service Watchdog, Strategy Daily Report exist). So
+churchtown's GDPR 90-day purge is **not currently scheduled**. Pre-go-live debt only — nothing is live and all
+data is fake — but a real gap the bug was masking. The fix lets both GDPR purge tasks (churchtown + tenant2)
+register on the next admin run of apply_tenant2_ops.ps1 / register_scheduled_tasks.ps1.
+**Files changed:** `scripts/register_scheduled_tasks.ps1` (2 lines).
+**Tests run:** Reproduced the exact failure and proved the colon form fixes it via `New-ScheduledTaskSettingsSet`
+(no elevation needed). Built all 5 settings-sets + the tenant2 trigger/action in memory — all clean. Full file
+parses with zero syntax errors. Did NOT run `Register-ScheduledTask` itself (needs elevation — Saeed's admin re-run).
+**Security review:** Syntax-only fix, no compliance/auth LOGIC changed (purge logic in gdpr_purge.py untouched).
+The compliance-relevant part is the *finding* that the purge was unscheduled, surfaced here for Saeed.
+**Saeed notified:** This session.

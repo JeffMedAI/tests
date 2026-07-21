@@ -83,10 +83,16 @@ this round. Built, tested, merged, pushed. One elevated step left for Saeed to r
 ## NEXT + BLOCKERS
 
 **Next action, in order:**
-1. **Saeed runs `C:\JeffLocal\scripts\service_control\apply_tenant2_ops.ps1` in an ADMIN PowerShell.**
-   Registers the tenant2 GDPR-purge scheduled task + restarts the watchdog so it manages tenant2 on
-   8766. Non-elevated sessions get "Access denied" - this is the one elevated step left. Script
-   health-checks churchtown before/after so disruption is visible if any.
+1. **Saeed RE-runs `C:\JeffLocal\scripts\service_control\apply_tenant2_ops.ps1` in an ADMIN PowerShell.**
+   First run (2026-07-21) hit a bug in register_scheduled_tasks.ps1 (`-RunOnlyIfNetworkAvailable $false`
+   — a switch param needs the colon form). FIXED (commit f88edef) and pushed. Re-run to finish:
+   registers BOTH GDPR-purge tasks + restarts the watchdog so it manages tenant2 on 8766. Non-elevated
+   sessions get "Access denied". After it runs, `Get-ScheduledTask -TaskPath \JeffLocal\` should show
+   `JeffLocal - GDPR Weekly Purge`, `... (tenant2)`, and the watchdog; churchtown (8765) still 78,
+   tenant2 (8766) case_count 0.
+   **COMPLIANCE NOTE:** that switch bug meant `JeffLocal - GDPR Weekly Purge` was NEVER registered at
+   all — churchtown's 90-day purge is currently unscheduled (pre-go-live debt, all data fake). The
+   re-run fixes it; confirm it lands.
 2. After that: confirm tenant2 (8766) is watchdog-managed (case_count 0) and churchtown (8765) still 78.
 3. Step 5 (§8): tenant picker page + Avamed super-admin account per tenant. The tenant-admin /
    avamed-super-admin ROLE rename lives here, deliberately kept OUT of step 4.
@@ -107,6 +113,8 @@ this round. Built, tested, merged, pushed. One elevated step left for Saeed to r
 - LLM output must NEVER set verification_status, safe_to_queue, priority, or identity fields.
 - Session cookies expire after 1 hour.
 - .ps1 files here must be plain ASCII - PowerShell 5.1 mangles em-dashes / smart quotes.
+- PowerShell SWITCH params take the colon form for a value: `-Switch:$false`, never `-Switch $false`
+  (the space form passes $false as a stray positional arg and throws). Bit register_scheduled_tasks.ps1.
 - Windows security/ACL/scheduled-task changes are run by Saeed in admin PowerShell, not by Claude.
 - Stale .git/index.lock recurs - remove the 0-byte lock (no git running) if a merge/stash dies.
 - pytest: pass --basetemp to somewhere writable; default temp folder can be permission-locked here.

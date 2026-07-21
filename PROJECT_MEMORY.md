@@ -99,6 +99,18 @@ Built in an isolated worktree, TDD'd, Security-reviewed (APPROVE), full live E2E
   ADMIN PowerShell. It registers the tenant2 GDPR-purge scheduled task AND restarts the watchdog so
   it manages tenant2 on 8766. Non-elevated sessions get "Access denied". Until run, tenant2 works
   but is not watchdog-managed. Script health-checks churchtown before/after.
+  - **2026-07-21: Saeed ran it, hit a bug — now FIXED (commit f88edef), Saeed to RE-RUN.**
+    `register_scheduled_tasks.ps1` had `-RunOnlyIfNetworkAvailable $false` (switch needs the colon
+    form) — threw at task 4 and aborted before registering any purge task or restarting the watchdog.
+    Fixed to `:$false`, proven, pushed. Tasks 1-3 had already re-registered fine on that partial run;
+    churchtown untouched. **Re-run apply_tenant2_ops.ps1 (admin) to finish.**
+- **COMPLIANCE FINDING 2026-07-21 (flagged to Saeed):** the `JeffLocal - GDPR Weekly Purge` task was
+  **never actually registered** — the switch bug above made task 4 throw every time this script ran.
+  Confirmed absent from `Get-ScheduledTask -TaskPath \JeffLocal\` (only Evening Brief, Health Check,
+  Service Watchdog, Strategy Daily Report exist). So churchtown's GDPR 90-day purge is NOT currently
+  scheduled. Pre-go-live debt (nothing live, all data fake) but real — the fixed script registers it
+  on the next admin run. Verify it lands: after re-running, `Get-ScheduledTask` should show BOTH
+  `JeffLocal - GDPR Weekly Purge` and `JeffLocal - GDPR Weekly Purge (tenant2)`.
 - **Deliberately OUT of scope this round:** any Cloudflare hostname for tenant2, the churchtown
   hostname rename (dashboard.app-avamed.uk -> churchtown.app-avamed.uk), and the tenant-admin /
   avamed-super-admin role rename (that belongs to §8 step 5, the tenant picker). Saeed wants
@@ -446,11 +458,12 @@ Branch:  main. C:\JeffLocal (the repo root) IS the production directory — its 
          ALWAYS verify with `git branch --show-current` before assuming this.
 Main:    merged 2026-07-14 (feature/refactor-2-5-6 → main, Saeed approved, commit 79bd895),
          deployed to production 2026-07-15.
-Latest:  037dd63 chore: add apply_tenant2_ops.ps1 (one-time admin step for tenant2 go-live).
-         Local == origin/main, pushed 2026-07-21. Preceded by 3d80223 (CHANGELOG entry) and
-         85815a1 (Merge feature/multitenancy-tenant2 into main — multi-tenancy step 4). Step 4
-         built under placeholder identity "Tenant 2", localhost:8766 only. One elevated step left
-         for Saeed: run scripts\service_control\apply_tenant2_ops.ps1 in admin PowerShell.
+Latest:  f88edef fix: register_scheduled_tasks.ps1 switch syntax (-RunOnlyIfNetworkAvailable:$false).
+         Local == origin/main, pushed 2026-07-21. Fixes the bug Saeed hit running apply_tenant2_ops.ps1;
+         also surfaced that the GDPR purge task was never registered (see status above). Preceded by
+         1735b08 (session close), 037dd63 (apply_tenant2_ops.ps1), 3d80223 (CHANGELOG), 85815a1
+         (Merge multi-tenancy step 4). ONE elevated step still left: Saeed RE-runs
+         apply_tenant2_ops.ps1 in admin PowerShell.
 Earlier: 67e884a docs: confirm Ollama autostart task now live (Saeed ran elevated command)
          — preceded by 30814ca fix: Ollama autostart task + brief fallback on Ollama unavailable.
          Both landed 2026-07-20, fixing the 3-missed-brief bug (see What is working). Directory
