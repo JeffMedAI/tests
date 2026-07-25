@@ -1,6 +1,6 @@
 ﻿# PROJECT MEMORY — JeffLocal
 # READ THIS FIRST at every session start, before doing anything else.
-# Last updated: 2026-07-24 18:00 (automated session-end — no commits today, pending items carried forward)
+# Last updated: 2026-07-25 18:00 (automated session-end — no commits today, pending items carried forward)
 # Maintained by: Claude (update at end of every session)
 
 ---
@@ -75,7 +75,7 @@ strategy | Docs, reports, governance, marketing
 
 ---
 
-## CURRENT STATUS -- 2026-07-24 (updated)
+## CURRENT STATUS -- 2026-07-25 (updated)
 
 ### MULTI-TENANCY STEP 4 DONE + MERGED 2026-07-21 (one elevated step left for Saeed)
 Second tenant instance stood up under a **generic placeholder identity ("Tenant 2", slug `tenant2`)**
@@ -490,9 +490,9 @@ Branch:  main. C:\JeffLocal (the repo root) IS the production directory — its 
          ALWAYS verify with `git branch --show-current` before assuming this.
 Main:    merged 2026-07-14 (feature/refactor-2-5-6 → main, Saeed approved, commit 79bd895),
          deployed to production 2026-07-15.
-Latest:  7e34430 memory: session end protocol 2026-07-22 18:00.
-         No commits made 2026-07-23 or 2026-07-24 — no code work done either day. STEP 4 DONE +
-         VERIFIED (tenant2 live on 8766, watchdog-managed) still holds.
+Latest:  9eb1ec6 memory: session end protocol 2026-07-24 18:00.
+         No commits made 2026-07-23, 2026-07-24, or 2026-07-25 — no code work done any of those
+         days. STEP 4 DONE + VERIFIED (tenant2 live on 8766, watchdog-managed) still holds.
          Key commits from 2026-07-21 session: 85815a1 (merge step 4), f88edef (scheduled-task
          switch fix + GDPR-purge-never-registered finding), ae1e140 (watchdog orphan force-kill),
          ffe4bec (config\tenants ACL fix + 07-20 ACL fix was incomplete), 0fdbc0d (staff access model),
