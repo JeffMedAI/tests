@@ -1,6 +1,6 @@
 ﻿# PROJECT MEMORY — JeffLocal
 # READ THIS FIRST at every session start, before doing anything else.
-# Last updated: 2026-07-26 18:00 (automated session-end — no commits today, pending items carried forward)
+# Last updated: 2026-07-27 18:00 (automated session-end — step 5 code merged + cutover tooling added, not yet run)
 # Maintained by: Claude (update at end of every session)
 
 ---
@@ -75,7 +75,7 @@ strategy | Docs, reports, governance, marketing
 
 ---
 
-## CURRENT STATUS -- 2026-07-26 (updated)
+## CURRENT STATUS -- 2026-07-27 (updated)
 
 ### MULTI-TENANCY STEP 4 DONE + MERGED 2026-07-21 (one elevated step left for Saeed)
 Second tenant instance stood up under a **generic placeholder identity ("Tenant 2", slug `tenant2`)**
@@ -490,7 +490,13 @@ Branch:  main. C:\JeffLocal (the repo root) IS the production directory — its 
          ALWAYS verify with `git branch --show-current` before assuming this.
 Main:    merged 2026-07-14 (feature/refactor-2-5-6 → main, Saeed approved, commit 79bd895),
          deployed to production 2026-07-15.
-Latest:  f76d63f memory: session end protocol 2026-07-25 18:00.
+Latest:  d368529 step5 cutover tooling: watchdog repoint (8765 -> tenant1) + apply script.
+         Preceded same day by 82b7ba2 (multi-tenancy step 5: avamed-super-admin role + tenant
+         picker + tenant1 naming, applied via selective checkout from Security-reviewed branch
+         feature/step5-tenant-picker-roles) and c8c7eae (recovered a stuck 2026-07-26 evening
+         memory commit — no work lost). [Certain from git log] Step 5 code is merged; the
+         cutover script (apply_step5_cutover.ps1) has NOT been confirmed run — Saeed needs to
+         execute it in an admin PowerShell window, same pattern as step 4's apply_tenant2_ops.ps1.
          No commits made 2026-07-23, 2026-07-24, 2026-07-25, or 2026-07-26 — no code work done any
          of those days. STEP 4 DONE + VERIFIED (tenant2 live on 8766, watchdog-managed) still holds.
          Key commits from 2026-07-21 session: 85815a1 (merge step 4), f88edef (scheduled-task
