@@ -215,14 +215,38 @@ $Services = @(
         Restart = {
             Stop-PortProcess 8765
             $launch = "$ScriptDir\_launch_dashboard.ps1"
+            # Multi-tenancy step 5 repoint: once config\tenants\tenant1.env exists
+            # (created by apply_step5_cutover.ps1), 8765 launches on tenant1's own
+            # database - Churchtown's data, renamed to the stable tenant1 slug -
+            # instead of the legacy default dashboard.sqlite. tenant1.env sets
+            # JEFFLOCAL_PORT=8765, so the port does not change.
+            # The Test-Path guard makes this safe to ship BEFORE the cutover runs:
+            # with no tenant1.env yet, it falls through to exactly today's default
+            # behaviour, so a watchdog restart in the pre-cutover window cannot
+            # break the live 8765.
+            $tenant1Env = "$RepoRoot\config\tenants\tenant1.env"
             if (Test-Path $launch) {
-                Start-HiddenPS $launch
+                if (Test-Path $tenant1Env) {
+                    # Not Start-HiddenPS - that helper passes no args; -Tenant
+                    # tenant1 keeps 8765 but points it at tenant1's database.
+                    Start-Process -FilePath $PS `
+                        -ArgumentList "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File `"$launch`" -Tenant tenant1" `
+                        -WindowStyle Hidden
+                } else {
+                    Start-HiddenPS $launch
+                }
             } else {
-                # Fallback: launch the dashboard (uvicorn / FastAPI) directly
+                # Fallback: launch the dashboard (uvicorn / FastAPI) directly.
+                # Only runs if _launch_dashboard.ps1 is missing (should not happen).
                 $venvPy = "$RepoRoot\dashboard\.venv\Scripts\python.exe"
                 if (-not (Test-Path $venvPy)) {
                     python -m venv "$RepoRoot\dashboard\.venv" 2>&1 | Out-Null
                     & $venvPy -m pip install -r "$RepoRoot\dashboard\requirements.txt" --quiet 2>&1 | Out-Null
+                }
+                $tenant1Db = "$RepoRoot\dashboard\data\tenants\tenant1.sqlite"
+                if (Test-Path $tenant1Db) {
+                    $env:JEFFLOCAL_TENANT_NAME = "Churchtown Medical Centre"
+                    $env:JEFFLOCAL_DB_PATH = $tenant1Db
                 }
                 Start-Process -FilePath $venvPy `
                     -ArgumentList "-m uvicorn main:app --host 0.0.0.0 --port 8765" `
