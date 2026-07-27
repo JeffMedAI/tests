@@ -15,7 +15,7 @@ from fastapi.responses import RedirectResponse
 from ..audit import write_audit_event
 from ..auth import hash_password, hash_pin
 from ..case_domain import get_team_activity
-from ..consts import STAFF_ROLES
+from ..consts import AVAMED_SUPER_ADMIN_ROLE, STAFF_ROLES
 from ..db import connect, row_to_dict
 from ..helpers import (
     current_staff_from_request,
@@ -128,8 +128,6 @@ def staff_edit(
     role = role.strip()
     if not display_name:
         raise HTTPException(status_code=400, detail="display_name is required")
-    if role not in STAFF_ROLES:
-        raise HTTPException(status_code=400, detail="Unsupported role")
     active_value = 1 if active.lower() in {"yes", "true", "1", "on"} else 0
     with connect() as conn:
         current_staff = current_staff_from_request(request, conn)
@@ -137,13 +135,31 @@ def staff_edit(
         old = get_staff_any_by_id(conn, staff_id)
         if old is None:
             raise HTTPException(status_code=404, detail="Staff user not found")
+
+        if old.get("role") == AVAMED_SUPER_ADMIN_ROLE:
+            # avamed-super-admin is never editable through this form (Security
+            # review 2026-07-22): the role dropdown in staff.html only lists
+            # STAFF_ROLES, which does NOT include avamed-super-admin, so it
+            # cannot render this row's actual role as a selected option. A
+            # browser posting the form for this row therefore submits
+            # whatever the dropdown happened to default to (its first option),
+            # and — because that value legitimately passes the STAFF_ROLES
+            # check below — this endpoint would silently downgrade the
+            # account. Only scripts/tenant/seed_super_admin.py may set or
+            # change this role. Ignore whatever the form sent and keep it.
+            final_role = old["role"]
+        else:
+            if role not in STAFF_ROLES:
+                raise HTTPException(status_code=400, detail="Unsupported role")
+            final_role = role
+
         conn.execute(
             """
             UPDATE staff_users
             SET display_name = ?, email = ?, role = ?, active = ?, updated_at = ?
             WHERE id = ?
             """,
-            (display_name, email or None, role, active_value, utc_now_iso(), staff_id),
+            (display_name, email or None, final_role, active_value, utc_now_iso(), staff_id),
         )
         write_audit_event(
             conn,
@@ -152,7 +168,7 @@ def staff_edit(
             edited_by=staff_display(current_staff),
             changed_fields=["display_name", "email", "role", "active"],
             old_values={key: old.get(key) for key in ("display_name", "email", "role", "active")},
-            new_values={"display_name": display_name, "email": email, "role": role, "active": bool(active_value)},
+            new_values={"display_name": display_name, "email": email, "role": final_role, "active": bool(active_value)},
         )
     return RedirectResponse("/staff", status_code=303)
 

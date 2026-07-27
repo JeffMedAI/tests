@@ -31,6 +31,7 @@ from .routers import pages as pages_router
 from .routers import staff as staff_router
 from .routers import stmarks as stmarks_router
 from .routers import system as system_router
+from .routers import tenants as tenants_router
 from .templates_config import templates as _templates_singleton
 
 _log = logging.getLogger(__name__)
@@ -47,6 +48,7 @@ app.include_router(pages_router.router)
 app.include_router(staff_router.router)
 app.include_router(stmarks_router.router)
 app.include_router(system_router.router)
+app.include_router(tenants_router.router)
 
 
 def _nav_alert_count() -> int:

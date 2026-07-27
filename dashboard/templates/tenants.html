@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Tenants — Avamed{% endblock %}
+
+{% block content %}
+<div class="page-scroll">
+
+  <section class="page-head app-header">
+    <div>
+      <span class="page-kicker">Avamed Support</span>
+      <h1 class="page-title">Tenants</h1>
+      <p class="page-subtitle">Each tenant runs its own isolated database and login. Pick a tenant to sign in to that tenant's own dashboard — this page never shows tenant data itself.</p>
+    </div>
+  </section>
+
+  <div class="settings-section-label">Tenant directory</div>
+  <div class="settings-cards-grid">
+    {% for tenant in tenants %}
+    <a class="settings-config-card settings-card-ok" href="{{ tenant.login_url }}" style="text-decoration:none;color:inherit;">
+      <div class="settings-card-icon">🏥</div>
+      <div class="settings-card-body">
+        <div class="settings-card-title">{{ tenant.display_name }}</div>
+        <div class="settings-card-desc">Slug: {{ tenant.slug }} &middot; Status: {{ tenant.status }}</div>
+        <div class="settings-card-path">{{ tenant.login_url }}</div>
+      </div>
+      <div class="settings-card-badge badge-ok">Login &rarr;</div>
+    </a>
+    {% else %}
+    <p class="page-subtitle">No tenants configured in config/tenants/registry.json.</p>
+    {% endfor %}
+  </div>
+
+</div>
+{% endblock %}

@@ -785,6 +785,84 @@ def test_admin_staff_edit_reactivate_invitation_and_audit(tmp_path, monkeypatch)
     assert {"staff_created", "staff_updated", "staff_deactivated", "staff_reactivated", "staff_invitation_created", "staff_invitation_cancelled"} <= actions
 
 
+def _seed_super_admin_row(db_path, display_name="Avamed Support"):
+    """Insert an avamed-super-admin row directly (mirrors what
+    scripts/tenant/seed_super_admin.py does) — the ordinary /staff/create
+    route can never produce this role (see test_tenant_picker.py), so tests
+    that need one to already exist must seed it directly."""
+    import app.auth as auth_module
+
+    now = "2026-01-01T00:00:00Z"
+    with connect(db_path) as conn:
+        conn.execute(
+            """
+            INSERT INTO staff_users
+                (display_name, username, email, role, password_hash, pin_hash,
+                 failed_attempts, must_change_password, active, created_at, updated_at)
+            VALUES (?, ?, ?, 'avamed-super-admin', ?, NULL, 0, 0, 1, ?, ?)
+            """,
+            (display_name, "avamed-support", "support@avamed.invalid", auth_module.hash_password("x" * 16), now, now),
+        )
+        conn.commit()
+        return conn.execute(
+            "SELECT id FROM staff_users WHERE display_name = ?", (display_name,)
+        ).fetchone()["id"]
+
+
+def test_staff_edit_cannot_downgrade_avamed_super_admin_role(tmp_path, monkeypatch):
+    """Security review 2026-07-22 blocker 2: staff.html's role dropdown can't
+    represent avamed-super-admin, so a browser posting the edit form for that
+    row submits some other value (whatever the select defaulted to) — this
+    must NOT change the stored role, even though a tenant-admin is allowed to
+    edit the row's other fields (display_name/email/active)."""
+    client_context, db_path = make_client(tmp_path, monkeypatch)
+    super_admin_id = _seed_super_admin_row(db_path)
+
+    with client_context as client:
+        client.cookies.set(SESSION_COOKIE, login_as(db_path, "Admin Demo"))
+        edit = client.post(
+            f"/staff/{super_admin_id}/edit",
+            data={
+                "display_name": "Avamed Support Renamed",
+                "email": "renamed@avamed.invalid",
+                "role": "admin",  # what a defaulted <select> would submit
+                "active": "yes",
+            },
+            follow_redirects=False,
+        )
+
+    assert edit.status_code == 303
+    with connect(db_path) as conn:
+        row = conn.execute(
+            "SELECT display_name, email, role FROM staff_users WHERE id = ?", (super_admin_id,)
+        ).fetchone()
+    # role preserved...
+    assert row["role"] == "avamed-super-admin"
+    # ...but other fields still editable as normal.
+    assert row["display_name"] == "Avamed Support Renamed"
+    assert row["email"] == "renamed@avamed.invalid"
+
+
+def test_avamed_super_admin_cannot_self_downgrade_via_edit_form(tmp_path, monkeypatch):
+    """Same guard, exercised as a self-edit by the super-admin's own real
+    DB-backed session (not just a tenant-admin editing someone else)."""
+    client_context, db_path = make_client(tmp_path, monkeypatch, login_as_name=None)
+    super_admin_id = _seed_super_admin_row(db_path)
+
+    with client_context as client:
+        client.cookies.set(SESSION_COOKIE, login_as(db_path, "Avamed Support"))
+        edit = client.post(
+            f"/staff/{super_admin_id}/edit",
+            data={"display_name": "Avamed Support", "role": "staff", "active": "yes"},
+            follow_redirects=False,
+        )
+
+    assert edit.status_code == 303
+    with connect(db_path) as conn:
+        row = conn.execute("SELECT role FROM staff_users WHERE id = ?", (super_admin_id,)).fetchone()
+    assert row["role"] == "avamed-super-admin"
+
+
 def test_non_admin_staff_management_mutation_forbidden(tmp_path, monkeypatch):
     client_context, db_path = make_client(tmp_path, monkeypatch)
     with client_context as client:

@@ -35,6 +35,117 @@ def connect(db_path: Path | None = None) -> sqlite3.Connection:
     return conn
 
 
+_ROLE_CHECK_TABLES: dict[str, tuple[str, list[str]]] = {
+    "staff_users": (
+        """
+        CREATE TABLE {table} (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            display_name TEXT NOT NULL,
+            email TEXT,
+            role TEXT NOT NULL CHECK(role IN ('admin', 'staff', 'readonly', 'avamed-super-admin')),
+            demo_pin_hash TEXT,
+            active INTEGER NOT NULL DEFAULT 1,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            username TEXT,
+            password_hash TEXT,
+            pin_hash TEXT,
+            failed_attempts INTEGER NOT NULL DEFAULT 0,
+            locked_until TEXT,
+            last_login_at TEXT,
+            must_change_password INTEGER NOT NULL DEFAULT 0
+        )
+        """,
+        [
+            "id", "display_name", "email", "role", "demo_pin_hash", "active",
+            "created_at", "updated_at", "username", "password_hash", "pin_hash",
+            "failed_attempts", "locked_until", "last_login_at", "must_change_password",
+        ],
+    ),
+    "staff_invitations": (
+        """
+        CREATE TABLE {table} (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT NOT NULL,
+            role TEXT NOT NULL CHECK(role IN ('admin', 'staff', 'readonly', 'avamed-super-admin')),
+            invited_by_staff_id INTEGER,
+            token_hash TEXT,
+            status TEXT NOT NULL CHECK(status IN ('pending', 'accepted', 'cancelled', 'expired')),
+            created_at TEXT NOT NULL,
+            expires_at TEXT,
+            accepted_at TEXT,
+            cancelled_at TEXT
+        )
+        """,
+        [
+            "id", "email", "role", "invited_by_staff_id", "token_hash", "status",
+            "created_at", "expires_at", "accepted_at", "cancelled_at",
+        ],
+    ),
+}
+
+
+def _migrate_role_check_constraint(conn: sqlite3.Connection) -> None:
+    """Widen staff_users/staff_invitations' role CHECK to allow avamed-super-admin
+    on a DB created before that role existed. No-op if the table doesn't exist yet
+    (the CREATE TABLE IF NOT EXISTS above already used the new CHECK) or if it has
+    already been migrated. See governance/STEP5_DESIGN.md §3.
+
+    CORRECTNESS NOTE (2026-07-22, Security review — reproduced empirically):
+    on modern SQLite (legacy_alter_table OFF, the default since 3.25), plain
+    `ALTER TABLE staff_users RENAME` also rewrites OTHER tables' foreign-key
+    definitions that reference staff_users — sessions.user_id and
+    auth_reset_tokens.user_id both FK -> staff_users(id). Left alone, that
+    rewrite repoints those FKs at the temporary renamed table, which is then
+    DROPped a few statements later, corrupting both FKs (a session INSERT
+    under PRAGMA foreign_keys=ON then fails with "no such table"). Toggling
+    legacy_alter_table ON around the RENAME disables that rewrite, so
+    dependents keep pointing at plain "staff_users" once it's recreated under
+    that name. The original comment here claimed the FK was "unaffected since
+    the final table name and id values are unchanged" — that was wrong; it
+    ignored SQLite's RENAME-time FK rewrite behaviour.
+
+    Runs as one explicit transaction per table (not sqlite3's implicit
+    transaction) so an interruption mid-migration can't strand rows in the
+    renamed table.
+    """
+    for table, (create_sql, columns) in _ROLE_CHECK_TABLES.items():
+        row = conn.execute(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name=?", (table,)
+        ).fetchone()
+        if row is None or row["sql"] is None:
+            continue
+        if "avamed-super-admin" in row["sql"]:
+            continue  # already migrated
+
+        old_name = f"{table}__pre_role_migration"
+        col_list = ", ".join(columns)
+
+        if conn.in_transaction:
+            conn.commit()  # start from a clean slate before taking manual control
+
+        previous_legacy_alter = conn.execute("PRAGMA legacy_alter_table").fetchone()[0]
+        previous_isolation = conn.isolation_level
+        conn.isolation_level = None  # autocommit — we manage BEGIN/COMMIT/ROLLBACK ourselves
+        try:
+            conn.execute("PRAGMA legacy_alter_table=ON")
+            conn.execute("BEGIN IMMEDIATE")
+            try:
+                conn.execute(f"ALTER TABLE {table} RENAME TO {old_name}")
+                conn.execute(create_sql.format(table=table))
+                conn.execute(
+                    f"INSERT INTO {table} ({col_list}) SELECT {col_list} FROM {old_name}"
+                )
+                conn.execute(f"DROP TABLE {old_name}")
+                conn.execute("COMMIT")
+            except Exception:
+                conn.execute("ROLLBACK")
+                raise
+        finally:
+            conn.execute(f"PRAGMA legacy_alter_table={'ON' if previous_legacy_alter else 'OFF'}")
+            conn.isolation_level = previous_isolation
+
+
 def init_db(conn: sqlite3.Connection) -> None:
     conn.execute(
         """
@@ -132,7 +243,7 @@ def init_db(conn: sqlite3.Connection) -> None:
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             display_name TEXT NOT NULL,
             email TEXT,
-            role TEXT NOT NULL CHECK(role IN ('admin', 'staff', 'readonly')),
+            role TEXT NOT NULL CHECK(role IN ('admin', 'staff', 'readonly', 'avamed-super-admin')),
             demo_pin_hash TEXT,
             active INTEGER NOT NULL DEFAULT 1,
             created_at TEXT NOT NULL,
@@ -181,7 +292,7 @@ def init_db(conn: sqlite3.Connection) -> None:
         CREATE TABLE IF NOT EXISTS staff_invitations (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             email TEXT NOT NULL,
-            role TEXT NOT NULL CHECK(role IN ('admin', 'staff', 'readonly')),
+            role TEXT NOT NULL CHECK(role IN ('admin', 'staff', 'readonly', 'avamed-super-admin')),
             invited_by_staff_id INTEGER,
             token_hash TEXT,
             status TEXT NOT NULL CHECK(status IN ('pending', 'accepted', 'cancelled', 'expired')),
@@ -224,6 +335,15 @@ def init_db(conn: sqlite3.Connection) -> None:
     for col, defn in _staff_auth_cols.items():
         if col not in staff_cols:
             conn.execute(f"ALTER TABLE staff_users ADD COLUMN {col} {defn}")
+
+    # ── Migrate role CHECK constraint (added 2026-07-22, step 5) ──────────────
+    # CREATE TABLE IF NOT EXISTS never updates an existing table's CHECK clause,
+    # and SQLite has no ALTER TABLE for CHECK constraints, so a tenant DB created
+    # before 'avamed-super-admin' was added (e.g. churchtown.sqlite, tenant2.sqlite)
+    # would reject that role at the SQLite layer even though the app-level roles
+    # allow it. Idempotent: only recreates a table whose CHECK doesn't already
+    # mention avamed-super-admin. See governance/STEP5_DESIGN.md §3.
+    _migrate_role_check_constraint(conn)
 
     # ── Migrate cases columns ──────────────────────────────────────────────────
     columns = {

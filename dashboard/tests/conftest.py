@@ -11,6 +11,12 @@ _TEST_STAFF_USER = {"id": 1, "display_name": "Test Admin", "role": "admin", "act
 _TEST_READONLY_TOKEN = "jefflocal-test-bypass-readonly"
 _TEST_READONLY_USER = {"id": 2, "display_name": "Test Readonly", "role": "readonly", "active": 1}
 
+_TEST_STAFF_TOKEN = "jefflocal-test-bypass-staff"
+_TEST_STAFF_USER_ROLE = {"id": 3, "display_name": "Test Staff", "role": "staff", "active": 1}
+
+_TEST_SUPER_ADMIN_TOKEN = "jefflocal-test-bypass-super-admin"
+_TEST_SUPER_ADMIN_USER = {"id": 4, "display_name": "Test Avamed Super Admin", "role": "avamed-super-admin", "active": 1}
+
 
 @pytest.fixture(autouse=True)
 def _isolate_handoff_dir_from_production(tmp_path, monkeypatch):
@@ -49,6 +55,10 @@ def _bypass_session_lookup(monkeypatch):
             return _TEST_STAFF_USER
         if token == _TEST_READONLY_TOKEN:
             return _TEST_READONLY_USER
+        if token == _TEST_STAFF_TOKEN:
+            return _TEST_STAFF_USER_ROLE
+        if token == _TEST_SUPER_ADMIN_TOKEN:
+            return _TEST_SUPER_ADMIN_USER
         return real_lookup(conn, token)
 
     # Patch in both main and helpers — helpers has its own import reference
@@ -66,3 +76,15 @@ def authed_client():
 def readonly_client():
     """TestClient pre-loaded with a readonly session cookie."""
     return TestClient(app, cookies={SESSION_COOKIE: _TEST_READONLY_TOKEN})
+
+
+@pytest.fixture
+def staff_role_client():
+    """TestClient pre-loaded with a plain 'staff' (non-admin) session cookie."""
+    return TestClient(app, cookies={SESSION_COOKIE: _TEST_STAFF_TOKEN})
+
+
+@pytest.fixture
+def super_admin_client():
+    """TestClient pre-loaded with an avamed-super-admin session cookie."""
+    return TestClient(app, cookies={SESSION_COOKIE: _TEST_SUPER_ADMIN_TOKEN})

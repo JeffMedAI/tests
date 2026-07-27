@@ -117,6 +117,20 @@ NON_MODAL_ALERT_TYPE_KEYWORDS: tuple[str, ...] = ("daily summary", "summary")
 
 STAFF_ROLES: set[str] = {"admin", "staff", "readonly"}
 
+# Avamed's own cross-tenant support role (step 5 of MULTI_TENANCY_PROPOSAL.md §8).
+# Deliberately NOT part of STAFF_ROLES: STAFF_ROLES is the set a tenant-admin can
+# assign via the /staff HTTP routes (staff.py), and this role must only ever be
+# created by an out-of-band provisioning script (scripts/tenant/seed_super_admin.py)
+# — never through the ordinary staff-management UI. Adding it to STAFF_ROLES would
+# let any practice manager grant themselves Avamed-level access. See
+# governance/STEP5_DESIGN.md §2.
+AVAMED_SUPER_ADMIN_ROLE: str = "avamed-super-admin"
+
+# Every role value the DATABASE will accept (used only for the staff_users /
+# staff_invitations CHECK constraint in db.py). NOT used for validating a role
+# assignment coming from the staff-management UI — use STAFF_ROLES for that.
+ALL_VALID_ROLES: set[str] = STAFF_ROLES | {AVAMED_SUPER_ADMIN_ROLE}
+
 DEFAULT_OUTCOME_NOTES: str = "Processed according to JeffLocal workflow."
 DEFAULT_ACTION_NEEDED: str = "Review and process according to local workflow."
 

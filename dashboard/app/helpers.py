@@ -12,7 +12,7 @@ from typing import Any
 from fastapi import HTTPException, Request
 
 from .auth import get_session_user
-from .consts import SESSION_COOKIE
+from .consts import AVAMED_SUPER_ADMIN_ROLE, SESSION_COOKIE
 from .db import connect, init_db
 
 
@@ -44,11 +44,18 @@ def current_staff_from_request(request: Request | None, conn) -> dict[str, Any]:
 
 
 def staff_can_edit(staff: dict[str, Any]) -> bool:
-    return staff.get("role") in {"admin", "staff"}
+    # admin == tenant-admin under the per-tenant-DB model (see STEP5_DESIGN.md §1).
+    # avamed-super-admin gets full access once inside a tenant (§6 of
+    # MULTI_TENANCY_PROPOSAL.md — "full access once inside that tenant").
+    return staff.get("role") in {"admin", "staff", AVAMED_SUPER_ADMIN_ROLE}
 
 
 def staff_can_manage(staff: dict[str, Any]) -> bool:
-    return staff.get("role") == "admin"
+    return staff.get("role") in {"admin", AVAMED_SUPER_ADMIN_ROLE}
+
+
+def is_avamed_super_admin(staff: dict[str, Any]) -> bool:
+    return staff.get("role") == AVAMED_SUPER_ADMIN_ROLE
 
 
 def staff_display(staff: dict[str, Any] | None) -> str:
@@ -63,3 +70,8 @@ def require_staff_edit(staff: dict[str, Any]) -> None:
 def require_staff_admin(staff: dict[str, Any]) -> None:
     if not staff_can_manage(staff):
         raise HTTPException(status_code=403, detail="Admin staff required.")
+
+
+def require_avamed_super_admin(staff: dict[str, Any]) -> None:
+    if not is_avamed_super_admin(staff):
+        raise HTTPException(status_code=403, detail="Avamed super-admin required.")

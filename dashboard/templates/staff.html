@@ -100,11 +100,24 @@
             </div>
             <div class="form-group">
               <label class="form-label">Role</label>
+              {% if staff.role == 'avamed-super-admin' %}
+              {# Avamed's own cross-tenant support role is never editable here — it can
+                 only be set/cleared by scripts/tenant/seed_super_admin.py, never through
+                 this form. The dropdown below only lists STAFF_ROLES (admin/staff/readonly),
+                 which can't represent this value, so it's shown as a fixed label instead of
+                 a select — submitting a select that defaulted to its first option would have
+                 silently downgraded the account (Security review 2026-07-22). No "role" field
+                 is posted for this row; the backend preserves the existing role regardless. #}
+              <div class="form-input" style="background:var(--panel-muted,#f3f4f6);color:var(--ink-subtle);cursor:not-allowed;" title="Avamed super-admin — set only via provisioning script, not editable here">
+                Avamed Super Admin (fixed)
+              </div>
+              {% else %}
               <select name="role" class="form-input">
                 {% for role in roles %}
                   <option value="{{ role }}" {% if staff.role == role %}selected{% endif %}>{{ role|title }}</option>
                 {% endfor %}
               </select>
+              {% endif %}
             </div>
             <div class="form-group">
               <label class="form-label">

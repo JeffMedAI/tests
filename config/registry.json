@@ -1,0 +1,19 @@
+{
+  "_comment": "Machine-readable tenant list for the /tenants picker page (dashboard/app/routers/tenants.py). ZERO patient data — config pointers only, same rule as governance/TENANT_REGISTRY.md, which is the human-readable source this mirrors. Keep both in sync manually when onboarding a tenant (see governance/STEP5_DESIGN.md section 5 for why these are two files, not one).",
+  "tenants": [
+    {
+      "slug": "tenant1",
+      "display_name": "Churchtown Medical Centre",
+      "hostname": null,
+      "port": 8765,
+      "status": "planned"
+    },
+    {
+      "slug": "tenant2",
+      "display_name": "Tenant 2",
+      "hostname": null,
+      "port": 8766,
+      "status": "live"
+    }
+  ]
+}
