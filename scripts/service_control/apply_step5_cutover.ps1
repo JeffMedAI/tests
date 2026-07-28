@@ -69,9 +69,13 @@ if ($before8765 -like "UNREACHABLE*") {
 }
 
 # --- Idempotency guard ---
-if ((Test-Path $Tenant1Db) -and (-not $Force)) {
+# Key off tenant1.env, NOT tenant1.sqlite: the env is written LAST (only after the
+# DB copy + verify match), so it is the true "cutover complete" marker. Keying off
+# the DB file would wrongly no-op a re-run that had created the DB but aborted
+# before writing the env (e.g. a verify mismatch), leaving 8765 never repointed.
+if ((Test-Path $Tenant1Env) -and (-not $Force)) {
     Write-Host ""
-    Write-Host "tenant1.sqlite already exists at $Tenant1Db." -ForegroundColor Yellow
+    Write-Host "tenant1.env already exists at $Tenant1Env." -ForegroundColor Yellow
     Write-Host "Assuming step 5 cutover already ran. Re-run with -Force to redo it (this resets the super-admin one-time passwords)." -ForegroundColor Yellow
     exit 0
 }

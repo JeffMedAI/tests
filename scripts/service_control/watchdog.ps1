@@ -243,10 +243,13 @@ $Services = @(
                     python -m venv "$RepoRoot\dashboard\.venv" 2>&1 | Out-Null
                     & $venvPy -m pip install -r "$RepoRoot\dashboard\requirements.txt" --quiet 2>&1 | Out-Null
                 }
-                $tenant1Db = "$RepoRoot\dashboard\data\tenants\tenant1.sqlite"
-                if (Test-Path $tenant1Db) {
+                # Gate on tenant1.env - the SAME repoint trigger the primary path
+                # uses - so a rollback (which removes tenant1.env but leaves
+                # tenant1.sqlite in place) correctly falls back to the default DB
+                # here too, instead of diverging on tenant1.sqlite's presence.
+                if (Test-Path $tenant1Env) {
                     $env:JEFFLOCAL_TENANT_NAME = "Churchtown Medical Centre"
-                    $env:JEFFLOCAL_DB_PATH = $tenant1Db
+                    $env:JEFFLOCAL_DB_PATH = "$RepoRoot\dashboard\data\tenants\tenant1.sqlite"
                 }
                 Start-Process -FilePath $venvPy `
                     -ArgumentList "-m uvicorn main:app --host 0.0.0.0 --port 8765" `
