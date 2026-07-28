@@ -1,6 +1,6 @@
 ﻿# PROJECT MEMORY — JeffLocal
 # READ THIS FIRST at every session start, before doing anything else.
-# Last updated: 2026-07-27 18:00 (automated session-end — step 5 code merged + cutover tooling added, not yet run)
+# Last updated: 2026-07-28 (session — multi-tenancy STEP 5 DONE, cutover run by Saeed, verified live)
 # Maintained by: Claude (update at end of every session)
 
 ---
@@ -75,7 +75,49 @@ strategy | Docs, reports, governance, marketing
 
 ---
 
-## CURRENT STATUS -- 2026-07-27 (updated)
+## CURRENT STATUS -- 2026-07-28 (updated)
+
+### MULTI-TENANCY STEP 5 DONE + MERGED + CUTOVER RUN + VERIFIED LIVE 2026-07-28
+The tenant picker + avamed-super-admin role + churchtown->tenant1 repoint. Built in an isolated
+worktree, TDD'd, TWO Security reviews (code, then cutover tooling — both APPROVE-WITH-CHANGES, all
+findings fixed), Saeed approved scope+merge+per-tenant-OTPs+registry-relocation, cutover run by Saeed
+(elevated), verified live. Both dashboards healthy throughout.
+- **What shipped (main):** `82b7ba2` step 5 code, `d368529` cutover tooling, `addd6e0` security
+  robustness fixes. NOTE: merged via **selective file checkout**, NOT a raw branch merge — the
+  feature branch had accumulated ~199k lines of non-code cruft (two graphify-out snapshot folders, a
+  stale PROJECT_MEMORY, a junk testfile) that a wholesale merge would have dragged into production.
+  Only the Security-reviewed code/test/doc files were taken (byte-identical to branch tip 16c260f).
+- **New `avamed-super-admin` role:** cross-tenant support access, ONE tenant at a time via new
+  `/tenants` picker page (links only, never a merged data view — Security-verified the picker opens
+  only one DB connection). Assignable ONLY via `scripts/tenant/seed_super_admin.py`, never through the
+  staff web UI (privilege-escalation guard — a tenant-admin can't mint an Avamed super-admin). The
+  existing `admin` role IS the practice-manager/tenant-admin (no rename needed — §6b already settled).
+- **Two real bugs found+fixed pre-merge:** (1) SQLite `ALTER TABLE RENAME` silently rewrote
+  sessions/auth_reset_tokens FKs to a temp table that got dropped → corrupted FK on every migrated
+  tenant DB. Fixed with `PRAGMA legacy_alter_table` + explicit transaction (Security reproduced
+  before/after). (2) staff edit form could silently downgrade the super-admin's own role — fixed
+  server-side + UI shows a fixed label.
+- **churchtown -> tenant1 repoint DONE:** port 8765 now serves `dashboard/data/tenants/tenant1.sqlite`
+  (Churchtown's 78 cases, copied from churchtown.sqlite, NOT moved) instead of the legacy default
+  `dashboard.sqlite`. Slug is the stable `tenant1`; display name stays "Churchtown Medical Centre".
+  `config/tenants/tenant1.env` (port 8765) drives it; `watchdog.ps1` ProductionDashboard launches
+  `-Tenant tenant1` when that env exists (Test-Path guarded → zero pre-cutover risk). Verified live
+  2026-07-28: 8765 uptime reset (relaunched), dashboard-tenant1.log fresh + dashboard.log stale,
+  case_count 78; tenant2 (8766) case_count 0, uptime unchanged (untouched); `/tenants` returns 302
+  (gated, not 404); `avamed-saeed`/`avamed-super-admin` seeded in BOTH tenant1.sqlite and
+  tenant2.sqlite (must_change_password=1). dashboard.sqlite + churchtown.sqlite both preserved
+  (rollback: delete tenant1.env, restart watchdog → falls back to dashboard.sqlite).
+- **`config/registry.json`** (machine-readable tenant list for the picker) lives OUTSIDE the
+  ACL-locked `config/tenants/` dir — Saeed chose relocation over an elevated merge when the first
+  merge attempt hit Permission Denied writing into the locked dir.
+- **Tests:** 440 dashboard + 42 scripts/tenant = 482 passing, 0 failures on the production tree.
+- **Cutover script:** `scripts/service_control/apply_step5_cutover.ps1` (elevated, one-time,
+  first-run-guarded on tenant1.env, -Force to redo). Modeled on apply_tenant2_ops.ps1.
+- **NOT done (residual, non-blocking):** actual browser login AS the super-admin (Claude does not
+  enter passwords — Saeed can eyeball the picker himself with his OTP); Cloudflare hostnames; replace
+  placeholder logins (avamed-saeed + churchtown's + tenant2's) with real staff names before go-live.
+- **OTPs:** the per-tenant one-time passwords were printed to Saeed's admin console only (never logged
+  or committed). Saeed holds them; forced change on first login per tenant.
 
 ### MULTI-TENANCY STEP 4 DONE + MERGED 2026-07-21 (one elevated step left for Saeed)
 Second tenant instance stood up under a **generic placeholder identity ("Tenant 2", slug `tenant2`)**
