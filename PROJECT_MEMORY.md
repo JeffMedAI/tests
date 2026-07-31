@@ -1,6 +1,6 @@
 ﻿# PROJECT MEMORY — JeffLocal
 # READ THIS FIRST at every session start, before doing anything else.
-# Last updated: 2026-07-30 (session end check — no commits today, state unchanged since 2026-07-28)
+# Last updated: 2026-07-31 (session end check — no commits today, state unchanged since 2026-07-28)
 # Maintained by: Claude (update at end of every session)
 
 ---
@@ -75,7 +75,7 @@ strategy | Docs, reports, governance, marketing
 
 ---
 
-## CURRENT STATUS -- 2026-07-30 (checked, unchanged — no commits since 2026-07-28)
+## CURRENT STATUS -- 2026-07-31 (checked, unchanged — no commits since 2026-07-28)
 
 ### MULTI-TENANCY STEP 5 DONE + MERGED + CUTOVER RUN + VERIFIED LIVE 2026-07-28
 The tenant picker + avamed-super-admin role + churchtown->tenant1 repoint. Built in an isolated
@@ -532,17 +532,21 @@ Branch:  main. C:\JeffLocal (the repo root) IS the production directory — its 
          ALWAYS verify with `git branch --show-current` before assuming this.
 Main:    merged 2026-07-14 (feature/refactor-2-5-6 → main, Saeed approved, commit 79bd895),
          deployed to production 2026-07-15.
-Latest:  db585da memory: session end protocol 2026-07-29 18:00. No commits since — 2026-07-30
+Latest:  852dcc3 memory: session end protocol 2026-07-30 18:00. No commits since — 2026-07-31
          session end check found no work done today, state unchanged since 2026-07-28.
          Preceded by d368529 step5 cutover tooling: watchdog repoint (8765 -> tenant1) + apply
          script, 82b7ba2 (multi-tenancy step 5: avamed-super-admin role + tenant picker + tenant1
          naming, applied via selective checkout from Security-reviewed branch
          feature/step5-tenant-picker-roles) and c8c7eae (recovered a stuck 2026-07-26 evening
-         memory commit — no work lost). [Certain from git log] Step 5 code is merged; the
-         cutover script (apply_step5_cutover.ps1) has NOT been confirmed run — Saeed needs to
-         execute it in an admin PowerShell window, same pattern as step 4's apply_tenant2_ops.ps1.
-         No commits made 2026-07-23, 2026-07-24, 2026-07-25, or 2026-07-26 — no code work done any
-         of those days. STEP 4 DONE + VERIFIED (tenant2 live on 8766, watchdog-managed) still holds.
+         memory commit — no work lost). [Certain from git log] Step 5 code is merged and the
+         cutover script (apply_step5_cutover.ps1) has been run + verified live 2026-07-28 per
+         the CURRENT STATUS section above.
+         No commits made 2026-07-23 through 2026-07-30 (except the daily session-end memory
+         commits) — no code work done any of those days.
+         NOTE (2026-07-31): working tree has a large number of "modified"/untracked files that
+         look like leftover debris (whitespace pass + oddly-named junk files at repo root) —
+         see docs/sessions/2026-07-31-1800.md for detail. Not touched this session pending
+         Saeed's go-ahead.
          Key commits from 2026-07-21 session: 85815a1 (merge step 4), f88edef (scheduled-task
          switch fix + GDPR-purge-never-registered finding), ae1e140 (watchdog orphan force-kill),
          ffe4bec (config\tenants ACL fix + 07-20 ACL fix was incomplete), 0fdbc0d (staff access model),
