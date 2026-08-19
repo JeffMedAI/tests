@@ -13,7 +13,8 @@
 **Last session:** 2026-08-19 (evening, investigation only)
 **Closed by:** Claude (Opus 5)
 **Branch:** main. C:\JeffLocal IS the production directory, checked out on main.
-**Latest commit before this close:** e5ba971 (memory: session end protocol 2026-08-11 18:00).
+**Latest commit:** 36bafd9 (memory: session summary 2026-08-19). Committed this session,
+after clearing three stale git locks that had blocked all git writes since 11 Aug.
 **Warning:** main was 14 commits AHEAD of origin/main at session start. Nothing pushed since ~2 Aug.
 **Restore tag:** last one is restore/2026-07-28-1108 — 3 weeks old. None created this session.
 **Production:** unchanged. No code touched this session.
@@ -61,6 +62,17 @@ Didn't work / dead ends worth not repeating:
 ---
 
 ## HOW THE SESSION CLOSED
+
+ROOT CAUSE FOUND LATE IN SESSION — STALE GIT LOCKS:
+- .git/index.lock and .git/HEAD.lock, both 0 bytes, both left at 2026-08-11 19:11.
+- .git/objects/maintenance.lock, 0 bytes, left at 2026-08-08 19:11.
+- No git process was running. All three were stale for 8+ days.
+- These blocked EVERY git write since 11 Aug. That is the reason commits stop at e5ba971,
+  nothing was pushed, and no restore tags were made.
+- All three removed this session. Commit then succeeded (36bafd9).
+- Note the timestamps: 19:11 is the evening session-close slot. The close is crashing
+  mid-git and leaving locks behind. Fixing the locks does NOT fix that — it will recur.
+
 
 Wrote docs/sessions/2026-08-19-1900.md, rewrote this file, updated PROJECT_MEMORY.md,
 committed those three locally. Push NOT done — waiting on Saeed, because the branch has a

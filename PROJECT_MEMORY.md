@@ -82,7 +82,16 @@ strategy | Docs, reports, governance, marketing
 Saeed reported briefs missing since 13 Aug, then clarified: they ARE arriving, but the content
 is stale and reports no work done. Investigated 2026-08-19. Two independent causes.
 
-1. STALE CONTENT (the real problem).
+0. ROOT CAUSE -- STALE GIT LOCKS (found 2026-08-19, cleared).
+   - .git/index.lock + .git/HEAD.lock, 0 bytes, left 2026-08-11 19:11.
+   - .git/objects/maintenance.lock, 0 bytes, left 2026-08-08 19:11.
+   - No git process running. Stale 8+ days. Blocked EVERY git write since 11 Aug.
+   - This is why commits stop at e5ba971, nothing pushed, no restore tags since 28 July.
+   - All three removed 2026-08-19; commit 36bafd9 then succeeded.
+   - 19:11 is the evening session-close slot -- the close is crashing mid-git and leaving
+     locks behind. Clearing them is not a fix; it WILL recur until the close is fixed.
+
+1. STALE CONTENT (the visible symptom).
    - Last session log: docs/sessions/2026-08-11-1800.md. Nothing written since (8 days).
    - Zero JeffLocal commits in last 24h; last commit e5ba971 (11 Aug). HANDOFF.md was 28 July.
    - combined_brief.ps1 falls back to the newest session log when none exists for today, and
