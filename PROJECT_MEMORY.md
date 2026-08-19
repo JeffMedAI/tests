@@ -1,6 +1,6 @@
-﻿# PROJECT MEMORY — JeffLocal
+# PROJECT MEMORY — JeffLocal
 # READ THIS FIRST at every session start, before doing anything else.
-# Last updated: 2026-08-11 (session end check — no commits today, state unchanged since 2026-07-28)
+# Last updated: 2026-08-19 (brief pipeline investigated - see REPORTING/BRIEF PIPELINE below)
 # Maintained by: Claude (update at end of every session)
 
 ---
@@ -75,7 +75,43 @@ strategy | Docs, reports, governance, marketing
 
 ---
 
-## CURRENT STATUS -- 2026-08-11 (checked, unchanged — no commits since 2026-07-28)
+## CURRENT STATUS -- 2026-08-19 (no JeffLocal code work since 2026-07-28; brief pipeline faults found)
+
+### REPORTING / BRIEF PIPELINE -- FAULTS FOUND 2026-08-19 (no fixes applied, awaiting Saeed)
+
+Saeed reported briefs missing since 13 Aug, then clarified: they ARE arriving, but the content
+is stale and reports no work done. Investigated 2026-08-19. Two independent causes.
+
+1. STALE CONTENT (the real problem).
+   - Last session log: docs/sessions/2026-08-11-1800.md. Nothing written since (8 days).
+   - Zero JeffLocal commits in last 24h; last commit e5ba971 (11 Aug). HANDOFF.md was 28 July.
+   - combined_brief.ps1 falls back to the newest session log when none exists for today, and
+     prints it: "(No log today - using 2026-08-11-1800.md, 192h ago)".
+   - Result: every brief since ~12 Aug re-serves 11 Aug content, AI-reworded each run.
+   - Report FILES generated fine every day including today. Nothing missing in docs/reports/.
+
+2. FALSE "WhatsApp send failed" ERROR (misleading, not a real failure).
+   - pywhatkit whats.py:32 presses enter (message sent), THEN whats.py:33 writes its ledger.
+   - Ledger PyWhatKit_DB.txt is opened by RELATIVE path, so it lands in the task working
+     directory, which for scheduled tasks is the Windows System32 folder.
+   - That folder grants normal Users read-only. Verified: append -> PermissionError errno 13.
+   - Evening task RunLevel=Limited -> ledger write throws AFTER send -> combined_brief.ps1:448
+     catches it and logs "WhatsApp send failed". Message was already delivered.
+   - Morning task RunLevel=Highest -> ledger write succeeds -> logged as success.
+   - Ledger evidence: 237 records at hour 07, ZERO at hour 18/19 ever.
+
+3. RELATED FINDINGS.
+   - strategy_daily.ps1 git commit/push/tag NEVER fires: combined_brief.ps1:432 calls it with
+     -DryRun, and strategy_daily.ps1:581 skips commit/push under -DryRun.
+   - main was 14 commits ahead of origin/main at 2026-08-19 (nothing pushed since ~2 Aug).
+   - Last restore tag restore/2026-07-28-1108 (3 weeks old).
+   - The automation that wrote daily session logs to 11 Aug ran in Claude Cowork, NOT Windows
+     Task Scheduler. No such task on this machine. Why it stopped is unknown from here.
+
+PROPOSED FIXES (none applied, all need Saeed):
+   a. Restore the daily session-close routine so logs + commits happen.
+   b. Give the evening task a writable working directory (kills the false error, restores ledger).
+   c. Put a LOUD staleness warning at the TOP of the brief when falling back to an old log.
 
 ### MULTI-TENANCY STEP 5 DONE + MERGED + CUTOVER RUN + VERIFIED LIVE 2026-07-28
 The tenant picker + avamed-super-admin role + churchtown->tenant1 repoint. Built in an isolated
