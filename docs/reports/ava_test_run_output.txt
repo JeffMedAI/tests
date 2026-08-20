@@ -1,0 +1,31 @@
+PRE-FLIGHT CHECK 
+---n8n :5678--- 
+200
+---Ollama :11434--- 
+200
+---Dashboard :8765--- 
+200
+============================== 
+RUNNING TEST CALL 
+{
+  "target_url": "http://localhost:5678/webhook/jefflocal-test-intake",
+  "batch_id": "AVA-TEST-20260617-222343",
+  "call_ids": [
+    "AVA-TEST-20260617-222343-001-PRESCRIPTION",
+    "AVA-TEST-20260617-222343-002-SICKNOTE",
+    "AVA-TEST-20260617-222343-003-REFERRAL",
+    "AVA-TEST-20260617-222343-004-IDENTITY",
+    "AVA-TEST-20260617-222343-005-REDFLAG"
+  ],
+  "num_calls": 5,
+  "mode": "send"
+}
+{
+  "plaintext_transcripts_over_500": true
+}
+{
+  "batch_id": "AVA-TEST-20260617-222343",
+  "status": 200
+}
+============================== 
+SCRIPT_COMPLETE 

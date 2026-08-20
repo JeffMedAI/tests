@@ -1,0 +1,62 @@
+﻿COMBINED EVENING BRIEF (session close) â€” 2026-07-09 19:00
+Both projects â€” Avamed AI triage + St Marks Pharmacy website
+================================================================
+
+=== AVAMED / JEFFLOCAL ===
+  WHAT WE DID TODAY
+  - Fixed the last two n8n workflow endpoints (WF02 and WF05) so they use the same auth-safe web address prefix as the earlier fixes this morning
+  - Added gstack tool routing rules into the main rules file (CLAUDE.md)
+  - Updated the handoff notes with the full write-up of today's n8n fix and a new tool install (gstack)
+  - Built an automatic backup system for the patient database — copies the database safely on a schedule so we always have a recent restore point. Comes with its own test suite (22 tests, all passing) and is registered to run daily at 02:15
+  - Built two more items from the task list: a monitoring/observability module, and a safety boundary check that keeps the AI from making clinical decisions — both built test-first (tests written before the code, all passing)
+  - Logged a memory checkpoint partway through the day noting tasks 1 and 2 done, task 3 still open
+
+  WHAT IS NEXT (tomorrow)
+  - Remove legacy static-salt password fallback — Backend — flagged as possibly already done in auth.py, needs verifying before it's crossed off
+  - n8n API key rotation — DevOps — needed before go-live
+  - Set JEFF_WEBHOOK_SECRET — DevOps — needed before live traffic
+  - Verify the legacy password fallback removal claim in auth.py and update the task list either way
+
+  BLOCKERS
+  - None.
+
+  NEEDS YOUR OK
+  - [ ] Real staff accounts — need names, roles, emails to unblock pilot go-live
+  - [ ] Governance gates 1-7 sign-off — cannot be delegated
+  - [ ] JEFF_WEBHOOK_SECRET — must be set in the environment before any live Jeff traffic
+  - [ ] n8n API key rotation — confirmed "later" by Saeed
+  (From PROJECT_MEMORY: 3. LLM identity fields blocked from patient matching pipeline -- DONE; ### Pending Saeed approvals / actions;  1   | Remove legacy static-salt password fallback       | Backend  | PENDING (NOTE: already done in auth.py — verify before removing from list);  5   | Split main.py into modules (refactor/split-main-py branch) | Backend | PENDING — plan written, not started)
+
+GIT (JeffLocal): ccca75d memory: session end protocol 2026-07-08 18:00 (PROJECT_MEMORY update) | 2ea61b5 memory: session end protocol 2026-07-08 18:00 | 7cc846c feat: items #5 and #6 ÔÇö observability module and AI safety boundary (TDD)
+
+----------------------------------------------------------------
+
+=== ST MARKS PHARMACY (STMARKS-WEB) ===
+  (No log today - using 2026-07-03-1135.md, 151h ago)
+
+  WHAT WE DID TODAY
+  - Site now LIVE on real domain. Added custom domains stmarkspharmacy.co.uk + www to the Cloudflare Worker. HTTPS good.
+  - Full end-to-end test on live domain. All 33 pages 200. Zero broken links. No console errors. Mobile-responsive confirmed.
+  - Booking form works end-to-end on live domain: POST /api/book -> 200, email Delivered to stmarkssouthport@gmail.com (Resend log, marker QK47).
+  - Found + fixed the one real defect: /privacy-policy/, /terms/, /cookies/ were 404 on every footer. Built all three, live now.
+  - Privacy policy names Resend + Cloudflare as processors (UK GDPR). Cookie policy = essential-only, no tracking. All 3 marked draft.
+  - Fixed stale footer year 2024 -> 2026 site-wide (30 pages + generator).
+
+  WHAT IS NEXT (tomorrow)
+  - Saeed: give WhatsApp Business number (button is a dead placeholder link now).
+  - Pharmacist: proof-read clinical pages (GPhC sign-off) + give SP GPhC number for footer.
+  - Pharmacist/DPO: review the 3 draft legal pages + add ICO registration number.
+  - Add cookie consent banner ONLY when GA4/analytics goes on.
+
+  BLOCKERS
+  - None technical. Remaining items are human sign-offs (pharmacist, WhatsApp number) — cannot be done in code.
+
+  NEEDS YOUR OK
+  - [ ] WhatsApp Business number.
+  - [ ] Approve pharmacist review loop for clinical + legal pages before promoting to patients.
+  - [ ] Decide: keep static build (recommended — fast, live, cheap) vs migrate to WordPress.
+
+GIT (St Marks): ab25612 session: 2026-07-03 ÔÇö live on stmarkspharmacy.co.uk, full e2e test, legal pages | e563c41 feat: add privacy/terms/cookie pages, fix footer year, live on real domain | 1af65e3 feat: set booking email sender to verified send.stmarkspharmacy.co.uk
+
+================================================================
+Detail: C:\JeffLocal\PROJECT_MEMORY.md | C:\JeffLocal\SMCPHARMA\CLAUDE.md
