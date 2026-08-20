@@ -10,89 +10,76 @@
 
 ---
 
-**Last session:** 2026-08-19 (evening, investigation only)
+**Last session:** 2026-08-20
 **Closed by:** Claude (Opus 5)
 **Branch:** main. C:\JeffLocal IS the production directory, checked out on main.
-**Latest commit:** 36bafd9 (memory: session summary 2026-08-19). Committed this session,
-after clearing three stale git locks that had blocked all git writes since 11 Aug.
-**Warning:** main was 14 commits AHEAD of origin/main at session start. Nothing pushed since ~2 Aug.
-**Restore tag:** last one is restore/2026-07-28-1108 — 3 weeks old. None created this session.
-**Production:** unchanged. No code touched this session.
+**Latest commit:** 02d064f (fix(brief): stop the daily brief failing silently; retire the Cowork session close)
+**Pushed:** YES. The 16-commit backlog is cleared - 0 unpushed. origin/main is level with HEAD.
+**Restore tag:** restore/2026-08-20-1800 created. First in 3 weeks. Oldest auto-pruned, 3 kept.
+**Production:** dashboard/pipeline code untouched. Only scripts/daily/ changed.
 
 ---
 
 ## WORK SCOPE
 
-Investigation only. Saeed asked why the WhatsApp daily brief stopped arriving since the 13th,
-then corrected mid-session: he DID get today's evening brief, but the content was stale and
-said no work done, when a lot of work had happened.
+Fixed the daily WhatsApp brief, which had been silently serving 8-day-old content
+(11-19 Aug) and hiding it. Then removed the dependency that caused it.
 
-No code changed. No fixes applied. Everything below awaits Saeed's approval.
+Three faults, all the same shape - **something that looked like it worked and didn't**:
 
----
+1. Stale briefs were announced only in a small note mid-message. Now there is a loud
+   banner at the top, **per project**.
+2. "WhatsApp send failed" was a false alarm sitting on top of the real fault.
+3. The git commit/push/restore-tag safety net was switched off by a `-DryRun` flag.
+
+Also retired the Cowork scheduled task that was supposed to do the nightly session
+close, and moved that job into the 19:00 PowerShell run.
 
 ## WHAT WORKED / WHAT DIDN'T
 
-Worked — found both causes with hard evidence:
+**Worked**
+- Testing before believing. Two real bugs were found only because tests ran:
+  the git-stderr trap, and the placeholder-hides-the-alarm interaction.
+- Reading Cowork's own log. It gave the exact rule verbatim instead of a guess.
+- A throwaway test task settled the Cowork question in one move.
 
-1. Briefs are stale, not missing. Session logs and JeffLocal commits both stop 11 Aug.
-   Brief falls back to the newest log it can find and says so in its own output:
-   "(No log today - using 2026-08-11-1800.md, 192h ago)". So since ~12 Aug every brief has
-   re-served 11 Aug content, reworded each time. Report files themselves generated fine daily.
-
-2. The nightly "WhatsApp send failed" error is a FALSE alarm. pywhatkit sends the message
-   (whats.py:32) and only THEN writes its own ledger (whats.py:33). That ledger is opened by
-   relative path so it lands in the task's working directory, C:\Windows\System32, which is
-   read-only for normal users. The evening task runs at RunLevel=Limited so the write throws
-   PermissionError AFTER the message has gone. Morning task runs at RunLevel=Highest so it
-   succeeds. Proven by direct test (append → PermissionError errno 13) and by the ledger
-   itself: 237 records at hour 07, zero at hour 18/19 ever.
-
-Didn't work / dead ends worth not repeating:
-- Assumed at first that the morning briefs were silently not delivering and started down a
-  "WhatsApp Web session must be logged out" path. Wrong. Chrome Profile 1 (AVA) has a live
-  session and Chrome opens that profile by default. Don't re-run that theory.
-- Assumed the send failure meant no message. It doesn't — check the ORDER of send vs logging
-  before trusting any "send failed" line in combined_brief_last_run.log.
-- graphify query was not useful for these scripts — it returned skill docs, not the daily
-  scripts. Went to direct grep instead.
-- Bash tool keeps its working directory between calls. A `cd` into SMCPHARMA made a later
-  `git status` report the WRONG repo. Always cd back to /c/JeffLocal explicitly.
-
----
+**Didn't - do not repeat these**
+- **Do NOT move C:\JeffLocal\Scheduled.** I did, on the reasoning that Cowork held its
+  own copy of the task file. WRONG - Cowork reads it live from that path and the task
+  broke instantly ("Task file not found"). Restored, verified by hash. The 204 copies
+  in Cowork's session storage are per-run snapshots, not an independent store.
+- **Do NOT expect a Cowork scheduled task to work on the folder it points at.** It writes
+  its own file into that folder, protects the path, then drops the folder. Structural.
+- **Do NOT use `git ... 2>&1` while `$ErrorActionPreference = "Stop"`.** Ordinary git
+  notices become fatal errors and silently abandon the commit. Use `$LASTEXITCODE`.
+- Bash heredocs here mangle apostrophes and `\\`. Write patch scripts with the file
+  writer, not `cat <<EOF`. Also: these .ps1/.py files are CRLF - normalise before matching.
 
 ## HOW THE SESSION CLOSED
 
-ROOT CAUSE FOUND LATE IN SESSION — STALE GIT LOCKS:
-- .git/index.lock and .git/HEAD.lock, both 0 bytes, both left at 2026-08-11 19:11.
-- .git/objects/maintenance.lock, 0 bytes, left at 2026-08-08 19:11.
-- No git process was running. All three were stale for 8+ days.
-- These blocked EVERY git write since 11 Aug. That is the reason commits stop at e5ba971,
-  nothing was pushed, and no restore tags were made.
-- All three removed this session. Commit then succeeded (36bafd9).
-- Note the timestamps: 19:11 is the evening session-close slot. The close is crashing
-  mid-git and leaving locks behind. Fixing the locks does NOT fix that — it will recur.
+Live evening run at 13:44-13:55 UTC, everything real, nothing simulated: combined report
+written, session log written, commit created, **16-commit backlog pushed**, restore tag
+cut, WhatsApp delivered in 5 chunks with no false failure. Zero errors in the run log.
 
+21 automated assertions pass. Scripts committed as 02d064f and pushed.
 
-Wrote docs/sessions/2026-08-19-1900.md, rewrote this file, updated PROJECT_MEMORY.md,
-committed those three locally. Push NOT done — waiting on Saeed, because the branch has a
-3-week backlog of unpushed commits and that is his call. No restore tag created.
-
----
+A SessionStart hook now surfaces PROJECT_MEMORY, HANDOFF and the newest session log at
+the start of every session in **both** projects, and warns when any of it is stale.
+It takes effect from the next session.
 
 ## NEXT + BLOCKERS
 
-Next:
-1. Saeed to approve three fixes: (a) restore the daily session-close routine, (b) give the
-   evening task a writable working directory to kill the false error, (c) put a loud staleness
-   warning at the TOP of the brief instead of a quiet note in brackets.
-2. Push the commit backlog and create a restore tag once approved.
-3. Resume the 3 security items — unchanged since 11 Aug, none can move without Saeed.
+**Next**
+1. Check the 07:00 brief. **No staleness banner = the whole chain is healthy.** That is the proof.
+2. Confirm the 19:00 run wrote a real session log and refreshed HANDOFF.md on its own.
+3. Delete the Cowork task once Saeed approves - deleting also clears the protected-root block.
 
-Blockers:
-- The automation that wrote the daily session logs up to 11 Aug ran inside Claude Cowork, NOT
-  Windows Task Scheduler — there is no such task on this machine. Why it stopped cannot be
-  determined from here. Saeed needs to check his Cowork scheduled sessions.
-- Separately, strategy_daily.ps1's own commit/push/tag safety net never fires:
-  combined_brief.ps1:432 always calls it with -DryRun, and strategy_daily.ps1:581 then skips
-  git commit/push. So even when sessions did close, the script was never the thing committing.
+**Blockers**
+- None on the brief pipeline. Fixed and proven live.
+- Cowork scheduled tasks stay unusable. Not blocking; PowerShell replaced the job.
+- Unchanged since 11 Aug: 3 security items (unauth intake endpoint, HMAC secret in git
+  history, directory ACLs). None can move without Saeed.
+
+**Waiting on Saeed:** delete the Cowork task; tidy C:\JeffLocal-Scheduled; clear the
+31-day-old scheduled_tasks.lock; report the Cowork defect to Anthropic?; whether to write
+session logs for SMCPHARMA (that repo is under a standing read-only instruction).

@@ -75,9 +75,47 @@ strategy | Docs, reports, governance, marketing
 
 ---
 
-## CURRENT STATUS -- 2026-08-19 (no JeffLocal code work since 2026-07-28; brief pipeline faults found)
+## CURRENT STATUS -- 2026-08-20 (brief pipeline FIXED + proven live; Cowork session close retired)
 
-### REPORTING / BRIEF PIPELINE -- FAULTS FOUND 2026-08-19 (no fixes applied, awaiting Saeed)
+### REPORTING / BRIEF PIPELINE -- FIXED 2026-08-20 (approved by Saeed, tested, live)
+
+All faults below are RESOLVED. Commit 02d064f, pushed. Restore tag restore/2026-08-20-1800.
+The 16-commit backlog is pushed; 0 unpushed. 21 automated assertions pass.
+
+What changed:
+- Loud PER-PROJECT staleness banner at the TOP of the brief. One project can go dark while
+  the other is busy (19 Aug: JeffLocal dark 8 days, St Marks shipped 5 commits) - the old
+  combined format hid that.
+- Auto-placeholder session logs are marked AUTOGEN-PLACEHOLDER and do NOT reset the
+  staleness clock. Without this, an auto-written file each day would defeat the alarm.
+- "WhatsApp send failed" false alarm fixed: send_whatsapp.py pins CWD to
+  C:\JeffLocal\logs\whatsapp (pywhatkit was writing its ledger into C:\Windows\System32).
+- Git safety net back ON: combined_brief now calls strategy_daily with -NoSend (was -DryRun,
+  which killed the memory write, commit, push and tag together).
+- `git ... 2>&1` under $ErrorActionPreference="Stop" was promoting ordinary git notices
+  ("LF will be replaced by CRLF") to fatal errors and silently abandoning the commit.
+  Now judged on $LASTEXITCODE. DO NOT reintroduce this pattern.
+- Evening close writes a REAL session log from the day's git activity, and refreshes
+  HANDOFF.md when no hand-written close happened (leaves a hand-written one alone).
+- SessionStart hook added at ~/.claude/hooks/session_start_memory.py - surfaces
+  PROJECT_MEMORY + HANDOFF + newest session log at every session start in BOTH projects,
+  and warns on staleness or placeholder logs.
+
+### COWORK SCHEDULED TASK -- RETIRED 2026-08-20, DO NOT REBUILD
+
+The Cowork task "Daily session end 1800" cannot work and never will, in either project.
+Cowork writes each task's own file into the folder the task points at
+(C:\JeffLocal\Scheduled\<task>\SKILL.md), marks that a protected root, then drops any
+folder overlapping it. The task therefore starts with NO access to C:\JeffLocal.
+Cowork's own log: "[Lifecycle] Dropping folder overlapping protected root from session
+local_...: C:\JeffLocal (root: C:\JeffLocal\Scheduled)". Confirmed by experiment - a new
+test task created the same folder again. Not fixable from settings.
+DO NOT move or delete C:\JeffLocal\Scheduled while the task exists - Cowork reads the file
+live from that path and the task breaks ("Task file not found"). Deleting the TASK in
+Cowork removes the folder cleanly and clears the block.
+The job now runs in the 19:00 PowerShell close instead.
+
+### HISTORICAL -- how the faults were found (2026-08-19 investigation)
 
 Saeed reported briefs missing since 13 Aug, then clarified: they ARE arriving, but the content
 is stale and reports no work done. Investigated 2026-08-19. Two independent causes.
