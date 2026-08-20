@@ -526,6 +526,39 @@ if (-not $DryRun) {
     }
 }
 
+# ── 6b. Same automated close for St Marks (SMCPHARMA) ────────────────────────
+# Saeed's instruction 2026-08-20. Until now only JeffLocal had an automated close,
+# so the pharmacy project's session log, HANDOFF and memory only moved when someone
+# ran a session by hand - and the combined brief goes stale for whichever project
+# stops being logged. Same script, pointed at SMCPHARMA's own folders, -NoSend again
+# so there is still exactly one WhatsApp message.
+#
+# NOTE: this repo is git-connected to Cloudflare - a push redeploys the LIVE pharmacy
+# site. The close commits and pushes everything, per Saeed's instruction, so anything
+# left uncommitted under site\ goes live at 19:00 without review. Flagged to Saeed
+# 2026-08-20; a guard can be added here if he wants one.
+if (-not $DryRun) {
+    $SmRepo = "C:\JeffLocal\SMCPHARMA"
+    if (Test-Path (Join-Path $SmRepo "PROJECT_MEMORY.md")) {
+        Write-Log "Running session close for St Marks (SMCPHARMA)..."
+        try {
+            & "C:\JeffLocal\scripts\daily\strategy_daily.ps1" `
+                -Mode $Mode -NoSend `
+                -ProjectName "St Marks Pharmacy Website (STMARKS-WEB)" `
+                -RepoRoot    $SmRepo `
+                -ReportsDir  (Join-Path $SmRepo "docs\reports") `
+                -SessionsDir (Join-Path $SmRepo "docs\sessions") `
+                -ProjectDocs (Join-Path $SmRepo "docs") `
+                -MemoryFile  (Join-Path $SmRepo "PROJECT_MEMORY.md") 2>&1 |
+                ForEach-Object { Write-Log "  [SM] $_" }
+        } catch {
+            Write-Log "WARNING: St Marks session close failed - $_"
+        }
+    } else {
+        Write-Log "WARNING: SMCPHARMA not found at $SmRepo - skipped its session close"
+    }
+}
+
 # ── 7. Send combined report via WhatsApp ─────────────────────────────────────
 if ($DryRun) {
     Write-Log "DryRun: skipped WhatsApp send"

@@ -23,6 +23,9 @@ param(
     [switch]$DryRun,
     # Do everything EXCEPT the combined-brief forward and the WhatsApp send.
     [switch]$NoSend,
+    # Which project this close is for. The script is fully parameterised so the same
+    # close runs for St Marks - see combined_brief.ps1 section 6b.
+    [string]$ProjectName = "Avamed (JeffLocal)",
     [string]$RepoRoot    = "C:\JeffLocal",
     [string]$ReportsDir  = "C:\JeffLocal\docs\reports",
     [string]$SessionsDir = "C:\JeffLocal\docs\sessions",
@@ -746,7 +749,7 @@ if ($Mode -eq 'Evening') {
         }
 
         $HandoffContent = @"
-# HANDOFF - Avamed (JeffLocal)
+# HANDOFF - $ProjectName
 
 > Rolling latest-only: overwrite in full at each session close, never append.
 > Read at session start, right after PROJECT_MEMORY.md.
@@ -815,13 +818,18 @@ if ($DryRun) {
         $HandoffToAdd = Join-Path $RepoRoot "HANDOFF.md"
         if (Test-Path $HandoffToAdd) { $FilesToAdd += $HandoffToAdd }
 
-        # Saeed's instruction 2026-08-20: every session close commits AND pushes.
-        # `git add -u` stages changes to files git ALREADY TRACKS - modifications and
-        # deletions. Deliberately NOT `git add -A`: this working tree carries hundreds
-        # of stray untracked files (junk like "None", "Run", "dict[str") that must
-        # never enter the repo. New files still need a human to `git add` them once.
-        git add -u 2>&1 | Out-Null
-        if ($LASTEXITCODE -ne 0) { throw "git add -u failed (exit $LASTEXITCODE)" }
+        # Saeed's instruction 2026-08-20: every session close commits AND pushes
+        # EVERYTHING - new files included, so no work can be left behind.
+        #
+        # `git add -A` stages new, modified and deleted files. It still HONOURS
+        # .gitignore, which is what makes this safe here: .env, *.sqlite, *.db, logs/,
+        # *.log, *.jsonl, queue/, outputs/ and data/ are all ignored, so secrets and
+        # patient data cannot be swept into the repo. Verified 2026-08-20 - do not
+        # weaken .gitignore without re-checking that.
+        # Stray zero-byte shell-accident files ("None", "Run", "dict[str" and friends)
+        # are ignored by name at the bottom of .gitignore for the same reason.
+        git add -A 2>&1 | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw "git add -A failed (exit $LASTEXITCODE)" }
 
         git add $FilesToAdd 2>&1 | Out-Null
         if ($LASTEXITCODE -ne 0) { throw "git add failed (exit $LASTEXITCODE)" }

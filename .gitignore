@@ -1,4 +1,4 @@
-﻿# Python / dashboard
+# Python / dashboard
 __pycache__/
 *.pyc
 .venv/
@@ -96,3 +96,30 @@ PyWhatKit_DB.txt
 
 # Playwright MCP test artifacts
 .playwright-mcp/
+
+# Shell-accident artefacts. These are zero-byte files created when a PowerShell
+# command redirected output to a filename taken from a variable or a type name
+# (">" instead of "-gt", an unquoted path, etc). They are not work.
+# They are ignored by name because the session close now runs `git add -A`
+# (Saeed, 2026-08-20) and must not commit rubbish. If a real file ever needs one
+# of these names, remove its line here.
+None
+Run
+found
+logged
+login
+session
+dest_db
+REFERENCES
+dict\[str
+list\[dict\[str
+churchtown.app-avamed.uk)
+{,+
+slug
+staff_users(id)
+tenant1
+
+# Cowork's own scheduled-task storage. Not project work, and the task is retired
+# (see docs/archive/cowork-daily-session-end-1800-SKILL.md). Deleting the task in
+# Cowork removes this folder.
+Scheduled/
