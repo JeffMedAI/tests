@@ -8,8 +8,12 @@
 # COMBINED MODE: When called as a scheduled task (no -DryRun, no -RepoRoot override)
 # this script forwards to combined_brief.ps1, which covers BOTH projects (JeffLocal +
 # St Marks Pharmacy / STMARKS-WEB) in a single WhatsApp message.
-# The -DryRun flag suppresses the forward so combined_brief.ps1 can call this script
-# internally without recursion.
+# The -NoSend flag suppresses the forward AND the WhatsApp send, so combined_brief.ps1
+# can call this script internally without recursing and without firing a second
+# message - while STILL getting the PROJECT_MEMORY update, the git commit/push and
+# the evening restore tag. Those are the backup safety net; before 2026-08-20 this
+# script was called with -DryRun instead, which silently switched all of them off.
+# (-DryRun remains a full no-op, for manual testing only.)
 #
 # Last updated: 2026-06-26
 
@@ -17,6 +21,8 @@ param(
     [ValidateSet('Morning','Evening')]
     [string]$Mode        = 'Morning',
     [switch]$DryRun,
+    # Do everything EXCEPT the combined-brief forward and the WhatsApp send.
+    [switch]$NoSend,
     [string]$RepoRoot    = "C:\JeffLocal",
     [string]$ReportsDir  = "C:\JeffLocal\docs\reports",
     [string]$SessionsDir = "C:\JeffLocal\docs\sessions",
@@ -42,7 +48,7 @@ if ($Mode -eq 'Evening') {
 # combined_brief.ps1 which covers both projects. combined_brief.ps1 then calls
 # this script with -DryRun to update PROJECT_MEMORY without looping.
 $_CombinedScript = "C:\JeffLocal\scripts\daily\combined_brief.ps1"
-if (-not $DryRun -and $RepoRoot -eq "C:\JeffLocal" -and (Test-Path $_CombinedScript)) {
+if (-not $DryRun -and -not $NoSend -and $RepoRoot -eq "C:\JeffLocal" -and (Test-Path $_CombinedScript)) {
     Write-Host "Forwarding to combined_brief.ps1 (covers JeffLocal + St Marks Pharmacy)..."
     & $_CombinedScript -Mode $Mode
     exit $LASTEXITCODE
@@ -525,22 +531,70 @@ Write-Log "Report saved: $ReportPath"
 # ── 8b. Evening mode: write session log if Claude didn't write one today ─────
 # Guarantees the brief parser always finds bullet-format content to extract.
 # Writes ONLY if no session log file exists for today (human session takes priority).
+# This block replaces the Cowork "Daily session end 1800" scheduled task,
+# retired 2026-08-20. Cowork could not run it: it writes each task's own file
+# into the folder the task points at (C:\JeffLocal\Scheduled\...), then marks
+# that path a protected root and drops any folder overlapping it - so the task
+# was handed no access to C:\JeffLocal at all. Confirmed by experiment, not
+# fixable from settings. The session close now lives here instead.
+#
+# Two shapes on purpose:
+#   * Commits today  -> a REAL narrative built from the day's git activity.
+#                       No placeholder marker: it counts as real work.
+#   * No commits     -> the stub, WITH the AUTOGEN-PLACEHOLDER marker, so the
+#                       staleness banner in combined_brief.ps1 still fires if
+#                       the days keep going by empty. An automated log must
+#                       never silence that alarm unless real work backs it up.
 $SessionLogPath = $null
 if ($Mode -eq 'Evening') {
     $TodayLogs = Get-ChildItem -Path $SessionsDir -Filter "$Today-*.md" -ErrorAction SilentlyContinue |
         Where-Object { $_.Name -notlike "SESSION_TEMPLATE*" }
     if (-not $TodayLogs) {
         $SessionLogPath = "$SessionsDir\$Today-1800.md"
-        $NoWorkContent = @"
+
+        # What actually happened today, straight from git.
+        $TodayCommits  = @()
+        $FilesTouched  = @()
+        $CurrentBranch = "unknown"
+        Push-Location $RepoRoot
+        try {
+            $b = (git rev-parse --abbrev-ref HEAD 2>&1 | Select-Object -First 1)
+            if ($b) { $CurrentBranch = ([string]$b).Trim() }
+            $rawSubjects = @(git log --no-merges --since="midnight" --until="now" --pretty=format:"%s" 2>&1)
+            $TodayCommits = @($rawSubjects | ForEach-Object { [string]$_ } |
+                Where-Object { $_.Trim() -ne "" -and $_ -notmatch "^fatal:" })
+            $rawFiles = @(git log --no-merges --since="midnight" --until="now" --name-only --pretty=format:"" 2>&1)
+            $FilesTouched = @($rawFiles | ForEach-Object { [string]$_ } |
+                Where-Object { $_.Trim() -ne "" -and $_ -notmatch "^fatal:" } | Sort-Object -Unique)
+        } catch {
+            Write-Log "WARNING: could not read today's git activity - $_"
+        }
+        Pop-Location
+
+        if (@($TodayCommits).Count -gt 0) {
+            # Real work happened. Describe it in Saeed's language, not git's.
+            $DidLines  = @($TodayCommits | Select-Object -First 12)
+            $Rewritten = Get-BusinessRewrite -Lines $DidLines
+            $DidFinal  = if ($Rewritten) { @($Rewritten) } else { @(Add-PlainEnglishNotes -Lines $DidLines) }
+            $DidSection = (@($DidFinal) | ForEach-Object { "- $_" }) -join "`n"
+
+            $FileNote = ""
+            if (@($FilesTouched).Count -gt 0) {
+                $shown = (@($FilesTouched) | Select-Object -First 6) -join ", "
+                $more  = if (@($FilesTouched).Count -gt 6) { ", ..." } else { "" }
+                $FileNote = "`n- Files changed today: $(@($FilesTouched).Count) ($shown$more)"
+            }
+
+            $SessionContent = @"
 # SESSION SUMMARY - [$Today 18:00]
-# Tool: Cowork (automated session end)
-# Written by: Claude scheduled task at $BriefClock
+# Tool: strategy_daily.ps1 (automated session close at $BriefClock)
+# Built from the day's actual git activity - $(@($TodayCommits).Count) commit(s).
 
 ---
 
 ## WHAT WE DID
 
-- No human session today - automated close.
+$DidSection$FileNote
 
 ---
 
@@ -565,11 +619,55 @@ $NextSection
 ## GIT STATE
 
 Latest commit: $LatestCommit
-Branch: sandbox
+Branch: $CurrentBranch
 "@
+            Write-Log "Session log built from $(@($TodayCommits).Count) commit(s) today - counts as REAL work"
+        } else {
+            # Nothing shipped. Keep the marker so the staleness alarm still works.
+            $SessionContent = @"
+# SESSION SUMMARY - [$Today 18:00]
+# Tool: strategy_daily.ps1 (automated session close at $BriefClock)
+# AUTOGEN-PLACEHOLDER: no session was logged and no commits were made today.
+#   combined_brief.ps1 treats this marker as "no real work logged", so an
+#   unnoticed outage cannot hide behind an auto-written file. DO NOT REMOVE.
+
+---
+
+## WHAT WE DID
+
+- No session logged and no commits today - automated close.
+
+---
+
+## BLOCKERS
+
+$BlockerSection
+
+---
+
+## PENDING SAEED APPROVALS
+
+$ApprovalSection
+
+---
+
+## WHAT TO DO NEXT SESSION
+
+$NextSection
+
+---
+
+## GIT STATE
+
+Latest commit: $LatestCommit
+Branch: $CurrentBranch
+"@
+            Write-Log "No commits today - wrote placeholder session log (marked, does not count as real work)"
+        }
+
         if (-not $DryRun) {
-            Set-Content -Path $SessionLogPath -Value $NoWorkContent -Encoding UTF8
-            Write-Log "No session log for today - wrote automated placeholder: $SessionLogPath"
+            Set-Content -Path $SessionLogPath -Value $SessionContent -Encoding UTF8
+            Write-Log "Session log written: $SessionLogPath"
         } else {
             Write-Log "DryRun: would write session log: $SessionLogPath"
         }
@@ -582,21 +680,49 @@ if ($DryRun) {
 } else {
     Write-Log "Committing to git..."
     Push-Location $RepoRoot
+    # git writes ordinary NOTICES to stderr - "LF will be replaced by CRLF" is
+    # the common one, and push progress is another. Under
+    # $ErrorActionPreference = "Stop", `2>&1` promotes any of them to a
+    # TERMINATING error, so a harmless line-ending notice aborted the commit
+    # and logged it as "Git push failed": the safety net looking like it ran
+    # while doing nothing. That is the exact failure shape that hid the brief
+    # outage for 8 days. Judge git on $LASTEXITCODE, which is what git actually
+    # uses to report failure. Caught by test, 2026-08-20.
+    $PrevEAP = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
     try {
-        git config user.email "215987900+Avamedio@users.noreply.github.com"
-        git config user.name "Saeed"
+        git config user.email "215987900+Avamedio@users.noreply.github.com" 2>&1 | Out-Null
+        git config user.name "Saeed" 2>&1 | Out-Null
         $FilesToAdd = @("PROJECT_MEMORY.md", $ReportPath)
         if ($SessionLogPath -and (Test-Path $SessionLogPath)) { $FilesToAdd += $SessionLogPath }
+
         git add $FilesToAdd 2>&1 | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw "git add failed (exit $LASTEXITCODE)" }
+
         git commit -m "memory: $($Mode.ToLower()) brief $Today $BriefClock" 2>&1 | Out-Null
-        git push origin HEAD 2>&1 | Out-Null
-        Write-Log "Git push complete"
+        $CommitExit = $LASTEXITCODE
+        if ($CommitExit -eq 0) {
+            Write-Log "Git commit created"
+            git push origin HEAD 2>&1 | Out-Null
+            if ($LASTEXITCODE -ne 0) { throw "git push failed (exit $LASTEXITCODE)" }
+            Write-Log "Git push complete"
+        } elseif ($CommitExit -eq 1) {
+            # git returns 1 for "nothing to commit" - normal, not a failure.
+            Write-Log "Nothing new to commit - skipping push"
+        } else {
+            throw "git commit failed (exit $CommitExit)"
+        }
     } catch {
-        Write-Log "WARNING: Git push failed - $_"
+        Write-Log "WARNING: git commit/push problem - $_"
+    } finally {
+        $ErrorActionPreference = $PrevEAP
     }
 
     # Evening mode: create restore tag for this day's state
     if ($Mode -eq 'Evening') {
+        # Same stderr trap as the commit block above - keep git on exit codes.
+        $PrevEAP = $ErrorActionPreference
+        $ErrorActionPreference = 'Continue'
         try {
             $RestoreTag = "restore/$Today-1800"
             $TagExists = git tag -l $RestoreTag 2>&1
@@ -620,6 +746,8 @@ if ($DryRun) {
             }
         } catch {
             Write-Log "WARNING: Restore tag creation failed - $_"
+        } finally {
+            $ErrorActionPreference = $PrevEAP
         }
     }
     Pop-Location
@@ -632,8 +760,9 @@ Set-Content -Path $LogFile -Value "[$Today $NowUTC UTC] strategy_daily $Summary"
 Write-Host "Done. Report: $ReportPath" -ForegroundColor Green
 
 # ── 11. Send report via WhatsApp ──────────────────────────────────────────────
-if ($DryRun) {
-    Write-Log "DryRun: skipped WhatsApp send"
+if ($DryRun -or $NoSend) {
+    $SkipReason = if ($DryRun) { "DryRun" } else { "NoSend" }
+    Write-Log "${SkipReason}: skipped WhatsApp send"
 } else {
     Write-Log "Sending report via WhatsApp..."
     $PythonScript = "$RepoRoot\scripts\daily\send_whatsapp.py"

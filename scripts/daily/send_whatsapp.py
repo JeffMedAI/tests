@@ -34,6 +34,34 @@ import os
 import time
 import hashlib
 import json
+
+# ---------------------------------------------------------------------------
+# WORKING DIRECTORY GUARD - fixes the false "WhatsApp send failed" alarm.
+#
+# pywhatkit writes its own ledger, PyWhatKit_DB.txt, using a RELATIVE path -
+# i.e. into whatever the current working directory happens to be. Under the
+# scheduled task the CWD is C:\Windows\System32, where BUILTIN\Users has
+# read-only rights. The ledger write then raises PermissionError AFTER the
+# message has already been delivered, and the caller logs "WhatsApp send
+# failed" for a send that actually succeeded. That false alarm sat on top of
+# a real fault for over a week in August 2026 and helped hide it.
+#
+# Pinning the CWD to a folder we own removes the false alarm, so a failure
+# logged from here on means a genuine failure.
+#
+# Must run BEFORE `import pywhatkit` - the library touches the ledger at
+# import time as well as at send time.
+# ---------------------------------------------------------------------------
+_LEDGER_DIR = os.path.normpath(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "logs", "whatsapp")
+)
+try:
+    os.makedirs(_LEDGER_DIR, exist_ok=True)
+    os.chdir(_LEDGER_DIR)
+except OSError as _exc:  # bookkeeping must never block a send
+    print("WARNING: cannot use ledger dir %s (%s); staying in %s"
+          % (_LEDGER_DIR, _exc, os.getcwd()))
+
 import pywhatkit
 
 # Mute flag: if this file exists, all alerts are silently dropped.

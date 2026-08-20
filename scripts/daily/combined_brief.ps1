@@ -193,6 +193,32 @@ $($numbered -join "`n")
 Write-Log "combined_brief.ps1 started - $Mode - $Today"
 
 # ── Helper: extract sections from session logs in a given directory ───────────
+# ---------------------------------------------------------------------------
+# Placeholder / staleness helpers
+#
+# strategy_daily.ps1 writes an automated placeholder session log on any evening
+# where no human session was logged. That file is a courtesy, NOT evidence of
+# work. Counting it as a real log is exactly what let the 11-19 Aug 2026 outage
+# hide: the Cowork session close could not mount C:\JeffLocal, so no real close
+# ran for 8 days, but a file existed for each day so nothing ever looked wrong.
+# Placeholders are still read for content - they just never reset the clock.
+# ---------------------------------------------------------------------------
+function Test-IsPlaceholderLog {
+    param([string]$Content)
+    if ([string]::IsNullOrWhiteSpace($Content)) { return $true }
+    return ($Content -match 'AUTOGEN-PLACEHOLDER') -or ($Content -match 'No human session today')
+}
+
+function Format-StaleLine {
+    param([string]$Name, [double]$Hours, [string]$LogName)
+    if ($Hours -ge 99999) { return "!!   $Name : NO session log has ever been found" }
+    $Days    = [math]::Floor($Hours / 24)
+    $AgeText = if ($Days -ge 1) { "nothing new logged for $Days day(s)" }
+               else             { "nothing new logged for $Hours hour(s)" }
+    $Src     = if ($LogName) { " - still showing $LogName" } else { "" }
+    return "!!   $Name : $AgeText$Src"
+}
+
 function Get-ProjectBrief {
     param(
         [string]$SessionsDir,
@@ -209,6 +235,7 @@ function Get-ProjectBrief {
     }
 
     $SessionSummaries = @()
+    $RealLogCount     = 0
     if (Test-Path $SessionsDir) {
         $AllSessions = Get-ChildItem -Path $SessionsDir -Filter "*.md" |
             Where-Object { $_.Name -notlike "SESSION_TEMPLATE*" } |
@@ -219,24 +246,40 @@ function Get-ProjectBrief {
             if ($Age -le 24) {
                 $content = Get-Utf8FileText -Path $s.FullName
                 $SessionSummaries += [PSCustomObject]@{ File = $s.Name; Content = $content }
+                if (-not (Test-IsPlaceholderLog -Content $content)) { $RealLogCount++ }
             }
         }
     }
 
-    # Fallback to most recent log if none in last 24h
+    # STALE = no REAL session log in the last 24h. A placeholder does not count.
     $FallbackNote = ""
-    if ($SessionSummaries.Count -eq 0 -and (Test-Path $SessionsDir)) {
-        $MostRecent = Get-ChildItem -Path $SessionsDir -Filter "*.md" |
+    $IsStale      = $false
+    $StaleHours   = 0
+    $StaleLogName = ""
+    if ($RealLogCount -eq 0 -and (Test-Path $SessionsDir)) {
+        $IsStale = $true
+        $Candidates = @(Get-ChildItem -Path $SessionsDir -Filter "*.md" |
             Where-Object { $_.Name -notlike "SESSION_TEMPLATE*" } |
-            Sort-Object LastWriteTime -Descending | Select-Object -First 1
-        if ($MostRecent) {
-            $AgeH = [math]::Round(((Get-Date) - $MostRecent.LastWriteTime).TotalHours, 0)
-            $content = Get-Utf8FileText -Path $MostRecent.FullName
-            $SessionSummaries += [PSCustomObject]@{ File = $MostRecent.Name; Content = $content }
-            $FallbackNote = "(No log today - using $($MostRecent.Name), ${AgeH}h ago)"
-        } else {
-            $FallbackNote = "(No session logs found at all)"
+            Sort-Object LastWriteTime -Descending)
+        $NewestReal = $null
+        foreach ($c in $Candidates) {
+            if (-not (Test-IsPlaceholderLog -Content (Get-Utf8FileText -Path $c.FullName))) {
+                $NewestReal = $c
+                break
+            }
         }
+        if ($NewestReal) {
+            $StaleHours   = [math]::Round(((Get-Date) - $NewestReal.LastWriteTime).TotalHours, 0)
+            $StaleLogName = $NewestReal.Name
+            $FallbackNote = "(STALE - no real session log today. Newest real log: $StaleLogName, ${StaleHours}h ago)"
+            if ($SessionSummaries.Count -eq 0) {
+                $SessionSummaries += [PSCustomObject]@{ File = $NewestReal.Name; Content = (Get-Utf8FileText -Path $NewestReal.FullName) }
+            }
+        } else {
+            $FallbackNote = "(STALE - no real session log found at all)"
+            $StaleHours   = 99999
+        }
+        Write-Log "STALENESS: $ProjectLabel - no real session log in 24h (newest real: $StaleLogName, ${StaleHours}h ago)"
     }
 
     # Extract the 4 standard sections
@@ -332,7 +375,13 @@ $Blocking
 $Approve
 "@
 
-    return [PSCustomObject]@{ Text = $Text; AIFallbackUsed = $AIFallbackUsed }
+    return [PSCustomObject]@{
+        Text           = $Text
+        AIFallbackUsed = $AIFallbackUsed
+        IsStale        = $IsStale
+        StaleHours     = $StaleHours
+        StaleLogName   = $StaleLogName
+    }
 }
 
 # ── 1. Get brief sections for each project ────────────────────────────────────
@@ -390,11 +439,43 @@ $OllamaNote = if ($JeffLocalBrief.AIFallbackUsed -or $StMarksBrief.AIFallbackUse
 } else { "" }
 Write-Log "Ollama AI rewrite fallback used: JeffLocal=$($JeffLocalBrief.AIFallbackUsed) StMarks=$($StMarksBrief.AIFallbackUsed)"
 
+# Staleness banner - loud, per project, at the very top of the message.
+# One project can go dark while the other is busy: on 19 Aug 2026 JeffLocal had
+# no real session log for 8 days while St Marks shipped 5 commits the same day.
+# The old brief buried that in a small "(No log today...)" note mid-message and
+# nobody noticed for over a week. This banner names names, at the top.
+$StaleParts = @()
+if ($JeffLocalBrief.IsStale) {
+    $StaleParts += (Format-StaleLine -Name "AI reception helper (Avamed)" -Hours $JeffLocalBrief.StaleHours -LogName $JeffLocalBrief.StaleLogName)
+}
+if ($StMarksBrief.IsStale) {
+    $StaleParts += (Format-StaleLine -Name "Pharmacy website (St Marks)" -Hours $StMarksBrief.StaleHours -LogName $StMarksBrief.StaleLogName)
+}
+
+$StaleBanner = ""
+if (@($StaleParts).Count -gt 0) {
+    $StaleBody   = (@($StaleParts) -join [Environment]::NewLine)
+    $StaleBanner = @"
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!! WARNING - PART OF THIS BRIEF IS OUT OF DATE
+$StaleBody
+!!
+!! The daily session close is NOT running for the project(s) above.
+!! What you read below for them is OLD news repeated, not today's work.
+!! Do not read it as progress. This needs fixing before you trust it.
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+"@
+    Write-Log "STALENESS BANNER SHOWN for $(@($StaleParts).Count) project(s)"
+} else {
+    Write-Log "Staleness check: both projects have a real session log within 24h"
+}
+
 $CombinedReport = @"
 $Title - $Today $Clock
 Your two projects: the AI reception helper (Avamed) and the pharmacy website (St Marks)
 ================================================================
-$OllamaNote
+$StaleBanner$OllamaNote
 $($JeffLocalBrief.Text)
 
 Behind the scenes: $JLGitCount code change(s) saved today.
@@ -424,12 +505,16 @@ if ($DryRun) {
 }
 
 # ── 6. Run the JeffLocal script to update PROJECT_MEMORY + its git/push ──────
-# We use -DryRun on the WhatsApp step only — JeffLocal's script still does
-# PROJECT_MEMORY updates and git commit; we suppress only its separate send.
+# combined_brief.ps1 owns the single WhatsApp message, so this call uses -NoSend:
+# strategy_daily.ps1 still updates PROJECT_MEMORY, commits, pushes and (evening)
+# cuts the restore tag - it just does not fire a second message.
+# It used to be called with -DryRun, which ALSO switched off the memory write,
+# the commit, the push and the tag. That is why 14 commits sat unpushed and no
+# restore tag was cut between 28 Jul and 19 Aug 2026. Do NOT put -DryRun back.
 if (-not $DryRun) {
-    Write-Log "Running JeffLocal strategy_daily.ps1 for PROJECT_MEMORY update..."
+    Write-Log "Running JeffLocal strategy_daily.ps1 (PROJECT_MEMORY + git safety net)..."
     try {
-        & "C:\JeffLocal\scripts\daily\strategy_daily.ps1" -Mode $Mode -DryRun 2>&1 | ForEach-Object { Write-Log "  [JL] $_" }
+        & "C:\JeffLocal\scripts\daily\strategy_daily.ps1" -Mode $Mode -NoSend 2>&1 | ForEach-Object { Write-Log "  [JL] $_" }
     } catch {
         Write-Log "WARNING: JeffLocal strategy_daily.ps1 failed - $_"
     }
