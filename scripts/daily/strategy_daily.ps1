@@ -553,10 +553,17 @@ if ($Mode -eq 'Evening') {
         $SessionLogPath = "$SessionsDir\$Today-1800.md"
 
         # What actually happened today, straight from git.
+        # Commits AND uncommitted tracked changes both count as work. On 2026-08-20 a
+        # day of substantial work read as "no work today" purely because nothing had
+        # been committed yet at the moment the log was written - accurate, but useless.
+        # Saeed's instruction: count uncommitted work too, and always commit and push.
         $TodayCommits  = @()
         $FilesTouched  = @()
+        $Uncommitted   = @()
         $CurrentBranch = "unknown"
         Push-Location $RepoRoot
+        $ActEAP = $ErrorActionPreference
+        $ErrorActionPreference = 'Continue'   # git notices on stderr must not abort this
         try {
             $b = (git rev-parse --abbrev-ref HEAD 2>&1 | Select-Object -First 1)
             if ($b) { $CurrentBranch = ([string]$b).Trim() }
@@ -566,12 +573,34 @@ if ($Mode -eq 'Evening') {
             $rawFiles = @(git log --no-merges --since="midnight" --until="now" --name-only --pretty=format:"" 2>&1)
             $FilesTouched = @($rawFiles | ForEach-Object { [string]$_ } |
                 Where-Object { $_.Trim() -ne "" -and $_ -notmatch "^fatal:" } | Sort-Object -Unique)
+            # -uno = tracked files only. Untracked junk in this working tree (248 stray
+            # files at last count) must never be swept into a commit.
+            $rawStatus = @(git status --porcelain -uno 2>&1)
+            $Uncommitted = @($rawStatus | ForEach-Object { [string]$_ } |
+                Where-Object { $_.Trim() -ne "" -and $_ -notmatch "^fatal:" })
+            # Drop this script's OWN bookkeeping. It rewrites PROJECT_MEMORY.md, the
+            # report, the session log and HANDOFF.md as part of closing, so those always
+            # show as modified. If they counted as work, the placeholder branch could
+            # NEVER run and the staleness alarm would be permanently disabled - the very
+            # failure this whole day was spent removing. Caught by test, 2026-08-20.
+            $Uncommitted = @($Uncommitted | Where-Object {
+                $pth = (($_ -replace '^\s*\S+\s+', '') -replace '"', '') -replace '\\', '/'
+                ($pth -notmatch '^PROJECT_MEMORY\.md$') -and
+                ($pth -notmatch '^HANDOFF\.md$') -and
+                ($pth -notmatch '^docs/reports/') -and
+                ($pth -notmatch '^docs/sessions/')
+            })
         } catch {
             Write-Log "WARNING: could not read today's git activity - $_"
+        } finally {
+            $ErrorActionPreference = $ActEAP
+            Pop-Location
         }
-        Pop-Location
+        if (@($Uncommitted).Count -gt 0) {
+            Write-Log "Uncommitted tracked changes at close: $(@($Uncommitted).Count) file(s) - these WILL be committed below"
+        }
 
-        if (@($TodayCommits).Count -gt 0) {
+        if (@($TodayCommits).Count -gt 0 -or @($Uncommitted).Count -gt 0) {
             # Real work happened. Describe it in Saeed's language, not git's.
             $DidLines  = @($TodayCommits | Select-Object -First 12)
             $Rewritten = Get-BusinessRewrite -Lines $DidLines
@@ -583,6 +612,15 @@ if ($Mode -eq 'Evening') {
                 $shown = (@($FilesTouched) | Select-Object -First 6) -join ", "
                 $more  = if (@($FilesTouched).Count -gt 6) { ", ..." } else { "" }
                 $FileNote = "`n- Files changed today: $(@($FilesTouched).Count) ($shown$more)"
+            }
+            if (@($Uncommitted).Count -gt 0) {
+                $uShown = (@($Uncommitted) | Select-Object -First 6 |
+                    ForEach-Object { ($_ -replace '^\s*\S+\s+', '') }) -join ", "
+                $uMore  = if (@($Uncommitted).Count -gt 6) { ", ..." } else { "" }
+                $FileNote += "`n- Work in progress committed at close: $(@($Uncommitted).Count) file(s) ($uShown$uMore)"
+            }
+            if (@($TodayCommits).Count -eq 0) {
+                $DidLines = @("Work in progress, not yet committed when the log was written - committed at session close.")
             }
 
             $SessionContent = @"
@@ -674,6 +712,83 @@ Branch: $CurrentBranch
     }
 }
 
+# ── 8c. Evening mode: keep HANDOFF.md current ────────────────────────────────
+# HANDOFF.md is the plain-English "where we left off" note the next session
+# reads first, straight after PROJECT_MEMORY.md. Nothing automated ever wrote
+# it, so it drifted weeks out of date any time no agent session ran - and the
+# next session then oriented itself from a three-week-old note.
+# Same rule as the session log: if a person or agent rewrote it TODAY, leave it
+# alone. Otherwise write an automated one from the day's git activity, clearly
+# marked as automated, so the next session is never reading something stale.
+if ($Mode -eq 'Evening') {
+    $HandoffPath  = Join-Path $RepoRoot "HANDOFF.md"
+    $HandoffFresh = $false
+    if (Test-Path $HandoffPath) {
+        $HandoffFresh = ((Get-Item $HandoffPath).LastWriteTime.Date -eq (Get-Date).Date)
+    }
+
+    if ($HandoffFresh) {
+        Write-Log "HANDOFF.md was already rewritten today - left as written"
+    } else {
+        $HandoffBranch = "unknown"
+        Push-Location $RepoRoot
+        try {
+            $bb = (git rev-parse --abbrev-ref HEAD 2>&1 | Select-Object -First 1)
+            if ($bb) { $HandoffBranch = ([string]$bb).Trim() }
+        } catch { }
+        Pop-Location
+
+        $GitLines = @(@($GitLog) | ForEach-Object { [string]$_ } | Where-Object { $_.Trim() -ne "" })
+        if ($GitLines.Count -eq 0 -or (($GitLines -join " ") -like "*no commits*")) {
+            $CommitList = "- No commits in the last 24 hours."
+        } else {
+            $CommitList = (@($GitLines | ForEach-Object { "- " + $_.Trim() }) -join "`n")
+        }
+
+        $HandoffContent = @"
+# HANDOFF - Avamed (JeffLocal)
+
+> Rolling latest-only: overwrite in full at each session close, never append.
+> Read at session start, right after PROJECT_MEMORY.md.
+> Written automatically by strategy_daily.ps1 at $BriefClock on $Today, because no
+> session had rewritten it by hand today. A real session close overwrites this.
+
+Last session date: $Today (automated close at $BriefClock)
+Closed by: strategy_daily.ps1 (automated)
+Last commit: $LatestCommit
+Branch: $HandoffBranch
+
+## WORK SCOPE
+
+$CommitList
+
+## WHAT WORKED / WHAT DIDN'T
+
+- Automated close - no human notes for today. Judge the work from the commits
+  above and from docs\sessions\$Today-1800.md.
+
+## HOW THE SESSION CLOSED
+
+- Automated at ${BriefClock}: PROJECT_MEMORY.md updated, session log written,
+  changes committed and pushed, restore tag cut.
+
+## NEXT + BLOCKERS
+
+$NextSection
+
+$BlockerSection
+
+$ApprovalSection
+"@
+        if (-not $DryRun) {
+            Set-Content -Path $HandoffPath -Value $HandoffContent -Encoding UTF8
+            Write-Log "HANDOFF.md refreshed (automated - no hand-written close today)"
+        } else {
+            Write-Log "DryRun: would refresh HANDOFF.md"
+        }
+    }
+}
+
 # ── 9. Commit + push ──────────────────────────────────────────────────────────
 if ($DryRun) {
     Write-Log "DryRun: skipped git commit/push"
@@ -695,6 +810,18 @@ if ($DryRun) {
         git config user.name "Saeed" 2>&1 | Out-Null
         $FilesToAdd = @("PROJECT_MEMORY.md", $ReportPath)
         if ($SessionLogPath -and (Test-Path $SessionLogPath)) { $FilesToAdd += $SessionLogPath }
+        # HANDOFF.md carries the "where we left off" note forward to the next
+        # session - commit it too, or it only ever exists on this machine.
+        $HandoffToAdd = Join-Path $RepoRoot "HANDOFF.md"
+        if (Test-Path $HandoffToAdd) { $FilesToAdd += $HandoffToAdd }
+
+        # Saeed's instruction 2026-08-20: every session close commits AND pushes.
+        # `git add -u` stages changes to files git ALREADY TRACKS - modifications and
+        # deletions. Deliberately NOT `git add -A`: this working tree carries hundreds
+        # of stray untracked files (junk like "None", "Run", "dict[str") that must
+        # never enter the repo. New files still need a human to `git add` them once.
+        git add -u 2>&1 | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw "git add -u failed (exit $LASTEXITCODE)" }
 
         git add $FilesToAdd 2>&1 | Out-Null
         if ($LASTEXITCODE -ne 0) { throw "git add failed (exit $LASTEXITCODE)" }
