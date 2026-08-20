@@ -206,7 +206,13 @@ Write-Log "combined_brief.ps1 started - $Mode - $Today"
 function Test-IsPlaceholderLog {
     param([string]$Content)
     if ([string]::IsNullOrWhiteSpace($Content)) { return $true }
-    return ($Content -match 'AUTOGEN-PLACEHOLDER') -or ($Content -match 'No human session today')
+    # Only the HEADER counts. A real session log that *discusses* the marker - as the
+    # 2026-08-20 close does while explaining this very mechanism - must not be misread
+    # as a placeholder, or it raises a false staleness alarm. Match the marker only as
+    # a comment line in the first 10 lines, which is where the generator puts it.
+    $Head = (@($Content -split "`n") | Select-Object -First 10) -join "`n"
+    return ($Head -match '(?m)^\s*#\s*AUTOGEN-PLACEHOLDER') -or
+           ($Head -match '(?m)^\s*#.*No human session today')
 }
 
 function Format-StaleLine {
