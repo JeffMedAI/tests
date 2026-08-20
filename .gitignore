@@ -123,3 +123,9 @@ tenant1
 # (see docs/archive/cowork-daily-session-end-1800-SKILL.md). Deleting the task in
 # Cowork removes this folder.
 Scheduled/
+
+# SMCPHARMA is its own git repository (the St Marks pharmacy website, separate
+# remote, separate deploy). It must NOT be committed into this one - `git add -A`
+# would otherwise add it as a broken submodule pointer that moves every night.
+# Saeed's rule: these are separate projects.
+SMCPHARMA/
