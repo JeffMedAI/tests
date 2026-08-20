@@ -1,6 +1,6 @@
-# PROJECT MEMORY — JeffLocal
+﻿# PROJECT MEMORY — JeffLocal
 # READ THIS FIRST at every session start, before doing anything else.
-# Last updated: 2026-08-19 (brief pipeline investigated - see REPORTING/BRIEF PIPELINE below)
+# Last updated: 2026-08-20 (auto-updated 19:00)
 # Maintained by: Claude (update at end of every session)
 
 ---
@@ -577,7 +577,7 @@ Branch:  main. C:\JeffLocal (the repo root) IS the production directory — its 
          ALWAYS verify with `git branch --show-current` before assuming this.
 Main:    merged 2026-07-14 (feature/refactor-2-5-6 → main, Saeed approved, commit 79bd895),
          deployed to production 2026-07-15.
-Latest:  977354b memory: session end protocol 2026-08-10 18:00. No commits since — 2026-08-11
+Latest:  f4f6383 memory: record stale git locks as root cause of brief staleness
          session end check found no work done today, state unchanged since 2026-07-28.
          Preceded by d368529 step5 cutover tooling: watchdog repoint (8765 -> tenant1) + apply
          script, 82b7ba2 (multi-tenancy step 5: avamed-super-admin role + tenant picker + tenant1
@@ -726,3 +726,4 @@ Monitoring:   Watchdog (restarts services if down, checks every 60s)
 4. git push origin HEAD
 5. Tell Saeed: "Session saved. Memory updated. Ready to pick up tomorrow."
 ```
+
