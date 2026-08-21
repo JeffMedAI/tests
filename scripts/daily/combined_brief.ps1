@@ -225,6 +225,11 @@ function Format-StaleLine {
     return "!!   $Name : $AgeText$Src"
 }
 
+function Format-HeldLine {
+    param([string]$Name, [string]$Path, [int]$Count)
+    return "!!   $Name : $Count unfinished file(s) in $Path\"
+}
+
 function Get-ProjectBrief {
     param(
         [string]$SessionsDir,
@@ -511,6 +516,10 @@ if ($DryRun) {
 }
 
 # ── 6. Run the JeffLocal script to update PROJECT_MEMORY + its git/push ──────
+# Collects any PUSH-HELD signal the closes emit, so the warning can go into the
+# very brief that is about to be sent rather than waiting for the next one.
+$HeldSignals = @()
+
 # combined_brief.ps1 owns the single WhatsApp message, so this call uses -NoSend:
 # strategy_daily.ps1 still updates PROJECT_MEMORY, commits, pushes and (evening)
 # cuts the restore tag - it just does not fire a second message.
@@ -520,7 +529,13 @@ if ($DryRun) {
 if (-not $DryRun) {
     Write-Log "Running JeffLocal strategy_daily.ps1 (PROJECT_MEMORY + git safety net)..."
     try {
-        & "C:\JeffLocal\scripts\daily\strategy_daily.ps1" -Mode $Mode -NoSend 2>&1 | ForEach-Object { Write-Log "  [JL] $_" }
+        # -ProtectPath dashboard: C:\JeffLocal\dashboard\ is production, served live
+        # on port 8765. A push deploys nothing here, but the rule is the same for
+        # both projects - unfinished production work does not leave the machine.
+        $JLOutput = & "C:\JeffLocal\scripts\daily\strategy_daily.ps1" `
+            -Mode $Mode -NoSend -ProtectPath "dashboard" 2>&1 |
+            ForEach-Object { Write-Log "  [JL] $_"; $_ }
+        $HeldSignals += @(@($JLOutput) | ForEach-Object { [string]$_ } | Where-Object { $_ -like "PUSH-HELD|*" })
     } catch {
         Write-Log "WARNING: JeffLocal strategy_daily.ps1 failed - $_"
     }
@@ -549,14 +564,51 @@ if (-not $DryRun) {
                 -ReportsDir  (Join-Path $SmRepo "docs\reports") `
                 -SessionsDir (Join-Path $SmRepo "docs\sessions") `
                 -ProjectDocs (Join-Path $SmRepo "docs") `
-                -MemoryFile  (Join-Path $SmRepo "PROJECT_MEMORY.md") 2>&1 |
-                ForEach-Object { Write-Log "  [SM] $_" }
+                -MemoryFile  (Join-Path $SmRepo "PROJECT_MEMORY.md") `
+                -ProtectPath "site" 2>&1 |
+                ForEach-Object { Write-Log "  [SM] $_"; $_ } |
+                Where-Object { ([string]$_) -like "PUSH-HELD|*" } |
+                ForEach-Object { $script:HeldSignals += [string]$_ }
         } catch {
             Write-Log "WARNING: St Marks session close failed - $_"
         }
     } else {
         Write-Log "WARNING: SMCPHARMA not found at $SmRepo - skipped its session close"
     }
+}
+
+# ── 6c. Push held? Warn Saeed in THIS message, not tomorrow's ────────────────
+# The report file was written in section 5 and the send in section 7 reads it back
+# off disk, so prepending here reaches him the same evening with no second
+# message and no second browser session.
+if (@($HeldSignals).Count -gt 0) {
+    $HeldLines = @()
+    foreach ($sig in @($HeldSignals)) {
+        $parts = ([string]$sig).Split("|")
+        if ($parts.Count -ge 4) {
+            $HeldLines += (Format-HeldLine -Name $parts[1] -Path $parts[2] -Count ([int]$parts[3]))
+        }
+    }
+    $HeldBody = (@($HeldLines) -join [Environment]::NewLine)
+    $HeldBanner = @"
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!! PUSH HELD - UNFINISHED WORK IS SITTING IN A LIVE FOLDER
+$HeldBody
+!!
+!! Nothing is lost - it IS saved on this computer. It was NOT
+!! sent to GitHub, and NOT published to the website.
+!! Finish it or undo it, and the next close will send it.
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+"@
+    if (-not $DryRun -and (Test-Path $ReportPath)) {
+        $ExistingReport = Get-Utf8FileText -Path $ReportPath
+        Set-Content -Path $ReportPath -Value ($HeldBanner + $ExistingReport) -Encoding UTF8
+    }
+    Write-Log "PUSH HELD banner added to tonight's brief for $(@($HeldLines).Count) project(s)"
+    Write-Host $HeldBanner
+} else {
+    Write-Log "Push guard: nothing held, both projects pushed normally"
 }
 
 # ── 7. Send combined report via WhatsApp ─────────────────────────────────────

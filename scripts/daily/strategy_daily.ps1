@@ -26,6 +26,11 @@ param(
     # Which project this close is for. The script is fully parameterised so the same
     # close runs for St Marks - see combined_brief.ps1 section 6b.
     [string]$ProjectName = "Avamed (JeffLocal)",
+    # LIVE-DEPLOY GUARD. Repo-relative folder whose unfinished work must never be
+    # pushed: "site" for St Marks (a push republishes the live pharmacy website),
+    # "dashboard" for JeffLocal (production, served live on port 8765).
+    # Empty = no guard, push as normal.
+    [string]$ProtectPath = "",
     [string]$RepoRoot    = "C:\JeffLocal",
     [string]$ReportsDir  = "C:\JeffLocal\docs\reports",
     [string]$SessionsDir = "C:\JeffLocal\docs\sessions",
@@ -798,6 +803,7 @@ if ($DryRun) {
 } else {
     Write-Log "Committing to git..."
     Push-Location $RepoRoot
+    $PushHeld = $false
     # git writes ordinary NOTICES to stderr - "LF will be replaced by CRLF" is
     # the common one, and push progress is another. Under
     # $ErrorActionPreference = "Stop", `2>&1` promotes any of them to a
@@ -817,6 +823,29 @@ if ($DryRun) {
         # session - commit it too, or it only ever exists on this machine.
         $HandoffToAdd = Join-Path $RepoRoot "HANDOFF.md"
         if (Test-Path $HandoffToAdd) { $FilesToAdd += $HandoffToAdd }
+
+        # ---------------------------------------------------------------------
+        # LIVE-DEPLOY GUARD (Saeed, 2026-08-21). MUST run BEFORE `git add -A` -
+        # once everything is staged the folder looks clean and the guard is blind.
+        #
+        # Why: this close commits and pushes EVERYTHING. On St Marks a push
+        # republishes the live pharmacy website within about a minute, with no
+        # review step - so a half-typed price or a missing red-flag warning left
+        # in site\ at 19:00 would go live to patients unreviewed. On JeffLocal a
+        # push deploys nothing (dashboard\ is already live from disk on 8765), but
+        # Saeed chose the same rule for both: unfinished production work means
+        # nothing leaves the machine until a human has looked.
+        #
+        # No -uno: a brand-new half-written page is untracked, and must count too.
+        # The commit still happens either way - only the push waits, so nothing
+        # is ever lost.
+        # ---------------------------------------------------------------------
+        $ProtectedDirty = @()
+        if ($ProtectPath) {
+            $rawProt = @(git status --porcelain -- $ProtectPath 2>&1)
+            $ProtectedDirty = @($rawProt | ForEach-Object { [string]$_ } |
+                Where-Object { $_.Trim() -ne "" -and $_ -notmatch "^fatal:" })
+        }
 
         # Saeed's instruction 2026-08-20: every session close commits AND pushes
         # EVERYTHING - new files included, so no work can be left behind.
@@ -838,9 +867,19 @@ if ($DryRun) {
         $CommitExit = $LASTEXITCODE
         if ($CommitExit -eq 0) {
             Write-Log "Git commit created"
-            git push origin HEAD 2>&1 | Out-Null
-            if ($LASTEXITCODE -ne 0) { throw "git push failed (exit $LASTEXITCODE)" }
-            Write-Log "Git push complete"
+            if (@($ProtectedDirty).Count -gt 0) {
+                # Guard fired. Work is committed locally; it just does not leave.
+                $PushHeld = $true
+                Write-Log "PUSH HELD: $ProtectPath has $(@($ProtectedDirty).Count) unfinished file(s). Committed locally, NOT pushed."
+                foreach ($d in @($ProtectedDirty)) { Write-Log "    held: $d" }
+                # Machine-readable signal for combined_brief.ps1, which turns it
+                # into a loud line at the top of that evening's WhatsApp brief.
+                Write-Output "PUSH-HELD|$ProjectName|$ProtectPath|$(@($ProtectedDirty).Count)"
+            } else {
+                git push origin HEAD 2>&1 | Out-Null
+                if ($LASTEXITCODE -ne 0) { throw "git push failed (exit $LASTEXITCODE)" }
+                Write-Log "Git push complete"
+            }
         } elseif ($CommitExit -eq 1) {
             # git returns 1 for "nothing to commit" - normal, not a failure.
             Write-Log "Nothing new to commit - skipping push"
@@ -854,7 +893,12 @@ if ($DryRun) {
     }
 
     # Evening mode: create restore tag for this day's state
-    if ($Mode -eq 'Evening') {
+    if ($Mode -eq 'Evening' -and $PushHeld) {
+        # A restore point that cannot be pushed, taken over a tree containing
+        # unfinished production work, is worth little and would need pushing
+        # later anyway. Skip it; the next clean close cuts one.
+        Write-Log "Restore tag skipped - push is held ($ProtectPath has unfinished work)"
+    } elseif ($Mode -eq 'Evening') {
         # Same stderr trap as the commit block above - keep git on exit codes.
         $PrevEAP = $ErrorActionPreference
         $ErrorActionPreference = 'Continue'

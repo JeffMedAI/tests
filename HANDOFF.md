@@ -108,10 +108,38 @@ Confirmed firing.
 - Unchanged since 11 Aug: 3 security items (unauthenticated intake endpoint, HMAC secret in
   git history, directory ACLs).
 
-**Waiting on Saeed - ONE OF THESE IS A REAL RISK**
-- **SMCPHARMA deploys live on push, and the close now pushes everything.** Anything left
-  uncommitted under `site\` goes live to patients at 19:00 without review. Offered a guard:
-  commit everything as normal but skip the auto-push for SMCPHARMA when `site\` is dirty.
-  **Not yet answered.**
+**Waiting on Saeed**
+- Delete the Cowork task (above) - only doable from the Cowork UI.
 - `graphify-out/` is now committed nightly in both repos - small but churns. Keep or ignore?
-- Delete the Cowork task (above).
+
+---
+
+## ADDED 2026-08-21 — LIVE-DEPLOY GUARD (the risk above is now CLOSED)
+
+The close pushes everything, and SMCPHARMA is git-connected to Cloudflare — so unfinished
+work in `site\` would have published itself to patients at 19:00, unreviewed. Fixed:
+
+- New `-ProtectPath` parameter on `strategy_daily.ps1`. If the named folder has unfinished
+  work at close: **the commit still happens (nothing is lost), the push is held**, and the
+  restore tag is skipped.
+- Watches **`site\`** on St Marks and **`dashboard\`** on JeffLocal.
+- **Be honest about JeffLocal:** a push here deploys nothing — `dashboard\` is already live
+  from disk on port 8765 — so holding protects nothing *live*. Saeed chose the same shape
+  anyway, for one consistent rule. On this project the **warning** is the valuable half.
+- Same-evening warning: the close emits `PUSH-HELD|...`; `combined_brief.ps1` catches it and
+  prepends a loud banner to the report file *before* the send reads it. One message, no
+  second browser session, no dedup problem.
+- **36 assertions pass.** Fixtures now get a real bare remote, so "held" is provably distinct
+  from "push failed" — the test is simply whether `origin/main` advanced.
+- Detection verified against both real repos; both clean, so tonight pushes normally.
+
+**Test-harness trap worth remembering:** assertions on log text were silently passing
+nothing, because `Write-Log` uses `Write-Host`, which lands on the Information stream.
+`2>&1` misses it; use `*>&1`.
+
+**Also answered 2026-08-21:** should the dashboard be rebuilt as a Cloudflare Worker like
+St Marks, for uniformity? **No** — it holds patient data, and a Worker runs on Cloudflare's
+machines, so the data would leave the building (CLAUDE.md line 58). Also a full
+Python→JavaScript rewrite that would sever it from the local pipeline. Uniformity is served
+instead by `docs\SHIPPING.md`, now in both repos: same template, project-specific content,
+one cross-reference line so the two ship models are never confused again.

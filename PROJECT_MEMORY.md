@@ -101,6 +101,38 @@ What changed:
   PROJECT_MEMORY + HANDOFF + newest session log at every session start in BOTH projects,
   and warns on staleness or placeholder logs.
 
+### LIVE-DEPLOY GUARD -- ADDED 2026-08-21
+
+The close commits and pushes EVERYTHING, so a guard now stops unfinished production work
+leaving the machine. `-ProtectPath` on strategy_daily.ps1: if the named folder has
+uncommitted work at close, the commit still happens (nothing lost) but the **push is held**
+and the restore tag is skipped. That evening's WhatsApp brief carries a loud PUSH HELD
+banner at the top.
+
+- St Marks watches **`site\`** — a push there republishes the live pharmacy website, so this
+  is the real protection: half-written clinical content can no longer publish itself.
+- JeffLocal watches **`dashboard\`**. Be honest about this one: a push here deploys nothing
+  (`dashboard\` is already live from disk on 8765), so holding protects nothing live. Saeed
+  chose the same shape for one consistent rule; the warning is the valuable half here.
+- Disable by setting `-ProtectPath ""` in combined_brief.ps1 sections 6 / 6b.
+- 36 assertions cover it. Fixtures use a real bare remote so "held" is provably different
+  from "push failed" — the test is whether `origin/main` advanced.
+
+### ARCHITECTURE -- DO NOT MOVE THE DASHBOARD TO CLOUDFLARE WORKERS (asked + answered 2026-08-21)
+
+Saeed asked whether the dashboard should be rebuilt as a Worker like the St Marks site, for
+uniformity. **No.** The dashboard is 43 Python files + FastAPI + local SQLite holding patient
+data. A Cloudflare **tunnel** is a pipe to software running in the building; a **Worker** IS
+the software, running on Cloudflare's machines — so patient data would leave the building,
+contradicting CLAUDE.md line 58, which is what is sold to GP practices and what underpins
+DSPT, DTAC, Cyber Essentials and the NHS SBS submission. It would also be a full
+Python→JavaScript rewrite and would sever the dashboard from the local pipeline it serves
+(local SQLite, `outputs\handoff_json\`, Ollama on 11434, n8n on 5678).
+
+Uniformity is served instead by `docs\SHIPPING.md` in **both** repos — same template,
+project-specific content, one cross-reference line, so the two ship models are never
+confused again.
+
 ### COWORK SCHEDULED TASK -- RETIRED 2026-08-20, DO NOT REBUILD
 
 The Cowork task "Daily session end 1800" cannot work and never will, in either project.
