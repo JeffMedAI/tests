@@ -1,6 +1,6 @@
 ﻿# CLAUDE.md — Avamed (JeffLocal)
 # Source of truth for all Claude rules. Read first, every session, no exceptions.
-# Last updated: 2026-07-17
+# Last updated: 2026-08-21
 
 ---
 
@@ -18,7 +18,7 @@ Then read in this order:
 5. Git repo state: git log --oneline -10
 6. C:\JeffLocal\docs\reports\{yesterday's date}.md — daily briefing
 
-Before relying on graphify to orient, run `graphify update .` if the graph looks stale (uncommitted `graphify-out/graph.json`, or last-updated older than recent code changes) — a stale graph costs tokens to re-verify without saving any.
+The graphify code map is now **refreshed automatically at every 19:00 session close**, so it should already be current — no need to rebuild it by hand before orienting. If it does look stale, `graphify update .` takes about 15 seconds. `graphify-out/` is gitignored (it is generated, not source). Corrected 2026-08-21.
 
 Then produce the session start report and WAIT for Saeed's go-ahead before doing anything.
 
@@ -107,9 +107,33 @@ PRODUCTION  = C:\JeffLocal\dashboard\        Port 8765   Watchdog-managed   LIVE
 
 **The sandbox directory has been removed (2026-06-07).** There is no longer a separate sandbox directory. Development work happens on git feature branches. Test locally on the branch, get Security Agent + Lead Agent approval, then merge to production.
 
-**WARNING:** The git branch is still named "sandbox." The branch name has no relationship to a file path. The production directory is always `C:\JeffLocal\dashboard\`. Always verify the actual file path before editing any file.
+**WARNING:** Work happens on **`main`** (corrected 2026-08-21 — this file previously said "sandbox", which was out of date and would mislead a new session). A `sandbox` branch still exists but is not what is being worked on. Either way, a branch name has no relationship to a file path: the production directory is always `C:\JeffLocal\dashboard\`. Always verify the actual file path before editing any file.
 
 Never merge to the production directory without Saeed's explicit written approval.
+
+**NEVER POINT A COWORK SCHEDULED TASK AT A PROJECT FOLDER** (added 2026-08-21, Saeed's
+instruction — this one cost eight days of silent failure).
+
+Cowork writes each scheduled task's own file **inside** the folder the task points at
+(`<folder>\Scheduled\<task>\SKILL.md`), marks that path a **protected root**, then drops any
+folder that overlaps it. The task therefore starts with **no access to the folder it was
+given**, and fails **silently** — the run still appears in its history as though it happened.
+Cowork's own log:
+
+```
+[Lifecycle] Dropping folder overlapping protected root from session
+local_...: C:\JeffLocal (root: C:\JeffLocal\Scheduled)
+```
+
+This killed the nightly session close from 11–19 Aug 2026 and nobody noticed for eight days.
+Confirmed by experiment: a second test task created the same folder again. It is structural,
+not a settings problem, and it applies to `C:\JeffLocal\SMCPHARMA` equally.
+
+- **Use PowerShell + Windows Task Scheduler for scheduled work**, as `scripts\daily\` does.
+- Cowork is fine for ordinary **interactive** sessions on these folders.
+- If a `Scheduled\` folder ever reappears in a project root, a Cowork task has been created —
+  delete the **task** in Cowork (that removes the folder cleanly). **Never move or delete the
+  folder while the task exists** — Cowork reads that file live and the task breaks instantly.
 
 ---
 
@@ -183,7 +207,7 @@ If any pipeline code allows LLM output to set these fields, that is a critical b
 8. Reception staff action prioritised task on dashboard
 
 **Queue stages:** encrypted_raw → incoming → processing → processed / failed / deadletter
-**Note:** 5 items are currently in the deadletter queue. No replay tooling exists yet — this is documented technical debt.
+**Note:** No replay tooling exists for the deadletter queue — documented technical debt. (A count of 5 was recorded in June 2026; [UNVERIFIED — confirm before proceeding], not re-checked since.)
 
 **Config files — all 4 exist in `C:\JeffLocal\config\` (confirmed 2026-06-07, PE-01 to PE-04 resolved):**
 - `model_settings.json` — model: gemma4:e2b, temperature: 0.1
@@ -228,7 +252,7 @@ When the matrix or pipeline changes (new pathway, new filter), update TESTING.md
 
 Active obligations:
 - **GDPR**: 90-day automated purge, audit log in SQLite, no patient data in git
-- **DSPT** (Data Security and Protection Toolkit): in progress, deadline 30 June 2026
+- **DSPT** (Data Security and Protection Toolkit): **deadline of 30 June 2026 was MISSED.** Saeed's position (2026-08-21): to be completed soon. Treat as overdue and outstanding, not "in progress to a deadline".
 - **DTAC** (Digital Technology Assessment Criteria): in draft
 - **Cyber Essentials**: in progress — required for NHS procurement
 - **ICO registration**: confirm status — required as data controller
@@ -240,21 +264,24 @@ No external API calls with patient data. No real patient names, NHS numbers, or 
 
 ## COMMERCIAL — ACTIVE OBLIGATIONS
 
-**NHS SBS Healthcare AI Solutions Framework (SBS10523) — deadline: 23 June 2026 (time-critical)**
+**NHS SBS Healthcare AI Solutions Framework (SBS10523) — deadline 23 June 2026 was MISSED.**
+Saeed's position (2026-08-21): to be completed soon. Do not describe this as upcoming.
 - Avamed is not yet a registered company — this is a Day 1 blocker for the submission
 - DPO has been appointed
 - Hostcomm UK is the voice AI partner and is NHS Digital Marketplace listed — material to procurement submissions
 - Churchtown case study is embargoed until written consent is obtained — do not use in submissions
 
-Strategy Agent has specific deliverables tied to this deadline. Always check the current date against 23 June 2026 when planning strategy tasks.
+Strategy Agent has deliverables tied to this. The original date has passed, so there is no date to check against — **ask Saeed for the current target before planning around it.** Do not invent one.
 
 ---
 
 ## PILOT TIMELINE
 
-**Target:** First pilot practice live within 3–4 weeks of today (2026-06-07). Expansion to remaining 4 practices is performance-based — no fixed timeline until Churchtown result is assessed.
+**Target: PAUSED — there is no go-live date (Saeed, 2026-08-21).** The old target ("3–4 weeks from 2026-06-07") passed 75 days ago and was never re-set. **Do not plan against a date, and do not invent one.**
 
-This means: MVP must be stable, tested, and governable within 3 weeks. Marketing collateral for practice onboarding must be ready at the same time. No scope creep that delays the first go-live date.
+The target resumes when the blockers clear: governance gates 1–7 signed · real staff accounts created · the three outstanding security items closed (unauthenticated intake endpoint, HMAC secret in git history, directory ACLs).
+
+Expansion to the remaining 4 practices stays performance-based — no timeline until the Churchtown result is assessed. MVP must still be stable, tested and governable, and onboarding collateral ready, before any date is set.
 
 ---
 
@@ -277,7 +304,7 @@ Thresholds to be reviewed after first revenue.
 
 **WhatsApp and external messaging:** Before sending any external message (WhatsApp, email, SMS), locate the recipient by name or number search. Verify the chat header shows the correct recipient. Never navigate by visual list position or coordinate. This rule exists because of a real incident on 2026-06-01 where an internal briefing was sent to the wrong WhatsApp group.
 
-**Daily WhatsApp briefings to Saeed — TWO per day.** Both are produced by `scripts\daily\strategy_daily.ps1` (one script, two modes), saved to `docs\reports\`, committed, and sent to 07440 333938 (Saeed's personal number — always verify before sending). Format in `REPORTING.md`. Both are written in simple, plain English (caveman style — short, no jargon).
+**Daily WhatsApp briefings to Saeed — TWO per day.** Both are produced by `scripts\daily\combined_brief.ps1`, which covers **both projects** (Avamed + St Marks) in ONE message and calls `strategy_daily.ps1` for each project's close. (`strategy_daily.ps1` run directly just forwards to it.) Corrected 2026-08-21. Saved to `docs\reports\`, committed, and sent to 07440 333938 (Saeed's personal number — always verify before sending). Format in `REPORTING.md`. Both are written in simple, plain English (caveman style — short, no jargon).
 
 - **Morning brief — 07:00** (`-Mode Morning`, looks ahead): 1) what we did yesterday, 2) what we are doing today, 3) what is blocking us, 4) approvals/tasks pending from Saeed.
 - **Evening brief — 19:00** (`-Mode Evening`, session close, looks back): 1) what we did today, 2) what is next (tomorrow), 3) blockers, 4) approvals pending. This is part of the session-close routine.
@@ -323,6 +350,10 @@ Claude maintains and updates project memory autonomously at every session end.
 ---
 
 ## SESSION END PROTOCOL
+
+**Much of this now happens automatically at 19:00** (added 2026-08-20/21). The automated close writes the session log from the day's git activity, refreshes `HANDOFF.md` (only if no real session rewrote it that day), updates `PROJECT_MEMORY.md`, commits **everything**, pushes, and cuts the restore tag — for **both** projects. A **push guard** holds the push if `dashboard\` (here) or `site\` (St Marks) contains unfinished work, and shouts about it at the top of that evening's brief.
+
+So the steps below are what a **human/agent session** must still do properly — the automation is a safety net for days when nobody does, not a replacement. A hand-written close always beats an auto-generated one. See `docs\SHIPPING.md`.
 
 Before closing, do ALL of the following in order:
 
@@ -378,9 +409,11 @@ This project has a knowledge graph at graphify-out/ with god nodes, community st
 
 Rules:
 - For codebase questions, first run `graphify query "<question>"` when graphify-out/graph.json exists. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
-- If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
 - Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
-- After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
+- **The map refreshes itself at every 19:00 close** — you should not need to rebuild it by hand. If it does look stale, `graphify update .` takes ~15 seconds (AST-only, no API cost).
+- **`graphify-out/` is gitignored.** It is a generated index, not source. Do not commit it: `graph.json` alone is ~3MB, and **graphify writes a dated backup of itself on every single run** (~2.5MB), so committing it would add roughly 900MB a year. The close prunes those snapshots to the 3 most recent.
+- There is **no** `graphify-out/wiki/` — it has never been generated. Earlier versions of this file told you to use it; ignore that. (Corrected 2026-08-21.)
+- **St Marks (SMCPHARMA) has no graph and should not get one.** 23 static pages plus one build script — the structure is obvious from folder names, and its map sat 5 weeks stale and unused before it was removed.
 
 ## Skill routing
 
