@@ -129,3 +129,10 @@ Scheduled/
 # would otherwise add it as a broken submodule pointer that moves every night.
 # Saeed's rule: these are separate projects.
 SMCPHARMA/
+
+# graphify-out is a GENERATED code map, not source. Rebuilt from scratch by
+# `graphify update .` in ~15 seconds, so versioning it buys nothing and costs a
+# lot: graph.json alone is ~3MB, and graphify writes a DATED BACKUP of itself
+# (~2.5MB) on every single run - so a nightly refresh would add ~900MB/year to
+# the repo. The nightly close refreshes it on disk and prunes old snapshots.
+graphify-out/

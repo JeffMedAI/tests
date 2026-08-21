@@ -31,6 +31,9 @@ param(
     # "dashboard" for JeffLocal (production, served live on port 8765).
     # Empty = no guard, push as normal.
     [string]$ProtectPath = "",
+    # Rebuild the graphify code map at close. JeffLocal only - St Marks is 23
+    # static pages and does not keep one.
+    [switch]$RefreshGraph,
     [string]$RepoRoot    = "C:\JeffLocal",
     [string]$ReportsDir  = "C:\JeffLocal\docs\reports",
     [string]$SessionsDir = "C:\JeffLocal\docs\sessions",
@@ -793,6 +796,50 @@ $ApprovalSection
             Write-Log "HANDOFF.md refreshed (automated - no hand-written close today)"
         } else {
             Write-Log "DryRun: would refresh HANDOFF.md"
+        }
+    }
+}
+
+# ── 8d. Refresh the code map ─────────────────────────────────────────────────
+# A STALE map is worse than none - it describes code that no longer exists and
+# costs tokens to re-verify without saving any (CLAUDE.md says exactly this).
+# Both repos' maps had drifted 3-5 weeks out of date and went unused because of
+# it. Rebuilding is cheap: ~15 seconds, AST-only, no API cost. So do it nightly.
+#
+# graphify-out is gitignored - it is a generated index, not source. Nothing here
+# reaches git; this only keeps the on-disk map current for the next session.
+if ($RefreshGraph -and -not $DryRun) {
+    if (-not (Get-Command graphify -ErrorAction SilentlyContinue)) {
+        Write-Log "graphify not on PATH - code map refresh skipped"
+    } else {
+        Write-Log "Refreshing the code map (graphify update)..."
+        $GraphEAP = $ErrorActionPreference
+        $ErrorActionPreference = 'Continue'
+        Push-Location $RepoRoot
+        try {
+            $GraphOut = & graphify update . 2>&1 | Out-String
+            $Rebuilt  = @($GraphOut -split "`n" | Where-Object { $_ -match 'Rebuilt:' }) | Select-Object -First 1
+            if ($Rebuilt) { Write-Log ("Code map refreshed - " + ([string]$Rebuilt).Trim()) }
+            else          { Write-Log "graphify update finished (no rebuild line in its output)" }
+
+            # graphify writes a DATED BACKUP of itself on EVERY run (~2.5MB).
+            # Left alone that is roughly 900MB a year of dead snapshots nobody
+            # reads. Keep the 3 most recent and drop the rest.
+            $SnapRoot = Join-Path $RepoRoot "graphify-out"
+            $Snaps = @(Get-ChildItem -Path $SnapRoot -Directory -ErrorAction SilentlyContinue |
+                Where-Object { $_.Name -match '^\d{4}-\d{2}-\d{2}$' } | Sort-Object Name)
+            if ($Snaps.Count -gt 3) {
+                foreach ($Old in $Snaps[0..($Snaps.Count - 4)]) {
+                    Remove-Item -Recurse -Force $Old.FullName -ErrorAction SilentlyContinue
+                    Write-Log "Pruned old code-map snapshot: $($Old.Name)"
+                }
+            }
+        } catch {
+            # Never let the map break the close - the close matters, the map does not.
+            Write-Log "WARNING: code map refresh failed - $_"
+        } finally {
+            $ErrorActionPreference = $GraphEAP
+            Pop-Location
         }
     }
 }

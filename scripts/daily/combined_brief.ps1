@@ -533,7 +533,7 @@ if (-not $DryRun) {
         # on port 8765. A push deploys nothing here, but the rule is the same for
         # both projects - unfinished production work does not leave the machine.
         $JLOutput = & "C:\JeffLocal\scripts\daily\strategy_daily.ps1" `
-            -Mode $Mode -NoSend -ProtectPath "dashboard" 2>&1 |
+            -Mode $Mode -NoSend -ProtectPath "dashboard" -RefreshGraph 2>&1 |
             ForEach-Object { Write-Log "  [JL] $_"; $_ }
         $HeldSignals += @(@($JLOutput) | ForEach-Object { [string]$_ } | Where-Object { $_ -like "PUSH-HELD|*" })
     } catch {

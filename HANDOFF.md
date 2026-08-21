@@ -109,8 +109,17 @@ Confirmed firing.
   git history, directory ACLs).
 
 **Waiting on Saeed**
-- Delete the Cowork task (above) - only doable from the Cowork UI.
-- `graphify-out/` is now committed nightly in both repos - small but churns. Keep or ignore?
+- Nothing outstanding. The Cowork task is deleted and graphify is settled (both below).
+
+**Closed 2026-08-21**
+- **Cowork task deleted.** `C:\JeffLocal\Scheduled` no longer exists, so the protected-root
+  block is cleared - Cowork can mount this folder again for ordinary *interactive* sessions.
+  Never for a *scheduled* task pointed at it. Instructions archived in `docs\archive\`.
+- **graphify sorted.** `graphify-out\` is gitignored in both repos (generated index, not
+  source). JeffLocal refreshes it at every close and prunes snapshots to the 3 newest;
+  St Marks dropped it entirely. **The "duplicate" graph folders were graphify's own dated
+  backups — it writes one on every run (~2.5MB), so a nightly refresh would have added
+  ~900MB/year.** That is why ignoring only `cache\` would not have stopped the churn.
 
 ---
 

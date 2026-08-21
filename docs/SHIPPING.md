@@ -78,6 +78,27 @@ production code is sitting unfinished.
 To change or disable: `-ProtectPath "dashboard"` in `combined_brief.ps1` section 6. Empty
 string turns the guard off entirely.
 
+## The code map (graphify)
+
+`graphify-out\` is a generated map of this codebase — it lets a session ask "where is this
+used?" without reading every file. Worth having here: this is a large Python codebase.
+
+**It is refreshed automatically at every 19:00 close** (`-RefreshGraph` in
+`combined_brief.ps1` section 6). Rebuild takes ~15 seconds, AST-only, no API cost. It had
+previously drifted **3.5 weeks** out of date and went unused because of it — a stale map is
+worse than none, and CLAUDE.md says exactly that.
+
+**`graphify-out\` is gitignored.** It is generated, not source. Two reasons:
+- `graph.json` alone is ~3 MB and would change on every rebuild.
+- **graphify writes a dated backup of itself on EVERY run (~2.5 MB).** Left unmanaged that
+  is roughly **900 MB a year** of snapshots nobody reads. The close keeps the 3 most recent
+  and prunes the rest.
+
+If a session needs the map and it is missing, run `graphify update .` — 15 seconds.
+
+St Marks does **not** keep one: 23 static pages and one build script, where the structure is
+obvious from the folder names. A map there would earn nothing.
+
 ## Do not do this
 
 - **Do not use `git ... 2>&1` while `$ErrorActionPreference = "Stop"`.** Ordinary git

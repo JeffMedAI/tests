@@ -133,7 +133,27 @@ Uniformity is served instead by `docs\SHIPPING.md` in **both** repos — same te
 project-specific content, one cross-reference line, so the two ship models are never
 confused again.
 
-### COWORK SCHEDULED TASK -- RETIRED 2026-08-20, DO NOT REBUILD
+### CODE MAP (graphify) -- AUTO-REFRESHED FROM 2026-08-21
+
+- `graphify-out\` is **gitignored** in BOTH repos. It is a generated index, not source, and
+  rebuilds from scratch in ~15 seconds (AST-only, no API cost).
+- **graphify writes a DATED BACKUP of itself on EVERY run (~2.5MB).** That is why the
+  `2026-06-25\`, `2026-07-08\` etc folders existed - not a misdirected rebuild. Unpruned,
+  a nightly refresh would add ~900MB/year. The close keeps the 3 newest and prunes the rest.
+- **JeffLocal: refreshed automatically at every 19:00 close** (`-RefreshGraph` in
+  combined_brief.ps1 section 6). It had been 3.5 weeks stale and went unused because of it.
+  A stale map is worse than none.
+- **St Marks: graphify DROPPED entirely.** 23 static pages plus one build script; the
+  structure is obvious from folder names and the map sat 5 weeks stale, unused.
+- A map failure can never break the close - the refresh is wrapped and logged.
+
+### COWORK SCHEDULED TASK -- RETIRED 2026-08-20, DELETED 2026-08-21
+
+The task is now **deleted** (Saeed, 2026-08-21). `C:\JeffLocal\Scheduled` no longer exists,
+so the protected-root block is cleared and Cowork can mount this folder again for ordinary
+INTERACTIVE sessions. The rule below still stands for SCHEDULED tasks.
+
+### COWORK SCHEDULED TASKS -- DO NOT REBUILD
 
 The Cowork task "Daily session end 1800" cannot work and never will, in either project.
 Cowork writes each task's own file into the folder the task points at
