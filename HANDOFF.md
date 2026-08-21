@@ -10,13 +10,16 @@
 
 ---
 
-**Last session:** 2026-08-20 (full day) + 2026-08-21 morning verification
-**Closed by:** Claude (Opus 5)
-**Latest commit:** `de39bf6` (memory: morning brief 2026-08-21 07:00) - written by the automation
-**Last human-authored commit:** `dc4ff8a` (fix: do not commit SMCPHARMA as an embedded repo)
+**Last session:** 2026-08-20 (full day) + 2026-08-21 (full day)
+**Closed by:** Claude (Opus 5), hand-written close
+**Latest commit:** `01b02ea` (docs(CLAUDE.md): correct stale facts; promote the Cowork rule)
 **Pushed:** yes, 0 unpushed. Working tree clean.
-**Restore tag:** `restore/2026-08-20-1800` - first in 3 weeks.
-**Production:** dashboard/pipeline code untouched. Only `scripts/daily/` and docs changed.
+**Restore tag:** see GIT STATE at the end of `docs/sessions/2026-08-21-1030.md`.
+**Production:** dashboard/pipeline code untouched throughout. Only `scripts/daily/`,
+`.gitignore`, `CLAUDE.md` and docs changed.
+
+**Start here next session:** `docs/SHIPPING.md` (how this project ships and how to check it),
+then this file, then `docs/sessions/2026-08-21-1030.md`.
 
 ---
 
@@ -112,6 +115,13 @@ Confirmed firing.
 - Nothing outstanding. The Cowork task is deleted and graphify is settled (both below).
 
 **Closed 2026-08-21**
+- **CLAUDE.md fact-checked and corrected.** It was 5 weeks old and seven claims were wrong -
+  most damagingly, it said work happens on branch `sandbox` (it is `main`), and it presented
+  two **missed** deadlines (NHS SBS 23 Jun, DSPT 30 Jun) as upcoming. Saeed's position: both
+  missed, to be done soon. Pilot go-live target is now **PAUSED with no date** at his
+  instruction. **Every rule was left exactly as written** - facts and dates only.
+- **The Cowork rule is now in CLAUDE.md**, in the Critical Path section: never point a Cowork
+  scheduled task at a project folder. It is the rule that cost eight days of silent failure.
 - **Cowork task deleted.** `C:\JeffLocal\Scheduled` no longer exists, so the protected-root
   block is cleared - Cowork can mount this folder again for ordinary *interactive* sessions.
   Never for a *scheduled* task pointed at it. Instructions archived in `docs\archive\`.

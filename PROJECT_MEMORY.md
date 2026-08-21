@@ -133,6 +133,23 @@ Uniformity is served instead by `docs\SHIPPING.md` in **both** repos — same te
 project-specific content, one cross-reference line, so the two ship models are never
 confused again.
 
+### CLAUDE.md CORRECTED 2026-08-21 -- READ THE NEW FACTS
+
+CLAUDE.md was 5 weeks old and seven factual claims were wrong. Corrected with Saeed's
+approval; **every rule left exactly as written** (facts and dates only). What changed:
+
+- The branch warning said **"sandbox"**. Work happens on **`main`**. That line alone would
+  mislead every new session.
+- **NHS SBS (23 June) and DSPT (30 June) deadlines were MISSED**, not upcoming. Saeed
+  2026-08-21: both to be completed soon. Do not describe either as pending-to-a-deadline,
+  and ask Saeed for the current target rather than inventing one.
+- **Pilot go-live target is PAUSED - there is NO date.** The old "3-4 weeks from 2026-06-07"
+  passed 75 days ago. It resumes when governance gates 1-7 are signed, staff accounts exist,
+  and the 3 security items are closed. **Do not plan against a date, and do not invent one.**
+- The Cowork rule is now IN CLAUDE.md (Critical Path section).
+- Session-end protocol now records that it is largely automated, plus the push guard.
+- graphify section rewritten; the `graphify-out/wiki/` it referenced has never existed.
+
 ### CODE MAP (graphify) -- AUTO-REFRESHED FROM 2026-08-21
 
 - `graphify-out\` is **gitignored** in BOTH repos. It is a generated index, not source, and
