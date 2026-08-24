@@ -1,4 +1,4 @@
-﻿# PROJECT MEMORY — JeffLocal
+# PROJECT MEMORY — JeffLocal
 # READ THIS FIRST at every session start, before doing anything else.
 # Last updated: 2026-08-24 (auto-updated 07:00)
 # Maintained by: Claude (update at end of every session)
@@ -132,6 +132,24 @@ Python→JavaScript rewrite and would sever the dashboard from the local pipelin
 Uniformity is served instead by `docs\SHIPPING.md` in **both** repos — same template,
 project-specific content, one cross-reference line, so the two ship models are never
 confused again.
+
+### OPEN DEFECT 2026-08-24 -- THE STALENESS ALARM SELF-SILENCES
+
+**The staleness alarm fires once, then goes quiet.** Confirmed by three days of evidence,
+22-24 Aug. It fired correctly on 22 Aug 18:00 ("no real session log in 24h ... 28h ago",
+banner shown for both projects) - then never again, despite nobody working since 21 Aug.
+
+Cause: the close decides "did work happen today?" from the day's commits, and the
+automation's OWN housekeeping commits (`memory: morning brief` / `memory: evening brief`)
+count as work. So it writes a REAL (non-placeholder) session log describing its own
+bookkeeping, and the next check sees a real log within 24h.
+
+Fix (not yet applied, ~15 min + tests): exclude the automation's own commits from the
+"did work happen?" test, exactly as its own bookkeeping FILES are already excluded, so a
+pure-housekeeping day writes a marked placeholder instead.
+
+**Lesson recorded:** the 21 Aug verification proved the alarm FIRES. It did not prove the
+alarm KEEPS firing. Test the second day, not just the first.
 
 ### CLAUDE.md CORRECTED 2026-08-21 -- READ THE NEW FACTS
 
