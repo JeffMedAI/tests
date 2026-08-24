@@ -133,7 +133,7 @@ Uniformity is served instead by `docs\SHIPPING.md` in **both** repos — same te
 project-specific content, one cross-reference line, so the two ship models are never
 confused again.
 
-### OPEN DEFECT 2026-08-24 -- THE STALENESS ALARM SELF-SILENCES
+### FIXED 2026-08-24 -- THE STALENESS ALARM NO LONGER SELF-SILENCES
 
 **The staleness alarm fires once, then goes quiet.** Confirmed by three days of evidence,
 22-24 Aug. It fired correctly on 22 Aug 18:00 ("no real session log in 24h ... 28h ago",
@@ -144,9 +144,10 @@ automation's OWN housekeeping commits (`memory: morning brief` / `memory: evenin
 count as work. So it writes a REAL (non-placeholder) session log describing its own
 bookkeeping, and the next check sees a real log within 24h.
 
-Fix (not yet applied, ~15 min + tests): exclude the automation's own commits from the
-"did work happen?" test, exactly as its own bookkeeping FILES are already excluded, so a
-pure-housekeeping day writes a marked placeholder instead.
+**FIXED the same day, Saeed approved.** The close now excludes its own commits
+(`memory: morning brief` / `memory: evening brief`) from the "did work happen?" test, exactly
+as its own bookkeeping FILES were already excluded. A pure-housekeeping day writes a MARKED
+PLACEHOLDER, so the alarm keeps firing until someone actually works. 52 assertions pass.
 
 **Lesson recorded:** the 21 Aug verification proved the alarm FIRES. It did not prove the
 alarm KEEPS firing. Test the second day, not just the first.

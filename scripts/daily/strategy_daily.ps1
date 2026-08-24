@@ -580,10 +580,23 @@ if ($Mode -eq 'Evening') {
             if ($b) { $CurrentBranch = ([string]$b).Trim() }
             $rawSubjects = @(git log --no-merges --since="midnight" --until="now" --pretty=format:"%s" 2>&1)
             $TodayCommits = @($rawSubjects | ForEach-Object { [string]$_ } |
-                Where-Object { $_.Trim() -ne "" -and $_ -notmatch "^fatal:" })
+                Where-Object { $_.Trim() -ne "" -and $_ -notmatch "^fatal:" } |
+                # This close's OWN commits are not work. Without this the alarm silences
+                # itself after one day: the close commits its housekeeping, then sees those
+                # commits tomorrow and calls the day productive. It fired once on 22 Aug 2026
+                # and never again while nobody worked for three days. Saeed, 2026-08-24.
+                Where-Object { $_ -notmatch '^memory: (morning|evening) brief' })
             $rawFiles = @(git log --no-merges --since="midnight" --until="now" --name-only --pretty=format:"" 2>&1)
             $FilesTouched = @($rawFiles | ForEach-Object { [string]$_ } |
-                Where-Object { $_.Trim() -ne "" -and $_ -notmatch "^fatal:" } | Sort-Object -Unique)
+                Where-Object { $_.Trim() -ne "" -and $_ -notmatch "^fatal:" } |
+                # Same reasoning for the file list: the close's own paperwork is not work.
+                Where-Object {
+                    $pth = ($_ -replace '\\', '/')
+                    ($pth -notmatch '^PROJECT_MEMORY\.md$') -and
+                    ($pth -notmatch '^HANDOFF\.md$') -and
+                    ($pth -notmatch '^docs/reports/') -and
+                    ($pth -notmatch '^docs/sessions/')
+                } | Sort-Object -Unique)
             # -uno = tracked files only. Untracked junk in this working tree (248 stray
             # files at last count) must never be swept into a commit.
             $rawStatus = @(git status --porcelain -uno 2>&1)
@@ -676,7 +689,8 @@ Branch: $CurrentBranch
             $SessionContent = @"
 # SESSION SUMMARY - [$Today 18:00]
 # Tool: strategy_daily.ps1 (automated session close at $BriefClock)
-# AUTOGEN-PLACEHOLDER: no session was logged and no commits were made today.
+# AUTOGEN-PLACEHOLDER: no session was logged and no real work was committed today.
+#   (Automated housekeeping commits do not count - see strategy_daily.ps1.)
 #   combined_brief.ps1 treats this marker as "no real work logged", so an
 #   unnoticed outage cannot hide behind an auto-written file. DO NOT REMOVE.
 
@@ -684,7 +698,8 @@ Branch: $CurrentBranch
 
 ## WHAT WE DID
 
-- No session logged and no commits today - automated close.
+- No session logged and no real work committed today - automated close.
+- If this repeats for several days, nobody is working on this project. The brief will say so.
 
 ---
 

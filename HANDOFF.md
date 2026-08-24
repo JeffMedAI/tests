@@ -81,7 +81,7 @@ pushed, restore point cut. No code was changed, so nothing needed testing.
   git history, directory ACLs).
 
 **Waiting on Saeed**
-- Approval to fix the alarm · real staff accounts · governance gates 1–7 · JEFF_WEBHOOK_SECRET
+- Real staff accounts · governance gates 1–7 · JEFF_WEBHOOK_SECRET
 - NHS SBS and DSPT both **missed** (23 + 30 June). Position 2026-08-21: to be done soon. No
   new target date has been set — ask, do not invent one.
 - Pilot go-live: **PAUSED, no date.** See CLAUDE.md.
