@@ -10,10 +10,11 @@
 
 ---
 
-**Last session:** 2026-08-24 (wrap-up + three-day verification of the automation)
+**Last session:** 2026-08-24 (three-day verification, one defect found **and fixed**)
 **Closed by:** Claude (Opus 5), hand-written close
 **Branch:** main. 0 unpushed, working tree clean.
-**Production:** dashboard/pipeline code untouched. No code changed since 21 Aug.
+**Production:** dashboard/pipeline code untouched. The only code changed today was
+`scripts/daily/strategy_daily.ps1` — the staleness-alarm fix.
 
 **Start here next session:** `docs/SHIPPING.md`, then this file, then
 `docs/sessions/2026-08-24-1600.md`.
@@ -22,8 +23,9 @@
 
 ## WORK SCOPE
 
-Verification only. No code written. The question was whether the 21 August work held up
-over three days running unattended.
+Started as verification: had the 21 August work held up over three days running unattended?
+It largely had — but the check found one real defect, which Saeed then approved fixing, so the
+session ended with a code change and a full test run.
 
 **It largely did.** Six scheduled runs (21 evening → 24 morning), all completed clean, no
 failures. Restore tags cut nightly and pruned to three. Both repos clean and pushed
@@ -54,10 +56,12 @@ in August. It now announces itself.
 - **Be honest about the earlier verification:** on 21 Aug I proved the alarm *fires*. I did
   not prove it *keeps* firing. That gap is exactly the class of bug this whole effort was
   about — something that looks like it is working.
-- **The fix** mirrors what already exists for uncommitted files: exclude the automation's own
-  commits from the "did work happen?" test, so a pure-housekeeping day writes a marked
-  placeholder instead of a real log. Small, ~15 minutes plus tests. **Not applied** — Saeed
-  was wrapping the session.
+- **FIXED the same session, with Saeed's approval.** The close now ignores its own
+  housekeeping commits when deciding whether work happened, exactly as it already ignores its
+  own bookkeeping files. A pure-housekeeping day now writes a **marked placeholder**, so the
+  alarm keeps firing for as long as nobody works. Placeholder wording corrected too: "no real
+  work committed today", not "no commits today" — there ARE commits, they just are not work.
+  **52 assertions pass**, two aimed squarely at this bug. From tonight it is not a one-shot.
 - Secondary: the AI rewrite of pending items in the auto-written HANDOFF garbles them (23 Aug
   produced "The automated nightly process has been completed and removed from the system"
   from a pending checklist item). The auto-handoff is readable but not trustworthy in detail.
@@ -66,13 +70,20 @@ in August. It now announces itself.
 ## HOW THE SESSION CLOSED
 
 Hand-written. Session log, this file and PROJECT_MEMORY updated and committed in both repos,
-pushed, restore point cut. No code was changed, so nothing needed testing.
+pushed, restore point cut. The alarm fix was tested before committing — **52 assertions pass**.
+
+**A note worth keeping:** these handoff edits silently did nothing on the first attempt,
+because the file uses em-dashes and my search strings used hyphens. For a few minutes the
+handoff said the fix was "not applied" while the session log said it was done. Caught and
+corrected — but if you are editing these files by script, match the punctuation exactly and
+check the result, do not assume the replacement landed.
 
 ## NEXT + BLOCKERS
 
 **Next**
-1. **Fix the self-silencing alarm.** It is the one real defect outstanding, and until it is
-   fixed the alarm is a one-shot.
+1. **Check tomorrow's 07:00 brief.** If nobody works tonight the staleness banner should
+   appear — and unlike before, it should keep appearing every day until someone does. That is
+   the fix proving itself.
 2. Resume the security items — none can move without Saeed.
 
 **Blockers**
