@@ -1,0 +1,69 @@
+﻿EVENING BRIEF (wrapping up today) - 2026-09-03 19:00
+Your two projects: the AI reception helper (Avamed) and the pharmacy website (St Marks)
+================================================================
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!! WARNING - PART OF THIS BRIEF IS OUT OF DATE
+!!   AI reception helper (Avamed) : nothing new logged for 10 day(s) - still showing 2026-08-24-1600.md
+!!   Pharmacy website (St Marks) : nothing new logged for 10 day(s) - still showing 2026-08-24-1600.md
+!!
+!! The daily session close is NOT running for the project(s) above.
+!! What you read below for them is OLD news repeated, not today's work.
+!! Do not read it as progress. This needs fixing before you trust it.
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+=== YOUR AI RECEPTION HELPER (Avamed) ===
+  (STALE - no real session log today. Newest real log: 2026-08-24-1600.md, 243h ago)
+
+  WHAT WE DID TODAY
+  - The system automatically closes the task because no work was logged or committed today.
+  - If this lack of activity continues for several days, it indicates that no one is working on the project, as specified in the requirements.
+
+  WHAT IS NEXT (tomorrow)
+  - Review the briefing tomorrow at 7:00 AM, and if the work is not finished tonight, provide daily updates until the task is complete.
+  - Begin working on the security items immediately because Saeed needs to relocate them.
+
+  WHAT'S STUCK
+  - Progress is moving forward smoothly without any current obstacles.
+  - Three required security settings have been missed since August 11th.
+
+  THINGS I NEED YOU TO OK
+  - [ ] The automated alert system is complete, approved by Saeed, and has passed all necessary checks.
+  - [ ] We must obtain actual staff accounts, including names, roles, and email addresses, before we can begin the pilot launch.
+  - [ ] Formal approval for governance stages one through seven must be secured.
+  - [ ] The security code for connecting the automated data must be established before any live traffic is sent.
+  - [ ] This refers to the three security requirements that were previously discussed.
+  - [ ] Both the NHS SBS and DSPT deadlines were missed, and Saeed requires their immediate completion without a revised schedule.
+
+Behind the scenes: 2 code change(s) saved today.
+
+----------------------------------------------------------------
+
+=== YOUR PHARMACY WEBSITE (St Marks) ===
+  (STALE - no real session log today. Newest real log: 2026-08-24-1600.md, 243h ago)
+
+  WHAT WE DID TODAY
+  - The system automatically closes this task because no work or session activity was recorded today.
+  - If this lack of activity continues over several days, it indicates that no one is currently working on the project, which will be documented in the project brief.
+
+  WHAT IS NEXT (tomorrow)
+  - If the work is not completed tonight, the status update must remain visible until the necessary correction is fully implemented.
+  - We need actual photos of the pharmacy, team, and premises to resolve the primary quality issue.
+  - Once the pharmacist approves the work, include the GPhC number in the document footer.
+  - Always review the shipping documentation first to understand how the project will launch or how progress will be tracked.
+
+  WHAT'S STUCK
+  - Project progress is not currently blocked by any outstanding tasks.
+  - The remaining steps involve obtaining pharmacist approval, securing the regulatory number for the footer, getting a live WhatsApp Business number, and setting up payment processing.
+  - Authentic pharmacy photography must be completed before launch because twenty pages are currently displayed on a plain brand panel following the image cleanup on August 19th.
+
+  THINGS I NEED YOU TO OK
+  - [ ] The issue with the expiration warning notification has been permanently resolved.
+  - [ ] We need to schedule the removal of the "Coming Soon" banner from all twelve private service pages.
+  - [ ] We must review the twenty simple pages to determine if they are acceptable or require a redesign.
+  - [ ] New pharmacist approval is required for the weight management and clinical pages because their content has been updated.
+  - [ ] We must obtain the Superintendent GPhC number for the footer to satisfy legal requirements.
+
+Behind the scenes: 2 code change(s) saved today.
+
+================================================================
+Want more detail on anything above? Just ask me next time we talk.
