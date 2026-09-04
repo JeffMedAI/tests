@@ -31,28 +31,83 @@ Register-ScheduledTask `
 
 Write-Host "Registered: JeffLocal - Strategy Agent Daily Report (daily 07:00)" -ForegroundColor Green
 
-# --- Task 2: Health Check (every 5 minutes) ---
+# --- Task 2: Health Check (weekday mornings, 06:45) ---
+# REWRITTEN 2026-09-04. This block used to register "JeffLocal - Health Check" on a
+# 5-minute repeat pointing at scripts\daily\health_check.ps1 - a script that had
+# never been written. From 21 Jul to 4 Sep 2026 that task failed every five minutes
+# with exit code -196608 ("the file does not exist") while displaying State: Ready.
+# Nobody noticed for 45 days. The script now exists, and the schedule is the one
+# Saeed asked for: weekdays at 06:45, fifteen minutes before the 07:00 brief, whose
+# health block it feeds.
+#
+# The 5-minute repeat was never right either. Service monitoring is watchdog.ps1's
+# job and it does it every 60 seconds with restarts and WhatsApp alerts. This check
+# answers a different question - is work FLOWING - which is a once-a-morning question.
 $action2 = New-ScheduledTaskAction `
     -Execute "powershell.exe" `
-    -Argument "-NonInteractive -ExecutionPolicy Bypass -File C:\JeffLocal\scripts\daily\health_check.ps1"
+    -Argument '-NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File "C:\JeffLocal\scripts\daily\health_check.ps1"'
 
-$trigger2 = New-ScheduledTaskTrigger -RepetitionInterval (New-TimeSpan -Minutes 5) -Once -At (Get-Date)
+$trigger2 = New-ScheduledTaskTrigger -Weekly `
+    -DaysOfWeek Monday,Tuesday,Wednesday,Thursday,Friday -At 06:45
 
 $settings2 = New-ScheduledTaskSettingsSet `
-    -ExecutionTimeLimit (New-TimeSpan -Minutes 2) `
+    -ExecutionTimeLimit (New-TimeSpan -Minutes 10) `
+    -MultipleInstances IgnoreNew `
+    -AllowStartIfOnBatteries `
+    -DontStopIfGoingOnBatteries `
     -StartWhenAvailable
 
 Register-ScheduledTask `
-    -TaskName "JeffLocal - Health Check" `
+    -TaskName "JeffLocal - Weekday Health Check 0645" `
     -TaskPath "\JeffLocal\" `
     -Action $action2 `
     -Trigger $trigger2 `
     -Settings $settings2 `
-    -Description "Checks dashboard, FastAPI, SQLite, Ollama reachability every 5 minutes" `
+    -Description "Flow-level health check (queue, unresolved cases, red flags, backups, GDPR purge, unpushed work, failing jobs) feeding the 07:00 morning brief. Mon-Fri 06:45." `
     -RunLevel Highest `
     -Force
 
-Write-Host "Registered: JeffLocal - Health Check (every 5 min)" -ForegroundColor Green
+Write-Host "Registered: JeffLocal - Weekday Health Check 0645 (Mon-Fri 06:45)" -ForegroundColor Green
+
+# Retire the phantom task this script used to create. Disabled, not deleted, so it
+# stays visible and reversible (project rule: never delete without Saeed's say-so).
+$OldHealth = Get-ScheduledTask -TaskPath "\JeffLocal\" -TaskName "JeffLocal - Health Check" -ErrorAction SilentlyContinue
+if ($OldHealth) {
+    Disable-ScheduledTask -TaskPath "\JeffLocal\" -TaskName "JeffLocal - Health Check" -ErrorAction SilentlyContinue | Out-Null
+    Write-Host "Disabled: JeffLocal - Health Check (phantom task, script never existed)" -ForegroundColor Yellow
+}
+
+# --- Task 2b: Weekday Session Close (18:30) ---
+# ADDED 2026-09-04. The session close used to run inside the 19:00 brief; Saeed
+# moved it to its own task 30 minutes earlier so the brief REPORTS on a finished
+# close instead of performing one and describing itself. Covers BOTH projects.
+# Missing from this script until the Security Agent review flagged it - rebuilding
+# from here would silently have dropped the close.
+$action2b = New-ScheduledTaskAction `
+    -Execute "powershell.exe" `
+    -Argument '-NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File "C:\JeffLocal\scripts\daily\session_close.ps1"'
+
+$trigger2b = New-ScheduledTaskTrigger -Weekly `
+    -DaysOfWeek Monday,Tuesday,Wednesday,Thursday,Friday -At 18:30
+
+$settings2b = New-ScheduledTaskSettingsSet `
+    -ExecutionTimeLimit (New-TimeSpan -Minutes 25) `
+    -MultipleInstances IgnoreNew `
+    -AllowStartIfOnBatteries `
+    -DontStopIfGoingOnBatteries `
+    -StartWhenAvailable
+
+Register-ScheduledTask `
+    -TaskName "JeffLocal - Weekday Session Close 1830" `
+    -TaskPath "\JeffLocal\" `
+    -Action $action2b `
+    -Trigger $trigger2b `
+    -Settings $settings2b `
+    -Description "Full session close (session log, HANDOFF, PROJECT_MEMORY, commit, push, restore tag) for BOTH Avamed and St Marks. Mon-Fri 18:30, 30 min before the 19:00 brief." `
+    -RunLevel Highest `
+    -Force
+
+Write-Host "Registered: JeffLocal - Weekday Session Close 1830 (Mon-Fri 18:30)" -ForegroundColor Green
 
 # --- Task 3: Watchdog — continuous loop, starts at boot ---
 $action3 = New-ScheduledTaskAction `

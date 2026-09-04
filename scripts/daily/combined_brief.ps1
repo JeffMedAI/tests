@@ -482,11 +482,49 @@ $StaleBody
     Write-Log "Staleness check: both projects have a real session log within 24h"
 }
 
+# ── System health block (morning only) ───────────────────────────────────────
+# Written at 06:45 by scripts\daily\health_check.ps1, fifteen minutes before this
+# brief. Saeed's instruction 2026-09-04: the brief should be fully informed, not
+# just a summary of git activity. It answers "is work flowing" - unresolved cases,
+# red flags, stuck queue, backups, the 90-day purge, other jobs quietly failing.
+#
+# Evening briefs do not carry it: nothing here changes between 06:45 and 19:00
+# that the evening reader can act on, and repeating it would pad the message.
+$HealthBlock = ""
+if ($Mode -eq 'Morning') {
+    $HealthFile = "C:\JeffLocal\logs\health\$Today-health.txt"
+    if (Test-Path $HealthFile) {
+        $HealthText  = Get-Utf8FileText -Path $HealthFile
+        $HealthBlock = @"
+$HealthText
+
+----------------------------------------------------------------
+
+"@
+        Write-Log "Health check block included from $HealthFile"
+    } elseif ((Get-Date).DayOfWeek -eq [DayOfWeek]::Saturday -or (Get-Date).DayOfWeek -eq [DayOfWeek]::Sunday) {
+        $HealthBlock = "SYSTEM HEALTH: not checked - no health check at weekends." + [Environment]::NewLine +
+                       [Environment]::NewLine + "----------------------------------------------------------------" +
+                       [Environment]::NewLine + [Environment]::NewLine
+        Write-Log "Weekend - no health check expected."
+    } else {
+        $HealthBlock = @"
+SYSTEM HEALTH: UNKNOWN - the 06:45 health check did not run this morning.
+Nothing is necessarily wrong; nothing has been checked either.
+Check the scheduled task "JeffLocal - Weekday Health Check 0645".
+
+----------------------------------------------------------------
+
+"@
+        Write-Log "WARNING: no health file at $HealthFile - health block shows UNKNOWN."
+    }
+}
+
 $CombinedReport = @"
 $Title - $Today $Clock
 Your two projects: the AI reception helper (Avamed) and the pharmacy website (St Marks)
 ================================================================
-$StaleBanner$OllamaNote
+$StaleBanner$OllamaNote$HealthBlock
 $($JeffLocalBrief.Text)
 
 Behind the scenes: $JLGitCount code change(s) saved today.
@@ -518,7 +556,48 @@ if ($DryRun) {
 # ── 6. Run the JeffLocal script to update PROJECT_MEMORY + its git/push ──────
 # Collects any PUSH-HELD signal the closes emit, so the warning can go into the
 # very brief that is about to be sent rather than waiting for the next one.
-$HeldSignals = @()
+$HeldSignals     = @()
+$NoCloseToday    = $false
+$CloseFailDetail = @()
+
+# ── 6-pre. EVENING: the close already happened at 18:30 ──────────────────────
+# Saeed's instruction 2026-09-04: the session close moved OUT of this brief and
+# into scripts\daily\session_close.ps1, on its own weekday 18:30 scheduled task.
+# So in Evening mode this script no longer closes anything - it reads the marker
+# that close left behind and reports on it. Correct order: close, then describe.
+#
+# Morning mode is UNCHANGED. The 07:00 run still calls strategy_daily.ps1 below
+# as its git safety net, which is what commits and pushes weekend work (no close
+# runs on a Saturday or Sunday).
+#
+# Deliberately NO fallback close here. If the 18:30 task failed, this brief says
+# so loudly rather than quietly closing on its own - a silent auto-recovery is
+# how the 11-19 Aug 2026 failure went unnoticed for eight days.
+$SkipCloseHere = $false
+if ($Mode -eq 'Evening') {
+    $SkipCloseHere = $true
+    $CloseStateFile = "C:\JeffLocal\logs\close-state\$Today-close.txt"
+    if (Test-Path $CloseStateFile) {
+        $MarkerLines = @(Get-Content -Path $CloseStateFile -ErrorAction SilentlyContinue)
+        $HeldSignals += @(@($MarkerLines) | Where-Object { $_ -like "PUSH-HELD|*" })
+        $ClosedAt = @(@($MarkerLines) | Where-Object { $_ -like "CLOSED|*" }) | Select-Object -First 1
+        if ($ClosedAt) {
+            Write-Log "18:30 close already ran today ($ClosedAt) - this brief reports only."
+        } else {
+            # Marker present but no CLOSED line: the close RAN and FAILED. Treat it
+            # exactly as harshly as a missing marker - the outcome for Saeed is the
+            # same (no session log, no handover, no restore point) and a half-done
+            # close reported as fine is how failures hide. Security Agent, 2026-09-04.
+            $NoCloseToday = $true
+            $CloseFailDetail = @(@($MarkerLines) | Where-Object { $_ -like "FAILED-DETAIL|*" }) |
+                ForEach-Object { "  - " + (([string]$_).Split("|", 3)[1..2] -join ": ") }
+            Write-Log "WARNING: 18:30 close RAN AND FAILED today - $(@($CloseFailDetail).Count) project(s) affected."
+        }
+    } else {
+        $NoCloseToday = $true
+        Write-Log "WARNING: no 18:30 close marker at $CloseStateFile - NO CLOSE RAN TODAY."
+    }
+}
 
 # combined_brief.ps1 owns the single WhatsApp message, so this call uses -NoSend:
 # strategy_daily.ps1 still updates PROJECT_MEMORY, commits, pushes and (evening)
@@ -526,7 +605,7 @@ $HeldSignals = @()
 # It used to be called with -DryRun, which ALSO switched off the memory write,
 # the commit, the push and the tag. That is why 14 commits sat unpushed and no
 # restore tag was cut between 28 Jul and 19 Aug 2026. Do NOT put -DryRun back.
-if (-not $DryRun) {
+if (-not $DryRun -and -not $SkipCloseHere) {
     Write-Log "Running JeffLocal strategy_daily.ps1 (PROJECT_MEMORY + git safety net)..."
     try {
         # -ProtectPath dashboard: C:\JeffLocal\dashboard\ is production, served live
@@ -552,7 +631,7 @@ if (-not $DryRun) {
 # site. The close commits and pushes everything, per Saeed's instruction, so anything
 # left uncommitted under site\ goes live at 19:00 without review. Flagged to Saeed
 # 2026-08-20; a guard can be added here if he wants one.
-if (-not $DryRun) {
+if (-not $DryRun -and -not $SkipCloseHere) {
     $SmRepo = "C:\JeffLocal\SMCPHARMA"
     if (Test-Path (Join-Path $SmRepo "PROJECT_MEMORY.md")) {
         Write-Log "Running session close for St Marks (SMCPHARMA)..."
@@ -575,6 +654,31 @@ if (-not $DryRun) {
     } else {
         Write-Log "WARNING: SMCPHARMA not found at $SmRepo - skipped its session close"
     }
+}
+
+# ── 6b-2. The 18:30 close did not run? Say so, loudly, tonight ───────────────
+# Nothing was lost - the work is still on the machine - but today has no session
+# log, no HANDOFF refresh, no commit and no restore tag. Saeed sees it the same
+# evening rather than discovering a gap weeks later.
+if ($NoCloseToday) {
+    $NoCloseBanner = @"
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!! TODAY'S SESSION CLOSE DID NOT COMPLETE
+!! The 18:30 close did not complete, so today has no session log,
+!! no handover note, nothing saved to GitHub and no restore point.
+$(if (@($CloseFailDetail).Count -gt 0) { "!! It ran and failed:" + [Environment]::NewLine + (@($CloseFailDetail) -join [Environment]::NewLine) } else { "!! It did not run at all." })
+!!
+!! Your work is NOT lost - it is still on the computer.
+!! Check the scheduled task "JeffLocal - Weekday Session Close 1830".
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+"@
+    if (-not $DryRun -and (Test-Path $ReportPath)) {
+        $ExistingReport = Get-Utf8FileText -Path $ReportPath
+        Set-Content -Path $ReportPath -Value ($NoCloseBanner + $ExistingReport) -Encoding UTF8
+    }
+    Write-Log "NO CLOSE banner added to tonight's brief"
+    Write-Host $NoCloseBanner
 }
 
 # ── 6c. Push held? Warn Saeed in THIS message, not tomorrow's ────────────────

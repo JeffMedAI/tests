@@ -118,6 +118,8 @@ churchtown.app-avamed.uk)
 slug
 staff_users(id)
 tenant1
+datetime('now'
+ensured
 
 # Cowork's own scheduled-task storage. Not project work, and the task is retired
 # (see docs/archive/cowork-daily-session-end-1800-SKILL.md). Deleting the task in

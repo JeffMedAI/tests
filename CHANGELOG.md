@@ -416,3 +416,149 @@ parses with zero syntax errors. Did NOT run `Register-ScheduledTask` itself (nee
 **Security review:** Syntax-only fix, no compliance/auth LOGIC changed (purge logic in gdpr_purge.py untouched).
 The compliance-relevant part is the *finding* that the purge was unscheduled, surfaced here for Saeed.
 **Saeed notified:** This session.
+
+---
+
+## 2026-09-04 - Session Close Split Out to Its Own Weekday 18:30 Task
+**Agent:** Lead Agent (Claude Code session)
+**Approved by:** Saeed (explicit instruction in session: "I need an automatic scheduled close session protocol
+to run every weekday at 18.30 hours before the brief task, regardless of any work done that day or not",
+followed by four answered design questions confirming: move rather than duplicate, both projects, weekdays
+only, keep the push guard).
+**Description:** The session close previously lived inside `combined_brief.ps1` sections 6 and 6b, so the 19:00
+brief performed the close and then described a close it had just done to itself. Split into a new script
+`scripts\daily\session_close.ps1` on its own task, `JeffLocal - Weekday Session Close 1830`, Mon-Fri 18:30,
+30 minutes before the brief. It closes BOTH projects (Avamed + St Marks) unconditionally, work or no work:
+session log, HANDOFF.md, PROJECT_MEMORY.md, git add -A / commit / push, restore tag, graphify refresh.
+The push guard is unchanged (-ProtectPath dashboard / site: commit locally, hold the push, emit PUSH-HELD).
+The close writes a marker to `logs\close-state\YYYY-MM-DD-close.txt` (gitignored) carrying a CLOSED line and
+any PUSH-HELD signals. `combined_brief.ps1 -Mode Evening` now reads that marker instead of closing, and puts a
+"NO SESSION CLOSE RAN TODAY" banner at the top of the WhatsApp message when it is absent. There is deliberately
+NO fallback close at 19:00 - a silent auto-recovery is how the 11-19 Aug 2026 close failure hid for eight days.
+Morning mode (07:00) is entirely unchanged and still commits/pushes, which is what carries weekend work.
+Weekends get no close by design (Saeed's choice); `-Force` closes by hand on any day.
+**Files changed:** `scripts/daily/session_close.ps1` (new), `scripts/daily/combined_brief.ps1` (evening close
+replaced by marker read + no-close banner; morning path untouched), `CLAUDE.md` (session-end protocol,
+scheduled-task table, two graphify references).
+**Tests run:** Both scripts parse clean via the PowerShell AST parser. `session_close.ps1 -DryRun -Force` runs
+end to end and resolves both repos. Evening brief tested BOTH ways against a synthetic marker: with a marker it
+logged "18:30 close already ran", skipped both closes (no [JL]/[SM] output) and carried the PUSH-HELD signal
+into the banner; without one it logged the warning and added the NO CLOSE banner. Synthetic marker deleted after.
+The 18:30 task registered and reports State Ready, day mask 62 (Mon-Fri), next run 2026-09-04 18:30.
+NOT yet observed firing on its own schedule - first live run is tonight.
+**Security review:** No auth, patient-data, clinical or compliance logic touched. Scheduling and git plumbing
+only. The push guard that keeps unfinished production `dashboard\` and live `site\` work off the remote is
+carried over unchanged and was verified to still propagate its signal to the brief.
+**Saeed notified:** This session.
+
+---
+
+## 2026-09-04 - Real Weekday Morning Health Check Created (replaces a 45-day phantom)
+**Agent:** Lead Agent (Claude Code session)
+**Approved by:** Saeed (explicit instruction in session: "create the new scheduled health check for every
+weekday morning before the brief task so the brief is fully informed").
+**Description:** A task "JeffLocal - Health Check" was registered on 21 Jul 2026 pointing at
+scripts\daily\health_check.ps1. That script was never written. For 45 days the task failed every five minutes
+with exit code -196608 ("the file does not exist") while showing State: Ready in Task Scheduler. No alert, no
+log, nobody noticed. Root cause traced to register_scheduled_tasks.ps1 lines 34-55, which created the task for
+a script that never existed in the repo or in git history.
+Replaced with a REAL check on the schedule Saeed asked for: "JeffLocal - Weekday Health Check 0645", Mon-Fri
+06:45, fifteen minutes before the 07:00 brief. It deliberately does NOT duplicate watchdog.ps1 (which answers
+"are the services running" every 60s, with restarts and WhatsApp alerts, working correctly since 19 Aug 2026).
+It answers the question the watchdog does not: IS WORK FLOWING. Nine checks - services (light confirmation),
+queue depth and stuck files, per-database open/overdue/red-flag/identity/emergency case counts, disk space,
+backup freshness, GDPR 90-day purge recency and status, unpushed commits and last-commit age for both repos,
+last working day's session close marker, and any other JeffLocal scheduled task that failed its last run
+(the check that would have caught this very bug). Read-only throughout; databases opened mode=ro.
+Writes logs\health\YYYY-MM-DD-health.{txt,json} + latest.txt (logs\ is gitignored). combined_brief.ps1
+-Mode Morning now opens with that block, and prints "SYSTEM HEALTH: UNKNOWN" if the 06:45 run did not happen.
+**Files changed:** `scripts/daily/health_check.ps1` (new), `scripts/daily/health_check_db.py` (new),
+`scripts/daily/combined_brief.ps1` (morning health block), `scripts/register_scheduled_tasks.ps1`
+(task 2 rewritten to the real 06:45 task; also disables the phantom on re-run), `CLAUDE.md`.
+**Tests run:** All three scripts parse clean. First real run surfaced 5 "problems", FOUR of which were false
+alarms, each traced and fixed before go-live: (1) a .gitkeep placeholder counted as a call "stuck for 157079
+minutes" - queue counting now ignores dotfiles; (2) a manual dry-run of gdpr_purge recorded in the compliance
+audit trail read as a live compliance failure - the check now ignores dry_run entries; (3) missing 18:30 close
+markers for dates before the 18:30 task existed - cutoff date added; (4) Task Scheduler code 267011 ("has not
+run yet") on a task created 20 minutes earlier read as a failure - 267009/267010/267011/267014 and never-run
+placeholder dates now excluded. Re-run after fixes reports only the two GENUINE problems (tenant2 schema,
+phantom task). Morning brief dry-run confirmed the block is included ("Health check block included from ...").
+Task registered: State Ready, day mask 62 (Mon-Fri), next run Mon 2026-09-07 06:45. Not yet observed firing.
+**Known incomplete:** disabling the old "JeffLocal - Health Check" task FAILED with Access Denied - it was
+created with elevated rights and needs an admin PowerShell. Until Saeed runs that, it keeps failing every five
+minutes AND the new health check correctly reports it as a failing job every morning.
+**Security review:** No auth, patient-identity, clinical or compliance LOGIC changed. The check is read-only
+and opens every database read-only. It reads patient-case COUNTS only - no names, NHS numbers, DOBs or any
+identity field are read, logged or written. Output lands in logs\, which is gitignored, so no case data can
+reach the repo.
+**Saeed notified:** This session.
+
+---
+
+## 2026-09-04 - tenant2 Database: Missing created_at Column Fixed (GDPR purge unblocked)
+**Agent:** Lead Agent (Claude Code session)
+**Approved by:** Saeed (explicit in session: "tenent2 column approved").
+**Description:** The scheduled task "JeffLocal - GDPR Weekly Purge (tenant2)" had NEVER completed a single
+successful run. It exited code 2 with "no such column: created_at". Found by the new morning health check on
+its first run. tenant2.sqlite was created 2026-07-20 and its cases table lacked created_at, which the 90-day
+purge uses to find expired records.
+ROOT CAUSE: dashboard/app/db.py lines 348-379 auto-add missing cases columns to every tenant database at
+startup - which is why tenant2 matched tenant1 on every OTHER column - but created_at is not in that list.
+It was only ever added by the one-off migration scripts/migrations/add_created_at_20260531.sql (May), and
+tenant2 was created two months later. The same applies to the idx_cases_created_at and idx_cases_assigned_to
+indexes, absent from db.py's idempotent index block.
+FIX APPLIED: ran the project's own existing migration (add_created_at_20260531.sql) against tenant2 rather
+than hand-rolled SQL - ALTER TABLE cases ADD COLUMN created_at TEXT, back-fill from timestamp (0 rows, table
+is empty), CREATE INDEX idx_cases_created_at, CREATE INDEX idx_alert_events_timestamp. Also added
+idx_cases_assigned_to for parity with tenant1. All statements idempotent; re-running is harmless.
+NOT FIXED - NEEDS SEPARATE APPROVAL: db.py itself is unchanged, so the NEXT tenant database created will have
+the identical gap. The durable fix is adding created_at to db.py's auto-migration list and the two indexes to
+its index block. dashboard/ is production and that is a separate approval under the approval protocol.
+**Files changed:** No source files. Database only: dashboard/data/tenants/tenant2.sqlite (gitignored).
+**Backup taken:** backups/tenant2_PRE-created_at-migration_20260904-142822.sqlite (pre-change, 106496 bytes).
+**Tests run:** Full schema diff tenant2 vs tenant1 before and after - the ONLY difference before was
+created_at plus two missing indexes; after, zero differences in tables, columns and indexes.
+PRAGMA integrity_check = ok. gdpr_purge.py --dry-run on tenant2 now exits 0 (was exit 2).
+The real scheduled task was then triggered manually and completed: LastTaskResult 0, audit entry
+PURGE-20260904-132859 status=success - the first successful tenant2 purge in the project's history.
+Morning health check re-run afterwards: 0 problems (was 2).
+**Security review:** GDPR-relevant. The change RESTORES a compliance control that had never worked; it does
+not weaken one. No auth, patient-identity or clinical logic touched. No data was deleted - the table holds 0
+rows and the purge's own audit trail records purged_counts all zero. Back-fill uses the same
+COALESCE(created_at, timestamp) basis gdpr_purge.py already relies on (lines 221/286/304), so retention
+calculations are unchanged for existing data. Pre-change backup retained.
+**Saeed notified:** This session.
+
+---
+
+## 2026-09-04 - Security Agent Review of the Day's Automation Work (defects fixed)
+**Agent:** Security Agent (review) + Lead Agent (fixes)
+**Approved by:** Saeed (session instruction to commit; review is mandatory per CLAUDE.md for
+compliance-touching work).
+**Verdict:** APPROVE WITH NOTES. No patient-data leak, no LLM-safety breach, no secrets, no injection or
+traversal surface. Confirmed independently: health_check_db.py returns aggregate COUNT(*) only and never
+selects patient_name, nhs_number, emis_number, dob, postcode, callback_number or transcript; every DB handle
+is mode=ro; logs\ is gitignored; the tenant2 change is purely additive with a verified pre-change backup.
+**Defects found and FIXED before commit:**
+1. CRITICAL - session_close.ps1 wrote the "CLOSED" marker unconditionally. Both closes could throw, be logged
+   as warnings, and the 19:00 brief would report a successful close that never happened. Exactly the silent-
+   failure pattern that hid the 11-19 Aug 2026 outage for eight days. Now: a $Failures list is collected, the
+   marker says CLOSED only when both projects succeeded, otherwise FAILED plus one FAILED-DETAIL line per
+   project, and the script exits 1 so Task Scheduler records it AND the 06:45 health check catches it next
+   morning. combined_brief.ps1 treats a marker with no CLOSED line as harshly as a missing marker and prints
+   the reasons in the banner.
+2. Task-name mismatch - the script header and the brief's banner told Saeed to check "JeffLocal - Weekday
+   Session Close (18:30)"; the registered task is "JeffLocal - Weekday Session Close 1830". He would have
+   searched and found nothing at the exact moment he needed it. Corrected in both files.
+3. register_scheduled_tasks.ps1 registered the 06:45 health check but NOT the 18:30 close - rebuilding from
+   that script would have silently dropped it. Task 2b added.
+4. idx_cases_assigned_to was created on tenant2 outside the migration file, so a tenant rebuilt from
+   add_created_at_20260531.sql would get a different schema. Added to the migration.
+**Not fixed (cosmetic, logged only):** dead RESOLVED constant in health_check_db.py; the GDPR check treats an
+audit entry with no dry_run field as a real run.
+**Files changed:** scripts/daily/session_close.ps1, scripts/daily/combined_brief.ps1,
+scripts/register_scheduled_tasks.ps1, scripts/migrations/add_created_at_20260531.sql.
+**Tests run:** All four scripts parse clean. Failure path tested with a synthetic FAILED marker: the brief
+logged "18:30 close RAN AND FAILED today - 2 project(s) affected" and printed both reasons by name in the
+banner. Synthetic marker deleted afterwards.
+**Saeed notified:** This session.

@@ -18,7 +18,7 @@ Then read in this order:
 5. Git repo state: git log --oneline -10
 6. C:\JeffLocal\docs\reports\{yesterday's date}.md — daily briefing
 
-The graphify code map is now **refreshed automatically at every 19:00 session close**, so it should already be current — no need to rebuild it by hand before orienting. If it does look stale, `graphify update .` takes about 15 seconds. `graphify-out/` is gitignored (it is generated, not source). Corrected 2026-08-21.
+The graphify code map is now **refreshed automatically at every weekday 18:30 session close**, so it should already be current — no need to rebuild it by hand before orienting. If it does look stale, `graphify update .` takes about 15 seconds. `graphify-out/` is gitignored (it is generated, not source). Corrected 2026-08-21.
 
 Then produce the session start report and WAIT for Saeed's go-ahead before doing anything.
 
@@ -306,10 +306,19 @@ Thresholds to be reviewed after first revenue.
 
 **Daily WhatsApp briefings to Saeed — TWO per day.** Both are produced by `scripts\daily\combined_brief.ps1`, which covers **both projects** (Avamed + St Marks) in ONE message and calls `strategy_daily.ps1` for each project's close. (`strategy_daily.ps1` run directly just forwards to it.) Corrected 2026-08-21. Saved to `docs\reports\`, committed, and sent to 07440 333938 (Saeed's personal number — always verify before sending). Format in `REPORTING.md`. Both are written in simple, plain English (caveman style — short, no jargon).
 
-- **Morning brief — 07:00** (`-Mode Morning`, looks ahead): 1) what we did yesterday, 2) what we are doing today, 3) what is blocking us, 4) approvals/tasks pending from Saeed.
-- **Evening brief — 19:00** (`-Mode Evening`, session close, looks back): 1) what we did today, 2) what is next (tomorrow), 3) blockers, 4) approvals pending. This is part of the session-close routine.
+- **Morning brief — 07:00** (`-Mode Morning`, looks ahead): 1) what we did yesterday, 2) what we are doing today, 3) what is blocking us, 4) approvals/tasks pending from Saeed. Since 2026-09-04 it opens with a **SYSTEM HEALTH** block written at 06:45 by `scripts\daily\health_check.ps1` — unresolved cases, red flags, stuck queue, backups, the 90-day purge, unpushed work, and any scheduled job that failed its last run. If that block says UNKNOWN, the health check did not run.
 
-Scheduled tasks: `JeffLocal - Strategy Agent Daily Report` (07:00) and `JeffLocal - Evening Session Close Brief` (19:00).
+**Two monitoring systems, do not confuse them.** `watchdog.ps1` (continuous, every 60s) answers *are the services running* and restarts them with WhatsApp alerts — it has done so correctly since 19 Aug 2026. `health_check.ps1` (weekday 06:45) answers *is work flowing* and only writes a report. Neither replaces the other.
+- **Evening brief — 19:00** (`-Mode Evening`, looks back): 1) what we did today, 2) what is next (tomorrow), 3) blockers, 4) approvals pending. Since 2026-09-04 this brief **reports on** the 18:30 close; it no longer performs one.
+
+Scheduled tasks (all under Task Scheduler path `\JeffLocal\`):
+
+| Task | When | What it does |
+|------|------|--------------|
+| `JeffLocal - Weekday Health Check 0645` | 06:45, **Mon–Fri** | Flow-level health check feeding the morning brief. Added 2026-09-04. |
+| `JeffLocal - Strategy Agent Daily Report` | 07:00, daily | Morning brief. Still commits and pushes as a git safety net — this is what saves weekend work. |
+| `JeffLocal - Weekday Session Close 1830` | 18:30, **Mon–Fri** | The session close itself, both projects. Added 2026-09-04. |
+| `JeffLocal - Evening Session Close Brief` | 19:00, daily | Evening brief only. Reads the 18:30 marker; shouts if no close ran. |
 
 **READ-ALL-LOGS RULE (mandatory before writing ANY brief — manual or automated review).** Before composing or reviewing a brief, the agent MUST read ALL of: every session log in `docs\sessions\` (not just the latest), `PROJECT_MEMORY.md` current status, and `git log` for the period. Never write a brief from a single log or from memory alone. The brief script enforces a safety net — if no session log exists for the last 24h it falls back to the most recent log so a brief is NEVER empty — but the agent must still read the full set when reviewing or hand-writing one.
 
@@ -351,7 +360,14 @@ Claude maintains and updates project memory autonomously at every session end.
 
 ## SESSION END PROTOCOL
 
-**Much of this now happens automatically at 19:00** (added 2026-08-20/21). The automated close writes the session log from the day's git activity, refreshes `HANDOFF.md` (only if no real session rewrote it that day), updates `PROJECT_MEMORY.md`, commits **everything**, pushes, and cuts the restore tag — for **both** projects. A **push guard** holds the push if `dashboard\` (here) or `site\` (St Marks) contains unfinished work, and shouts about it at the top of that evening's brief.
+**Much of this now happens automatically at 18:30, Monday to Friday** (moved there from 19:00 on 2026-09-04, Saeed's instruction). The task is `JeffLocal - Weekday Session Close 1830` and the script is `scripts\daily\session_close.ps1`. The automated close writes the session log from the day's git activity, refreshes `HANDOFF.md` (only if no real session rewrote it that day), updates `PROJECT_MEMORY.md`, commits **everything**, pushes, and cuts the restore tag — for **both** projects. A **push guard** holds the push if `dashboard\` (here) or `site\` (St Marks) contains unfinished work, and shouts about it at the top of that evening's brief.
+
+It runs **regardless of whether any work happened that day**. A day with no commits still gets a log saying exactly that.
+
+Three consequences worth knowing:
+- **The 19:00 brief no longer closes anything.** It reads the marker at `logs\close-state\YYYY-MM-DD-close.txt` and reports. If that marker is missing it puts a **NO SESSION CLOSE RAN TODAY** banner at the top of the WhatsApp message. There is deliberately no silent fallback close — a quiet auto-recovery is how the 11–19 Aug 2026 failure hid for eight days.
+- **Weekends get no close** — no session log, no HANDOFF refresh, no restore tag. Weekend work is still committed and pushed by the next 07:00 morning brief, so nothing is stranded.
+- To close by hand at any time: `powershell -File scripts\daily\session_close.ps1 -Force`.
 
 So the steps below are what a **human/agent session** must still do properly — the automation is a safety net for days when nobody does, not a replacement. A hand-written close always beats an auto-generated one. See `docs\SHIPPING.md`.
 
@@ -410,7 +426,7 @@ This project has a knowledge graph at graphify-out/ with god nodes, community st
 Rules:
 - For codebase questions, first run `graphify query "<question>"` when graphify-out/graph.json exists. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
 - Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
-- **The map refreshes itself at every 19:00 close** — you should not need to rebuild it by hand. If it does look stale, `graphify update .` takes ~15 seconds (AST-only, no API cost).
+- **The map refreshes itself at every weekday 18:30 close** — you should not need to rebuild it by hand. If it does look stale, `graphify update .` takes ~15 seconds (AST-only, no API cost).
 - **`graphify-out/` is gitignored.** It is a generated index, not source. Do not commit it: `graph.json` alone is ~3MB, and **graphify writes a dated backup of itself on every single run** (~2.5MB), so committing it would add roughly 900MB a year. The close prunes those snapshots to the 3 most recent.
 - There is **no** `graphify-out/wiki/` — it has never been generated. Earlier versions of this file told you to use it; ignore that. (Corrected 2026-08-21.)
 - **St Marks (SMCPHARMA) has no graph and should not get one.** 23 static pages plus one build script — the structure is obvious from folder names, and its map sat 5 weeks stale and unused before it was removed.

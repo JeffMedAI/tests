@@ -25,6 +25,11 @@ WHERE created_at IS NULL;
 -- Index to make 90-day purge queries fast
 CREATE INDEX IF NOT EXISTS idx_cases_created_at ON cases(created_at);
 
+-- Index on assigned_to. Present on tenant1 and the main DB but absent from this
+-- file, so a tenant rebuilt from it came out with a different schema. Added
+-- 2026-09-04 after the Security Agent spotted the drift during the tenant2 fix.
+CREATE INDEX IF NOT EXISTS idx_cases_assigned_to ON cases(assigned_to);
+
 -- Also index alert_events.timestamp for purge scans
 CREATE INDEX IF NOT EXISTS idx_alert_events_timestamp ON alert_events(timestamp);
 
