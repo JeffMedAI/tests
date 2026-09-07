@@ -588,7 +588,11 @@ if (Test-Path $MemFile) {
 # the message text. Answering "did the close run" first is what lets the brief
 # tell "the close is broken" apart from "nobody worked on this project".
 $HeldSignals     = @()
-$NoCloseToday    = $false
+# Named for the day whose close is being reported on, NOT for today - on a
+# Saturday this is Friday's close. Renamed from $NoCloseToday, which invited
+# exactly the "TODAY'S" wording bug below. Security Agent L2, 2026-09-07.
+$CloseDayFailed  = $false
+$FailedDayNames  = @()
 $CloseFailDetail = @()
 
 # WHICH DAY'S CLOSE IS THIS BRIEF REPORTING ON?
@@ -621,47 +625,73 @@ $IsWeekendNow = $Now.DayOfWeek -eq [DayOfWeek]::Saturday -or
 $SkipCloseHere = $false
 if ($Mode -eq 'Evening') {
     $SkipCloseHere = $true
-    $CloseStateFile = "C:\JeffLocal\logs\close-state\$($CloseDay.ToString('yyyy-MM-dd'))-close.txt"
-    if (Test-Path $CloseStateFile) {
-        $MarkerLines = @(Get-Content -Path $CloseStateFile -ErrorAction SilentlyContinue)
-        $HeldSignals += @(@($MarkerLines) | Where-Object { $_ -like "PUSH-HELD|*" })
-        $ClosedAt = @(@($MarkerLines) | Where-Object { $_ -like "CLOSED|*" }) | Select-Object -First 1
-        if ($ClosedAt) {
-            Write-Log "18:30 close already ran today ($ClosedAt) - this brief reports only."
+
+    # WHICH MARKERS TO READ.
+    # The due close, always - that is the one whose absence is an alarm.
+    # PLUS today's, when today is not the due day. session_close.ps1 names its
+    # marker after the day it ACTUALLY RAN ($Today there), and -Force exists so a
+    # close can be run by hand at a weekend - CLAUDE.md documents it. Reading only
+    # the due day would silently drop a hand-run Saturday close that FAILED, and
+    # would drop its PUSH-HELD lines too, leaving unfinished work sitting unpushed
+    # in the live dashboard\ folder with no banner. Security Agent H6, 2026-09-07.
+    $MarkersToRead = @([PSCustomObject]@{ Date = $CloseDay; WasDue = $true })
+    if ($Now.Date -ne $CloseDay) {
+        $MarkersToRead += [PSCustomObject]@{ Date = $Now.Date; WasDue = $false }
+    }
+
+    foreach ($m in $MarkersToRead) {
+        $MarkerPath = "C:\JeffLocal\logs\close-state\$($m.Date.ToString('yyyy-MM-dd'))-close.txt"
+        $DayName    = $m.Date.ToString('dddd')
+        if (Test-Path $MarkerPath) {
+            $MarkerLines = @(Get-Content -Path $MarkerPath -ErrorAction SilentlyContinue)
+            # Harvest push-held signals from EVERY marker read, due or hand-run.
+            $HeldSignals += @(@($MarkerLines) | Where-Object { $_ -like "PUSH-HELD|*" })
+            $ClosedAt = @(@($MarkerLines) | Where-Object { $_ -like "CLOSED|*" }) | Select-Object -First 1
+            if ($ClosedAt) {
+                Write-Log "$DayName's close ran ($ClosedAt) - this brief reports only."
+            } else {
+                # Marker present but no CLOSED line: the close RAN and FAILED. Treat
+                # it exactly as harshly as a missing marker - the outcome for Saeed is
+                # the same (no session log, no handover, no restore point) and a
+                # half-done close reported as fine is how failures hide. A hand-run
+                # weekend close that failed lands here too. Security Agent 2026-09-04.
+                $CloseDayFailed  = $true
+                $FailedDayNames += $DayName
+                $CloseFailDetail += @(@($MarkerLines) | Where-Object { $_ -like "FAILED-DETAIL|*" } |
+                    ForEach-Object { "  - $DayName" + ": " + (([string]$_).Split("|", 3)[1..2] -join ": ") })
+                Write-Log "WARNING: $DayName's close RAN AND FAILED."
+            }
+        } elseif ($m.WasDue) {
+            # A close FELL DUE that day and left no marker at all. That is an alarm
+            # on any day of the week, including when read on a Saturday: the weekend
+            # never excuses a weekday close that did not happen. What the weekend
+            # does excuse - that no close runs TODAY - is $IsWeekendNow, not this.
+            # Security Agent H2 and H5, 2026-09-07.
+            $CloseDayFailed  = $true
+            $FailedDayNames += $DayName
+            Write-Log "WARNING: no close marker at $MarkerPath - $DayName's close did not run."
         } else {
-            # Marker present but no CLOSED line: the close RAN and FAILED. Treat it
-            # exactly as harshly as a missing marker - the outcome for Saeed is the
-            # same (no session log, no handover, no restore point) and a half-done
-            # close reported as fine is how failures hide. Security Agent, 2026-09-04.
-            $NoCloseToday = $true
-            $CloseFailDetail = @(@($MarkerLines) | Where-Object { $_ -like "FAILED-DETAIL|*" }) |
-                ForEach-Object { "  - " + (([string]$_).Split("|", 3)[1..2] -join ": ") }
-            Write-Log "WARNING: 18:30 close RAN AND FAILED today - $(@($CloseFailDetail).Count) project(s) affected."
+            # No hand-run close today. Nothing was due, so there is nothing to say.
+            Write-Log "No hand-run close marker for today ($DayName) - none was due."
         }
-    } else {
-        # A close FELL DUE on $CloseDay and left no marker at all. That is an
-        # alarm on any day of the week, including when read on a Saturday: the
-        # weekend never excuses a weekday close that did not happen. What the
-        # weekend does excuse - that no close runs TODAY - is handled by
-        # $IsWeekendNow below, not here. Security Agent H2 and H5, 2026-09-07.
-        $NoCloseToday = $true
-        Write-Log "WARNING: no close marker at $CloseStateFile - the $($CloseDay.ToString('ddd')) close did not run."
     }
 }
 
-# May the brief say "today's close ran"? Only in the evening, only if it did not
-# fail, and only if the close it is reporting on actually fell due TODAY. On a
+# May the brief say "today's close ran"? Only in the evening, only if nothing
+# failed, and only if the close it reports on actually fell due TODAY. On a
 # Saturday $CloseDay is Friday, so "today's close ran" would be false however
 # healthy Friday's close was - the opposite lie to the one H2 fixed.
-$CloseRanToday = ($Mode -eq 'Evening') -and (-not $NoCloseToday) -and ($CloseDay -eq $Now.Date)
+$CloseRanToday = ($Mode -eq 'Evening') -and (-not $CloseDayFailed) -and ($CloseDay -eq $Now.Date)
 
 Write-Log ("Last close fell due {0}. Anything logged since then is current." -f `
     $LastDueClose.ToString('ddd yyyy-MM-dd HH:mm'))
 
-# Weekends still get one plain line, so "no close today" is visible and explained
-# rather than simply absent. Absence is what let eight days go unnoticed.
+# One plain line so "no close today" is visible and explained rather than simply
+# absent - absence is what let eight days go unnoticed. Suppressed when a close
+# has actually failed: "no close was due" sitting next to a failure banner reads
+# as a broken script, and one message must have one voice. Security Agent M5.
 $WeekendNote = ""
-if (($Mode -eq 'Evening') -and $IsWeekendNow) {
+if (($Mode -eq 'Evening') -and $IsWeekendNow -and (-not $CloseDayFailed)) {
     $WeekendNote = "Note: no session close at weekends - that is normal. Any work is still saved by the 07:00 brief." +
                    [Environment]::NewLine
 }
@@ -770,8 +800,8 @@ if (@($StaleParts).Count -gt 0) {
     $StaleBody = (@($StaleParts) -join [Environment]::NewLine)
     # Only point at the close when the close is genuinely the suspect. If it ran,
     # saying so stops Saeed hunting a scheduled-task fault that does not exist.
-    $StaleCause = if ($NoCloseToday) {
-        "!! Today's session close did not complete either - see the banner above."
+    $StaleCause = if ($CloseDayFailed) {
+        "!! The $(@($FailedDayNames) -join ' and ') session close did not complete either - see the banner above."
     } elseif ($CloseRanToday) {
         # Claim ONLY what the marker proves: the 18:30 close ran. It says nothing
         # about the health check, the watchdog, the 07:00 brief or the WhatsApp
@@ -894,7 +924,7 @@ if ($DryRun) {
 # The close-marker read that used to sit here moved UP to section 3b, above the
 # staleness banner. It has to run first: the banner's wording now depends on
 # whether the 18:30 close actually ran, and section 5 freezes the message text
-# before this point. Moved 2026-09-07. $HeldSignals, $NoCloseToday,
+# before this point. Moved 2026-09-07. $HeldSignals, $CloseDayFailed,
 # $CloseFailDetail and $SkipCloseHere are all set there.
 
 # combined_brief.ps1 owns the single WhatsApp message, so this call uses -NoSend:
@@ -958,12 +988,26 @@ if (-not $DryRun -and -not $SkipCloseHere) {
 # Nothing was lost - the work is still on the machine - but today has no session
 # log, no HANDOFF refresh, no commit and no restore tag. Saeed sees it the same
 # evening rather than discovering a gap weeks later.
-if ($NoCloseToday) {
+if ($CloseDayFailed) {
+    # NAME THE DAY. This banner used to say "TODAY'S" unconditionally, but the
+    # close it reports on is often not today's - on a Saturday it is Friday's.
+    # Telling Saeed to check today's scheduled task when the fault is Friday's
+    # sends him to the wrong place, and a banner that looks wrong is a banner he
+    # learns to discount. Every positive claim in this script was already
+    # day-scoped; the negative ones were not. Security Agent M5, 2026-09-07.
+    $FailedDayLabel = if (@($FailedDayNames).Count -gt 1) {
+        (@($FailedDayNames) -join " AND ").ToUpper() + " SESSION CLOSES DID NOT COMPLETE"
+    } else {
+        (@($FailedDayNames)[0]).ToUpper() + "'S SESSION CLOSE DID NOT COMPLETE"
+    }
+    $FailedDayPlain = (@($FailedDayNames) -join " and ")
+    # "has"/"have", and no "18:30": a hand-run weekend close is not an 18:30 one.
+    $FailedDayVerb  = if (@($FailedDayNames).Count -gt 1) { "have" } else { "has" }
     $NoCloseBanner = @"
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!! TODAY'S SESSION CLOSE DID NOT COMPLETE
-!! The 18:30 close did not complete, so today has no session log,
-!! no handover note, nothing saved to GitHub and no restore point.
+!! $FailedDayLabel
+!! The session close did not complete, so $FailedDayPlain $FailedDayVerb no
+!! session log, no handover note, nothing saved to GitHub, no restore point.
 $(if (@($CloseFailDetail).Count -gt 0) { "!! It ran and failed:" + [Environment]::NewLine + (@($CloseFailDetail) -join [Environment]::NewLine) } else { "!! It did not run at all." })
 !!
 !! Your work is NOT lost - it is still on the computer.
