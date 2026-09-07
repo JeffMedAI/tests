@@ -21,7 +21,11 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-$Today  = (Get-Date).ToString("yyyy-MM-dd")
+# ONE clock reading for the whole run. Separate Get-Date calls can straddle
+# midnight and disagree with each other about what day it is, and the close
+# marker is filed by day. Security Agent H3, 2026-09-07.
+$Now    = Get-Date
+$Today  = $Now.ToString("yyyy-MM-dd")
 $NowUTC = (Get-Date).ToUniversalTime().ToString("HH:mm")
 $LogFile = "C:\JeffLocal\scripts\daily\combined_brief_last_run.log"
 
@@ -236,6 +240,28 @@ function Test-IsPlaceholderLog {
            ($Head -match '(?m)^\s*#.*No human session today')
 }
 
+# When did the most recent session close FALL DUE? (weekday 18:30, per
+# session_close.ps1). Everything about "is this project overdue" is measured
+# against this, not against a flat 24 hours.
+#
+# A flat 24h is wrong every weekend: Friday's 18:30 log is 25h old by Saturday
+# evening and 61h old by Monday's 07:00 brief, so the loud out-of-date banner
+# fired on the Saturday evening, Sunday morning, Sunday evening and Monday
+# morning briefs - about 156 times a year - for a gap that is entirely by
+# design. Security Agent H4, 2026-09-07.
+#
+# The right question is not "is it the weekend" but "has a close been due since
+# this project last logged anything". If none has, there is nothing to report.
+function Get-LastExpectedCloseTime {
+    param([datetime]$Now)
+    $t = $Now.Date.AddHours(18).AddMinutes(30)
+    if ($t -gt $Now) { $t = $t.AddDays(-1) }
+    while ($t.DayOfWeek -eq [DayOfWeek]::Saturday -or $t.DayOfWeek -eq [DayOfWeek]::Sunday) {
+        $t = $t.AddDays(-1)
+    }
+    return $t
+}
+
 function Format-StaleAge {
     param([double]$Hours)
     $Days = [math]::Floor($Hours / 24)
@@ -268,7 +294,15 @@ function Format-PausedLine {
     # 2026-09-07: a pause must never quietly become permanent. This line is the
     # only thing standing between "deliberately paused" and "silently forgotten",
     # so it asks a direct question rather than restating the age again.
-    if ($Hours -ge $PausedNagAfterHours) {
+    # The 99999 sentinel means "no real session log has ever been found", not an
+    # age. Feeding it to Format-StaleAge printed "Paused for 4166 day(s)" into
+    # Saeed's WhatsApp message. Security Agent M1, 2026-09-07.
+    if ($Hours -ge 99999) {
+        $Line += [Environment]::NewLine +
+                 "      -> Paused, and no session log has ever been found for it. Is this still correct?" +
+                 [Environment]::NewLine +
+                 "         Tell Claude to un-pause it or change the reason, next time you talk."
+    } elseif ($Hours -ge $PausedNagAfterHours) {
         $Line += [Environment]::NewLine +
                  "      -> Paused for $(Format-StaleAge -Hours $Hours) now. Is this still correct?" +
                  [Environment]::NewLine +
@@ -444,10 +478,19 @@ function Get-ProjectBrief {
     $ApprovalsFinal = if ($ApprovalsAI) { ,$ApprovalsAI } else { Write-Log "AI rewrite unavailable ($ProjectLabel THINGS I NEED YOU TO OK) - word-glossary fallback"; Add-PlainEnglishNotes -Lines $ApprovalsCapped }
     $NextTasksFinal = if ($NextTasksAI) { ,$NextTasksAI } else { Write-Log "AI rewrite unavailable ($ProjectLabel WHAT'S NEXT) - word-glossary fallback"; Add-PlainEnglishNotes -Lines $NextTasksCapped }
 
-    $Did      = if ($WhatWeDidFinal.Count -gt 0) { ($WhatWeDidFinal | ForEach-Object { "  - $_" }) -join "`n" } else { "  - Nothing logged in the last day." }
-    $Blocking = if ($BlockersFinal.Count -gt 0)  { ($BlockersFinal  | ForEach-Object { "  - $_" }) -join "`n" } else { "  - Nothing stuck right now." }
-    $Approve  = if ($ApprovalsFinal.Count -gt 0) { ($ApprovalsFinal | ForEach-Object { "  - [ ] $_" }) -join "`n" } else { "  - Nothing needs your OK right now." }
-    $Next     = if ($NextTasksFinal.Count -gt 0) { ($NextTasksFinal | ForEach-Object { "  - $_" }) -join "`n" } else { "  - Nothing lined up yet." }
+    # When the project cannot be read, every section is empty - but "Nothing stuck
+    # right now" under a banner that says "This is NOT 'nothing to report'" is the
+    # exact false comfort this fix exists to remove. Say what is true instead: we
+    # do not know. Security Agent M2, 2026-09-07.
+    $EmptyDid      = if ($Unreachable) { "  - Not known - could not read this project." } else { "  - Nothing logged in the last day." }
+    $EmptyBlocking = if ($Unreachable) { "  - Not known - could not read this project." } else { "  - Nothing stuck right now." }
+    $EmptyApprove  = if ($Unreachable) { "  - Not known - could not read this project." } else { "  - Nothing needs your OK right now." }
+    $EmptyNext     = if ($Unreachable) { "  - Not known - could not read this project." } else { "  - Nothing lined up yet." }
+
+    $Did      = if ($WhatWeDidFinal.Count -gt 0) { ($WhatWeDidFinal | ForEach-Object { "  - $_" }) -join "`n" } else { $EmptyDid }
+    $Blocking = if ($BlockersFinal.Count -gt 0)  { ($BlockersFinal  | ForEach-Object { "  - $_" }) -join "`n" } else { $EmptyBlocking }
+    $Approve  = if ($ApprovalsFinal.Count -gt 0) { ($ApprovalsFinal | ForEach-Object { "  - [ ] $_" }) -join "`n" } else { $EmptyApprove }
+    $Next     = if ($NextTasksFinal.Count -gt 0) { ($NextTasksFinal | ForEach-Object { "  - $_" }) -join "`n" } else { $EmptyNext }
 
     $FallbackLine = if ($FallbackNote) { "`n  $FallbackNote`n" } else { "" }
 
@@ -541,17 +584,30 @@ $NoCloseToday    = $false
 $NoCloseWeekend  = $false
 $CloseFailDetail = @()
 
-# Is a close even due today? session_close.ps1 skips Saturday and Sunday by
-# design (CLAUDE.md, "Weekends get no close"), so a missing marker at the weekend
-# is the expected state, not a failure. Keep this in step with the weekday gate
-# in session_close.ps1 - if that schedule changes, change this too.
-$CloseExpectedToday = (Get-Date).DayOfWeek -ne [DayOfWeek]::Saturday -and
-                      (Get-Date).DayOfWeek -ne [DayOfWeek]::Sunday
+# WHICH DAY'S CLOSE IS THIS BRIEF REPORTING ON?
+# Normally today's. But the evening tasks carry -StartWhenAvailable, so a machine
+# that was asleep at 19:00 can fire this brief after midnight - and then "today"
+# is the wrong day to look for a marker under. Friday's close fails, the brief
+# catches up at 00:30 Saturday, and asking for Saturday's marker finds nothing:
+# Saturday is a weekend, so the failure would be filed as "no close was due" and
+# Friday's real failure would never be reported to anyone. A run before 06:00
+# therefore belongs to the previous day. Security Agent H3, 2026-09-07.
+$CloseDay = if ($Now.Hour -lt 6) { $Now.Date.AddDays(-1) } else { $Now.Date }
+if ($CloseDay -ne $Now.Date) {
+    Write-Log "Run started at $($Now.ToString('HH:mm')) - reporting on $($CloseDay.ToString('yyyy-MM-dd'))'s close, not today's."
+}
+
+# Is a close even due for that day? session_close.ps1 skips Saturday and Sunday
+# by design (CLAUDE.md, "Weekends get no close"), so a missing marker at the
+# weekend is the expected state, not a failure. Keep this in step with the
+# weekday gate in session_close.ps1 - if that schedule changes, change this too.
+$CloseExpectedToday = $CloseDay.DayOfWeek -ne [DayOfWeek]::Saturday -and
+                      $CloseDay.DayOfWeek -ne [DayOfWeek]::Sunday
 
 $SkipCloseHere = $false
 if ($Mode -eq 'Evening') {
     $SkipCloseHere = $true
-    $CloseStateFile = "C:\JeffLocal\logs\close-state\$Today-close.txt"
+    $CloseStateFile = "C:\JeffLocal\logs\close-state\$($CloseDay.ToString('yyyy-MM-dd'))-close.txt"
     if (Test-Path $CloseStateFile) {
         $MarkerLines = @(Get-Content -Path $CloseStateFile -ErrorAction SilentlyContinue)
         $HeldSignals += @(@($MarkerLines) | Where-Object { $_ -like "PUSH-HELD|*" })
@@ -590,6 +646,13 @@ $CloseRanToday = ($Mode -eq 'Evening') -and (-not $NoCloseToday) -and (-not $NoC
 
 # Weekends still get one plain line, so "no close today" is visible and explained
 # rather than simply absent. Absence is what let eight days go unnoticed.
+# How old a session log is allowed to be before it means something is wrong.
+# +1h of slack absorbs the rounding in $StaleHours and a slow close.
+$LastExpectedClose = Get-LastExpectedCloseTime -Now $Now
+$ExpectedGapHours  = ($Now - $LastExpectedClose).TotalHours + 1
+Write-Log ("Last close fell due {0}; a log up to {1}h old is therefore expected." -f `
+    $LastExpectedClose.ToString('ddd yyyy-MM-dd HH:mm'), [math]::Round($ExpectedGapHours))
+
 $WeekendNote = ""
 if ($NoCloseWeekend) {
     $WeekendNote = "Note: no session close at weekends - that is normal. Any work is still saved by the 07:00 brief." +
@@ -635,6 +698,7 @@ Write-Log "Ollama AI rewrite fallback used: JeffLocal=$($JeffLocalBrief.AIFallba
 $StaleParts       = @()
 $PausedNotes      = @()
 $UnreachableParts = @()
+$ScheduleNotes    = @()
 
 foreach ($p in @(
     @{ Name = "AI reception helper (Avamed)";  Brief = $JeffLocalBrief },
@@ -656,6 +720,13 @@ foreach ($p in @(
         $PausedNotes += (Format-PausedLine -Name $p.Name -Reason $PausedProjects[$p.Name] `
             -Hours $p.Brief.StaleHours -CloseRan:$CloseRanToday)
         Write-Log "STALENESS: $($p.Name) is a PAUSED project - quiet note, no banner."
+    } elseif ($p.Brief.StaleHours -le $ExpectedGapHours) {
+        # Stale only because no close has fallen due since its last log - the
+        # normal weekend and overnight gap. Explain it once, quietly. The 99999
+        # "no log ever found" sentinel is far above any real gap, so it can never
+        # be absorbed here and always reaches the loud banner. Security Agent H4.
+        $ScheduleNotes += "Note: $($p.Name) - nothing new logged since the last session close, and none has been due since. That is the normal gap, not a problem."
+        Write-Log "STALENESS: $($p.Name) stale by $($p.Brief.StaleHours)h but within the expected $([math]::Round($ExpectedGapHours))h gap - quiet note, no banner."
     } else {
         $StaleParts += (Format-StaleLine -Name $p.Name -Hours $p.Brief.StaleHours -LogName $p.Brief.StaleLogName)
     }
@@ -727,6 +798,14 @@ if (@($PausedNotes).Count -gt 0) {
     Write-Log "PAUSED NOTE shown for $(@($PausedNotes).Count) project(s)"
 }
 
+# The quiet "this gap is by design" line for projects that are only stale because
+# no close has fallen due since they last logged anything.
+$ScheduleNote = ""
+if (@($ScheduleNotes).Count -gt 0) {
+    $ScheduleNote = (@($ScheduleNotes) -join [Environment]::NewLine) + [Environment]::NewLine
+    Write-Log "SCHEDULE NOTE shown for $(@($ScheduleNotes).Count) project(s)"
+}
+
 # ── System health block (morning only) ───────────────────────────────────────
 # Written at 06:45 by scripts\daily\health_check.ps1, fifteen minutes before this
 # brief. Saeed's instruction 2026-09-04: the brief should be fully informed, not
@@ -769,7 +848,7 @@ $CombinedReport = @"
 $Title - $Today $Clock
 Your two projects: the AI reception helper (Avamed) and the pharmacy website (St Marks)
 ================================================================
-$UnreachableBanner$StaleBanner$PausedNote$WeekendNote$OllamaNote$HealthBlock
+$UnreachableBanner$StaleBanner$PausedNote$ScheduleNote$WeekendNote$OllamaNote$HealthBlock
 $($JeffLocalBrief.Text)
 
 Behind the scenes: $JLGitCount code change(s) saved today.
