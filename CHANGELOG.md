@@ -665,3 +665,19 @@ banner. Synthetic marker deleted afterwards.
 **Merged to main.**
 **Remaining debt, all agreed non-gating:** L1 log noise on the unreachable path; a catch-up brief filed under the day it ran rather than the day it reports on; a false alarm if the 18:30 close overruns 19:00 (pre-existing, present under the old code too); and the 19:00 task's absence from scripts/register_scheduled_tasks.ps1 — now a documentation gap only, since H5 removed the code's dependence on catch-up behaviour. [UNVERIFIED — confirm before proceeding] Awaiting Saeed: Get-ScheduledTask -TaskPath "\JeffLocal\"
 **Saeed notified:** This session
+
+---
+
+## 2026-09-07 — 19:00 Task Added to the Setup Script + Weekend Reminder Decision Recorded
+**Agent:** Lead Agent
+**Approved by:** Saeed (explicit "YES" to both, 2026-09-07)
+**Description:** Closes the governance gap the Security Agent raised in three consecutive reviews, and records Saeed's decision on repeated close-failure reminders.
+- **The 19:00 evening brief task is now in scripts/register_scheduled_tasks.ps1.** It was the only JeffLocal scheduled job missing from it, so rebuilding a machine from that script produced a system with no evening brief — and the evening brief is the thing that tells Saeed a session close failed. All four tasks in CLAUDE.md's schedule table are now present in the script.
+- **Task definition backup added, before anything is overwritten.** Every Register-ScheduledTask in that script uses -Force, which replaces a live task outright. A task tuned by hand on the machine would have been silently reverted with no record of what it was. The script now exports every existing \JeffLocal\ task to XML under logs\task-backups\<timestamp>\ first, and prints where. A failed backup warns loudly but does not block registration. logs\ is gitignored so the backups never reach the repo.
+- **Saeed's decision recorded in CLAUDE.md:** a close failure keeps reminding him on Saturday and Sunday until it is fixed. Deliberate repetition, not a bug — safe only because each reminder now names the day it is about.
+**Files changed:** scripts/register_scheduled_tasks.ps1, CLAUDE.md, CHANGELOG.md
+**Tests run:** PowerShell 7.4.6 parse check clean. Cross-checked every -TaskName in the script against CLAUDE.md's scheduled-task table — all four now present.
+**NOT TESTED, and this is the important caveat:** the script uses Windows-only cmdlets (Get-ScheduledTask, Export-ScheduledTask, Register-ScheduledTask) which cannot run on this Linux session at all. Only the syntax has been checked. Nothing has been executed.
+**[UNVERIFIED — confirm before proceeding] The 19:00 task's settings are RECONSTRUCTED**, from its sibling tasks and from CLAUDE.md, not read off the live machine. Because of -Force, running this script would replace the live task with exactly what is written. If the real task differs — different script, arguments or retry policy — its behaviour would change. The new backup block captures the live definition first so any difference is visible and reversible. One command settles it and it has now been asked for four times: Get-ScheduledTask -TaskPath "\JeffLocal\"
+**Risk note:** merging this changes nothing by itself. register_scheduled_tasks.ps1 is a run-once-by-hand script, not scheduled — no behaviour changes until someone runs it as Administrator.
+**Saeed notified:** This session

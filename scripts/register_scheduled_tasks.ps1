@@ -6,6 +6,35 @@ $ErrorActionPreference = "Stop"
 
 Write-Host "Registering JeffLocal scheduled tasks..." -ForegroundColor Cyan
 
+# ── BACK UP WHAT IS ALREADY THERE, BEFORE ANYTHING IS OVERWRITTEN ────────────
+# Every Register-ScheduledTask below uses -Force, which REPLACES a live task
+# outright. If a task on this machine was ever tuned by hand, running this script
+# silently reverts it and there is no record of what it used to be. That matters
+# most for the tasks carrying the alarms: a setting quietly changed back is the
+# same class of invisible failure as the 11-19 Aug 2026 outage.
+#
+# So: export every existing \JeffLocal\ task to XML first. Restore one with
+#   Register-ScheduledTask -Xml (Get-Content <file> -Raw) -TaskName "<name>" -TaskPath "\JeffLocal\"
+# logs\ is gitignored, so these never reach the repo. Added 2026-09-07.
+$BackupDir = "C:\JeffLocal\logs\task-backups\" + (Get-Date).ToString("yyyy-MM-dd-HHmmss")
+try {
+    $Existing = @(Get-ScheduledTask -TaskPath "\JeffLocal\" -ErrorAction SilentlyContinue)
+    if (@($Existing).Count -gt 0) {
+        New-Item -ItemType Directory -Path $BackupDir -Force | Out-Null
+        foreach ($t in $Existing) {
+            $safe = ($t.TaskName -replace '[\\/:*?"<>|]', '_')
+            Export-ScheduledTask -TaskName $t.TaskName -TaskPath "\JeffLocal\" |
+                Set-Content -Path (Join-Path $BackupDir "$safe.xml") -Encoding UTF8
+        }
+        Write-Host "Backed up $(@($Existing).Count) existing task(s) to $BackupDir" -ForegroundColor Yellow
+    } else {
+        Write-Host "No existing \JeffLocal\ tasks found - nothing to back up." -ForegroundColor Yellow
+    }
+} catch {
+    # A failed backup must not stop the registration, but it must be visible.
+    Write-Host "WARNING: could not back up existing tasks - $_" -ForegroundColor Red
+}
+
 # --- Task 1: Strategy Agent Daily Report (07:00) ---
 $action1 = New-ScheduledTaskAction `
     -Execute "powershell.exe" `
@@ -108,6 +137,58 @@ Register-ScheduledTask `
     -Force
 
 Write-Host "Registered: JeffLocal - Weekday Session Close 1830 (Mon-Fri 18:30)" -ForegroundColor Green
+
+# --- Task 2c: Evening Session Close Brief (19:00, daily) ---
+# ADDED 2026-09-07, Saeed's instruction. This was the ONLY JeffLocal scheduled job
+# missing from this script, so rebuilding a machine from here produced a system
+# with no evening brief - and the evening brief is what tells Saeed a session close
+# failed. The gap was found by the Security Agent during the PR #2 review.
+#
+# It sends the message ONLY. Since 2026-09-04 it performs no close: it reads the
+# marker the 18:30 close leaves at logs\close-state\, reports on the last close
+# that fell due, and shouts if that close did not complete. See CLAUDE.md,
+# "SESSION END PROTOCOL".
+#
+# [UNVERIFIED - confirm before proceeding] These settings are RECONSTRUCTED from
+# its sibling tasks and from CLAUDE.md, not read off the live machine. Nobody has
+# yet run Get-ScheduledTask -TaskPath "\JeffLocal\" and compared. Because
+# Register-ScheduledTask below uses -Force, running this script REPLACES the live
+# task with exactly what is written here. If the real task differs - a different
+# script, arguments, or retry policy - this will change its behaviour. The backup
+# block at the top of this file exports the live definition first so any
+# difference can be seen and undone.
+#
+# -Mode Evening is required: without it combined_brief.ps1 defaults to Morning and
+# would send the wrong brief at 19:00.
+$action2c = New-ScheduledTaskAction `
+    -Execute "powershell.exe" `
+    -Argument '-NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File "C:\JeffLocal\scripts\daily\combined_brief.ps1" -Mode Evening'
+
+# Daily, not weekdays: the brief goes out at weekends too. It explains in one line
+# that no close is scheduled on a Saturday or Sunday, while still reporting on the
+# last close that actually fell due - normally Friday's - so a Friday failure is
+# not buried by the weekend. Saeed confirmed 2026-09-07 that he wants that Friday
+# failure to keep reminding him on Saturday and Sunday until it is fixed.
+$trigger2c = New-ScheduledTaskTrigger -Daily -At "19:00"
+
+$settings2c = New-ScheduledTaskSettingsSet `
+    -ExecutionTimeLimit (New-TimeSpan -Minutes 25) `
+    -MultipleInstances IgnoreNew `
+    -AllowStartIfOnBatteries `
+    -DontStopIfGoingOnBatteries `
+    -StartWhenAvailable
+
+Register-ScheduledTask `
+    -TaskName "JeffLocal - Evening Session Close Brief" `
+    -TaskPath "\JeffLocal\" `
+    -Action $action2c `
+    -Trigger $trigger2c `
+    -Settings $settings2c `
+    -Description "Sends the 19:00 evening WhatsApp brief for BOTH projects. Reports on the last session close that fell due and shouts if it did not complete. Performs no close itself since 2026-09-04. Daily." `
+    -RunLevel Highest `
+    -Force
+
+Write-Host "Registered: JeffLocal - Evening Session Close Brief (daily 19:00)" -ForegroundColor Green
 
 # --- Task 3: Watchdog — continuous loop, starts at boot ---
 $action3 = New-ScheduledTaskAction `
