@@ -650,3 +650,18 @@ banner. Synthetic marker deleted afterwards.
 **Still open (agreed, not gating):** L1 log noise; a catch-up brief filed under the day it ran; and a false alarm if the 18:30 close overruns 19:00 — pre-existing, present under the old code too, now recorded as debt.
 **Governance gap — Security Agent has softened its position:** with H5 removing the code's dependence on catch-up behaviour, the missing 19:00 task registration is back to a documentation gap rather than a correctness dependency, and no longer gates this PR. Still worth one command from Saeed: Get-ScheduledTask -TaskPath "\JeffLocal\"
 **Saeed notified:** This session
+
+---
+
+## 2026-09-07 — Security Review Round 4: APPROVED, cosmetics cleared
+**Agent:** Lead Agent
+**Verdict received:** APPROVE. All four round-3 conditions (H6, M4, M5, L2) correctly implemented, nothing gating. The reviewer proved rather than asserted the case I most worried about: $CloseDayFailed is set at exactly two places and each is immediately followed by appending the day name, so the banner's array index can never see an empty array. Also confirmed no duplicate day names are reachable (the reported close is at most three days behind today), no marker is read twice on a weekday, PUSH-HELD signals are not double-counted, and the FAILED-DETAIL split cannot go out of range against session_close.ps1's writer format.
+**Cosmetics cleared in the merge commit (reviewer said safe without re-review):**
+- Two comments in combined_brief.ps1 still quoted "TODAY'S SESSION CLOSE DID NOT COMPLETE" verbatim — worse than ordinary stale comments, because the new CLAUDE.md rule tells future agents not to write that string while the file showed it to them unqualified.
+- CLAUDE.md still described a "NO SESSION CLOSE RAN TODAY" banner, which is neither the old nor the new wording, three lines above the rule forbidding "today".
+- The banner's "It ran and failed:" summary was false for one of two days in the mixed missing+failed case; now reads "What went wrong:".
+- "The Friday and Saturday session close did not complete either" now pluralises.
+**Tests run:** parse clean; 9-scenario staleness harness re-run (all passing); banner rendering re-checked for one day, a hand-run weekend day and two days at once.
+**Merged to main.**
+**Remaining debt, all agreed non-gating:** L1 log noise on the unreachable path; a catch-up brief filed under the day it ran rather than the day it reports on; a false alarm if the 18:30 close overruns 19:00 (pre-existing, present under the old code too); and the 19:00 task's absence from scripts/register_scheduled_tasks.ps1 — now a documentation gap only, since H5 removed the code's dependence on catch-up behaviour. [UNVERIFIED — confirm before proceeding] Awaiting Saeed: Get-ScheduledTask -TaskPath "\JeffLocal\"
+**Saeed notified:** This session

@@ -36,7 +36,8 @@ $LogFile = "C:\JeffLocal\scripts\daily\combined_brief_last_run.log"
 #
 # This ONLY silences the "nobody has worked on this" alarm. It does NOT silence
 # the close-failure alarm: if the 18:30 close does not run or fails, the loud
-# "TODAY'S SESSION CLOSE DID NOT COMPLETE" banner still fires for both projects,
+# day-named close-failure banner ("FRIDAY'S SESSION CLOSE DID NOT COMPLETE")
+# still fires for both projects,
 # paused or not. Those are different problems and must stay separately visible.
 #
 # TO UN-PAUSE A PROJECT: delete its line below. The loud staleness banner comes
@@ -730,7 +731,7 @@ Write-Log "Ollama AI rewrite fallback used: JeffLocal=$($JeffLocalBrief.AIFallba
 #     "no work has been logged", which is what was actually measured. It only
 #     blames the close when the close really did fail.
 #   - The close itself failed or never ran        -> the separate, always-loud
-#     "TODAY'S SESSION CLOSE DID NOT COMPLETE" banner in section 6b-2. That one
+#     day-named close-failure banner in section 6b-2. That one
 #     is never silenced by pausing a project.
 $StaleParts       = @()
 $PausedNotes      = @()
@@ -801,7 +802,7 @@ if (@($StaleParts).Count -gt 0) {
     # Only point at the close when the close is genuinely the suspect. If it ran,
     # saying so stops Saeed hunting a scheduled-task fault that does not exist.
     $StaleCause = if ($CloseDayFailed) {
-        "!! The $(@($FailedDayNames) -join ' and ') session close did not complete either - see the banner above."
+        "!! The $(@($FailedDayNames) -join ' and ') session close$(if (@($FailedDayNames).Count -gt 1) { 's' }) did not complete either - see the banner above."
     } elseif ($CloseRanToday) {
         # Claim ONLY what the marker proves: the 18:30 close ran. It says nothing
         # about the health check, the watchdog, the 07:00 brief or the WhatsApp
@@ -1008,7 +1009,7 @@ if ($CloseDayFailed) {
 !! $FailedDayLabel
 !! The session close did not complete, so $FailedDayPlain $FailedDayVerb no
 !! session log, no handover note, nothing saved to GitHub, no restore point.
-$(if (@($CloseFailDetail).Count -gt 0) { "!! It ran and failed:" + [Environment]::NewLine + (@($CloseFailDetail) -join [Environment]::NewLine) } else { "!! It did not run at all." })
+$(if (@($CloseFailDetail).Count -gt 0) { "!! What went wrong:" + [Environment]::NewLine + (@($CloseFailDetail) -join [Environment]::NewLine) } else { "!! It did not run at all." })
 !!
 !! Your work is NOT lost - it is still on the computer.
 !! Check the scheduled task "JeffLocal - Weekday Session Close 1830".
