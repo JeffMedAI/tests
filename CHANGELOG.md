@@ -562,3 +562,31 @@ scripts/register_scheduled_tasks.ps1, scripts/migrations/add_created_at_20260531
 logged "18:30 close RAN AND FAILED today - 2 project(s) affected" and printed both reasons by name in the
 banner. Synthetic marker deleted afterwards.
 **Saeed notified:** This session.
+
+---
+
+## 2026-09-07 — Brief Staleness Banner: Separated "Close Failed" From "Project Paused"
+**Agent:** Lead Agent (Claude Code session)
+**Approved by:** Saeed (explicit "APPROVED" in session, 2026-09-07)
+**Description:** Investigated Saeed's 2026-09-04 evening WhatsApp warning. Finding: the 18:30 session close ran correctly on its first day (close commit landed 18:32 UK, restore tag restore/2026-09-04-1800 pushed, session log and HANDOFF written). The warning was NOT a close failure — the staleness check correctly spotted that St Marks had no committed work for 11 days, but the banner wording wrongly stated "The daily session close is NOT running", reporting a healthy system as broken. Fixed the wording and split the two alarms: a deliberately paused project now gets a quiet one-line note; a project that is not paused still gets the full loud banner, and the banner only blames the close when the close actually failed. Added a $PausedProjects list at the top of combined_brief.ps1 (St Marks — awaiting pharmacist sign-off, per Saeed). Pausing a project does NOT silence the close-failure banner. Also moved the close-marker read from section 6-pre up to a new section 3b, because the banner wording now depends on whether the close ran and section 5 freezes the message text before the old read point.
+**Files changed:** scripts/daily/combined_brief.ps1, CLAUDE.md, CHANGELOG.md
+**Tests run:** PowerShell 7.4.6 parse check on combined_brief.ps1 and session_close.ps1 — both clean. Behaviour test harness executing the real banner code from the file across 5 scenarios: (1) close OK + St Marks paused 11 days → quiet note only, no banner [reproduces and fixes the 2026-09-04 false alarm]; (2) Avamed stale 3 days, not paused → loud banner, correctly states the close DID run; (3) close FAILED + Avamed stale + St Marks paused → loud banner still fires for Avamed, points at the close-failure banner, paused note stays quiet [the 11–19 Aug outage shape — safety net confirmed intact]; (4) nothing stale → clean message; (5) morning brief → does not claim the close ran. All 5 passed.
+**Not tested:** end-to-end run on the Windows machine (no PowerShell/Windows paths in the cloud session). Next 19:00 brief is the live confirmation.
+**Saeed notified:** This session
+
+---
+
+## 2026-09-07 — Security Agent Review of the Staleness Banner Fix (PR #1)
+**Agent:** Security Agent (GuardRail), review requested by Lead Agent
+**Approved by:** Saeed ("MERGE IF SAFE", 2026-09-07) — review run because the change alters the content of an external WhatsApp message and modifies a failure-detection alarm
+**Verdict:** APPROVE WITH CONDITIONS. Safety net confirmed intact: pausing a project cannot suppress the close-failure banner or the push-held banner; a non-paused stale project still gets the loud banner on every traced path; the moved marker read is behaviour-preserving and Morning mode still runs strategy_daily.ps1 (the weekend git safety net). No patient data, credentials or secrets introduced. No veto trigger applies.
+**Conditions applied before merge:**
+- C1 (combined_brief.ps1) — the banner said "nothing is broken in the automation" on the strength of the close marker alone. That marker evidences only that the 18:30 close ran; it says nothing about the health check, watchdog, 07:00 brief or WhatsApp sender. Telling a non-technical reader nothing is broken would stop them looking. Reworded to "Today's 18:30 session close ran, so this is not a close failure."
+- C2 (combined_brief.ps1) — the quiet paused note claimed the close "ran normally". CLOSED means neither close threw, not that the work was useful. Reworded to "Today's 18:30 close ran."
+**Tests run:** re-ran the full 5-scenario harness after the wording change — all 5 still pass. PowerShell 7.4.6 parse check clean.
+**Open findings logged, NOT fixed in this PR (both pre-existing):**
+- H2 (HIGH) — the weekend evening brief fires "TODAY'S SESSION CLOSE DID NOT COMPLETE" every Saturday and Sunday, because no close is scheduled at weekends so no marker exists. ~104 false alarms a year on the one banner that must never be ignored. Confirmed against git history: 5 and 6 Sep 2026 had 07:00 morning briefs but no evening close, so Saeed most likely received two false alarms this weekend. Awaiting Saeed's decision on a follow-up fix.
+- H1 (HIGH) — if a project's sessions directory is missing, the staleness check treats it as "not stale" and emits no warning at all; if it exists but is unreadable, the script aborts before sending any brief. That is the 11-19 Aug 2026 outage shape and it is the one input where the alarm is genuinely mute. Awaiting Saeed's decision.
+- M1 (MEDIUM, accepted) — a close that fails without throwing still writes CLOSED. Mitigated by the paused note printing a climbing day counter every day, so the condition never becomes invisible.
+- L1 — pause has no expiry; L2 — pause keys are display strings, but they fail in the safe direction (loud banner returns).
+**Saeed notified:** This session

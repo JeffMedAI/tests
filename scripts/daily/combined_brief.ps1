@@ -25,6 +25,22 @@ $Today  = (Get-Date).ToString("yyyy-MM-dd")
 $NowUTC = (Get-Date).ToUniversalTime().ToString("HH:mm")
 $LogFile = "C:\JeffLocal\scripts\daily\combined_brief_last_run.log"
 
+# ── Deliberately paused projects ─────────────────────────────────────────────
+# Saeed's instruction 2026-09-07. A project listed here is paused ON PURPOSE, so
+# "no work logged" is the expected state, not a fault. It gets a quiet one-line
+# note instead of the full out-of-date banner.
+#
+# This ONLY silences the "nobody has worked on this" alarm. It does NOT silence
+# the close-failure alarm: if the 18:30 close does not run or fails, the loud
+# "TODAY'S SESSION CLOSE DID NOT COMPLETE" banner still fires for both projects,
+# paused or not. Those are different problems and must stay separately visible.
+#
+# TO UN-PAUSE A PROJECT: delete its line below. The loud staleness banner comes
+# straight back. Keep the reason text current - it is printed to Saeed verbatim.
+$PausedProjects = @{
+    "Pharmacy website (St Marks)" = "awaiting pharmacist sign-off"
+}
+
 function Write-Log {
     param([string]$Message)
     $ts    = (Get-Date).ToUniversalTime().ToString("yyyy-MM-dd HH:mm:ss UTC")
@@ -215,14 +231,33 @@ function Test-IsPlaceholderLog {
            ($Head -match '(?m)^\s*#.*No human session today')
 }
 
+function Format-StaleAge {
+    param([double]$Hours)
+    $Days = [math]::Floor($Hours / 24)
+    if ($Days -ge 1) { return "$Days day(s)" }
+    return "$Hours hour(s)"
+}
+
+# Loud line - for a project that is NOT paused and so should have work logged.
 function Format-StaleLine {
     param([string]$Name, [double]$Hours, [string]$LogName)
     if ($Hours -ge 99999) { return "!!   $Name : NO session log has ever been found" }
-    $Days    = [math]::Floor($Hours / 24)
-    $AgeText = if ($Days -ge 1) { "nothing new logged for $Days day(s)" }
-               else             { "nothing new logged for $Hours hour(s)" }
-    $Src     = if ($LogName) { " - still showing $LogName" } else { "" }
-    return "!!   $Name : $AgeText$Src"
+    $Src = if ($LogName) { " - still showing $LogName" } else { "" }
+    return "!!   $Name : nothing new logged for $(Format-StaleAge -Hours $Hours)$Src"
+}
+
+# Quiet line - for a project Saeed has deliberately paused. One sentence, no
+# banner, no shouting. Saeed's instruction 2026-09-07: an idle project he already
+# knows about must not look like a broken system.
+function Format-PausedLine {
+    param([string]$Name, [string]$Reason, [double]$Hours, [switch]$CloseRan)
+    $Age    = if ($Hours -ge 99999) { "no session log yet" }
+              else { "nothing new logged for $(Format-StaleAge -Hours $Hours)" }
+    # Say only what the marker evidences: that the 18:30 close ran. It does NOT
+    # evidence that the project's close did useful work, so do not say "normally".
+    # Security Agent condition C2, 2026-09-07.
+    $Closed = if ($CloseRan) { " Today's 18:30 close ran." } else { "" }
+    return "Note: $Name is paused on purpose ($Reason) - $Age.$Closed"
 }
 
 function Format-HeldLine {
@@ -436,6 +471,58 @@ if (Test-Path $MemFile) {
     }
 }
 
+# ── 3b. EVENING: did the 18:30 close run? ────────────────────────────────────
+# Saeed's instruction 2026-09-04: the session close moved OUT of this brief and
+# into scripts\daily\session_close.ps1, on its own weekday 18:30 scheduled task.
+# So in Evening mode this script no longer closes anything - it reads the marker
+# that close left behind and reports on it. Correct order: close, then describe.
+#
+# Morning mode is UNCHANGED. The 07:00 run still calls strategy_daily.ps1 in
+# section 6 as its git safety net, which is what commits and pushes weekend work
+# (no close runs on a Saturday or Sunday).
+#
+# Deliberately NO fallback close here. If the 18:30 task failed, this brief says
+# so loudly rather than quietly closing on its own - a silent auto-recovery is
+# how the 11-19 Aug 2026 failure went unnoticed for eight days.
+#
+# READ BEFORE THE BANNERS (moved up from section 6-pre, 2026-09-07): the
+# staleness wording below depends on whether the close ran, and section 5 freezes
+# the message text. Answering "did the close run" first is what lets the brief
+# tell "the close is broken" apart from "nobody worked on this project".
+$HeldSignals     = @()
+$NoCloseToday    = $false
+$CloseFailDetail = @()
+
+$SkipCloseHere = $false
+if ($Mode -eq 'Evening') {
+    $SkipCloseHere = $true
+    $CloseStateFile = "C:\JeffLocal\logs\close-state\$Today-close.txt"
+    if (Test-Path $CloseStateFile) {
+        $MarkerLines = @(Get-Content -Path $CloseStateFile -ErrorAction SilentlyContinue)
+        $HeldSignals += @(@($MarkerLines) | Where-Object { $_ -like "PUSH-HELD|*" })
+        $ClosedAt = @(@($MarkerLines) | Where-Object { $_ -like "CLOSED|*" }) | Select-Object -First 1
+        if ($ClosedAt) {
+            Write-Log "18:30 close already ran today ($ClosedAt) - this brief reports only."
+        } else {
+            # Marker present but no CLOSED line: the close RAN and FAILED. Treat it
+            # exactly as harshly as a missing marker - the outcome for Saeed is the
+            # same (no session log, no handover, no restore point) and a half-done
+            # close reported as fine is how failures hide. Security Agent, 2026-09-04.
+            $NoCloseToday = $true
+            $CloseFailDetail = @(@($MarkerLines) | Where-Object { $_ -like "FAILED-DETAIL|*" }) |
+                ForEach-Object { "  - " + (([string]$_).Split("|", 3)[1..2] -join ": ") }
+            Write-Log "WARNING: 18:30 close RAN AND FAILED today - $(@($CloseFailDetail).Count) project(s) affected."
+        }
+    } else {
+        $NoCloseToday = $true
+        Write-Log "WARNING: no 18:30 close marker at $CloseStateFile - NO CLOSE RAN TODAY."
+    }
+}
+
+# Did today's close complete? Morning briefs never assert this either way - the
+# close belongs to the evening, so a morning brief must not claim it ran.
+$CloseRanToday = ($Mode -eq 'Evening') -and (-not $NoCloseToday)
+
 # ── 4. Assemble combined brief ────────────────────────────────────────────────
 if ($Mode -eq 'Evening') {
     $Title = "EVENING BRIEF (wrapping up today)"
@@ -455,31 +542,83 @@ Write-Log "Ollama AI rewrite fallback used: JeffLocal=$($JeffLocalBrief.AIFallba
 # no real session log for 8 days while St Marks shipped 5 commits the same day.
 # The old brief buried that in a small "(No log today...)" note mid-message and
 # nobody noticed for over a week. This banner names names, at the top.
-$StaleParts = @()
-if ($JeffLocalBrief.IsStale) {
-    $StaleParts += (Format-StaleLine -Name "AI reception helper (Avamed)" -Hours $JeffLocalBrief.StaleHours -LogName $JeffLocalBrief.StaleLogName)
-}
-if ($StMarksBrief.IsStale) {
-    $StaleParts += (Format-StaleLine -Name "Pharmacy website (St Marks)" -Hours $StMarksBrief.StaleHours -LogName $StMarksBrief.StaleLogName)
+#
+# TWO DIFFERENT PROBLEMS, TWO DIFFERENT VOICES (Saeed's instruction 2026-09-07).
+# The old banner said "The daily session close is NOT running" for ANY project
+# with no fresh log. That was wrong and it cost Saeed a needless alarm on
+# 2026-09-04: the 18:30 close had run perfectly, but St Marks had simply had no
+# work committed for 11 days while awaiting pharmacist sign-off, and the brief
+# reported a healthy system as broken. A warning that cries wolf gets ignored,
+# and this one guards a real eight-day outage.
+#
+# So now:
+#   - Project paused on purpose ($PausedProjects) -> quiet one-line note.
+#   - Project NOT paused and gone quiet           -> loud banner, but it says
+#     "no work has been logged", which is what was actually measured. It only
+#     blames the close when the close really did fail.
+#   - The close itself failed or never ran        -> the separate, always-loud
+#     "TODAY'S SESSION CLOSE DID NOT COMPLETE" banner in section 6b-2. That one
+#     is never silenced by pausing a project.
+$StaleParts  = @()
+$PausedNotes = @()
+
+foreach ($p in @(
+    @{ Name = "AI reception helper (Avamed)";  Brief = $JeffLocalBrief },
+    @{ Name = "Pharmacy website (St Marks)";   Brief = $StMarksBrief }
+)) {
+    if (-not $p.Brief.IsStale) { continue }
+
+    if ($PausedProjects.ContainsKey($p.Name)) {
+        $PausedNotes += (Format-PausedLine -Name $p.Name -Reason $PausedProjects[$p.Name] `
+            -Hours $p.Brief.StaleHours -CloseRan:$CloseRanToday)
+        Write-Log "STALENESS: $($p.Name) is a PAUSED project - quiet note, no banner."
+    } else {
+        $StaleParts += (Format-StaleLine -Name $p.Name -Hours $p.Brief.StaleHours -LogName $p.Brief.StaleLogName)
+    }
 }
 
 $StaleBanner = ""
 if (@($StaleParts).Count -gt 0) {
-    $StaleBody   = (@($StaleParts) -join [Environment]::NewLine)
+    $StaleBody = (@($StaleParts) -join [Environment]::NewLine)
+    # Only point at the close when the close is genuinely the suspect. If it ran,
+    # saying so stops Saeed hunting a scheduled-task fault that does not exist.
+    $StaleCause = if ($NoCloseToday) {
+        "!! Today's session close did not complete either - see the banner above."
+    } elseif ($CloseRanToday) {
+        # Claim ONLY what the marker proves: the 18:30 close ran. It says nothing
+        # about the health check, the watchdog, the 07:00 brief or the WhatsApp
+        # sender. "Nothing is broken in the automation" would tell Saeed to stop
+        # looking - the exact direction in which outages hide. Security Agent
+        # condition C1, 2026-09-07.
+        "!! Today's 18:30 session close ran, so this is not a close failure."
+        "!! It means the work itself has stopped, or is not being committed."
+    } else {
+        "!! Either work has genuinely stopped, or it is not being saved."
+    }
     $StaleBanner = @"
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !! WARNING - PART OF THIS BRIEF IS OUT OF DATE
 $StaleBody
 !!
-!! The daily session close is NOT running for the project(s) above.
+!! No work has been logged for the project(s) above, and they are
+!! not marked as paused.
+$($StaleCause -join [Environment]::NewLine)
 !! What you read below for them is OLD news repeated, not today's work.
-!! Do not read it as progress. This needs fixing before you trust it.
+!! Do not read it as progress. This needs looking at before you trust it.
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 "@
     Write-Log "STALENESS BANNER SHOWN for $(@($StaleParts).Count) project(s)"
 } else {
-    Write-Log "Staleness check: both projects have a real session log within 24h"
+    Write-Log "Staleness check: no unexpected staleness (paused projects: $(@($PausedNotes).Count))"
+}
+
+# The quiet note for deliberately paused projects. Sits under the banner block so
+# a real alarm is always read first.
+$PausedNote = ""
+if (@($PausedNotes).Count -gt 0) {
+    $PausedNote = (@($PausedNotes) -join [Environment]::NewLine) + [Environment]::NewLine
+    Write-Log "PAUSED NOTE shown for $(@($PausedNotes).Count) project(s)"
 }
 
 # ── System health block (morning only) ───────────────────────────────────────
@@ -524,7 +663,7 @@ $CombinedReport = @"
 $Title - $Today $Clock
 Your two projects: the AI reception helper (Avamed) and the pharmacy website (St Marks)
 ================================================================
-$StaleBanner$OllamaNote$HealthBlock
+$StaleBanner$PausedNote$OllamaNote$HealthBlock
 $($JeffLocalBrief.Text)
 
 Behind the scenes: $JLGitCount code change(s) saved today.
@@ -556,48 +695,11 @@ if ($DryRun) {
 # ── 6. Run the JeffLocal script to update PROJECT_MEMORY + its git/push ──────
 # Collects any PUSH-HELD signal the closes emit, so the warning can go into the
 # very brief that is about to be sent rather than waiting for the next one.
-$HeldSignals     = @()
-$NoCloseToday    = $false
-$CloseFailDetail = @()
-
-# ── 6-pre. EVENING: the close already happened at 18:30 ──────────────────────
-# Saeed's instruction 2026-09-04: the session close moved OUT of this brief and
-# into scripts\daily\session_close.ps1, on its own weekday 18:30 scheduled task.
-# So in Evening mode this script no longer closes anything - it reads the marker
-# that close left behind and reports on it. Correct order: close, then describe.
-#
-# Morning mode is UNCHANGED. The 07:00 run still calls strategy_daily.ps1 below
-# as its git safety net, which is what commits and pushes weekend work (no close
-# runs on a Saturday or Sunday).
-#
-# Deliberately NO fallback close here. If the 18:30 task failed, this brief says
-# so loudly rather than quietly closing on its own - a silent auto-recovery is
-# how the 11-19 Aug 2026 failure went unnoticed for eight days.
-$SkipCloseHere = $false
-if ($Mode -eq 'Evening') {
-    $SkipCloseHere = $true
-    $CloseStateFile = "C:\JeffLocal\logs\close-state\$Today-close.txt"
-    if (Test-Path $CloseStateFile) {
-        $MarkerLines = @(Get-Content -Path $CloseStateFile -ErrorAction SilentlyContinue)
-        $HeldSignals += @(@($MarkerLines) | Where-Object { $_ -like "PUSH-HELD|*" })
-        $ClosedAt = @(@($MarkerLines) | Where-Object { $_ -like "CLOSED|*" }) | Select-Object -First 1
-        if ($ClosedAt) {
-            Write-Log "18:30 close already ran today ($ClosedAt) - this brief reports only."
-        } else {
-            # Marker present but no CLOSED line: the close RAN and FAILED. Treat it
-            # exactly as harshly as a missing marker - the outcome for Saeed is the
-            # same (no session log, no handover, no restore point) and a half-done
-            # close reported as fine is how failures hide. Security Agent, 2026-09-04.
-            $NoCloseToday = $true
-            $CloseFailDetail = @(@($MarkerLines) | Where-Object { $_ -like "FAILED-DETAIL|*" }) |
-                ForEach-Object { "  - " + (([string]$_).Split("|", 3)[1..2] -join ": ") }
-            Write-Log "WARNING: 18:30 close RAN AND FAILED today - $(@($CloseFailDetail).Count) project(s) affected."
-        }
-    } else {
-        $NoCloseToday = $true
-        Write-Log "WARNING: no 18:30 close marker at $CloseStateFile - NO CLOSE RAN TODAY."
-    }
-}
+# The close-marker read that used to sit here moved UP to section 3b, above the
+# staleness banner. It has to run first: the banner's wording now depends on
+# whether the 18:30 close actually ran, and section 5 freezes the message text
+# before this point. Moved 2026-09-07. $HeldSignals, $NoCloseToday,
+# $CloseFailDetail and $SkipCloseHere are all set there.
 
 # combined_brief.ps1 owns the single WhatsApp message, so this call uses -NoSend:
 # strategy_daily.ps1 still updates PROJECT_MEMORY, commits, pushes and (evening)
