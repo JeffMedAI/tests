@@ -41,6 +41,11 @@ $PausedProjects = @{
     "Pharmacy website (St Marks)" = "awaiting pharmacist sign-off"
 }
 
+# How long a project may sit paused before the quiet note starts asking Saeed to
+# confirm it is still correct. One week, Saeed's instruction 2026-09-07 - a pause
+# he set and forgot must not become a permanent blind spot.
+$PausedNagAfterHours = 24 * 7
+
 function Write-Log {
     param([string]$Message)
     $ts    = (Get-Date).ToUniversalTime().ToString("yyyy-MM-dd HH:mm:ss UTC")
@@ -257,7 +262,19 @@ function Format-PausedLine {
     # evidence that the project's close did useful work, so do not say "normally".
     # Security Agent condition C2, 2026-09-07.
     $Closed = if ($CloseRan) { " Today's 18:30 close ran." } else { "" }
-    return "Note: $Name is paused on purpose ($Reason) - $Age.$Closed"
+    $Line   = "Note: $Name is paused on purpose ($Reason) - $Age.$Closed"
+
+    # After a week, stop being merely informative and ask. Saeed's instruction
+    # 2026-09-07: a pause must never quietly become permanent. This line is the
+    # only thing standing between "deliberately paused" and "silently forgotten",
+    # so it asks a direct question rather than restating the age again.
+    if ($Hours -ge $PausedNagAfterHours) {
+        $Line += [Environment]::NewLine +
+                 "      -> Paused for $(Format-StaleAge -Hours $Hours) now. Is this still correct?" +
+                 [Environment]::NewLine +
+                 "         Tell Claude to un-pause it or change the reason, next time you talk."
+    }
+    return $Line
 }
 
 function Format-HeldLine {
@@ -280,13 +297,39 @@ function Get-ProjectBrief {
         $NextLabel = "WHAT WE ARE DOING TODAY"
     }
 
+    # ── Can we even see this project's session logs? ─────────────────────────
+    # Two failure modes, both of which used to end in silence (Security Agent
+    # finding H1, 2026-09-07):
+    #   - Folder MISSING: the old code skipped the staleness check entirely, so
+    #     $IsStale stayed $false and NO warning was produced for that project.
+    #   - Folder PRESENT BUT UNREADABLE: Get-ChildItem threw under
+    #     $ErrorActionPreference = "Stop", outside any try, killing the script -
+    #     so no brief was sent at all, to anyone, with no error anywhere Saeed
+    #     would see it.
+    # Both are the shape of the 11-19 Aug 2026 outage: C:\JeffLocal unreachable.
+    # "I cannot see this project" is now its own loud state, never "all fine".
+    $Unreachable       = $false
+    $UnreachableReason = ""
+    $AllSessions       = @()
+    if (-not (Test-Path $SessionsDir)) {
+        $Unreachable       = $true
+        $UnreachableReason = "the folder does not exist"
+        Write-Log "UNREACHABLE: $ProjectLabel - session folder missing at $SessionsDir"
+    } else {
+        try {
+            $AllSessions = @(Get-ChildItem -Path $SessionsDir -Filter "*.md" -ErrorAction Stop |
+                Where-Object { $_.Name -notlike "SESSION_TEMPLATE*" } |
+                Sort-Object LastWriteTime -Descending)
+        } catch {
+            $Unreachable       = $true
+            $UnreachableReason = "the folder cannot be read"
+            Write-Log "UNREACHABLE: $ProjectLabel - cannot read $SessionsDir - $_"
+        }
+    }
+
     $SessionSummaries = @()
     $RealLogCount     = 0
-    if (Test-Path $SessionsDir) {
-        $AllSessions = Get-ChildItem -Path $SessionsDir -Filter "*.md" |
-            Where-Object { $_.Name -notlike "SESSION_TEMPLATE*" } |
-            Sort-Object LastWriteTime -Descending
-
+    if (-not $Unreachable) {
         foreach ($s in $AllSessions) {
             $Age = ((Get-Date) - $s.LastWriteTime).TotalHours
             if ($Age -le 24) {
@@ -302,11 +345,13 @@ function Get-ProjectBrief {
     $IsStale      = $false
     $StaleHours   = 0
     $StaleLogName = ""
-    if ($RealLogCount -eq 0 -and (Test-Path $SessionsDir)) {
+    if ($Unreachable) {
+        # Nothing can be measured, so nothing may be assumed. The banner block
+        # treats this separately and always loudly - see $UnreachableParts.
+        $FallbackNote = "(CANNOT READ THIS PROJECT'S SESSION LOGS - $UnreachableReason)"
+    } elseif ($RealLogCount -eq 0) {
         $IsStale = $true
-        $Candidates = @(Get-ChildItem -Path $SessionsDir -Filter "*.md" |
-            Where-Object { $_.Name -notlike "SESSION_TEMPLATE*" } |
-            Sort-Object LastWriteTime -Descending)
+        $Candidates = @($AllSessions)
         $NewestReal = $null
         foreach ($c in $Candidates) {
             if (-not (Test-IsPlaceholderLog -Content (Get-Utf8FileText -Path $c.FullName))) {
@@ -427,6 +472,8 @@ $Approve
         IsStale        = $IsStale
         StaleHours     = $StaleHours
         StaleLogName   = $StaleLogName
+        Unreachable       = $Unreachable
+        UnreachableReason = $UnreachableReason
     }
 }
 
@@ -491,7 +538,15 @@ if (Test-Path $MemFile) {
 # tell "the close is broken" apart from "nobody worked on this project".
 $HeldSignals     = @()
 $NoCloseToday    = $false
+$NoCloseWeekend  = $false
 $CloseFailDetail = @()
+
+# Is a close even due today? session_close.ps1 skips Saturday and Sunday by
+# design (CLAUDE.md, "Weekends get no close"), so a missing marker at the weekend
+# is the expected state, not a failure. Keep this in step with the weekday gate
+# in session_close.ps1 - if that schedule changes, change this too.
+$CloseExpectedToday = (Get-Date).DayOfWeek -ne [DayOfWeek]::Saturday -and
+                      (Get-Date).DayOfWeek -ne [DayOfWeek]::Sunday
 
 $SkipCloseHere = $false
 if ($Mode -eq 'Evening') {
@@ -513,15 +568,33 @@ if ($Mode -eq 'Evening') {
                 ForEach-Object { "  - " + (([string]$_).Split("|", 3)[1..2] -join ": ") }
             Write-Log "WARNING: 18:30 close RAN AND FAILED today - $(@($CloseFailDetail).Count) project(s) affected."
         }
-    } else {
+    } elseif ($CloseExpectedToday) {
         $NoCloseToday = $true
         Write-Log "WARNING: no 18:30 close marker at $CloseStateFile - NO CLOSE RAN TODAY."
+    } else {
+        # Weekend, no marker: session_close.ps1 exits by design on Sat/Sun, so
+        # there is nothing to alarm about. Shouting here would have fired the
+        # system's most important banner 104 times a year for no reason, which
+        # is how a real alarm gets ignored. Security Agent H2, 2026-09-07.
+        $NoCloseWeekend = $true
+        Write-Log "Weekend - no 18:30 close is scheduled, so no marker is expected. Not an alarm."
     }
 }
 
 # Did today's close complete? Morning briefs never assert this either way - the
 # close belongs to the evening, so a morning brief must not claim it ran.
-$CloseRanToday = ($Mode -eq 'Evening') -and (-not $NoCloseToday)
+# $NoCloseWeekend must be excluded too: at the weekend no close is scheduled, so
+# "no failure" is NOT the same as "it ran". Without this the brief would claim a
+# close ran every Saturday and Sunday - the opposite lie to the one H2 fixed.
+$CloseRanToday = ($Mode -eq 'Evening') -and (-not $NoCloseToday) -and (-not $NoCloseWeekend)
+
+# Weekends still get one plain line, so "no close today" is visible and explained
+# rather than simply absent. Absence is what let eight days go unnoticed.
+$WeekendNote = ""
+if ($NoCloseWeekend) {
+    $WeekendNote = "Note: no session close at weekends - that is normal. Any work is still saved by the 07:00 brief." +
+                   [Environment]::NewLine
+}
 
 # ── 4. Assemble combined brief ────────────────────────────────────────────────
 if ($Mode -eq 'Evening') {
@@ -559,13 +632,24 @@ Write-Log "Ollama AI rewrite fallback used: JeffLocal=$($JeffLocalBrief.AIFallba
 #   - The close itself failed or never ran        -> the separate, always-loud
 #     "TODAY'S SESSION CLOSE DID NOT COMPLETE" banner in section 6b-2. That one
 #     is never silenced by pausing a project.
-$StaleParts  = @()
-$PausedNotes = @()
+$StaleParts       = @()
+$PausedNotes      = @()
+$UnreachableParts = @()
 
 foreach ($p in @(
     @{ Name = "AI reception helper (Avamed)";  Brief = $JeffLocalBrief },
     @{ Name = "Pharmacy website (St Marks)";   Brief = $StMarksBrief }
 )) {
+    # UNREACHABLE BEATS PAUSED, ALWAYS. Pausing a project means "no new work is
+    # expected"; it never means "this project's folder may vanish". A missing or
+    # unreadable folder is a system fault, and it is the 11-19 Aug 2026 outage
+    # shape, so it is loud whatever the pause list says. Security Agent H1.
+    if ($p.Brief.Unreachable) {
+        $UnreachableParts += "!!   $($p.Name) : $($p.Brief.UnreachableReason)"
+        Write-Log "UNREACHABLE BANNER: $($p.Name) - $($p.Brief.UnreachableReason)"
+        continue
+    }
+
     if (-not $p.Brief.IsStale) { continue }
 
     if ($PausedProjects.ContainsKey($p.Name)) {
@@ -575,6 +659,28 @@ foreach ($p in @(
     } else {
         $StaleParts += (Format-StaleLine -Name $p.Name -Hours $p.Brief.StaleHours -LogName $p.Brief.StaleLogName)
     }
+}
+
+# ── Cannot see a project at all ──────────────────────────────────────────────
+# Its own banner, above everything else. Saeed's brief must never imply a
+# project is fine when the script could not look at it.
+$UnreachableBanner = ""
+if (@($UnreachableParts).Count -gt 0) {
+    $UnreachableBody   = (@($UnreachableParts) -join [Environment]::NewLine)
+    $UnreachableBanner = @"
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!! CANNOT SEE ONE OF YOUR PROJECTS
+$UnreachableBody
+!!
+!! Nothing below can be trusted for the project(s) above - the
+!! script could not read their session logs, so it does not know
+!! whether work happened or not. This is NOT "nothing to report".
+!! Your work is not lost; the computer cannot see the folder.
+!! This is how the 11-19 Aug 2026 outage started. Check now.
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+"@
+    Write-Log "UNREACHABLE BANNER SHOWN for $(@($UnreachableParts).Count) project(s)"
 }
 
 $StaleBanner = ""
@@ -663,7 +769,7 @@ $CombinedReport = @"
 $Title - $Today $Clock
 Your two projects: the AI reception helper (Avamed) and the pharmacy website (St Marks)
 ================================================================
-$StaleBanner$PausedNote$OllamaNote$HealthBlock
+$UnreachableBanner$StaleBanner$PausedNote$WeekendNote$OllamaNote$HealthBlock
 $($JeffLocalBrief.Text)
 
 Behind the scenes: $JLGitCount code change(s) saved today.

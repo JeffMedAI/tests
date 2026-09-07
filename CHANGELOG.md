@@ -590,3 +590,18 @@ banner. Synthetic marker deleted afterwards.
 - M1 (MEDIUM, accepted) — a close that fails without throwing still writes CLOSED. Mitigated by the paused note printing a climbing day counter every day, so the condition never becomes invisible.
 - L1 — pause has no expiry; L2 — pause keys are display strings, but they fail in the safe direction (loud banner returns).
 **Saeed notified:** This session
+
+---
+
+## 2026-09-07 — Three Alarm Fixes: Weekend False Alarm, Unreachable Project, Pause Expiry
+**Agent:** Lead Agent (Claude Code session)
+**Approved by:** Saeed (explicit "YES" / "FIX AND TEST" / "IT SHOULD NAG ME AFTER ONE WEEK", 2026-09-07)
+**Description:** Follow-up to PR #1, addressing the two open findings from the Security Agent review plus Saeed's pause-expiry request.
+- **H2 — weekend false alarm (fixed).** session_close.ps1 skips Sat/Sun by design, but the 19:00 evening brief runs daily, found no marker and fired "TODAY'S SESSION CLOSE DID NOT COMPLETE" every weekend — roughly 104 false alarms a year on the system's most important banner. Confirmed against git history that 5–6 Sep 2026 had 07:00 briefs but no evening close, so Saeed most likely received two false alarms that weekend. The brief now distinguishes "no close was due" from "a close was due and did not happen", prints one plain explanatory line on weekends, and stays loud for a FAILED marker on any day.
+- **H1 — unreachable project (fixed).** A missing sessions folder left IsStale false and produced NO warning; a folder present but unreadable threw under $ErrorActionPreference = "Stop" outside any try, aborting the script so no brief was sent at all. Both are the 11–19 Aug 2026 outage shape. Added an Unreachable state with its own CANNOT SEE ONE OF YOUR PROJECTS banner, ranked above every other banner, which fires even for a paused project (pausing means no work is expected, never that the folder may disappear).
+- **Pause expiry (added).** After 7 days ($PausedNagAfterHours) the quiet paused note asks Saeed to confirm the pause is still correct. St Marks is already at 11 days, so this fires on the first run.
+**Regression caught during development:** suppressing the weekend alarm initially made $CloseRanToday true on weekends, which would have had the brief claim a close ran when none was scheduled — the opposite false statement to the one being fixed. Caught by adversarial re-read before any commit; $NoCloseWeekend is now excluded from $CloseRanToday and a weekend case asserts it.
+**Files changed:** scripts/daily/combined_brief.ps1, CLAUDE.md, CHANGELOG.md
+**Tests run:** PowerShell 7.4.6. Parse check clean. Banner harness re-run over 7 scenarios executing the real code from the file: weekend + paused; Avamed folder missing; St Marks folder unreadable while paused; paused 2 days (no nag); paused 11 days (nag fires); weekday close failed + Avamed stale (Aug outage shape, still loud); all-healthy (clean message). All 7 passed, and $CloseRanToday was asserted false on the weekend case. Separate integration test drove the real Get-ProjectBrief against real fixture directories: normal folder OK, missing folder correctly flagged Unreachable, and an enumeration failure correctly caught with the brief still produced instead of the script aborting.
+**Test limitation (stated, not hidden):** the container runs as root, so a real permission-denied folder cannot be reproduced on Linux; the unreadable-folder path was proven by shadowing Get-ChildItem to throw, which exercises the catch branch but is not a real Windows ACL. Recommend one -DryRun run on the Windows machine before relying on it.
+**Saeed notified:** This session
