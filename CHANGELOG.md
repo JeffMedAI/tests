@@ -711,3 +711,28 @@ banner. Synthetic marker deleted afterwards.
 **Files changed:** scripts/register_scheduled_tasks.ps1, CHANGELOG.md
 **Tests run:** PowerShell 7.4.6 parse check clean. Windows-only cmdlets; nothing executed.
 **Saeed notified:** This session
+
+---
+
+## 2026-09-07 — Security Review of PR #3: APPROVE WITH CONDITIONS (merge-only)
+**Agent:** Security Agent (GuardRail), acted on by Lead Agent
+**Approved by:** Saeed ("merge if security review is done", 2026-09-07)
+**Verdict:** APPROVE WITH CONDITIONS, with an explicit split the Lead Agent has taken: **the FILE is cleared to merge; the SCRIPT is NOT cleared to run.** No veto trigger fires — no patient data, credentials, auth logic, LLM-set protected fields, or change to the GDPR purge schedule. logs/ confirmed gitignored, so exported task XML (which contains the machine SID) never reaches the repo. Task 2c confirmed to reproduce every element quoted from the live export.
+**Applied in the merge commit:**
+- Marked the script *** DO NOT RUN THIS SCRIPT YET *** in its header, with the three open conditions written out in full.
+- L1: my own header miscounted — SIX other registrations carry -RunLevel Highest, not seven. Corrected, and noted that two of the six are the GDPR purges where a wrong setting is a compliance control failure.
+- L2: "VERIFIED against the live machine" overstated it. Now says verified against the elements QUOTED from the export, and names the seven elements that were not in what Saeed sent and so remain unchecked.
+- M2: withdrew the claim that UseUnifiedSchedulingEngine is a cmdlet default. The live XML says true; the cmdlet default may be false, which would register on the legacy engine. Marked [UNVERIFIED] with the one-line command that settles it.
+- L3 (CLAUDE.md): "Three consequences worth knowing" sat above seven bullets. Corrected — that file is read first by every session.
+- Sharpened the Description note: the intentional text difference will show in every future XML comparison FOREVER, so nobody chases it as drift.
+**OPEN — conditions on RUNNING the script, not on merging it:**
+- **H1 (high):** a failed backup currently warns and continues, then -Force overwrites the definitions it just failed to save. The Security Agent argued the opposite of my choice and is right: nothing here is urgent, and a red line scrolling past forty green ones is the same failure shape as the 45-day phantom health check. Must halt, with an explicit opt-out.
+- **H2 (high):** there is no way to register ONE task. This PR adds the very thing that makes someone want to run the script, and doing so overwrites six unverified definitions including both GDPR purges. Needs a -Only "<task>" parameter or a mandatory confirmation. **Saeed's decision needed:** should this script be able to overwrite six unverified definitions at all, or be reduced to a per-task tool?
+- **H3 (high):** the restore path has never been executed. Export-ScheduledTask emits XML declaring UTF-16; Set-Content -Encoding UTF8 writes UTF-8 with a BOM. It probably still restores, but a recovery mechanism should not rest on "probably". One export-unregister-restore round-trip on the machine settles it.
+- **M1:** a partial backup is indistinguishable from a complete one — per-task try/catch plus a count assertion needed.
+- **M3:** registering the task between 19:00 and 20:00 can fire an immediate catch-up run — a genuine double WhatsApp. Also flagged that install_watchdog_service.ps1 already registers a watchdog at the ROOT path under a different name, so two watchdog tasks exist today by exactly the name/path mismatch mechanism that would cause a double-send.
+- **M4:** -Force re-derives the principal from whoever runs the script, so it must be run interactively as Saeed's own account, never as SYSTEM or another admin.
+**Files changed:** scripts/register_scheduled_tasks.ps1, CLAUDE.md, CHANGELOG.md
+**Tests run:** PowerShell 7.4.6 parse check clean. Windows-only cmdlets; nothing executed. The Security Agent judged a parse check sufficient to merge an additive block evidenced against a real export, and insufficient to rely on the backup machinery — which is why the script is marked do-not-run.
+**Merged to main.**
+**Saeed notified:** This session

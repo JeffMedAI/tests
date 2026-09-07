@@ -16,13 +16,30 @@
 #
 # NOT CHECKED: every other task in this file. They were written from intent, not
 # read off the machine, and the 2c experience says that is not the same thing.
-# Note that all seven carry -RunLevel Highest - nobody has confirmed any of them
-# actually runs elevated on the machine.
+# The other SIX registrations all carry -RunLevel Highest - nobody has confirmed
+# any of them actually runs elevated on the machine. Two of the six are the GDPR
+# weekly purges, where a wrong setting is a compliance control failure.
 # [UNVERIFIED - confirm before proceeding] Before running this script in anger,
 # compare each block against the machine:
 #   Export-ScheduledTask -TaskPath "\JeffLocal\" -TaskName "<name>"
-# The backup block below captures the live definitions first, so a mismatch is
-# recoverable - but recovering is worse than not breaking it.
+#
+# *** DO NOT RUN THIS SCRIPT YET *** (Security Agent, 2026-09-07)
+# Merged for review and reference only. Three conditions are open, and until they
+# are closed the backup below is NOT the safety net this header used to claim:
+#   H1  A failed backup currently WARNS AND CONTINUES, then -Force overwrites the
+#       very definitions it failed to save. Must halt instead, with an explicit
+#       opt-out, so the decision is recorded rather than defaulted.
+#   H2  There is no way to register ONE task. Running this to add the 19:00 job
+#       also overwrites six unverified definitions, the GDPR purges among them.
+#       Needs a -Only "<task name>" parameter, or a mandatory confirmation.
+#   H3  The restore path has never been executed. Export-ScheduledTask emits XML
+#       declaring UTF-16; Set-Content -Encoding UTF8 writes UTF-8 with a BOM, so
+#       the file's declaration and its bytes disagree. It probably still restores,
+#       but "probably" is not a standard to hold a recovery mechanism to. One
+#       export-unregister-restore round-trip on the machine settles it.
+# Also open: M1 a partial backup looks complete; M4 -Force re-derives the task
+# principal from whoever runs the script, so it must be run interactively as
+# Saeed's own account, never as SYSTEM or another admin.
 
 $ErrorActionPreference = "Stop"
 
@@ -171,9 +188,12 @@ Write-Host "Registered: JeffLocal - Weekday Session Close 1830 (Mon-Fri 18:30)" 
 # that fell due, and shouts if that close did not complete. See CLAUDE.md,
 # "SESSION END PROTOCOL".
 #
-# VERIFIED against the live machine 2026-09-07 (Saeed ran Get-ScheduledTask and
-# sent the output). The action, arguments and the settings below are now copied
-# from the real task, NOT reconstructed. My first reconstruction was wrong in a
+# VERIFIED 2026-09-07 against the elements QUOTED from the live exported XML
+# (Saeed ran Get-ScheduledTask and Export-ScheduledTask and sent both). Every
+# element seen was compared and matches. Elements NOT in what was sent - Enabled,
+# Hidden, AllowHardTerminate, RunOnlyIfIdle, Priority, AllowStartOnDemand,
+# WakeToRun - remain unchecked. The action, arguments and settings below are
+# copied from the real task, NOT reconstructed. My first reconstruction was wrong in a
 # way that would have degraded the job:
 #   - ExecutionTimeLimit was 25 minutes; the live task allows 1 HOUR. The brief
 #     makes several Ollama calls at up to 90s each across two projects, so a
@@ -204,7 +224,10 @@ $trigger2c = New-ScheduledTaskTrigger -Daily -At "19:00"
 # and setting them explicitly would only invite drift:
 #   DisallowStartIfOnBatteries true - StopIfGoingOnBatteries true
 #   IdleSettings 10m/1h, StopOnIdleEnd true, RestartOnIdle false
-#   UseUnifiedSchedulingEngine true - RestartCount 0
+#   RestartCount 0
+# [UNVERIFIED] UseUnifiedSchedulingEngine: the live XML says true, but the cmdlet
+# default may be false, in which case this registers on the legacy engine. Settle
+# it on the machine: New-ScheduledTaskSettingsSet | Select UseUnifiedSchedulingEngine
 $settings2c = New-ScheduledTaskSettingsSet `
     -ExecutionTimeLimit (New-TimeSpan -Hours 1) `
     -MultipleInstances IgnoreNew `
@@ -237,10 +260,11 @@ Write-Host "Registered: JeffLocal - Evening Session Close Brief (daily 19:00)" -
 #
 # 2. The Description text differs. The live one reads "Evening session-close
 #    brief (7pm). Built from session logs + PROJECT_MEMORY, plain English for
-#    Saeed." That predates 2026-09-04 and now misleads: this task performs no
-#    close. The text above is the only intentional change to the live task's
-#    definition in this block, and it affects nothing but what Task Scheduler
-#    displays.
+#    Saeed." That predates 2026-09-04 and now misleads: someone reading Task
+#    Scheduler at 19:30 during an incident would conclude the close had run.
+#    Correcting text that is actively wrong is a fix, not a redesign - but note
+#    the consequence: any future XML comparison between this script and the
+#    machine will show this one difference FOREVER. Do not chase it as drift.
 
 # --- Task 3: Watchdog — continuous loop, starts at boot ---
 $action3 = New-ScheduledTaskAction `
