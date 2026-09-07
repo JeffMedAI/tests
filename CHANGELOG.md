@@ -562,3 +562,14 @@ scripts/register_scheduled_tasks.ps1, scripts/migrations/add_created_at_20260531
 logged "18:30 close RAN AND FAILED today - 2 project(s) affected" and printed both reasons by name in the
 banner. Synthetic marker deleted afterwards.
 **Saeed notified:** This session.
+
+---
+
+## 2026-09-07 — Brief Staleness Banner: Separated "Close Failed" From "Project Paused"
+**Agent:** Lead Agent (Claude Code session)
+**Approved by:** Saeed (explicit "APPROVED" in session, 2026-09-07)
+**Description:** Investigated Saeed's 2026-09-04 evening WhatsApp warning. Finding: the 18:30 session close ran correctly on its first day (close commit landed 18:32 UK, restore tag restore/2026-09-04-1800 pushed, session log and HANDOFF written). The warning was NOT a close failure — the staleness check correctly spotted that St Marks had no committed work for 11 days, but the banner wording wrongly stated "The daily session close is NOT running", reporting a healthy system as broken. Fixed the wording and split the two alarms: a deliberately paused project now gets a quiet one-line note; a project that is not paused still gets the full loud banner, and the banner only blames the close when the close actually failed. Added a $PausedProjects list at the top of combined_brief.ps1 (St Marks — awaiting pharmacist sign-off, per Saeed). Pausing a project does NOT silence the close-failure banner. Also moved the close-marker read from section 6-pre up to a new section 3b, because the banner wording now depends on whether the close ran and section 5 freezes the message text before the old read point.
+**Files changed:** scripts/daily/combined_brief.ps1, CLAUDE.md, CHANGELOG.md
+**Tests run:** PowerShell 7.4.6 parse check on combined_brief.ps1 and session_close.ps1 — both clean. Behaviour test harness executing the real banner code from the file across 5 scenarios: (1) close OK + St Marks paused 11 days → quiet note only, no banner [reproduces and fixes the 2026-09-04 false alarm]; (2) Avamed stale 3 days, not paused → loud banner, correctly states the close DID run; (3) close FAILED + Avamed stale + St Marks paused → loud banner still fires for Avamed, points at the close-failure banner, paused note stays quiet [the 11–19 Aug outage shape — safety net confirmed intact]; (4) nothing stale → clean message; (5) morning brief → does not claim the close ran. All 5 passed.
+**Not tested:** end-to-end run on the Windows machine (no PowerShell/Windows paths in the cloud session). Next 19:00 brief is the live confirmation.
+**Saeed notified:** This session

@@ -366,6 +366,7 @@ It runs **regardless of whether any work happened that day**. A day with no comm
 
 Three consequences worth knowing:
 - **The 19:00 brief no longer closes anything.** It reads the marker at `logs\close-state\YYYY-MM-DD-close.txt` and reports. If that marker is missing it puts a **NO SESSION CLOSE RAN TODAY** banner at the top of the WhatsApp message. There is deliberately no silent fallback close — a quiet auto-recovery is how the 11–19 Aug 2026 failure hid for eight days.
+- **Two different alarms — do not merge them again.** "The close did not run" and "nobody has worked on this project" are separate problems with separate voices in the brief. A project with no fresh session log gets the loud out-of-date banner ONLY if it is not deliberately paused; a paused project gets a quiet one-line note instead. Paused projects are listed in `$PausedProjects` at the top of `scripts\daily\combined_brief.ps1` — **St Marks is paused (awaiting pharmacist sign-off), Saeed 2026-09-07.** Delete a project's line there to un-pause it and the loud banner returns. Pausing NEVER silences the close-failure banner. (Added 2026-09-07 after the brief reported a healthy 18:30 close as a broken system.)
 - **Weekends get no close** — no session log, no HANDOFF refresh, no restore tag. Weekend work is still committed and pushed by the next 07:00 morning brief, so nothing is stranded.
 - To close by hand at any time: `powershell -File scripts\daily\session_close.ps1 -Force`.
 
