@@ -681,3 +681,18 @@ banner. Synthetic marker deleted afterwards.
 **[UNVERIFIED — confirm before proceeding] The 19:00 task's settings are RECONSTRUCTED**, from its sibling tasks and from CLAUDE.md, not read off the live machine. Because of -Force, running this script would replace the live task with exactly what is written. If the real task differs — different script, arguments or retry policy — its behaviour would change. The new backup block captures the live definition first so any difference is visible and reversible. One command settles it and it has now been asked for four times: Get-ScheduledTask -TaskPath "\JeffLocal\"
 **Risk note:** merging this changes nothing by itself. register_scheduled_tasks.ps1 is a run-once-by-hand script, not scheduled — no behaviour changes until someone runs it as Administrator.
 **Saeed notified:** This session
+
+---
+
+## 2026-09-07 — 19:00 Task Definition Corrected Against the Live Machine
+**Agent:** Lead Agent
+**Trigger:** Saeed ran Get-ScheduledTask on the Windows machine and sent the output, settling the [UNVERIFIED] flag raised in the previous entry.
+**Finding — the reconstruction was wrong, and would have degraded the job it was meant to reproduce:**
+- **ExecutionTimeLimit: live task allows PT1H (1 hour); the block said 25 minutes.** combined_brief.ps1 makes several Ollama calls at up to 90s each across two projects. A 25-minute cap could have killed the evening brief mid-run — the message truncated or not sent at all. Since register_scheduled_tasks.ps1 registers with -Force, running it would have silently applied that cap to the job carrying the close-failure alarm. Corrected to 1 hour.
+- **Arguments: the block added -NoProfile and -WindowStyle Hidden, which the live task does not use.** Removed. This script exists to reproduce the machine, not to redesign it; unrequested changes to the alarm-carrying job are exactly what the -Force overwrite makes dangerous.
+**Confirmed matching:** task name, powershell.exe, the -File path, -Mode Evening, StartWhenAvailable True, MultipleInstances IgnoreNew, RestartCount 0. All eight \JeffLocal\ tasks exist, the phantom "JeffLocal - Health Check" is Disabled as this script intends, and no name drift was found — so there was never a duplicate-task or double-WhatsApp risk.
+**Still [UNVERIFIED — confirm before proceeding]:** the live task's trigger, battery and network settings, and run-as account were not in the output. The settings block now sets only what has been seen and leaves the rest to cmdlet defaults, which may still differ. Export-ScheduledTask on the machine prints the full definition and would close this out.
+**Wider caution added to the top of the file:** only Task 2c has been checked against the machine. Every other block in that script was written from intent, not read off the live task, and the 2c experience shows that is not the same thing. Anyone running this script should compare each block first.
+**Files changed:** scripts/register_scheduled_tasks.ps1, CHANGELOG.md
+**Tests run:** PowerShell 7.4.6 parse check clean. The script itself remains untestable here — Windows-only cmdlets, nothing executed.
+**Saeed notified:** This session

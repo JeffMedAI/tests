@@ -1,6 +1,23 @@
 # register_scheduled_tasks.ps1
 # Registers all JeffLocal scheduled tasks in Windows Task Scheduler
 # Run once as Administrator from C:\JeffLocal\
+#
+# ── HOW MUCH OF THIS FILE MATCHES THE REAL MACHINE? ──────────────────────────
+# Every Register-ScheduledTask below uses -Force, so running this file REPLACES
+# the live tasks with exactly what is written here. That is only safe where the
+# text has actually been checked against the machine.
+#
+# CHECKED 2026-09-07: Task 2c (Evening Session Close Brief) only. Doing that check
+# found a real defect - the block had a 25-minute time limit against the live
+# task's 1 hour, which would have started killing the evening brief mid-run.
+#
+# NOT CHECKED: every other task in this file. They were written from intent, not
+# read off the machine, and the 2c experience says that is not the same thing.
+# [UNVERIFIED - confirm before proceeding] Before running this script in anger,
+# compare each block against the machine:
+#   Export-ScheduledTask -TaskPath "\JeffLocal\" -TaskName "<name>"
+# The backup block below captures the live definitions first, so a mismatch is
+# recoverable - but recovering is worse than not breaking it.
 
 $ErrorActionPreference = "Stop"
 
@@ -149,21 +166,28 @@ Write-Host "Registered: JeffLocal - Weekday Session Close 1830 (Mon-Fri 18:30)" 
 # that fell due, and shouts if that close did not complete. See CLAUDE.md,
 # "SESSION END PROTOCOL".
 #
-# [UNVERIFIED - confirm before proceeding] These settings are RECONSTRUCTED from
-# its sibling tasks and from CLAUDE.md, not read off the live machine. Nobody has
-# yet run Get-ScheduledTask -TaskPath "\JeffLocal\" and compared. Because
-# Register-ScheduledTask below uses -Force, running this script REPLACES the live
-# task with exactly what is written here. If the real task differs - a different
-# script, arguments, or retry policy - this will change its behaviour. The backup
-# block at the top of this file exports the live definition first so any
-# difference can be seen and undone.
+# VERIFIED against the live machine 2026-09-07 (Saeed ran Get-ScheduledTask and
+# sent the output). The action, arguments and the settings below are now copied
+# from the real task, NOT reconstructed. My first reconstruction was wrong in a
+# way that would have degraded the job:
+#   - ExecutionTimeLimit was 25 minutes; the live task allows 1 HOUR. The brief
+#     makes several Ollama calls at up to 90s each across two projects, so a
+#     25-minute cap could have killed the evening message mid-run. Corrected.
+#   - It added -NoProfile and -WindowStyle Hidden, which the live task does not
+#     use. Removed: this script exists to REPRODUCE the machine, not to redesign
+#     it, and unrequested changes to the job carrying the alarms are exactly what
+#     the -Force overwrite makes dangerous.
+# Trailing [UNVERIFIED] items are listed above $trigger2c and $settings2c.
 #
 # -Mode Evening is required: without it combined_brief.ps1 defaults to Morning and
 # would send the wrong brief at 19:00.
 $action2c = New-ScheduledTaskAction `
     -Execute "powershell.exe" `
-    -Argument '-NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File "C:\JeffLocal\scripts\daily\combined_brief.ps1" -Mode Evening'
+    -Argument '-NonInteractive -ExecutionPolicy Bypass -File C:\JeffLocal\scripts\daily\combined_brief.ps1 -Mode Evening'
 
+# [UNVERIFIED - confirm before proceeding] The live task's TRIGGER has not been
+# read - Saeed's output covered the action and settings only. Daily 19:00 is what
+# CLAUDE.md's schedule table records and what the task name implies.
 # Daily, not weekdays: the brief goes out at weekends too. It explains in one line
 # that no close is scheduled on a Saturday or Sunday, while still reporting on the
 # last close that actually fell due - normally Friday's - so a Friday failure is
@@ -171,11 +195,16 @@ $action2c = New-ScheduledTaskAction `
 # failure to keep reminding him on Saturday and Sunday until it is fixed.
 $trigger2c = New-ScheduledTaskTrigger -Daily -At "19:00"
 
+# StartWhenAvailable True, ExecutionTimeLimit PT1H, MultipleInstances IgnoreNew
+# and RestartCount 0 are all READ FROM THE LIVE TASK, 2026-09-07.
+# [UNVERIFIED - confirm before proceeding] The battery and network settings were
+# not in the output Saeed sent, so they are NOT set here: the cmdlet's own
+# defaults apply, which may not match the live task. Export-ScheduledTask on the
+# machine prints the full definition and would settle it. Until then this block
+# reproduces everything that has been seen and nothing that has not.
 $settings2c = New-ScheduledTaskSettingsSet `
-    -ExecutionTimeLimit (New-TimeSpan -Minutes 25) `
+    -ExecutionTimeLimit (New-TimeSpan -Hours 1) `
     -MultipleInstances IgnoreNew `
-    -AllowStartIfOnBatteries `
-    -DontStopIfGoingOnBatteries `
     -StartWhenAvailable
 
 Register-ScheduledTask `
