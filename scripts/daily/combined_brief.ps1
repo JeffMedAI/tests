@@ -253,7 +253,10 @@ function Format-PausedLine {
     param([string]$Name, [string]$Reason, [double]$Hours, [switch]$CloseRan)
     $Age    = if ($Hours -ge 99999) { "no session log yet" }
               else { "nothing new logged for $(Format-StaleAge -Hours $Hours)" }
-    $Closed = if ($CloseRan) { " Today's session close ran normally." } else { "" }
+    # Say only what the marker evidences: that the 18:30 close ran. It does NOT
+    # evidence that the project's close did useful work, so do not say "normally".
+    # Security Agent condition C2, 2026-09-07.
+    $Closed = if ($CloseRan) { " Today's 18:30 close ran." } else { "" }
     return "Note: $Name is paused on purpose ($Reason) - $Age.$Closed"
 }
 
@@ -582,8 +585,13 @@ if (@($StaleParts).Count -gt 0) {
     $StaleCause = if ($NoCloseToday) {
         "!! Today's session close did not complete either - see the banner above."
     } elseif ($CloseRanToday) {
-        "!! Today's session close DID run, so nothing is broken in the automation."
-        "!! This means the work itself has stopped, or is not being committed."
+        # Claim ONLY what the marker proves: the 18:30 close ran. It says nothing
+        # about the health check, the watchdog, the 07:00 brief or the WhatsApp
+        # sender. "Nothing is broken in the automation" would tell Saeed to stop
+        # looking - the exact direction in which outages hide. Security Agent
+        # condition C1, 2026-09-07.
+        "!! Today's 18:30 session close ran, so this is not a close failure."
+        "!! It means the work itself has stopped, or is not being committed."
     } else {
         "!! Either work has genuinely stopped, or it is not being saved."
     }
