@@ -375,10 +375,16 @@ function Get-ProjectBrief {
     }
 
     # STALE = no REAL session log in the last 24h. A placeholder does not count.
-    $FallbackNote = ""
-    $IsStale      = $false
-    $StaleHours   = 0
-    $StaleLogName = ""
+    $FallbackNote   = ""
+    $IsStale        = $false
+    $StaleHours     = 0
+    $StaleLogName   = ""
+    # The exact write time of the newest REAL log, or $null if there is none.
+    # $StaleHours is rounded to whole hours and is fine for display, but "is this
+    # project overdue" is decided by comparing this against the last close that
+    # fell due - an exact comparison with no rounding and no slack to be wrong
+    # inside. Security Agent M3, 2026-09-07.
+    $NewestRealTime = $null
     if ($Unreachable) {
         # Nothing can be measured, so nothing may be assumed. The banner block
         # treats this separately and always loudly - see $UnreachableParts.
@@ -394,8 +400,9 @@ function Get-ProjectBrief {
             }
         }
         if ($NewestReal) {
-            $StaleHours   = [math]::Round(((Get-Date) - $NewestReal.LastWriteTime).TotalHours, 0)
-            $StaleLogName = $NewestReal.Name
+            $NewestRealTime = $NewestReal.LastWriteTime
+            $StaleHours     = [math]::Round(((Get-Date) - $NewestReal.LastWriteTime).TotalHours, 0)
+            $StaleLogName   = $NewestReal.Name
             $FallbackNote = "(STALE - no real session log today. Newest real log: $StaleLogName, ${StaleHours}h ago)"
             if ($SessionSummaries.Count -eq 0) {
                 $SessionSummaries += [PSCustomObject]@{ File = $NewestReal.Name; Content = (Get-Utf8FileText -Path $NewestReal.FullName) }
@@ -515,6 +522,7 @@ $Approve
         IsStale        = $IsStale
         StaleHours     = $StaleHours
         StaleLogName   = $StaleLogName
+        NewestRealTime    = $NewestRealTime
         Unreachable       = $Unreachable
         UnreachableReason = $UnreachableReason
     }
@@ -581,28 +589,34 @@ if (Test-Path $MemFile) {
 # tell "the close is broken" apart from "nobody worked on this project".
 $HeldSignals     = @()
 $NoCloseToday    = $false
-$NoCloseWeekend  = $false
 $CloseFailDetail = @()
 
 # WHICH DAY'S CLOSE IS THIS BRIEF REPORTING ON?
-# Normally today's. But the evening tasks carry -StartWhenAvailable, so a machine
-# that was asleep at 19:00 can fire this brief after midnight - and then "today"
-# is the wrong day to look for a marker under. Friday's close fails, the brief
-# catches up at 00:30 Saturday, and asking for Saturday's marker finds nothing:
-# Saturday is a weekend, so the failure would be filed as "no close was due" and
-# Friday's real failure would never be reported to anyone. A run before 06:00
-# therefore belongs to the previous day. Security Agent H3, 2026-09-07.
-$CloseDay = if ($Now.Hour -lt 6) { $Now.Date.AddDays(-1) } else { $Now.Date }
+# Answer it from the SCHEDULE, not from the clock hour.
+#
+# My first attempt used "before 06:00 means yesterday", assuming a missed 19:00
+# task catches up shortly after midnight. It does not: -StartWhenAvailable runs a
+# missed task when the machine next becomes available, which for an office PC is
+# the next MORNING. Security Agent H5, 2026-09-07. That left the original hole
+# wide open - machine off Friday evening, switched on 10:00 Saturday, the brief
+# catches up, asks for Saturday's marker, finds none, calls Saturday a weekend,
+# and Friday's FAILED close is never opened or reported to anyone.
+#
+# So: always report on the last close that actually FELL DUE. That date is
+# correct at 19:00 on the day, at 00:30, and at 10:00 the next morning alike, and
+# it needs no assumption about how catch-up behaves.
+$LastDueClose = Get-LastExpectedCloseTime -Now $Now
+$CloseDay     = $LastDueClose.Date
 if ($CloseDay -ne $Now.Date) {
-    Write-Log "Run started at $($Now.ToString('HH:mm')) - reporting on $($CloseDay.ToString('yyyy-MM-dd'))'s close, not today's."
+    Write-Log "Reporting on the last close that fell due: $($LastDueClose.ToString('ddd yyyy-MM-dd HH:mm')) - not today."
 }
 
-# Is a close even due for that day? session_close.ps1 skips Saturday and Sunday
-# by design (CLAUDE.md, "Weekends get no close"), so a missing marker at the
-# weekend is the expected state, not a failure. Keep this in step with the
-# weekday gate in session_close.ps1 - if that schedule changes, change this too.
-$CloseExpectedToday = $CloseDay.DayOfWeek -ne [DayOfWeek]::Saturday -and
-                      $CloseDay.DayOfWeek -ne [DayOfWeek]::Sunday
+# Is today itself a weekend? Kept SEPARATE from $CloseDay on purpose. $CloseDay
+# is always a weekday now (a close only ever falls due on a weekday), so it can
+# no longer answer "should I explain that no close runs today" - and conflating
+# the two would regress the weekend behaviour approved in round 1.
+$IsWeekendNow = $Now.DayOfWeek -eq [DayOfWeek]::Saturday -or
+                $Now.DayOfWeek -eq [DayOfWeek]::Sunday
 
 $SkipCloseHere = $false
 if ($Mode -eq 'Evening') {
@@ -624,37 +638,30 @@ if ($Mode -eq 'Evening') {
                 ForEach-Object { "  - " + (([string]$_).Split("|", 3)[1..2] -join ": ") }
             Write-Log "WARNING: 18:30 close RAN AND FAILED today - $(@($CloseFailDetail).Count) project(s) affected."
         }
-    } elseif ($CloseExpectedToday) {
-        $NoCloseToday = $true
-        Write-Log "WARNING: no 18:30 close marker at $CloseStateFile - NO CLOSE RAN TODAY."
     } else {
-        # Weekend, no marker: session_close.ps1 exits by design on Sat/Sun, so
-        # there is nothing to alarm about. Shouting here would have fired the
-        # system's most important banner 104 times a year for no reason, which
-        # is how a real alarm gets ignored. Security Agent H2, 2026-09-07.
-        $NoCloseWeekend = $true
-        Write-Log "Weekend - no 18:30 close is scheduled, so no marker is expected. Not an alarm."
+        # A close FELL DUE on $CloseDay and left no marker at all. That is an
+        # alarm on any day of the week, including when read on a Saturday: the
+        # weekend never excuses a weekday close that did not happen. What the
+        # weekend does excuse - that no close runs TODAY - is handled by
+        # $IsWeekendNow below, not here. Security Agent H2 and H5, 2026-09-07.
+        $NoCloseToday = $true
+        Write-Log "WARNING: no close marker at $CloseStateFile - the $($CloseDay.ToString('ddd')) close did not run."
     }
 }
 
-# Did today's close complete? Morning briefs never assert this either way - the
-# close belongs to the evening, so a morning brief must not claim it ran.
-# $NoCloseWeekend must be excluded too: at the weekend no close is scheduled, so
-# "no failure" is NOT the same as "it ran". Without this the brief would claim a
-# close ran every Saturday and Sunday - the opposite lie to the one H2 fixed.
-$CloseRanToday = ($Mode -eq 'Evening') -and (-not $NoCloseToday) -and (-not $NoCloseWeekend)
+# May the brief say "today's close ran"? Only in the evening, only if it did not
+# fail, and only if the close it is reporting on actually fell due TODAY. On a
+# Saturday $CloseDay is Friday, so "today's close ran" would be false however
+# healthy Friday's close was - the opposite lie to the one H2 fixed.
+$CloseRanToday = ($Mode -eq 'Evening') -and (-not $NoCloseToday) -and ($CloseDay -eq $Now.Date)
+
+Write-Log ("Last close fell due {0}. Anything logged since then is current." -f `
+    $LastDueClose.ToString('ddd yyyy-MM-dd HH:mm'))
 
 # Weekends still get one plain line, so "no close today" is visible and explained
 # rather than simply absent. Absence is what let eight days go unnoticed.
-# How old a session log is allowed to be before it means something is wrong.
-# +1h of slack absorbs the rounding in $StaleHours and a slow close.
-$LastExpectedClose = Get-LastExpectedCloseTime -Now $Now
-$ExpectedGapHours  = ($Now - $LastExpectedClose).TotalHours + 1
-Write-Log ("Last close fell due {0}; a log up to {1}h old is therefore expected." -f `
-    $LastExpectedClose.ToString('ddd yyyy-MM-dd HH:mm'), [math]::Round($ExpectedGapHours))
-
 $WeekendNote = ""
-if ($NoCloseWeekend) {
+if (($Mode -eq 'Evening') -and $IsWeekendNow) {
     $WeekendNote = "Note: no session close at weekends - that is normal. Any work is still saved by the 07:00 brief." +
                    [Environment]::NewLine
 }
@@ -720,13 +727,17 @@ foreach ($p in @(
         $PausedNotes += (Format-PausedLine -Name $p.Name -Reason $PausedProjects[$p.Name] `
             -Hours $p.Brief.StaleHours -CloseRan:$CloseRanToday)
         Write-Log "STALENESS: $($p.Name) is a PAUSED project - quiet note, no banner."
-    } elseif ($p.Brief.StaleHours -le $ExpectedGapHours) {
-        # Stale only because no close has fallen due since its last log - the
-        # normal weekend and overnight gap. Explain it once, quietly. The 99999
-        # "no log ever found" sentinel is far above any real gap, so it can never
-        # be absorbed here and always reaches the loud banner. Security Agent H4.
-        $ScheduleNotes += "Note: $($p.Name) - nothing new logged since the last session close, and none has been due since. That is the normal gap, not a problem."
-        Write-Log "STALENESS: $($p.Name) stale by $($p.Brief.StaleHours)h but within the expected $([math]::Round($ExpectedGapHours))h gap - quiet note, no banner."
+    } elseif ($null -ne $p.Brief.NewestRealTime -and $p.Brief.NewestRealTime -ge $LastDueClose) {
+        # Its newest real log is NEWER than the last close that fell due, so no
+        # close has been missed - this is the ordinary overnight and weekend gap.
+        # Explain it once, quietly.
+        # Exact timestamps, no rounding and no slack: with a tolerance, a log
+        # written shortly BEFORE a close that then failed would have been called
+        # "none has been due since", which is precisely false. Security Agent M3.
+        # A project with no real log at all has $null here and can never land in
+        # this branch - it always reaches the loud banner. Security Agent H4.
+        $ScheduleNotes += "Note: $($p.Name) - nothing new logged since the last session close, and no close has been due since. That is the normal gap, not a problem."
+        Write-Log "STALENESS: $($p.Name) last logged $($p.Brief.NewestRealTime.ToString('ddd HH:mm')), after the last due close - quiet note, no banner."
     } else {
         $StaleParts += (Format-StaleLine -Name $p.Name -Hours $p.Brief.StaleHours -LogName $p.Brief.StaleLogName)
     }
