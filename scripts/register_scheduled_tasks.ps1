@@ -7,12 +7,17 @@
 # the live tasks with exactly what is written here. That is only safe where the
 # text has actually been checked against the machine.
 #
-# CHECKED 2026-09-07: Task 2c (Evening Session Close Brief) only. Doing that check
-# found a real defect - the block had a 25-minute time limit against the live
-# task's 1 hour, which would have started killing the evening brief mid-run.
+# CHECKED 2026-09-07 against the live exported XML: Task 2c (Evening Session Close
+# Brief) only. That check found THREE differences in a block written from intent:
+# a 25-minute time limit against the live task's 1 hour (would have started
+# killing the evening brief mid-run); two invented startup switches; and
+# -RunLevel Highest, which would have ELEVATED a task that has run unelevated for
+# months. Three defects in one block nobody thought was risky.
 #
 # NOT CHECKED: every other task in this file. They were written from intent, not
 # read off the machine, and the 2c experience says that is not the same thing.
+# Note that all seven carry -RunLevel Highest - nobody has confirmed any of them
+# actually runs elevated on the machine.
 # [UNVERIFIED - confirm before proceeding] Before running this script in anger,
 # compare each block against the machine:
 #   Export-ScheduledTask -TaskPath "\JeffLocal\" -TaskName "<name>"
@@ -185,9 +190,8 @@ $action2c = New-ScheduledTaskAction `
     -Execute "powershell.exe" `
     -Argument '-NonInteractive -ExecutionPolicy Bypass -File C:\JeffLocal\scripts\daily\combined_brief.ps1 -Mode Evening'
 
-# [UNVERIFIED - confirm before proceeding] The live task's TRIGGER has not been
-# read - Saeed's output covered the action and settings only. Daily 19:00 is what
-# CLAUDE.md's schedule table records and what the task name implies.
+# Trigger CONFIRMED from the live XML: CalendarTrigger, ScheduleByDay,
+# DaysInterval 1, boundary 19:00 - i.e. daily at 19:00. Matches.
 # Daily, not weekdays: the brief goes out at weekends too. It explains in one line
 # that no close is scheduled on a Saturday or Sunday, while still reporting on the
 # last close that actually fell due - normally Friday's - so a Friday failure is
@@ -195,13 +199,12 @@ $action2c = New-ScheduledTaskAction `
 # failure to keep reminding him on Saturday and Sunday until it is fixed.
 $trigger2c = New-ScheduledTaskTrigger -Daily -At "19:00"
 
-# StartWhenAvailable True, ExecutionTimeLimit PT1H, MultipleInstances IgnoreNew
-# and RestartCount 0 are all READ FROM THE LIVE TASK, 2026-09-07.
-# [UNVERIFIED - confirm before proceeding] The battery and network settings were
-# not in the output Saeed sent, so they are NOT set here: the cmdlet's own
-# defaults apply, which may not match the live task. Export-ScheduledTask on the
-# machine prints the full definition and would settle it. Until then this block
-# reproduces everything that has been seen and nothing that has not.
+# Every value here now comes from the live task's exported XML, 2026-09-07.
+# Deliberately NOT set, because the live task carries the cmdlet's own defaults
+# and setting them explicitly would only invite drift:
+#   DisallowStartIfOnBatteries true - StopIfGoingOnBatteries true
+#   IdleSettings 10m/1h, StopOnIdleEnd true, RestartOnIdle false
+#   UseUnifiedSchedulingEngine true - RestartCount 0
 $settings2c = New-ScheduledTaskSettingsSet `
     -ExecutionTimeLimit (New-TimeSpan -Hours 1) `
     -MultipleInstances IgnoreNew `
@@ -214,10 +217,30 @@ Register-ScheduledTask `
     -Trigger $trigger2c `
     -Settings $settings2c `
     -Description "Sends the 19:00 evening WhatsApp brief for BOTH projects. Reports on the last session close that fell due and shouts if it did not complete. Performs no close itself since 2026-09-04. Daily." `
-    -RunLevel Highest `
     -Force
 
 Write-Host "Registered: JeffLocal - Evening Session Close Brief (daily 19:00)" -ForegroundColor Green
+
+# NOTE on the two deliberate departures from the live task, both recorded so
+# nobody "corrects" them back by accident:
+#
+# 1. NO -RunLevel Highest, unlike every other task in this file. The live task's
+#    XML has no RunLevel element at all, which means LeastPrivilege - it runs
+#    UNELEVATED, as the interactive user (LogonType InteractiveToken). Adding
+#    -RunLevel Highest would have elevated a job that has run unelevated for
+#    months, changing its token, its environment and what it can touch, for no
+#    reason anyone asked for. Reproduce, do not redesign.
+#    Also deliberately no -User: omitting it registers under whoever runs this
+#    script, with InteractiveToken, which is what the live task has. The live
+#    UserId is a machine-specific SID and hardcoding it would break on any
+#    rebuilt machine - the exact scenario this script exists for.
+#
+# 2. The Description text differs. The live one reads "Evening session-close
+#    brief (7pm). Built from session logs + PROJECT_MEMORY, plain English for
+#    Saeed." That predates 2026-09-04 and now misleads: this task performs no
+#    close. The text above is the only intentional change to the live task's
+#    definition in this block, and it affects nothing but what Task Scheduler
+#    displays.
 
 # --- Task 3: Watchdog — continuous loop, starts at boot ---
 $action3 = New-ScheduledTaskAction `

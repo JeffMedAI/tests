@@ -696,3 +696,18 @@ banner. Synthetic marker deleted afterwards.
 **Files changed:** scripts/register_scheduled_tasks.ps1, CHANGELOG.md
 **Tests run:** PowerShell 7.4.6 parse check clean. The script itself remains untestable here — Windows-only cmdlets, nothing executed.
 **Saeed notified:** This session
+
+---
+
+## 2026-09-07 — 19:00 Task Reconciled Against Its Full Exported Definition
+**Agent:** Lead Agent
+**Trigger:** Saeed ran Export-ScheduledTask and sent the complete XML, closing the last [UNVERIFIED] flags on this block.
+**Third and most consequential difference found — privilege elevation:**
+- **The live task has NO RunLevel element, which means LeastPrivilege: it runs UNELEVATED as the interactive user (LogonType InteractiveToken).** The block carried -RunLevel Highest, copied from its sibling tasks. Running the script would have elevated a job that has run unelevated for months — changing its security token, its environment, and what it can reach — for no reason anyone asked for. Removed.
+- Also confirmed: omitting -User is correct. It registers under whoever runs the script with InteractiveToken, matching the live task. The live UserId is a machine-specific SID; hardcoding it would break on any rebuilt machine, which is the exact scenario this script exists for. Not committed to the repo either way.
+**Everything else now confirmed matching:** trigger (CalendarTrigger, ScheduleByDay, DaysInterval 1, 19:00 — i.e. daily), ExecutionTimeLimit PT1H, MultipleInstances IgnoreNew, StartWhenAvailable true, and the battery/idle/scheduling-engine values, which are all cmdlet defaults and so are deliberately left unset rather than restated.
+**One intentional departure, recorded so it is not "corrected" back:** the Description text. The live one reads "Evening session-close brief (7pm). Built from session logs + PROJECT_MEMORY, plain English for Saeed." — written before 2026-09-04 and now misleading, because this task performs no close. Display text only; affects nothing that runs.
+**Running total on this one block: three defects** (time limit, invented switches, privilege elevation) in a task definition written from intent by someone who believed it was low-risk. The file header now says so plainly, and notes that the other seven blocks all carry -RunLevel Highest with nobody having confirmed any of them runs elevated.
+**Files changed:** scripts/register_scheduled_tasks.ps1, CHANGELOG.md
+**Tests run:** PowerShell 7.4.6 parse check clean. Windows-only cmdlets; nothing executed.
+**Saeed notified:** This session
