@@ -306,6 +306,30 @@ function Get-CloseTimeNBack {
     return $t
 }
 
+# How many weekday closes have come and gone since this project last logged
+# anything. ONE counter, used by BOTH the quiet note and the loud banner: the
+# note promises "this becomes a warning at 3 working days" and the banner used to
+# answer, one day later, "nothing new logged for 4 day(s)" - a different, larger
+# number in the message that the previous message promised. At the exact moment
+# the design asks Saeed to trust the count, the two numbers disagreed.
+# Security Agent C1, 2026-09-09.
+# The counter is bounded so a very old log cannot spin it. Anything at or above
+# this is reported as "more than N", never as N: saying "99 working days" when the
+# truth is 1,745 is a false number inside an alarm, which is the exact fault this
+# whole file exists to avoid. Found while testing C1, 2026-09-09.
+$ClosesCountCap = 99
+
+function Get-ClosesMissed {
+    param([datetime]$Since, [datetime]$LastDue, [int]$Cap = $script:ClosesCountCap)
+    $n = 0
+    $t = $LastDue
+    while ($n -lt $Cap -and $Since -lt $t) {
+        $n++
+        $t = Get-CloseTimeNBack -From $t -Closes 1
+    }
+    return $n
+}
+
 function Format-StaleAge {
     param([double]$Hours)
     $Days = [math]::Floor($Hours / 24)
@@ -315,9 +339,19 @@ function Format-StaleAge {
 
 # Loud line - for a project that is NOT paused and so should have work logged.
 function Format-StaleLine {
-    param([string]$Name, [double]$Hours, [string]$LogName)
+    param([string]$Name, [double]$Hours, [string]$LogName, [int]$Closes = 0)
     if ($Hours -ge 99999) { return "!!   $Name : NO session log has ever been found" }
     $Src = if ($LogName) { " - still showing $LogName" } else { "" }
+    # LEAD WITH THE SAME UNIT THE QUIET NOTE PROMISED. The calendar figure is kept
+    # after it because it is genuinely useful - it is what a person checks against
+    # a diary - but it must never be the ONLY number, or it silently contradicts
+    # the note that preceded it. Security Agent C1, 2026-09-09.
+    if ($Closes -gt 0) {
+        $CloseWord = if ($Closes -ge $script:ClosesCountCap) { "more than $script:ClosesCountCap working days" }
+                     elseif ($Closes -eq 1) { "1 working day" }
+                     else { "$Closes working days" }
+        return "!!   $Name : nothing new logged for $CloseWord ($(Format-StaleAge -Hours $Hours) ago)$Src"
+    }
     return "!!   $Name : nothing new logged for $(Format-StaleAge -Hours $Hours)$Src"
 }
 
@@ -981,12 +1015,7 @@ foreach ($p in @(
         #
         # It is still SAID, every day, from the first one: silence is what let the
         # 11-19 Aug 2026 outage run for eight days. Only the volume waits.
-        $ClosesMissed = 0
-        $Probe = $LastDueClose
-        while ($ClosesMissed -lt $StaleLoudAfterCloses -and $p.Brief.NewestRealTime -lt $Probe) {
-            $ClosesMissed++
-            $Probe = Get-CloseTimeNBack -From $Probe -Closes 1
-        }
+        $ClosesMissed = Get-ClosesMissed -Since $p.Brief.NewestRealTime -LastDue $LastDueClose -Cap $StaleLoudAfterCloses
         $CloseWord = if ($ClosesMissed -le 1) { "one working day" } else { "$ClosesMissed working days" }
         # NO "NORMAL SO FAR". A due close has provably been missed, and in a MORNING
         # run this script has not even read the close marker - the marker block is
@@ -998,7 +1027,14 @@ foreach ($p in @(
         $ScheduleNotes += "Note: $($p.Name) - nothing new logged for $CloseWord, and a session close has come and gone since. Not shouting yet; this becomes a warning at $StaleLoudAfterCloses working days."
         Write-Log "STALENESS: $($p.Name) has missed $ClosesMissed close(s) - under the $StaleLoudAfterCloses-close threshold, quiet note only."
     } else {
-        $StaleParts += (Format-StaleLine -Name $p.Name -Hours $p.Brief.StaleHours -LogName $p.Brief.StaleLogName)
+        # Same counter as the quiet note above, so the escalation states the number
+        # the note promised. A project with no real log has no timestamp to count
+        # from; it keeps its own "NO session log has ever been found" wording.
+        $LoudCloses = if ($null -ne $p.Brief.NewestRealTime) {
+                          Get-ClosesMissed -Since $p.Brief.NewestRealTime -LastDue $LastDueClose
+                      } else { 0 }
+        $StaleParts += (Format-StaleLine -Name $p.Name -Hours $p.Brief.StaleHours `
+                        -LogName $p.Brief.StaleLogName -Closes $LoudCloses)
     }
 }
 
