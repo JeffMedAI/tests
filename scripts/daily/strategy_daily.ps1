@@ -1,4 +1,4 @@
-﻿# strategy_daily.ps1
+# strategy_daily.ps1
 # JeffLocal - Strategy Agent Daily Brief (plain English for Saeed)
 #
 # TWO scheduled runs (same script, different -Mode):
@@ -866,6 +866,18 @@ if ($DryRun) {
     Write-Log "Committing to git..."
     Push-Location $RepoRoot
     $PushHeld = $false
+    # Set when the push to GitHub is REJECTED, which is a different thing from
+    # the push guard deliberately HOLDING it. Both leave work sitting on this
+    # computer; only one of them is intentional. Added 2026-09-09.
+    $PushFailed = $false
+    $PushFailReason = ""
+    # Initialised HERE so the finally can restore it unconditionally. The earlier
+    # version set $script:PrevLcAll inside the try and guarded the restore with
+    # Test-Path variable:script:PrevLcAll - which relies on a scope-qualified
+    # provider path resolving the way we assume on PowerShell 5.1, and nobody has
+    # run 5.1 to check. Do not leave an unverified assumption in the alarm path
+    # when two lines remove the question. Security Agent L-A, 2026-09-09.
+    $PrevLcAll = $env:LC_ALL
     # git writes ordinary NOTICES to stderr - "LF will be replaced by CRLF" is
     # the common one, and push progress is another. Under
     # $ErrorActionPreference = "Stop", `2>&1` promotes any of them to a
@@ -938,9 +950,53 @@ if ($DryRun) {
                 # into a loud line at the top of that evening's WhatsApp brief.
                 Write-Output "PUSH-HELD|$ProjectName|$ProtectPath|$(@($ProtectedDirty).Count)"
             } else {
-                git push origin HEAD 2>&1 | Out-Null
-                if ($LASTEXITCODE -ne 0) { throw "git push failed (exit $LASTEXITCODE)" }
-                Write-Log "Git push complete"
+                # git translates its messages, and the classifier below matches
+                # English. Force the C locale for this one call so a non-English
+                # Windows does not silently fall through to the generic reason.
+                # $PrevLcAll is restored in the finally below, not here: if the
+                # push line throws, an inline restore is skipped and LC_ALL=C leaks
+                # to the rest of the process - including back into combined_brief.ps1,
+                # which invoked this script in-process. Security Agent L3.
+                $env:LC_ALL = "C"
+                $PushOut  = @(git push origin HEAD 2>&1) -join " "
+                # Capture it NOW. Any native command below - git rev-parse included -
+                # resets $LASTEXITCODE, and the generic reason would then report
+                # "exit 0" on a failed push: a banner arguing with itself, inside the
+                # alarm path. Security Agent M1, 2026-09-09.
+                $PushExit = $LASTEXITCODE
+                if ($PushExit -ne 0) {
+                    # DO NOT throw. A throw here lands in the catch below, which
+                    # only writes to a log file nobody reads, and the close then
+                    # reports itself as a success. That is exactly how 7-9 Sep 2026
+                    # went: three closes committed locally, every push was rejected
+                    # as non-fast-forward, and every alarm said the system was fine.
+                    # Saeed found it by hand two days later. Instead, name the
+                    # failure and hand it to the brief, the same way PUSH-HELD does.
+                    $PushFailed = $true
+                    # The branch this machine is ACTUALLY on. The push above is
+                    # `git push origin HEAD` - branch-agnostic on purpose - so the
+                    # advice must be too. Hardcoding "main" would tell Saeed to
+                    # merge main into whatever branch he is on and push main.
+                    # Security Agent H3, 2026-09-09.
+                    $CurBranch = (git rev-parse --abbrev-ref HEAD 2>$null)
+                    if ([string]::IsNullOrWhiteSpace($CurBranch) -or $CurBranch -eq "HEAD") { $CurBranch = "main" }
+                    $PushFailReason =
+                        if     ($PushOut -match 'non-fast-forward|fetch first|behind its remote') {
+                            "this computer is behind GitHub - someone else changed it. Fix: git pull --no-edit origin $CurBranch, then git push origin $CurBranch"
+                        } elseif ($PushOut -match 'could not resolve host|unable to access|Connection|timed out|network') {
+                            "could not reach GitHub - check the internet connection"
+                        } elseif ($PushOut -match 'Authentication|denied|403|401') {
+                            "GitHub refused the login for this computer"
+                        } else {
+                            "git push failed (exit $PushExit)"
+                        }
+                    Write-Log "PUSH FAILED: $PushFailReason"
+                    Write-Log "  git said: $PushOut"
+                    # Machine-readable signal for session_close.ps1 and the brief.
+                    Write-Output "PUSH-FAILED|$ProjectName|$PushFailReason"
+                } else {
+                    Write-Log "Git push complete"
+                }
             }
         } elseif ($CommitExit -eq 1) {
             # git returns 1 for "nothing to commit" - normal, not a failure.
@@ -952,6 +1008,7 @@ if ($DryRun) {
         Write-Log "WARNING: git commit/push problem - $_"
     } finally {
         $ErrorActionPreference = $PrevEAP
+        $env:LC_ALL = $PrevLcAll
     }
 
     # Evening mode: create restore tag for this day's state
@@ -969,12 +1026,28 @@ if ($DryRun) {
             $TagExists = git tag -l $RestoreTag 2>&1
             if (-not $TagExists) {
                 git tag $RestoreTag 2>&1 | Out-Null
+                # CHECK THE EXIT CODE. This used to log "Restore tag created"
+                # unconditionally - a false success statement inside the very alarm
+                # path being hardened. In the network and auth failure classes the
+                # tag push fails too, and then NOTHING has left this machine.
+                # Security Agent M3, 2026-09-09.
                 git push origin $RestoreTag 2>&1 | Out-Null
-                Write-Log "Restore tag created: $RestoreTag"
+                if ($LASTEXITCODE -ne 0) {
+                    $PushFailed = $true
+                    Write-Log "WARNING: restore tag $RestoreTag was created locally but NOT pushed."
+                    Write-Output "PUSH-FAILED|$ProjectName|the restore point for today also did not reach GitHub - nothing from today has left this computer"
+                } else {
+                    Write-Log "Restore tag created and pushed: $RestoreTag"
+                }
 
-                # Keep only 3 most recent restore tags
+                # Keep only 3 most recent restore tags.
+                # NOT while a push is failing: pruning the only remote anchors
+                # during a save outage is a bad instinct to leave in the code, even
+                # though the remote deletes would themselves fail. Security Agent M3.
                 $AllRestoreTags = @(git tag -l "restore/*" 2>&1 | Where-Object { $_ -match "^restore/" } | Sort-Object)
-                if ($AllRestoreTags.Count -gt 3) {
+                if ($PushFailed) {
+                    Write-Log "Skipping restore-tag prune - a push has failed, keeping every remote anchor."
+                } elseif ($AllRestoreTags.Count -gt 3) {
                     $ToDelete = $AllRestoreTags | Select-Object -First ($AllRestoreTags.Count - 3)
                     foreach ($oldTag in $ToDelete) {
                         git tag -d $oldTag 2>&1 | Out-Null

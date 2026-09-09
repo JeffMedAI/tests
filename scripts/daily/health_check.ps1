@@ -289,6 +289,9 @@ try {
 # ── 7. Work saved to GitHub ──────────────────────────────────────────────────
 # Catches the failure mode the push guard creates on purpose (held push) and the
 # one nobody intends (close stopped running, commits piling up locally).
+# Which folder each project's push guard protects - kept in step with
+# session_close.ps1's -ProtectPath arguments.
+$ProtectFor = @{ "Avamed" = "dashboard"; "St Marks" = "site" }
 foreach ($repo in @(@{N="Avamed"; P=$RepoRoot}, @{N="St Marks"; P=$SmRepo})) {
     try {
         if (-not (Test-Path (Join-Path $repo.P ".git"))) { continue }
@@ -297,7 +300,87 @@ foreach ($repo in @(@{N="Avamed"; P=$RepoRoot}, @{N="St Marks"; P=$SmRepo})) {
         $ageHrs   = if ($lastTs) { [int]((Get-Date).ToUniversalTime() - [datetimeoffset]::FromUnixTimeSeconds([long]$lastTs).UtcDateTime).TotalHours } else { -1 }
 
         if ($unpushed -and [int]$unpushed -gt 0) {
-            Add-Finding "WATCH" "Saved work" "$($repo.N): $unpushed change(s) saved here but NOT sent to GitHub. Usually the push guard holding unfinished work."
+            # WORK OUT THE REAL REASON. This line used to say "Usually the push
+            # guard holding unfinished work" - a guess, and on 7-9 Sep 2026 the
+            # wrong one: the pushes were being REJECTED because this computer was
+            # behind GitHub. Saeed read that sentence and would have gone looking
+            # at the push guard, which was not involved. Do not guess a cause into
+            # a message Saeed acts on. Rewritten 2026-09-09.
+            # WHERE THE CAUSE COMES FROM. The first version computed it from
+            # `rev-list HEAD..@{u}`, which reads the LOCAL remote-tracking ref.
+            # Nothing in scripts\daily\ ever fetches, and a rejected push does not
+            # update that ref - so on the exact 7-9 Sep 2026 outage it returned 0,
+            # fell through, and blamed the push guard. That is the guess-the-wrong-
+            # cause defect this whole change exists to remove, reintroduced with a
+            # more confident tone. Security Agent B2, 2026-09-09.
+            #
+            # So: read the answer the close already worked out an hour earlier and
+            # wrote into its marker. No network call, no stale local state, and one
+            # source of truth instead of two that can disagree.
+            # READ THE MOST RECENT MARKER ONLY.
+            # The first version scanned the newest three and broke on the first
+            # PUSH-FAILED hit. That reports a cause that may be days out of date:
+            # Monday rejected, fixed by hand Tuesday, Tuesday merely guard-held -
+            # and Wednesday's brief would still say "behind GitHub, run git pull",
+            # which over a dirty dashboard\ (the LIVE production folder) is
+            # actively dangerous advice, while also escalating a healthy guard hold
+            # to PROBLEM. A stale answer is worse than no answer here.
+            # Security Agent H1, 2026-09-09.
+            $MarkerSaid   = ""
+            $MarkerHeld   = $false
+            try {
+                $StateDir = Join-Path $RepoRoot "logs\close-state"
+                if (Test-Path $StateDir) {
+                    # Sort by NAME, not LastWriteTime. The files are
+                    # yyyy-MM-dd-close.txt, so name order IS date order, and it
+                    # survives a restored logs\ folder or an antivirus touch
+                    # reordering mtimes - which would otherwise hand this the wrong
+                    # "most recent" marker and reopen H1. Security Agent L-B.
+                    $latest = @(Get-ChildItem $StateDir -Filter "*-close.txt" -File -ErrorAction SilentlyContinue |
+                                Sort-Object Name -Descending | Select-Object -First 1)
+                    foreach ($mk in $latest) {
+                        foreach ($line in @(Get-Content $mk.FullName -ErrorAction SilentlyContinue)) {
+                            # Compare the PROJECT FIELD, not the whole line: a future
+                            # reason string containing the other project's name would
+                            # otherwise cross-match silently. Security Agent L1.
+                            $f = ([string]$line).Split("|", 3)
+                            if ($f.Count -lt 2 -or $f[1] -notlike "*$($repo.N)*") { continue }
+                            if ($f[0] -eq "PUSH-FAILED" -and $f.Count -ge 3 -and -not $MarkerSaid) { $MarkerSaid = $f[2] }
+                            if ($f[0] -eq "PUSH-HELD") { $MarkerHeld = $true }
+                        }
+                    }
+                }
+            } catch { }
+
+            $dirty = @(& git -C $repo.P status --porcelain -- $ProtectFor[$repo.N] 2>$null |
+                       Where-Object { "$_".Trim() -ne "" })
+            $why =
+                if     ($MarkerSaid) { $MarkerSaid }
+                elseif (@($dirty).Count -gt 0) {
+                    "The push guard is holding it: $(@($dirty).Count) unfinished file(s) in $($ProtectFor[$repo.N])\. Finish or undo them and the next close sends it."
+                } else {
+                    "Reason not recorded - check scripts\daily\last_run.log for the last push attempt."
+                }
+
+            # ESCALATE ON THE RIGHT CLOCK. $ageHrs is the age of the LAST commit,
+            # which on a repo committing twice a day is always small - the old
+            # `-or $ageHrs -gt 48` could therefore never fire for its stated reason.
+            # Measure the age of the OLDEST UNPUSHED commit instead. Security Agent M1.
+            $oldestUnpushed = @(& git -C $repo.P log --format=%ct "@{u}..HEAD" 2>$null) | Select-Object -Last 1
+            $unpushedAgeHrs = if ($oldestUnpushed) {
+                [int]((Get-Date).ToUniversalTime() - [datetimeoffset]::FromUnixTimeSeconds([long]$oldestUnpushed).UtcDateTime).TotalHours
+            } else { 0 }
+
+            # A push the GUARD is holding is the system working as designed, and
+            # Saeed already knows about the unfinished work. Never escalate that to
+            # PROBLEM - that is the 2026-09-04 false-alarm shape again. Only a
+            # rejected, unreachable or unexplained failure earns the top of the
+            # brief. Security Agent M2.
+            $guardHolding = (-not $MarkerSaid) -and ($MarkerHeld -or (@($dirty).Count -gt 0))
+            $lvl = if ($guardHolding) { "WATCH" }
+                   elseif ([int]$unpushed -ge 3 -or $unpushedAgeHrs -gt 48) { "PROBLEM" }
+                   else { "WATCH" }
+            Add-Finding $lvl "Saved work" "$($repo.N): $unpushed change(s) saved here but NOT sent to GitHub. $why"
         }
         if ($ageHrs -gt 72) {
             Add-Finding "WATCH" "Saved work" "$($repo.N): nothing saved for $ageHrs hours."

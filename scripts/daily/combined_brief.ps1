@@ -589,6 +589,14 @@ if (Test-Path $MemFile) {
 # the message text. Answering "did the close run" first is what lets the brief
 # tell "the close is broken" apart from "nobody worked on this project".
 $HeldSignals     = @()
+# PUSH-FAILED lines from the marker: the save to GitHub was REJECTED, which
+# is a different problem from the push guard HOLDING it on purpose. Each
+# entry keeps the DAY its marker belongs to, so the banner can name it -
+# on a Saturday this may be Friday's failure. Security Agent B1/H1,
+# 2026-09-09: the first version of this never initialised the variable, and
+# under Set-StrictMode that crashed the entire brief on a healthy evening -
+# no WhatsApp message at all. Never let this list go undeclared.
+$FailedPushSignals = @()
 # Named for the day whose close is being reported on, NOT for today - on a
 # Saturday this is Friday's close. Renamed from $NoCloseToday, which invited
 # exactly the "TODAY'S" wording bug below. Security Agent L2, 2026-09-07.
@@ -641,12 +649,20 @@ if ($Mode -eq 'Evening') {
     }
 
     foreach ($m in $MarkersToRead) {
+      # Wrapped: reading a marker must NEVER be able to kill the whole brief.
+      # That is what B1 did, and it is the same shape as the unreadable-folder
+      # fault from PR #2 - a throw under $ErrorActionPreference = "Stop",
+      # outside any try, and Saeed gets no message at all. Security Agent, 2026-09-09.
+      try {
         $MarkerPath = "C:\JeffLocal\logs\close-state\$($m.Date.ToString('yyyy-MM-dd'))-close.txt"
         $DayName    = $m.Date.ToString('dddd')
         if (Test-Path $MarkerPath) {
             $MarkerLines = @(Get-Content -Path $MarkerPath -ErrorAction SilentlyContinue)
             # Harvest push-held signals from EVERY marker read, due or hand-run.
             $HeldSignals += @(@($MarkerLines) | Where-Object { $_ -like "PUSH-HELD|*" })
+            foreach ($pf in @(@($MarkerLines) | Where-Object { $_ -like "PUSH-FAILED|*" })) {
+                $FailedPushSignals += [PSCustomObject]@{ Day = $DayName; Sig = [string]$pf }
+            }
             $ClosedAt = @(@($MarkerLines) | Where-Object { $_ -like "CLOSED|*" }) | Select-Object -First 1
             if ($ClosedAt) {
                 Write-Log "$DayName's close ran ($ClosedAt) - this brief reports only."
@@ -675,6 +691,15 @@ if ($Mode -eq 'Evening') {
             # No hand-run close today. Nothing was due, so there is nothing to say.
             Write-Log "No hand-run close marker for today ($DayName) - none was due."
         }
+      } catch {
+        # Do not go quiet. A marker we cannot read is itself worth shouting about,
+        # and the brief must still be sent.
+        Write-Log "WARNING: could not read the close marker for $($m.Date.ToString('yyyy-MM-dd')) - $_"
+        if ($m.WasDue) {
+            $CloseDayFailed  = $true
+            $FailedDayNames += $m.Date.ToString('dddd')
+        }
+      }
     }
 }
 
@@ -944,6 +969,13 @@ if (-not $DryRun -and -not $SkipCloseHere) {
             -Mode $Mode -NoSend -ProtectPath "dashboard" -RefreshGraph 2>&1 |
             ForEach-Object { Write-Log "  [JL] $_"; $_ }
         $HeldSignals += @(@($JLOutput) | ForEach-Object { [string]$_ } | Where-Object { $_ -like "PUSH-HELD|*" })
+        # A rejected push must surface in the MORNING brief too. On 8 Sep 2026 the
+        # 07:00 run failed to push and said nothing; and since no close runs at a
+        # weekend, a Friday-night failure would otherwise stay invisible until
+        # Monday. Security Agent H2, 2026-09-09.
+        foreach ($pf in @(@($JLOutput) | ForEach-Object { [string]$_ } | Where-Object { $_ -like "PUSH-FAILED|*" })) {
+            $FailedPushSignals += [PSCustomObject]@{ Day = $Now.ToString("dddd"); Sig = [string]$pf }
+        }
     } catch {
         Write-Log "WARNING: JeffLocal strategy_daily.ps1 failed - $_"
     }
@@ -975,8 +1007,13 @@ if (-not $DryRun -and -not $SkipCloseHere) {
                 -MemoryFile  (Join-Path $SmRepo "PROJECT_MEMORY.md") `
                 -ProtectPath "site" 2>&1 |
                 ForEach-Object { Write-Log "  [SM] $_"; $_ } |
-                Where-Object { ([string]$_) -like "PUSH-HELD|*" } |
-                ForEach-Object { $script:HeldSignals += [string]$_ }
+                ForEach-Object {
+                    $line = [string]$_
+                    if ($line -like "PUSH-HELD|*")   { $script:HeldSignals += $line }
+                    if ($line -like "PUSH-FAILED|*") {
+                        $script:FailedPushSignals += [PSCustomObject]@{ Day = $Now.ToString("dddd"); Sig = $line }
+                    }
+                }
         } catch {
             Write-Log "WARNING: St Marks session close failed - $_"
         }
@@ -1056,6 +1093,47 @@ $HeldBody
     Write-Host $HeldBanner
 } else {
     Write-Log "Push guard: nothing held, both projects pushed normally"
+}
+
+# ── 6b-3. The save to GitHub was REJECTED ────────────────────────────────────
+# Runs in BOTH modes: the evening reads it from the close marker, the morning
+# from strategy_daily.ps1's own output in section 6. Security Agent H2.
+# Loud, and on TOP of the push-guard banner. Both blocks PREPEND, so the one
+# that runs LAST ends up highest - which is why this section now follows 6c
+# rather than preceding it. Security Agent L1, 2026-09-09. Reason: a held push is the system working as
+# designed, a rejected one is work silently not reaching GitHub. On 7-9 Sep 2026
+# that went unreported for three days while every other signal read healthy.
+if (@($FailedPushSignals).Count -gt 0) {
+    $FailLines = @()
+    foreach ($entry in @($FailedPushSignals)) {
+        $parts = ([string]$entry.Sig).Split("|", 3)
+        if ($parts.Count -ge 3) { $FailLines += "!!   $($parts[1]): $($parts[2])" }
+    }
+    $FailBody = (@($FailLines) -join [Environment]::NewLine)
+    # NAME THE DAY. Read on a Saturday, the marker is Friday's, so "TODAY'S" would
+    # be false - the same defect already corrected for the close banner, and a
+    # standing rule in CLAUDE.md ("Every alarm names its day"). Security Agent H1.
+    $FailDays = @(@($FailedPushSignals) | ForEach-Object { $_.Day } | Select-Object -Unique)
+    $FailWhen = if (@($FailDays).Count -eq 1) { (@($FailDays)[0]).ToUpper() + "'S" }
+                else { (@($FailDays) -join " AND ").ToUpper() }
+    $FailBanner = @"
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!! $FailWhen WORK DID NOT REACH GITHUB
+$FailBody
+!!
+!! Your work is NOT lost - it is saved on this computer. But it is
+!! NOT backed up, and it will keep failing every day until this is
+!! fixed. Do not ignore this: work piling up unsent, with everything
+!! else looking healthy, is how the 11-19 Aug 2026 outage happened.
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+"@
+    if (-not $DryRun -and (Test-Path $ReportPath)) {
+        $ExistingReport = Get-Utf8FileText -Path $ReportPath
+        Set-Content -Path $ReportPath -Value ($FailBanner + $ExistingReport) -Encoding UTF8
+    }
+    Write-Log "PUSH FAILED banner added - $(@($FailLines).Count) line(s), $(@(@($FailedPushSignals) | ForEach-Object { ([string]$_.Sig).Split('|',3)[1] } | Select-Object -Unique).Count) project(s)"
+    Write-Host $FailBanner
 }
 
 # ── 7. Send combined report via WhatsApp ─────────────────────────────────────
