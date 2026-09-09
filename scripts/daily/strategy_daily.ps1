@@ -1086,7 +1086,11 @@ if ($DryRun) {
                     # line on its own: the branch push SUCCEEDED. An alarm that
                     # overstates is the same trust problem this week's work exists
                     # to fix. Security Agent H1, 2026-09-09.
-                    Write-Output "TAG-PUSH-FAILED|$ProjectName|today's commits reached GitHub but the restore point $RestoreTag did not - there is no restore point for today until this is fixed|$RestoreTag"
+                    # Say NOTHING about the commits here. This block is reached even
+                    # when nothing was committed - in which case no push was attempted
+                    # and "today's commits reached GitHub" would be false. Claim only
+                    # what this signal actually knows. Security Agent L4, 2026-09-09.
+                    Write-Output "TAG-PUSH-FAILED|$ProjectName|the restore point $RestoreTag did not reach GitHub - there is no snapshot to roll back to for that day|$RestoreTag"
                 } else {
                     Write-Log "Restore tag created and pushed: $RestoreTag"
                 }
@@ -1107,7 +1111,30 @@ if ($DryRun) {
                     }
                 }
             } else {
-                Write-Log "Restore tag already exists: $RestoreTag"
+                # THE TAG EXISTS LOCALLY - BUT IS IT ON GITHUB? This used to stop
+                # here. The close overwrites the day's marker with Set-Content, so a
+                # hand-run `session_close.ps1 -Force` later the same day rewrote the
+                # marker while this branch silently declined to re-emit the alarm.
+                # Net result: no remote restore point for that day, and no alarm
+                # anywhere. A PUSH-FAILED recurs on a retry; TAG-PUSH-FAILED is now
+                # the ONLY carrier of this fact, so it must too.
+                # Security Agent L3, 2026-09-09.
+                $RemoteTag = @(git ls-remote --tags origin "refs/tags/$RestoreTag" 2>$null)
+                $LsExit    = $LASTEXITCODE
+                $RemoteTag = @(@($RemoteTag) | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) })
+                if ($LsExit -eq 0 -and @($RemoteTag).Count -gt 0) {
+                    Write-Log "Restore tag already exists and is on GitHub: $RestoreTag"
+                } else {
+                    Write-Log "Restore tag $RestoreTag exists locally but is NOT on GitHub - retrying the push."
+                    git push origin $RestoreTag 2>&1 | Out-Null
+                    if ($LASTEXITCODE -ne 0) {
+                        $PushFailed = $true
+                        Write-Log "WARNING: restore tag $RestoreTag still did not reach GitHub."
+                        Write-Output "TAG-PUSH-FAILED|$ProjectName|the restore point $RestoreTag did not reach GitHub - there is no snapshot to roll back to for that day|$RestoreTag"
+                    } else {
+                        Write-Log "Restore tag pushed on retry: $RestoreTag"
+                    }
+                }
             }
         } catch {
             Write-Log "WARNING: Restore tag creation failed - $_"
