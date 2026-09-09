@@ -100,6 +100,13 @@ if (($Day -eq [DayOfWeek]::Saturday -or $Day -eq [DayOfWeek]::Sunday) -and -not 
 # Collected PUSH-HELD signal lines from both projects, handed to the 19:00 brief.
 $HeldSignals = @()
 
+# Collected PUSH-FAILED lines. Different problem, different banner: HELD is the
+# push guard doing its job on purpose; FAILED is the save to GitHub being
+# REJECTED. Before 2026-09-09 a rejected push was caught inside
+# strategy_daily.ps1, written to a log nobody reads, and the close reported
+# success - three days of work sat unsaved and every alarm said fine.
+$FailedPushSignals = @()
+
 # Close failures. This list decides whether the marker says CLOSED or FAILED.
 # Security Agent review 2026-09-04 caught the original version writing CLOSED
 # unconditionally: both closes could throw, be logged as warnings, and the 19:00
@@ -124,6 +131,7 @@ try {
             -Mode Evening -NoSend -ProtectPath "dashboard" -RefreshGraph 2>&1 |
             ForEach-Object { Write-Log "  [JL] $_"; $_ }
         $HeldSignals += @(@($JLOutput) | ForEach-Object { [string]$_ } | Where-Object { $_ -like "PUSH-HELD|*" })
+        $FailedPushSignals += @(@($JLOutput) | ForEach-Object { [string]$_ } | Where-Object { $_ -like "PUSH-FAILED|*" })
     }
     Write-Log "Avamed close finished."
 } catch {
@@ -152,6 +160,7 @@ try {
             -ProtectPath "site" 2>&1 |
             ForEach-Object { Write-Log "  [SM] $_"; $_ }
         $HeldSignals += @(@($SMOutput) | ForEach-Object { [string]$_ } | Where-Object { $_ -like "PUSH-HELD|*" })
+        $FailedPushSignals += @(@($SMOutput) | ForEach-Object { [string]$_ } | Where-Object { $_ -like "PUSH-FAILED|*" })
         Write-Log "St Marks close finished."
     }
 } catch {
@@ -177,6 +186,7 @@ if ($DryRun) {
         foreach ($f in @($Failures)) { $MarkerLines += "FAILED-DETAIL|$f" }
     }
     $MarkerLines += @($HeldSignals)
+    $MarkerLines += @($FailedPushSignals)
     Set-Content -Path $StateFile -Value $MarkerLines -Encoding UTF8
     Write-Log "Marker written: $StateFile ($(@($HeldSignals).Count) push-held signal(s))"
 

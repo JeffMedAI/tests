@@ -1,4 +1,4 @@
-﻿# strategy_daily.ps1
+# strategy_daily.ps1
 # JeffLocal - Strategy Agent Daily Brief (plain English for Saeed)
 #
 # TWO scheduled runs (same script, different -Mode):
@@ -866,6 +866,11 @@ if ($DryRun) {
     Write-Log "Committing to git..."
     Push-Location $RepoRoot
     $PushHeld = $false
+    # Set when the push to GitHub is REJECTED, which is a different thing from
+    # the push guard deliberately HOLDING it. Both leave work sitting on this
+    # computer; only one of them is intentional. Added 2026-09-09.
+    $PushFailed = $false
+    $PushFailReason = ""
     # git writes ordinary NOTICES to stderr - "LF will be replaced by CRLF" is
     # the common one, and push progress is another. Under
     # $ErrorActionPreference = "Stop", `2>&1` promotes any of them to a
@@ -938,9 +943,33 @@ if ($DryRun) {
                 # into a loud line at the top of that evening's WhatsApp brief.
                 Write-Output "PUSH-HELD|$ProjectName|$ProtectPath|$(@($ProtectedDirty).Count)"
             } else {
-                git push origin HEAD 2>&1 | Out-Null
-                if ($LASTEXITCODE -ne 0) { throw "git push failed (exit $LASTEXITCODE)" }
-                Write-Log "Git push complete"
+                $PushOut = @(git push origin HEAD 2>&1) -join " "
+                if ($LASTEXITCODE -ne 0) {
+                    # DO NOT throw. A throw here lands in the catch below, which
+                    # only writes to a log file nobody reads, and the close then
+                    # reports itself as a success. That is exactly how 7-9 Sep 2026
+                    # went: three closes committed locally, every push was rejected
+                    # as non-fast-forward, and every alarm said the system was fine.
+                    # Saeed found it by hand two days later. Instead, name the
+                    # failure and hand it to the brief, the same way PUSH-HELD does.
+                    $PushFailed = $true
+                    $PushFailReason =
+                        if     ($PushOut -match 'non-fast-forward|fetch first|behind its remote') {
+                            "this computer is behind GitHub - someone else changed it. Fix: git pull --no-edit origin main, then git push origin main"
+                        } elseif ($PushOut -match 'could not resolve host|unable to access|Connection|timed out|network') {
+                            "could not reach GitHub - check the internet connection"
+                        } elseif ($PushOut -match 'Authentication|denied|403|401') {
+                            "GitHub refused the login for this computer"
+                        } else {
+                            "git push failed (exit $LASTEXITCODE)"
+                        }
+                    Write-Log "PUSH FAILED: $PushFailReason"
+                    Write-Log "  git said: $PushOut"
+                    # Machine-readable signal for session_close.ps1 and the brief.
+                    Write-Output "PUSH-FAILED|$ProjectName|$PushFailReason"
+                } else {
+                    Write-Log "Git push complete"
+                }
             }
         } elseif ($CommitExit -eq 1) {
             # git returns 1 for "nothing to commit" - normal, not a failure.

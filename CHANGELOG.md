@@ -736,3 +736,24 @@ banner. Synthetic marker deleted afterwards.
 **Tests run:** PowerShell 7.4.6 parse check clean. Windows-only cmdlets; nothing executed. The Security Agent judged a parse check sufficient to merge an additive block evidenced against a real export, and insufficient to rely on the backup machinery — which is why the script is marked do-not-run.
 **Merged to main.**
 **Saeed notified:** This session
+
+---
+
+## 2026-09-09 — A Failed Save to GitHub Can No Longer Report Itself as Success
+**Agent:** Lead Agent
+**Approved by:** Saeed ("go", 2026-09-09)
+**What went wrong, 7–9 Sep 2026:** three consecutive session closes (Mon evening, Tue morning, Tue evening) wrote their session logs, HANDOFF and PROJECT_MEMORY, committed them locally, and had every push to GitHub REJECTED as non-fast-forward. Nothing reached GitHub for three days. The close reported success, the marker said CLOSED, and the evening brief said the close ran. Saeed found it by hand on 9 Sep, and only because he forwarded a brief for an unrelated reason. Root cause of the rejection was mine: I merged PR #3 at 17:35 on 7 Sep, under an hour before the 18:30 close, and did not tell Saeed to pull — his machine was a step behind from then on. Root cause of the SILENCE is the bug fixed here.
+**Fix 1 — strategy_daily.ps1 no longer swallows a rejected push.** `git push` failure used to `throw`, land in a catch that wrote one WARNING line to a log file nobody reads, and continue; the close then reported success. It now sets $PushFailed, works out the real reason from git's own output (behind remote / no network / auth refused / other), and emits a machine-readable `PUSH-FAILED|project|reason` line — the same mechanism PUSH-HELD already used. The reason text carries the fix Saeed should run.
+**Fix 2 — session_close.ps1 carries the signal.** Harvests PUSH-FAILED from both projects into the close-state marker alongside PUSH-HELD.
+**Fix 3 — combined_brief.ps1 shouts about it, in the evening.** New section 6b-3 prints a loud "TODAY'S WORK DID NOT REACH GITHUB" banner above the push-guard banner. Held and rejected are deliberately separate banners: a held push is the guard working as designed; a rejected one is work silently not being backed up.
+**Fix 4 — health_check.ps1 stops guessing, and escalates.** The 06:45 check DID detect this on 9 Sep — it said "3 change(s) saved here but NOT sent to GitHub. Usually the push guard holding unfinished work." Two faults: it was filed under WATCH ("worth a look, not urgent") below four routine case counts, and its guessed cause was wrong — the push guard was not involved. It now determines the actual cause by checking whether the branch is behind its remote and whether the protected folder is dirty, and escalates to PROBLEM (rendered under "NEEDS A DECISION FROM YOU") at 3+ unpushed changes or 48h+.
+**Files changed:** scripts/daily/strategy_daily.ps1, scripts/daily/session_close.ps1, scripts/daily/combined_brief.ps1, scripts/daily/health_check.ps1, CHANGELOG.md
+**Tests run:** PowerShell 7.4.6, parse check clean on all four. Built real throwaway git repositories reproducing each state and ran the ACTUAL code from the files against them:
+- Rejected push (the exact 7–9 Sep situation: local commit, remote moved ahead) → PUSH-FAILED emitted with "this computer is behind GitHub … Fix: git pull --no-edit origin main, then git push origin main". Previously silent.
+- After pulling, the same close pushes cleanly → nothing emitted, and the close's file verified present on the remote.
+- Health check against three real repos → correctly distinguishes REJECTED from PUSH-GUARD-HOLDING from all-clean, naming the right cause and fix for each.
+- Escalation: 3 unpushed changes → PROBLEM, not WATCH.
+- Banner rendering for one project and for both.
+- Monday's full 9-scenario staleness suite re-run — all still passing, no regressions.
+**Test limitation, stated:** all Linux fixtures with PowerShell 7.4.6. The scripts run on Windows PowerShell 5.1 against real paths, and nothing here was executed on that machine. One `-DryRun` evening run on the PC would confirm it end to end.
+**Saeed notified:** This session

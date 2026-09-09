@@ -289,6 +289,9 @@ try {
 # ── 7. Work saved to GitHub ──────────────────────────────────────────────────
 # Catches the failure mode the push guard creates on purpose (held push) and the
 # one nobody intends (close stopped running, commits piling up locally).
+# Which folder each project's push guard protects - kept in step with
+# session_close.ps1's -ProtectPath arguments.
+$ProtectFor = @{ "Avamed" = "dashboard"; "St Marks" = "site" }
 foreach ($repo in @(@{N="Avamed"; P=$RepoRoot}, @{N="St Marks"; P=$SmRepo})) {
     try {
         if (-not (Test-Path (Join-Path $repo.P ".git"))) { continue }
@@ -297,7 +300,29 @@ foreach ($repo in @(@{N="Avamed"; P=$RepoRoot}, @{N="St Marks"; P=$SmRepo})) {
         $ageHrs   = if ($lastTs) { [int]((Get-Date).ToUniversalTime() - [datetimeoffset]::FromUnixTimeSeconds([long]$lastTs).UtcDateTime).TotalHours } else { -1 }
 
         if ($unpushed -and [int]$unpushed -gt 0) {
-            Add-Finding "WATCH" "Saved work" "$($repo.N): $unpushed change(s) saved here but NOT sent to GitHub. Usually the push guard holding unfinished work."
+            # WORK OUT THE REAL REASON. This line used to say "Usually the push
+            # guard holding unfinished work" - a guess, and on 7-9 Sep 2026 the
+            # wrong one: the pushes were being REJECTED because this computer was
+            # behind GitHub. Saeed read that sentence and would have gone looking
+            # at the push guard, which was not involved. Do not guess a cause into
+            # a message Saeed acts on. Rewritten 2026-09-09.
+            $behind = & git -C $repo.P rev-list --count "HEAD..@{u}" 2>$null
+            $dirty  = @(& git -C $repo.P status --porcelain -- $ProtectFor[$repo.N] 2>$null |
+                        Where-Object { "$_".Trim() -ne "" })
+            $why =
+                if     ($behind -and [int]$behind -gt 0) {
+                    "This computer is $behind change(s) BEHIND GitHub, so it is being refused. Fix: git pull --no-edit origin main, then git push origin main"
+                } elseif (@($dirty).Count -gt 0) {
+                    "The push guard is holding it: $(@($dirty).Count) unfinished file(s) in $($ProtectFor[$repo.N])\. Finish or undo them and the next close sends it."
+                } else {
+                    "Reason unclear - check scripts\daily\last_run.log for the last push attempt."
+                }
+
+            # Escalate by age. One day is a note; three days is the shape of the
+            # 11-19 Aug 2026 outage and belongs in front of Saeed, not below four
+            # routine case counts. Saeed's instruction 2026-09-09.
+            $lvl = if ([int]$unpushed -ge 3 -or $ageHrs -gt 48) { "PROBLEM" } else { "WATCH" }
+            Add-Finding $lvl "Saved work" "$($repo.N): $unpushed change(s) saved here but NOT sent to GitHub. $why"
         }
         if ($ageHrs -gt 72) {
             Add-Finding "WATCH" "Saved work" "$($repo.N): nothing saved for $ageHrs hours."

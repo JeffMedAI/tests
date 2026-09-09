@@ -647,6 +647,7 @@ if ($Mode -eq 'Evening') {
             $MarkerLines = @(Get-Content -Path $MarkerPath -ErrorAction SilentlyContinue)
             # Harvest push-held signals from EVERY marker read, due or hand-run.
             $HeldSignals += @(@($MarkerLines) | Where-Object { $_ -like "PUSH-HELD|*" })
+            $FailedPushSignals += @(@($MarkerLines) | Where-Object { $_ -like "PUSH-FAILED|*" })
             $ClosedAt = @(@($MarkerLines) | Where-Object { $_ -like "CLOSED|*" }) | Select-Object -First 1
             if ($ClosedAt) {
                 Write-Log "$DayName's close ran ($ClosedAt) - this brief reports only."
@@ -1022,6 +1023,37 @@ $(if (@($CloseFailDetail).Count -gt 0) { "!! What went wrong:" + [Environment]::
     }
     Write-Log "NO CLOSE banner added to tonight's brief"
     Write-Host $NoCloseBanner
+}
+
+# ── 6b-3. The save to GitHub was REJECTED ────────────────────────────────────
+# Loud, and above the push-guard banner: a held push is the system working as
+# designed, a rejected one is work silently not reaching GitHub. On 7-9 Sep 2026
+# that went unreported for three days while every other signal read healthy.
+if (@($FailedPushSignals).Count -gt 0) {
+    $FailLines = @()
+    foreach ($sig in @($FailedPushSignals)) {
+        $parts = ([string]$sig).Split("|", 3)
+        if ($parts.Count -ge 3) { $FailLines += "!!   $($parts[1]): $($parts[2])" }
+    }
+    $FailBody = (@($FailLines) -join [Environment]::NewLine)
+    $FailBanner = @"
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!! TODAY'S WORK DID NOT REACH GITHUB
+$FailBody
+!!
+!! Your work is NOT lost - it is saved on this computer. But it is
+!! NOT backed up, and it will keep failing every day until this is
+!! fixed. Do not ignore this: work piling up unsent, with everything
+!! else looking healthy, is how the 11-19 Aug 2026 outage happened.
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+"@
+    if (-not $DryRun -and (Test-Path $ReportPath)) {
+        $ExistingReport = Get-Utf8FileText -Path $ReportPath
+        Set-Content -Path $ReportPath -Value ($FailBanner + $ExistingReport) -Encoding UTF8
+    }
+    Write-Log "PUSH FAILED banner added for $(@($FailLines).Count) project(s)"
+    Write-Host $FailBanner
 }
 
 # ── 6c. Push held? Warn Saeed in THIS message, not tomorrow's ────────────────
