@@ -56,20 +56,28 @@ $PausedProjects = @{
 # How long a project may sit paused before the quiet note starts asking Saeed to
 # confirm it is still correct. One week, Saeed's instruction 2026-09-07 - a pause
 # he set and forgot must not become a permanent blind spot.
+$PausedNagAfterHours = 24 * 7
+
 # ── How long a quiet project stays quiet ─────────────────────────────────────
 # SAEED'S DECISION, 2026-09-09: the loud "PART OF THIS BRIEF IS OUT OF DATE"
 # banner starts on the THIRD day, not the first. One or two quiet days are
-# normal - a day off, or a day spent on the other project - and shouting about
+# ordinary - a day off, or a day spent on the other project - and shouting about
 # them is how a banner stops being believed. Days one and two still get a plain
 # one-line note, so a real outage is still visible from the first morning; it
 # just does not arrive as an emergency until it looks like one.
 #
+# COUNTED IN MISSED WEEKDAY CLOSES, NOT IN WALL-CLOCK HOURS. The first version of
+# this used a flat 72 hours and so counted the weekend: a Thursday log with nobody
+# working Friday went loud on SUNDAY, when no close was due and no work was
+# expected - after only two working days. That is the same cry-wolf shape this
+# threshold exists to remove, moved from a Tuesday to a Sunday. The comment on
+# Get-LastExpectedCloseTime already said it: the right question is never "how many
+# hours" but "how many closes have come and gone". Security Agent F2, 2026-09-09.
+#
 # This does NOT loosen anything else. A project whose folder cannot be read is
-# still loud immediately, a project with no session log at all is still loud
-# immediately, and the day-named close-failure banner is untouched.
-$StaleLoudAfterDays = 3
-
-$PausedNagAfterHours = 24 * 7
+# still loud immediately, and a project with no session log at all is still loud
+# immediately.
+$StaleLoudAfterCloses = 3
 
 function Write-Log {
     param([string]$Message)
@@ -279,6 +287,21 @@ function Get-LastExpectedCloseTime {
     if ($t -gt $Now) { $t = $t.AddDays(-1) }
     while ($t.DayOfWeek -eq [DayOfWeek]::Saturday -or $t.DayOfWeek -eq [DayOfWeek]::Sunday) {
         $t = $t.AddDays(-1)
+    }
+    return $t
+}
+
+# Roll back N weekday 18:30 closes from the last one that fell due. This is the
+# unit the volume decision is made in - see $StaleLoudAfterCloses above for why
+# hours are the wrong unit. Security Agent F2, 2026-09-09.
+function Get-CloseTimeNBack {
+    param([datetime]$From, [int]$Closes)
+    $t = $From
+    for ($i = 0; $i -lt $Closes; $i++) {
+        $t = $t.AddDays(-1)
+        while ($t.DayOfWeek -eq [DayOfWeek]::Saturday -or $t.DayOfWeek -eq [DayOfWeek]::Sunday) {
+            $t = $t.AddDays(-1)
+        }
     }
     return $t
 }
@@ -944,18 +967,36 @@ foreach ($p in @(
         # this branch - it always reaches the loud banner. Security Agent H4.
         $ScheduleNotes += "Note: $($p.Name) - nothing new logged since the last session close, and no close has been due since. That is the normal gap, not a problem."
         Write-Log "STALENESS: $($p.Name) last logged $($p.Brief.NewestRealTime.ToString('ddd HH:mm')), after the last due close - quiet note, no banner."
-    } elseif ($p.Brief.StaleHours -lt ($StaleLoudAfterDays * 24)) {
-        # QUIET FOR THE FIRST TWO DAYS. Saeed's decision 2026-09-09. A close HAS
-        # been missed here, so this is not the "no close was due" case above - but
-        # one or two quiet days are ordinary, and a loud banner for an ordinary day
-        # off is the cry-wolf problem in a different coat.
+    } elseif ($null -ne $p.Brief.NewestRealTime -and
+              $p.Brief.NewestRealTime -ge (Get-CloseTimeNBack -From $LastDueClose -Closes ($StaleLoudAfterCloses - 1))) {
+        # QUIET FOR THE FIRST TWO MISSED CLOSES. Saeed's decision 2026-09-09.
+        # A close HAS been missed here - that is what separates this from the "no
+        # close was due" branch above - but one or two are ordinary, and a loud
+        # banner for an ordinary day off is the cry-wolf problem in a different coat.
+        #
+        # MEASURED IN CLOSES, NOT HOURS, so the weekend cannot count toward the
+        # three. $null is routed to the loud branch explicitly: a project with no
+        # real log at all has no timestamp to compare and must never land here.
+        # Security Agent F2, 2026-09-09.
         #
         # It is still SAID, every day, from the first one: silence is what let the
         # 11-19 Aug 2026 outage run for eight days. Only the volume waits.
-        $DaysQuiet = [math]::Floor($p.Brief.StaleHours / 24)
-        $DayWord   = if ($DaysQuiet -le 1) { "a day" } else { "$DaysQuiet days" }
-        $ScheduleNotes += "Note: $($p.Name) - nothing new logged for $DayWord. Normal so far; this becomes a warning at $StaleLoudAfterDays days."
-        Write-Log "STALENESS: $($p.Name) stale $($p.Brief.StaleHours)h - under the $StaleLoudAfterDays-day threshold, quiet note only."
+        $ClosesMissed = 0
+        $Probe = $LastDueClose
+        while ($ClosesMissed -lt $StaleLoudAfterCloses -and $p.Brief.NewestRealTime -lt $Probe) {
+            $ClosesMissed++
+            $Probe = Get-CloseTimeNBack -From $Probe -Closes 1
+        }
+        $CloseWord = if ($ClosesMissed -le 1) { "one working day" } else { "$ClosesMissed working days" }
+        # NO "NORMAL SO FAR". A due close has provably been missed, and in a MORNING
+        # run this script has not even read the close marker - the marker block is
+        # gated on Evening mode - so it cannot know whether the close failed or
+        # nobody worked. Asserting normality here is a claim it has not earned, and
+        # would contradict the loud close-failure banner Saeed may have read the
+        # night before. Say what is true: what was seen, and when it escalates.
+        # Security Agent F1, 2026-09-09.
+        $ScheduleNotes += "Note: $($p.Name) - nothing new logged for $CloseWord, and a session close has come and gone since. Not shouting yet; this becomes a warning at $StaleLoudAfterCloses working days."
+        Write-Log "STALENESS: $($p.Name) has missed $ClosesMissed close(s) - under the $StaleLoudAfterCloses-close threshold, quiet note only."
     } else {
         $StaleParts += (Format-StaleLine -Name $p.Name -Hours $p.Brief.StaleHours -LogName $p.Brief.StaleLogName)
     }

@@ -913,3 +913,27 @@ Days one and two now get a plain one-line note; the loud banner starts on the th
 **Tests run:** PowerShell 7.4.6, 8 scenarios against the live extracted block, 8/8 — 1 day quiet, 2 days quiet, 71h (just under), exactly 72h (loud), 5 days (loud), no log ever (loud), folder unreadable (loud on day one), and log written after the last due close (quiet, normal gap). Boundary checked at exactly 3 days. Script parses clean.
 **Limitation:** not run on Windows PowerShell 5.1.
 **Saeed notified:** This session.
+
+---
+
+## 2026-09-09 — PR #6 Round 2: Security Agent Blocked the Day-3 Change; Two Real Defects Fixed
+**Agent:** Lead Agent (Claude Code session), reviewed by Security Agent
+**Approved by:** Saeed approved the day-3 threshold itself. Everything below is Security Agent conditions on it. **Still awaiting Saeed's "approved" to merge.**
+**Description:** The first version was **BLOCKED**. Two findings, both correct:
+
+- **F2 (blocking) — I reintroduced the exact defect finding H4 removed, one branch below H4's own fix.** The threshold counted a flat 72 wall-clock hours, so the weekend counted toward it. Concrete: last log Thursday 10:00, nobody works Friday → the loud banner fired on **SUNDAY**, when no close was due and no work was expected, after only two working days. The comment on `Get-LastExpectedCloseTime` already said it in terms — *"the right question is not 'is it the weekend' but 'has a close been due since'"* — and the branch immediately above the new one measures correctly. **Now counted in missed weekday closes**, via a new `Get-CloseTimeNBack` helper. Constant renamed `$StaleLoudAfterCloses` so the name states the unit. A project with no real log at all (`$NewestRealTime` is `$null`) is explicitly routed loud and can never reach the quiet branch.
+
+- **F1 (blocking) — the safety net I claimed does not exist in the morning brief.** I justified quieting the staleness alarm on the grounds that the close-failure banner still fires independently on day one. That is true at 19:00 and **false at 07:00**: the whole marker-reading block is gated on `if ($Mode -eq 'Evening')`, so `$CloseDayFailed` is always false in a morning run and section 6b-2 never fires. Before this PR the morning brief's *only* close-failure signal was the staleness banner, and my change removed it for two days. Saeed agreed to delay the staleness alarm; he was not told that also blinded the morning brief.
+  The note no longer says **"Normal so far"** — in this branch a due close has provably been missed, and in Morning mode the script has not even looked at the marker, so asserting normality is a claim it has not earned. It now reads: *"nothing new logged for 2 working days, and a session close has come and gone since. Not shouting yet; this becomes a warning at 3 working days."*
+
+- **Health check bug found in the same review — a failed close was reported to Saeed as healthy.** `health_check.ps1` tested only `Test-Path` on the close marker. A close that RAN AND FAILED still writes a marker (first line `FAILED|` instead of `CLOSED|`), so the morning brief said *"Last working day closed properly"* the morning after the evening brief had shouted that it had not. Two of Saeed's own messages contradicting each other is how a warning stops being believed. It now requires a `CLOSED|` line and reports the reason from `FAILED-DETAIL` when there is one.
+
+- **F3 — my new comment block had been inserted between the `$PausedNagAfterHours` explanation and its assignment**, so the next reader would attach the pause comment to the staleness threshold. Moved.
+
+**Harness rebuilt.** The reviewer was right that the old one could not have caught either defect: it never varied `$Mode`, never modelled `$CloseDayFailed`, ran every scenario against a single fixed Tuesday, and stubbed the helpers. It now uses the **real** `Get-LastExpectedCloseTime` and `Get-CloseTimeNBack` from the live file and runs a real weekend clock.
+
+**Files changed:** scripts/daily/combined_brief.ps1, scripts/daily/health_check.ps1, CHANGELOG.md
+**Tests run:** PowerShell 7.4.6. Staleness **16/16** — including the reviewer's exact Thursday-log/Sunday-brief scenario (now quiet, was loud), the full Thursday→Tuesday walk, both sides of the third-close boundary, no-log-ever (loud), unreadable folder (loud), and three assertions on the note's wording (does not claim normality, names the missed close, names the threshold). Health check **6/6** — CLOSED marker OK, FAILED marker now PROBLEM, reason surfaced, no dangling text when there is no detail, missing marker still PROBLEM. Both scripts parse clean.
+**Limitation:** not run on Windows PowerShell 5.1.
+**Open for Saeed:** (1) confirm "three days" means three **working** days — under this fix a Monday-start outage goes loud on Thursday rather than Wednesday; (2) whether the **morning** brief should carry the close-failure banner at all. That is a behaviour change beyond this PR and is not being folded in silently.
+**Saeed notified:** This session.
