@@ -317,17 +317,32 @@ foreach ($repo in @(@{N="Avamed"; P=$RepoRoot}, @{N="St Marks"; P=$SmRepo})) {
             # So: read the answer the close already worked out an hour earlier and
             # wrote into its marker. No network call, no stale local state, and one
             # source of truth instead of two that can disagree.
-            $MarkerSaid = ""
+            # READ THE MOST RECENT MARKER ONLY.
+            # The first version scanned the newest three and broke on the first
+            # PUSH-FAILED hit. That reports a cause that may be days out of date:
+            # Monday rejected, fixed by hand Tuesday, Tuesday merely guard-held -
+            # and Wednesday's brief would still say "behind GitHub, run git pull",
+            # which over a dirty dashboard\ (the LIVE production folder) is
+            # actively dangerous advice, while also escalating a healthy guard hold
+            # to PROBLEM. A stale answer is worse than no answer here.
+            # Security Agent H1, 2026-09-09.
+            $MarkerSaid   = ""
+            $MarkerHeld   = $false
             try {
                 $StateDir = Join-Path $RepoRoot "logs\close-state"
                 if (Test-Path $StateDir) {
-                    $recent = @(Get-ChildItem $StateDir -Filter "*-close.txt" -File -ErrorAction SilentlyContinue |
-                                Sort-Object LastWriteTime -Descending | Select-Object -First 3)
-                    foreach ($mk in $recent) {
-                        $hit = @(Get-Content $mk.FullName -ErrorAction SilentlyContinue |
-                                 Where-Object { $_ -like "PUSH-FAILED|*" -and $_ -like "*$($repo.N)*" }) |
-                               Select-Object -First 1
-                        if ($hit) { $MarkerSaid = (([string]$hit).Split("|", 3))[2]; break }
+                    $latest = @(Get-ChildItem $StateDir -Filter "*-close.txt" -File -ErrorAction SilentlyContinue |
+                                Sort-Object LastWriteTime -Descending | Select-Object -First 1)
+                    foreach ($mk in $latest) {
+                        foreach ($line in @(Get-Content $mk.FullName -ErrorAction SilentlyContinue)) {
+                            # Compare the PROJECT FIELD, not the whole line: a future
+                            # reason string containing the other project's name would
+                            # otherwise cross-match silently. Security Agent L1.
+                            $f = ([string]$line).Split("|", 3)
+                            if ($f.Count -lt 2 -or $f[1] -notlike "*$($repo.N)*") { continue }
+                            if ($f[0] -eq "PUSH-FAILED" -and $f.Count -ge 3 -and -not $MarkerSaid) { $MarkerSaid = $f[2] }
+                            if ($f[0] -eq "PUSH-HELD") { $MarkerHeld = $true }
+                        }
                     }
                 }
             } catch { }
@@ -356,7 +371,7 @@ foreach ($repo in @(@{N="Avamed"; P=$RepoRoot}, @{N="St Marks"; P=$SmRepo})) {
             # PROBLEM - that is the 2026-09-04 false-alarm shape again. Only a
             # rejected, unreachable or unexplained failure earns the top of the
             # brief. Security Agent M2.
-            $guardHolding = (-not $MarkerSaid) -and (@($dirty).Count -gt 0)
+            $guardHolding = (-not $MarkerSaid) -and ($MarkerHeld -or (@($dirty).Count -gt 0))
             $lvl = if ($guardHolding) { "WATCH" }
                    elseif ([int]$unpushed -ge 3 -or $unpushedAgeHrs -gt 48) { "PROBLEM" }
                    else { "WATCH" }

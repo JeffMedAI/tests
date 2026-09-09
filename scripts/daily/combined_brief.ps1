@@ -1132,7 +1132,7 @@ $FailBody
         $ExistingReport = Get-Utf8FileText -Path $ReportPath
         Set-Content -Path $ReportPath -Value ($FailBanner + $ExistingReport) -Encoding UTF8
     }
-    Write-Log "PUSH FAILED banner added for $(@($FailLines).Count) project(s)"
+    Write-Log "PUSH FAILED banner added - $(@($FailLines).Count) line(s), $(@(@($FailedPushSignals) | ForEach-Object { ([string]$_.Sig).Split('|',3)[1] } | Select-Object -Unique).Count) project(s)"
     Write-Host $FailBanner
 }
 

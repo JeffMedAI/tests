@@ -946,11 +946,19 @@ if ($DryRun) {
                 # git translates its messages, and the classifier below matches
                 # English. Force the C locale for this one call so a non-English
                 # Windows does not silently fall through to the generic reason.
-                $PrevLcAll = $env:LC_ALL
+                # $PrevLcAll is restored in the finally below, not here: if the
+                # push line throws, an inline restore is skipped and LC_ALL=C leaks
+                # to the rest of the process - including back into combined_brief.ps1,
+                # which invoked this script in-process. Security Agent L3.
+                $script:PrevLcAll = $env:LC_ALL
                 $env:LC_ALL = "C"
-                $PushOut = @(git push origin HEAD 2>&1) -join " "
-                $env:LC_ALL = $PrevLcAll
-                if ($LASTEXITCODE -ne 0) {
+                $PushOut  = @(git push origin HEAD 2>&1) -join " "
+                # Capture it NOW. Any native command below - git rev-parse included -
+                # resets $LASTEXITCODE, and the generic reason would then report
+                # "exit 0" on a failed push: a banner arguing with itself, inside the
+                # alarm path. Security Agent M1, 2026-09-09.
+                $PushExit = $LASTEXITCODE
+                if ($PushExit -ne 0) {
                     # DO NOT throw. A throw here lands in the catch below, which
                     # only writes to a log file nobody reads, and the close then
                     # reports itself as a success. That is exactly how 7-9 Sep 2026
@@ -974,7 +982,7 @@ if ($DryRun) {
                         } elseif ($PushOut -match 'Authentication|denied|403|401') {
                             "GitHub refused the login for this computer"
                         } else {
-                            "git push failed (exit $LASTEXITCODE)"
+                            "git push failed (exit $PushExit)"
                         }
                     Write-Log "PUSH FAILED: $PushFailReason"
                     Write-Log "  git said: $PushOut"
@@ -994,6 +1002,7 @@ if ($DryRun) {
         Write-Log "WARNING: git commit/push problem - $_"
     } finally {
         $ErrorActionPreference = $PrevEAP
+        if (Test-Path variable:script:PrevLcAll) { $env:LC_ALL = $script:PrevLcAll }
     }
 
     # Evening mode: create restore tag for this day's state
