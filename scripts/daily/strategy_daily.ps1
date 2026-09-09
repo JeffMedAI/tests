@@ -871,6 +871,13 @@ if ($DryRun) {
     # computer; only one of them is intentional. Added 2026-09-09.
     $PushFailed = $false
     $PushFailReason = ""
+    # Initialised HERE so the finally can restore it unconditionally. The earlier
+    # version set $script:PrevLcAll inside the try and guarded the restore with
+    # Test-Path variable:script:PrevLcAll - which relies on a scope-qualified
+    # provider path resolving the way we assume on PowerShell 5.1, and nobody has
+    # run 5.1 to check. Do not leave an unverified assumption in the alarm path
+    # when two lines remove the question. Security Agent L-A, 2026-09-09.
+    $PrevLcAll = $env:LC_ALL
     # git writes ordinary NOTICES to stderr - "LF will be replaced by CRLF" is
     # the common one, and push progress is another. Under
     # $ErrorActionPreference = "Stop", `2>&1` promotes any of them to a
@@ -950,7 +957,6 @@ if ($DryRun) {
                 # push line throws, an inline restore is skipped and LC_ALL=C leaks
                 # to the rest of the process - including back into combined_brief.ps1,
                 # which invoked this script in-process. Security Agent L3.
-                $script:PrevLcAll = $env:LC_ALL
                 $env:LC_ALL = "C"
                 $PushOut  = @(git push origin HEAD 2>&1) -join " "
                 # Capture it NOW. Any native command below - git rev-parse included -
@@ -1002,7 +1008,7 @@ if ($DryRun) {
         Write-Log "WARNING: git commit/push problem - $_"
     } finally {
         $ErrorActionPreference = $PrevEAP
-        if (Test-Path variable:script:PrevLcAll) { $env:LC_ALL = $script:PrevLcAll }
+        $env:LC_ALL = $PrevLcAll
     }
 
     # Evening mode: create restore tag for this day's state

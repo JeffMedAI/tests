@@ -331,8 +331,13 @@ foreach ($repo in @(@{N="Avamed"; P=$RepoRoot}, @{N="St Marks"; P=$SmRepo})) {
             try {
                 $StateDir = Join-Path $RepoRoot "logs\close-state"
                 if (Test-Path $StateDir) {
+                    # Sort by NAME, not LastWriteTime. The files are
+                    # yyyy-MM-dd-close.txt, so name order IS date order, and it
+                    # survives a restored logs\ folder or an antivirus touch
+                    # reordering mtimes - which would otherwise hand this the wrong
+                    # "most recent" marker and reopen H1. Security Agent L-B.
                     $latest = @(Get-ChildItem $StateDir -Filter "*-close.txt" -File -ErrorAction SilentlyContinue |
-                                Sort-Object LastWriteTime -Descending | Select-Object -First 1)
+                                Sort-Object Name -Descending | Select-Object -First 1)
                     foreach ($mk in $latest) {
                         foreach ($line in @(Get-Content $mk.FullName -ErrorAction SilentlyContinue)) {
                             # Compare the PROJECT FIELD, not the whole line: a future
