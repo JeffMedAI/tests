@@ -810,3 +810,84 @@ banner. Synthetic marker deleted afterwards.
 **Tests run:** H1 re-verified after the sort change with deliberately scrambled mtimes — correct marker still chosen, stale cause still gone, guard hold still WATCH. M1 re-verified: unmatched failure reports exit 128. Monday's 9-scenario suite: 9/9. Parse clean on all four scripts.
 **Standing gap, unchanged and approved on the code rather than the testing:** nothing has run on Windows PowerShell 5.1. Three -DryRun evening cases should be run there before the alarm path is trusted.
 **Saeed notified:** This session
+
+---
+
+## 2026-09-09 — "Did Not Reach GitHub" Warning Now Retires Itself Once the Work Arrives
+**Agent:** Lead Agent
+**Approved by:** Saeed ("YES", 2026-09-09) — asked and answered explicitly.
+**Why this is different from the close-failure banner.** Saeed's standing instruction (2026-09-07) is that a close failure keeps reminding him until it is fixed, and that is safe because the claim stays true until the close is re-run. The push-failure banner is not like that: "Friday's work did not reach GitHub" becomes FALSE the moment a later push succeeds. Read on a Saturday evening, the brief reads Friday's marker — so if Saturday's 07:00 run pushed successfully, Friday's work IS on GitHub and the banner would be repeating something untrue. A warning that repeats a falsehood is exactly how Saeed learns to stop reading warnings, which is the failure this whole week's work exists to prevent. Raised by the Security Agent as M2 on PR #4; I declined to guess Saeed's preference into the code and put it to him instead.
+**How it works.** strategy_daily.ps1 stamps `logs\close-state\last-push-ok-<project>.txt` on every successful push, morning or evening. combined_brief.ps1 checks that stamp against the LastWriteTime of the marker that recorded the failure: if the successful push is NEWER, the failure is history and the signal is dropped. Fixed close-state path on purpose — the brief reads one folder for both projects, so the stamp must land where it looks; same hardcoding as the existing $_CombinedScript path. logs\ is gitignored, so it never reaches the repo.
+**Fails toward shouting, not silence.** If the stamp is missing, unreadable or unparseable, the warning is SHOWN. A bookkeeping problem must never be able to suppress an alarm — that inversion is what made the original bug so damaging.
+**Files changed:** scripts/daily/strategy_daily.ps1, scripts/daily/combined_brief.ps1, CHANGELOG.md
+**Tests run:** PowerShell 7.4.6, four scenarios against the real extracted code — (1) failure recorded, no success since → SHOWN; (2) last success predates the failure → SHOWN; (3) Saturday 07:00 push succeeded after Friday's failure → retired, silent; (4) corrupt stamp → SHOWN, failing safe. Monday's 9-scenario staleness suite: 9/9. All four brief paths still reach the end (the B1 regression check). Parse clean on all four scripts.
+**Not yet reviewed or merged** — Security Agent review pending, and Saeed must pull after any merge.
+**First evidence from the real machine, same day:** Saeed ran `combined_brief.ps1 -Mode Evening -DryRun` on the Windows PC under PowerShell 5.1 after pulling PR #4. It started, read the session logs and reported staleness correctly. The tail of that run has not been seen yet, so PR #4's alarm path is partially — not fully — evidenced on 5.1.
+**Saeed notified:** This session
+
+---
+
+## 2026-09-09 — Push-Failure Retirement Hardened After Security Review (PR #5, round 2)
+**Agent:** Lead Agent (Claude Code session), reviewed by Security Agent
+**Approved by:** Saeed approved the feature ("YES" — the "did not reach GitHub" warning should stop once fixed). The hardening below is the Security Agent's conditions on that approved change, not new scope.
+**Description:** The first version retired the warning on a bare timestamp. Security review found the evidence was weaker than the claim. Six changes:
+
+- **H1 — a restore-tag failure is now its own signal (`TAG-PUSH-FAILED`) and is never retirable.** Previously it shared the `PUSH-FAILED` name, so a later *branch* push retired it — even though that push does not push the tag. Net effect would have been a day with no remote restore point, no alarm, and the local-only tag pruned away by the next clean close. Its wording also claimed "nothing from today has left this computer", which is false in the exact case that produces it alone (the branch push succeeded).
+- **H2 — retirement now requires proof, not inference.** `PUSH-FAILED` carries the failed commit's SHA; the success stamp carries the pushed SHA; the brief retires only when `git branch -r --contains <failed sha>` shows that commit on a remote branch. A timestamp alone could be satisfied by a push of a *different* branch (the close runs `git push origin HEAD`) or by a `git reset --hard` that discarded the work entirely — both would have silenced a warning that was still true.
+- **M1 — a future-dated stamp no longer suppresses the alarm.** A clock set forward during a successful push would otherwise have killed the warning until real time caught up. Now logged and the warning kept.
+- **M2 — retirement demotes, it does not delete.** A retired failure prints one plain "NOW FIXED — no action needed" line naming the day, the project and when the work actually arrived. The loud repeated banner stops, per Saeed's instruction; the record does not vanish. If the retirement check is ever wrong, deleting would have left total silence in the one place Saeed reads — and even when right, a banner that simply stops appearing reads exactly like the alarm having broken.
+- **L1 — `[datetime]::ParseExact` with InvariantCulture** instead of `Parse`. Under a non-Gregorian default calendar `Parse` reads the stamp centuries into the future, which combined with the comparison above would have retired every warning permanently.
+- **Banner wording** — the headline and closing paragraph are now conditional. When only the restore tag failed, the banner says so and states plainly that the work itself IS on GitHub. Fixing the signal text while leaving the wrapper overstating would have put the same defect straight back.
+
+**Known and accepted (Security Agent L2):** only a *scripted* push writes a success stamp. If Saeed or an agent fixes a rejected push by running `git push` by hand, the banner keeps shouting until the next scripted push succeeds — and on a day with nothing to commit, the push is skipped entirely, so it can persist for days. This is the safe error direction and is deliberate. **Do not "fix" it by loosening the check.**
+
+**Backwards compatibility:** markers written before today have no SHA field. Those can never be proven fixed, so they keep their warning — the safe direction.
+
+**Files changed:** scripts/daily/combined_brief.ps1, scripts/daily/strategy_daily.ps1, scripts/daily/session_close.ps1, scripts/daily/health_check.ps1, CHANGELOG.md
+**Tests run:** PowerShell 7.4.6 on Linux. Nine retirement scenarios against real git repositories with real remotes, 9/9 — including the three the Security Agent required: tag-failure-then-successful-branch-push (warning kept), failure-on-branch-A-then-push-of-branch-B (warning kept), future-dated stamp (warning kept). Plus: legacy 3-field signal (kept), missing stamp (kept), corrupt stamp (kept), genuine fix (retired). Banner wording verified in all three shapes (tag-only, push-only, both) — the SHA does not appear in anything Saeed reads. All four scripts parse clean. Every new variable verified declared before first use (the B1 regression guard).
+**Limitation:** not run on the Windows machine. PR #4's own brief run was confirmed complete on Windows PowerShell 5.1 by Saeed on 2026-09-09.
+**Saeed notified:** This session — awaiting his go-ahead to merge.
+
+---
+
+## 2026-09-09 — PR #5 Round 3: Two New Defects Found in the Round-2 Fix, Plus Four Hardenings
+**Agent:** Lead Agent (Claude Code session), reviewed by Security Agent (re-review of head 82689d7)
+**Approved by:** Saeed approved the underlying feature. Everything below is Security Agent conditions on it, not new scope.
+**Description:** The re-review confirmed H1, H2, M1 and L1 from round 2 were discharged and that no earlier banner was weakened — but found **two new defects introduced by the round-2 fix**, and reproduced a third attack:
+
+- **M1 (new, introduced by my own round-2 fix) — the 06:45 health check reported a restore-point reason as the cause of unpushed commits.** Adding `TAG-PUSH-FAILED` to the cause lookup meant Saeed's SYSTEM HEALTH block could read "Avamed: 3 change(s) saved here but NOT sent to GitHub. The restore point did not reach GitHub" — a line arguing with itself, with the reassuring half second. It also wrongly cleared `$guardHolding`, which could escalate a healthy push-guard hold to PROBLEM. The cause is now taken from `PUSH-FAILED` only.
+- **M2 (new) — the "NOW FIXED - no action needed" note landed at the TOP of the WhatsApp message, above every live alarm.** The blocks prepend, so the last one to run ends up highest; I added mine last. Saeed would have opened WhatsApp to a reassurance sitting on top of "WORK DID NOT REACH GITHUB". Section 6b-4 now runs first so it lands beneath all four alarms.
+- **M3 (reproduced by the reviewer) — `git branch -r --contains` searched every remote, not just origin.** Pushing the commit to a fork retired the warning while the work had never reached GitHub. Now scoped with `--list 'origin/*'`.
+- **L2 accepted — the timestamp gate has been removed entirely.** With the SHA proof in place, requiring the stamp to be newer than the marker could only ever *withhold* a retirement git had already proved correct — a false alarm on the one banner that must stay believed (for example after Saeed fixes a push by hand). Removing it also removes its own failure mode: a clock set forward can no longer suppress anything, because the stamp no longer decides. The stamp is still read, but only to say *when* the work arrived; a missing, corrupt or future-dated stamp now costs a phrase, never an alarm.
+- **L3 — a restore tag that exists locally but never reached GitHub is now retried, and re-raises its alarm if it still fails.** The close overwrites the day's marker, so a hand-run `session_close.ps1 -Force` later the same day previously erased the tag failure permanently: no remote restore point, no alarm anywhere. A `PUSH-FAILED` recurs on a retry; since H1 made `TAG-PUSH-FAILED` the only carrier of this fact, it must too.
+- **L4 — the alarm no longer claims anything it cannot know.** Both the signal text and the banner's closing paragraph used to assert "today's commits reached GitHub". That block is reached even when nothing was committed and so no push was attempted, which makes the claim false. It now speaks only about the restore point.
+- **PowerShell 5.1 hardening** — the new `git` call is wrapped in the same `$ErrorActionPreference` guard `strategy_daily.ps1` uses. Under `Stop`, a native command writing to stderr on 5.1 can terminate; the direction was safe (the catch keeps the warning) but it would have quietly disabled the check.
+
+**Files changed:** scripts/daily/combined_brief.ps1, scripts/daily/strategy_daily.ps1, scripts/daily/health_check.ps1, CHANGELOG.md
+**Tests run:** PowerShell 7.4.6 on Linux, against real git repositories with real remotes. Retirement suite expanded 9 → **11, all passing**, including the two cases the reviewer required: a commit pushed to a *fork* and never to origin (warning kept), and banner ordering with a real report file (live alarm verified above the "now fixed" note). Also added: path exists but is not a git repo (warning kept). Banner wording verified in all three shapes. All five scripts in scripts/daily/ parse clean. Declared-before-use verified for every new variable (the B1 regression guard).
+**Reviewer's verification of the harness:** confirmed the extracted block is byte-identical to the live source and the fixtures are real, not self-confirming. Standing risk noted: the harness is a copy, so it will silently stop testing the live code after the next edit.
+**Limitation:** not run on Windows PowerShell 5.1.
+**Open, for Saeed:** does `C:\JeffLocal` have any git remote other than `origin`? If it does, M3 was a live defect rather than a latent one. Not checkable from here. [UNVERIFIED — confirm before proceeding]
+**Saeed notified:** This session — awaiting his go-ahead to merge.
+
+---
+
+## 2026-09-09 — PR #5 Round 3: Security Agent Sign-Off Given
+**Agent:** Lead Agent (Claude Code session), reviewed by Security Agent (round-3 re-review of head 3c00a16)
+**Approved by:** **Security Agent sign-off GIVEN. Saeed's explicit approval still required before this reaches C:\JeffLocal\ — not a bug-fix-autonomy case, because it changes what Saeed is told about whether his work is backed up.**
+**Description:** Round-3 review found no blocking defects. Both round-2 defects (M1 health-check cause, M2 banner ordering) verified fixed; M3, L2, L3, L4 and the 5.1 guard verified. The reviewer ran six adversarial cases of its own on top of the 11 in the harness — remote renamed away from `origin` (warning kept), sha on a second remote only (warning kept), two signals in one marker (no state leak between iterations), sha on both remotes (retires correctly), legacy no-sha signal (warning kept). Two optional items taken in this commit:
+
+- **The precondition that makes the whole design sound is now written down in both files.** `strategy_daily.ps1` only attempts a push immediately after creating a commit, so the SHA in a `PUSH-FAILED` signal cannot already have been on GitHub when the push failed — which is *why* finding it there later proves it arrived. That was load-bearing and documented nowhere. A future change that pushes work not just committed (a retry loop, a catch-up push, a force-with-lease path) would silently reopen retirement-on-stale-evidence **with no test failing**. Cross-referenced comments now sit at both ends.
+- **The banner-ordering test now derives the order from the live file** instead of naming the two sections in a fixed order. As written it would have stayed green if someone reordered `combined_brief.ps1` and reintroduced M2. Verified discriminating with a negative control: forcing the wrong order makes the test fail.
+
+**STANDING CHECK FOR THIS FILE SET — the same mistake twice in one PR.** Both defects I introduced had an identical shape: a value changed at the point of **production** without checking what **consumed** it. In round 2, `-or $f[0] -eq "TAG-PUSH-FAILED"` was two tokens in a lookup, three lines above the branch that made it wrong. **When you add a value to one of these signals (`PUSH-FAILED`, `TAG-PUSH-FAILED`, `PUSH-HELD`, `CLOSED`, `FAILED`), grep every reader of that signal and read the branch each one feeds.** Recorded at the Security Agent's suggestion.
+
+**Known residuals, accepted, not blocking:**
+1. **Remote force-rewind** — push succeeds, tracking ref updates, someone rewrites GitHub history. `--contains` still answers yes and the warning retires. The single false-retire path left in the design; it pre-dates this PR and the removed timestamp gate did not catch it either.
+2. **Harness drift** — the test extracts a copy of the block, so it will silently stop testing the live code after the next edit to `combined_brief.ps1`. Named, not fixed.
+3. **`C:\JeffLocal` remote inventory** — unanswerable from this session. With `--list 'origin/*'` in place, a differently-named remote is now a *false-alarm* risk (warnings never retire) rather than a silence risk. That is the right way round.
+
+**Files changed:** scripts/daily/combined_brief.ps1, scripts/daily/strategy_daily.ps1, CHANGELOG.md
+**Tests run:** 11/11 retirement scenarios plus the banner-ordering test, all against real git repositories with real remotes; ordering test verified discriminating by negative control. Reviewer independently reproduced 11/11 and confirmed the extracted block is byte-identical to the live source. All five scripts in scripts/daily/ parse clean. StrictMode audit clean on every path.
+**Limitation:** nothing in this PR has run on Windows PowerShell 5.1. The Security Agent recommends one `-DryRun` evening run on the target machine before the first live 18:30 close.
+**Saeed notified:** This session — awaiting his explicit "approved".

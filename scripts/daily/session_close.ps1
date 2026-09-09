@@ -131,7 +131,9 @@ try {
             -Mode Evening -NoSend -ProtectPath "dashboard" -RefreshGraph 2>&1 |
             ForEach-Object { Write-Log "  [JL] $_"; $_ }
         $HeldSignals += @(@($JLOutput) | ForEach-Object { [string]$_ } | Where-Object { $_ -like "PUSH-HELD|*" })
-        $FailedPushSignals += @(@($JLOutput) | ForEach-Object { [string]$_ } | Where-Object { $_ -like "PUSH-FAILED|*" })
+        # TAG-PUSH-FAILED is a SEPARATE signal on purpose - it must reach the brief,
+        # but it must never be retirable by a branch-push stamp. Security Agent H1.
+        $FailedPushSignals += @(@($JLOutput) | ForEach-Object { [string]$_ } | Where-Object { $_ -like "PUSH-FAILED|*" -or $_ -like "TAG-PUSH-FAILED|*" })
     }
     Write-Log "Avamed close finished."
 } catch {
@@ -160,7 +162,7 @@ try {
             -ProtectPath "site" 2>&1 |
             ForEach-Object { Write-Log "  [SM] $_"; $_ }
         $HeldSignals += @(@($SMOutput) | ForEach-Object { [string]$_ } | Where-Object { $_ -like "PUSH-HELD|*" })
-        $FailedPushSignals += @(@($SMOutput) | ForEach-Object { [string]$_ } | Where-Object { $_ -like "PUSH-FAILED|*" })
+        $FailedPushSignals += @(@($SMOutput) | ForEach-Object { [string]$_ } | Where-Object { $_ -like "PUSH-FAILED|*" -or $_ -like "TAG-PUSH-FAILED|*" })
         Write-Log "St Marks close finished."
     }
 } catch {
