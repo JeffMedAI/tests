@@ -943,7 +943,13 @@ if ($DryRun) {
                 # into a loud line at the top of that evening's WhatsApp brief.
                 Write-Output "PUSH-HELD|$ProjectName|$ProtectPath|$(@($ProtectedDirty).Count)"
             } else {
+                # git translates its messages, and the classifier below matches
+                # English. Force the C locale for this one call so a non-English
+                # Windows does not silently fall through to the generic reason.
+                $PrevLcAll = $env:LC_ALL
+                $env:LC_ALL = "C"
                 $PushOut = @(git push origin HEAD 2>&1) -join " "
+                $env:LC_ALL = $PrevLcAll
                 if ($LASTEXITCODE -ne 0) {
                     # DO NOT throw. A throw here lands in the catch below, which
                     # only writes to a log file nobody reads, and the close then
@@ -953,9 +959,16 @@ if ($DryRun) {
                     # Saeed found it by hand two days later. Instead, name the
                     # failure and hand it to the brief, the same way PUSH-HELD does.
                     $PushFailed = $true
+                    # The branch this machine is ACTUALLY on. The push above is
+                    # `git push origin HEAD` - branch-agnostic on purpose - so the
+                    # advice must be too. Hardcoding "main" would tell Saeed to
+                    # merge main into whatever branch he is on and push main.
+                    # Security Agent H3, 2026-09-09.
+                    $CurBranch = (git rev-parse --abbrev-ref HEAD 2>$null)
+                    if ([string]::IsNullOrWhiteSpace($CurBranch) -or $CurBranch -eq "HEAD") { $CurBranch = "main" }
                     $PushFailReason =
                         if     ($PushOut -match 'non-fast-forward|fetch first|behind its remote') {
-                            "this computer is behind GitHub - someone else changed it. Fix: git pull --no-edit origin main, then git push origin main"
+                            "this computer is behind GitHub - someone else changed it. Fix: git pull --no-edit origin $CurBranch, then git push origin $CurBranch"
                         } elseif ($PushOut -match 'could not resolve host|unable to access|Connection|timed out|network') {
                             "could not reach GitHub - check the internet connection"
                         } elseif ($PushOut -match 'Authentication|denied|403|401') {
@@ -998,12 +1011,28 @@ if ($DryRun) {
             $TagExists = git tag -l $RestoreTag 2>&1
             if (-not $TagExists) {
                 git tag $RestoreTag 2>&1 | Out-Null
+                # CHECK THE EXIT CODE. This used to log "Restore tag created"
+                # unconditionally - a false success statement inside the very alarm
+                # path being hardened. In the network and auth failure classes the
+                # tag push fails too, and then NOTHING has left this machine.
+                # Security Agent M3, 2026-09-09.
                 git push origin $RestoreTag 2>&1 | Out-Null
-                Write-Log "Restore tag created: $RestoreTag"
+                if ($LASTEXITCODE -ne 0) {
+                    $PushFailed = $true
+                    Write-Log "WARNING: restore tag $RestoreTag was created locally but NOT pushed."
+                    Write-Output "PUSH-FAILED|$ProjectName|the restore point for today also did not reach GitHub - nothing from today has left this computer"
+                } else {
+                    Write-Log "Restore tag created and pushed: $RestoreTag"
+                }
 
-                # Keep only 3 most recent restore tags
+                # Keep only 3 most recent restore tags.
+                # NOT while a push is failing: pruning the only remote anchors
+                # during a save outage is a bad instinct to leave in the code, even
+                # though the remote deletes would themselves fail. Security Agent M3.
                 $AllRestoreTags = @(git tag -l "restore/*" 2>&1 | Where-Object { $_ -match "^restore/" } | Sort-Object)
-                if ($AllRestoreTags.Count -gt 3) {
+                if ($PushFailed) {
+                    Write-Log "Skipping restore-tag prune - a push has failed, keeping every remote anchor."
+                } elseif ($AllRestoreTags.Count -gt 3) {
                     $ToDelete = $AllRestoreTags | Select-Object -First ($AllRestoreTags.Count - 3)
                     foreach ($oldTag in $ToDelete) {
                         git tag -d $oldTag 2>&1 | Out-Null

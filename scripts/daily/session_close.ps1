@@ -188,7 +188,7 @@ if ($DryRun) {
     $MarkerLines += @($HeldSignals)
     $MarkerLines += @($FailedPushSignals)
     Set-Content -Path $StateFile -Value $MarkerLines -Encoding UTF8
-    Write-Log "Marker written: $StateFile ($(@($HeldSignals).Count) push-held signal(s))"
+    Write-Log "Marker written: $StateFile ($(@($HeldSignals).Count) push-held, $(@($FailedPushSignals).Count) push-FAILED signal(s))"
 
     # Keep the state folder from growing forever - 30 days is plenty for tracing.
     Get-ChildItem $StateDir -Filter "*-close.txt" -File -ErrorAction SilentlyContinue |

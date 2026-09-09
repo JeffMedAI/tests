@@ -306,22 +306,60 @@ foreach ($repo in @(@{N="Avamed"; P=$RepoRoot}, @{N="St Marks"; P=$SmRepo})) {
             # behind GitHub. Saeed read that sentence and would have gone looking
             # at the push guard, which was not involved. Do not guess a cause into
             # a message Saeed acts on. Rewritten 2026-09-09.
-            $behind = & git -C $repo.P rev-list --count "HEAD..@{u}" 2>$null
-            $dirty  = @(& git -C $repo.P status --porcelain -- $ProtectFor[$repo.N] 2>$null |
-                        Where-Object { "$_".Trim() -ne "" })
+            # WHERE THE CAUSE COMES FROM. The first version computed it from
+            # `rev-list HEAD..@{u}`, which reads the LOCAL remote-tracking ref.
+            # Nothing in scripts\daily\ ever fetches, and a rejected push does not
+            # update that ref - so on the exact 7-9 Sep 2026 outage it returned 0,
+            # fell through, and blamed the push guard. That is the guess-the-wrong-
+            # cause defect this whole change exists to remove, reintroduced with a
+            # more confident tone. Security Agent B2, 2026-09-09.
+            #
+            # So: read the answer the close already worked out an hour earlier and
+            # wrote into its marker. No network call, no stale local state, and one
+            # source of truth instead of two that can disagree.
+            $MarkerSaid = ""
+            try {
+                $StateDir = Join-Path $RepoRoot "logs\close-state"
+                if (Test-Path $StateDir) {
+                    $recent = @(Get-ChildItem $StateDir -Filter "*-close.txt" -File -ErrorAction SilentlyContinue |
+                                Sort-Object LastWriteTime -Descending | Select-Object -First 3)
+                    foreach ($mk in $recent) {
+                        $hit = @(Get-Content $mk.FullName -ErrorAction SilentlyContinue |
+                                 Where-Object { $_ -like "PUSH-FAILED|*" -and $_ -like "*$($repo.N)*" }) |
+                               Select-Object -First 1
+                        if ($hit) { $MarkerSaid = (([string]$hit).Split("|", 3))[2]; break }
+                    }
+                }
+            } catch { }
+
+            $dirty = @(& git -C $repo.P status --porcelain -- $ProtectFor[$repo.N] 2>$null |
+                       Where-Object { "$_".Trim() -ne "" })
             $why =
-                if     ($behind -and [int]$behind -gt 0) {
-                    "This computer is $behind change(s) BEHIND GitHub, so it is being refused. Fix: git pull --no-edit origin main, then git push origin main"
-                } elseif (@($dirty).Count -gt 0) {
+                if     ($MarkerSaid) { $MarkerSaid }
+                elseif (@($dirty).Count -gt 0) {
                     "The push guard is holding it: $(@($dirty).Count) unfinished file(s) in $($ProtectFor[$repo.N])\. Finish or undo them and the next close sends it."
                 } else {
-                    "Reason unclear - check scripts\daily\last_run.log for the last push attempt."
+                    "Reason not recorded - check scripts\daily\last_run.log for the last push attempt."
                 }
 
-            # Escalate by age. One day is a note; three days is the shape of the
-            # 11-19 Aug 2026 outage and belongs in front of Saeed, not below four
-            # routine case counts. Saeed's instruction 2026-09-09.
-            $lvl = if ([int]$unpushed -ge 3 -or $ageHrs -gt 48) { "PROBLEM" } else { "WATCH" }
+            # ESCALATE ON THE RIGHT CLOCK. $ageHrs is the age of the LAST commit,
+            # which on a repo committing twice a day is always small - the old
+            # `-or $ageHrs -gt 48` could therefore never fire for its stated reason.
+            # Measure the age of the OLDEST UNPUSHED commit instead. Security Agent M1.
+            $oldestUnpushed = @(& git -C $repo.P log --format=%ct "@{u}..HEAD" 2>$null) | Select-Object -Last 1
+            $unpushedAgeHrs = if ($oldestUnpushed) {
+                [int]((Get-Date).ToUniversalTime() - [datetimeoffset]::FromUnixTimeSeconds([long]$oldestUnpushed).UtcDateTime).TotalHours
+            } else { 0 }
+
+            # A push the GUARD is holding is the system working as designed, and
+            # Saeed already knows about the unfinished work. Never escalate that to
+            # PROBLEM - that is the 2026-09-04 false-alarm shape again. Only a
+            # rejected, unreachable or unexplained failure earns the top of the
+            # brief. Security Agent M2.
+            $guardHolding = (-not $MarkerSaid) -and (@($dirty).Count -gt 0)
+            $lvl = if ($guardHolding) { "WATCH" }
+                   elseif ([int]$unpushed -ge 3 -or $unpushedAgeHrs -gt 48) { "PROBLEM" }
+                   else { "WATCH" }
             Add-Finding $lvl "Saved work" "$($repo.N): $unpushed change(s) saved here but NOT sent to GitHub. $why"
         }
         if ($ageHrs -gt 72) {
