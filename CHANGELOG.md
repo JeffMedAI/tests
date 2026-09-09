@@ -665,3 +665,74 @@ banner. Synthetic marker deleted afterwards.
 **Merged to main.**
 **Remaining debt, all agreed non-gating:** L1 log noise on the unreachable path; a catch-up brief filed under the day it ran rather than the day it reports on; a false alarm if the 18:30 close overruns 19:00 (pre-existing, present under the old code too); and the 19:00 task's absence from scripts/register_scheduled_tasks.ps1 — now a documentation gap only, since H5 removed the code's dependence on catch-up behaviour. [UNVERIFIED — confirm before proceeding] Awaiting Saeed: Get-ScheduledTask -TaskPath "\JeffLocal\"
 **Saeed notified:** This session
+
+---
+
+## 2026-09-07 — 19:00 Task Added to the Setup Script + Weekend Reminder Decision Recorded
+**Agent:** Lead Agent
+**Approved by:** Saeed (explicit "YES" to both, 2026-09-07)
+**Description:** Closes the governance gap the Security Agent raised in three consecutive reviews, and records Saeed's decision on repeated close-failure reminders.
+- **The 19:00 evening brief task is now in scripts/register_scheduled_tasks.ps1.** It was the only JeffLocal scheduled job missing from it, so rebuilding a machine from that script produced a system with no evening brief — and the evening brief is the thing that tells Saeed a session close failed. All four tasks in CLAUDE.md's schedule table are now present in the script.
+- **Task definition backup added, before anything is overwritten.** Every Register-ScheduledTask in that script uses -Force, which replaces a live task outright. A task tuned by hand on the machine would have been silently reverted with no record of what it was. The script now exports every existing \JeffLocal\ task to XML under logs\task-backups\<timestamp>\ first, and prints where. A failed backup warns loudly but does not block registration. logs\ is gitignored so the backups never reach the repo.
+- **Saeed's decision recorded in CLAUDE.md:** a close failure keeps reminding him on Saturday and Sunday until it is fixed. Deliberate repetition, not a bug — safe only because each reminder now names the day it is about.
+**Files changed:** scripts/register_scheduled_tasks.ps1, CLAUDE.md, CHANGELOG.md
+**Tests run:** PowerShell 7.4.6 parse check clean. Cross-checked every -TaskName in the script against CLAUDE.md's scheduled-task table — all four now present.
+**NOT TESTED, and this is the important caveat:** the script uses Windows-only cmdlets (Get-ScheduledTask, Export-ScheduledTask, Register-ScheduledTask) which cannot run on this Linux session at all. Only the syntax has been checked. Nothing has been executed.
+**[UNVERIFIED — confirm before proceeding] The 19:00 task's settings are RECONSTRUCTED**, from its sibling tasks and from CLAUDE.md, not read off the live machine. Because of -Force, running this script would replace the live task with exactly what is written. If the real task differs — different script, arguments or retry policy — its behaviour would change. The new backup block captures the live definition first so any difference is visible and reversible. One command settles it and it has now been asked for four times: Get-ScheduledTask -TaskPath "\JeffLocal\"
+**Risk note:** merging this changes nothing by itself. register_scheduled_tasks.ps1 is a run-once-by-hand script, not scheduled — no behaviour changes until someone runs it as Administrator.
+**Saeed notified:** This session
+
+---
+
+## 2026-09-07 — 19:00 Task Definition Corrected Against the Live Machine
+**Agent:** Lead Agent
+**Trigger:** Saeed ran Get-ScheduledTask on the Windows machine and sent the output, settling the [UNVERIFIED] flag raised in the previous entry.
+**Finding — the reconstruction was wrong, and would have degraded the job it was meant to reproduce:**
+- **ExecutionTimeLimit: live task allows PT1H (1 hour); the block said 25 minutes.** combined_brief.ps1 makes several Ollama calls at up to 90s each across two projects. A 25-minute cap could have killed the evening brief mid-run — the message truncated or not sent at all. Since register_scheduled_tasks.ps1 registers with -Force, running it would have silently applied that cap to the job carrying the close-failure alarm. Corrected to 1 hour.
+- **Arguments: the block added -NoProfile and -WindowStyle Hidden, which the live task does not use.** Removed. This script exists to reproduce the machine, not to redesign it; unrequested changes to the alarm-carrying job are exactly what the -Force overwrite makes dangerous.
+**Confirmed matching:** task name, powershell.exe, the -File path, -Mode Evening, StartWhenAvailable True, MultipleInstances IgnoreNew, RestartCount 0. All eight \JeffLocal\ tasks exist, the phantom "JeffLocal - Health Check" is Disabled as this script intends, and no name drift was found — so there was never a duplicate-task or double-WhatsApp risk.
+**Still [UNVERIFIED — confirm before proceeding]:** the live task's trigger, battery and network settings, and run-as account were not in the output. The settings block now sets only what has been seen and leaves the rest to cmdlet defaults, which may still differ. Export-ScheduledTask on the machine prints the full definition and would close this out.
+**Wider caution added to the top of the file:** only Task 2c has been checked against the machine. Every other block in that script was written from intent, not read off the live task, and the 2c experience shows that is not the same thing. Anyone running this script should compare each block first.
+**Files changed:** scripts/register_scheduled_tasks.ps1, CHANGELOG.md
+**Tests run:** PowerShell 7.4.6 parse check clean. The script itself remains untestable here — Windows-only cmdlets, nothing executed.
+**Saeed notified:** This session
+
+---
+
+## 2026-09-07 — 19:00 Task Reconciled Against Its Full Exported Definition
+**Agent:** Lead Agent
+**Trigger:** Saeed ran Export-ScheduledTask and sent the complete XML, closing the last [UNVERIFIED] flags on this block.
+**Third and most consequential difference found — privilege elevation:**
+- **The live task has NO RunLevel element, which means LeastPrivilege: it runs UNELEVATED as the interactive user (LogonType InteractiveToken).** The block carried -RunLevel Highest, copied from its sibling tasks. Running the script would have elevated a job that has run unelevated for months — changing its security token, its environment, and what it can reach — for no reason anyone asked for. Removed.
+- Also confirmed: omitting -User is correct. It registers under whoever runs the script with InteractiveToken, matching the live task. The live UserId is a machine-specific SID; hardcoding it would break on any rebuilt machine, which is the exact scenario this script exists for. Not committed to the repo either way.
+**Everything else now confirmed matching:** trigger (CalendarTrigger, ScheduleByDay, DaysInterval 1, 19:00 — i.e. daily), ExecutionTimeLimit PT1H, MultipleInstances IgnoreNew, StartWhenAvailable true, and the battery/idle/scheduling-engine values, which are all cmdlet defaults and so are deliberately left unset rather than restated.
+**One intentional departure, recorded so it is not "corrected" back:** the Description text. The live one reads "Evening session-close brief (7pm). Built from session logs + PROJECT_MEMORY, plain English for Saeed." — written before 2026-09-04 and now misleading, because this task performs no close. Display text only; affects nothing that runs.
+**Running total on this one block: three defects** (time limit, invented switches, privilege elevation) in a task definition written from intent by someone who believed it was low-risk. The file header now says so plainly, and notes that the other seven blocks all carry -RunLevel Highest with nobody having confirmed any of them runs elevated.
+**Files changed:** scripts/register_scheduled_tasks.ps1, CHANGELOG.md
+**Tests run:** PowerShell 7.4.6 parse check clean. Windows-only cmdlets; nothing executed.
+**Saeed notified:** This session
+
+---
+
+## 2026-09-07 — Security Review of PR #3: APPROVE WITH CONDITIONS (merge-only)
+**Agent:** Security Agent (GuardRail), acted on by Lead Agent
+**Approved by:** Saeed ("merge if security review is done", 2026-09-07)
+**Verdict:** APPROVE WITH CONDITIONS, with an explicit split the Lead Agent has taken: **the FILE is cleared to merge; the SCRIPT is NOT cleared to run.** No veto trigger fires — no patient data, credentials, auth logic, LLM-set protected fields, or change to the GDPR purge schedule. logs/ confirmed gitignored, so exported task XML (which contains the machine SID) never reaches the repo. Task 2c confirmed to reproduce every element quoted from the live export.
+**Applied in the merge commit:**
+- Marked the script *** DO NOT RUN THIS SCRIPT YET *** in its header, with the three open conditions written out in full.
+- L1: my own header miscounted — SIX other registrations carry -RunLevel Highest, not seven. Corrected, and noted that two of the six are the GDPR purges where a wrong setting is a compliance control failure.
+- L2: "VERIFIED against the live machine" overstated it. Now says verified against the elements QUOTED from the export, and names the seven elements that were not in what Saeed sent and so remain unchecked.
+- M2: withdrew the claim that UseUnifiedSchedulingEngine is a cmdlet default. The live XML says true; the cmdlet default may be false, which would register on the legacy engine. Marked [UNVERIFIED] with the one-line command that settles it.
+- L3 (CLAUDE.md): "Three consequences worth knowing" sat above seven bullets. Corrected — that file is read first by every session.
+- Sharpened the Description note: the intentional text difference will show in every future XML comparison FOREVER, so nobody chases it as drift.
+**OPEN — conditions on RUNNING the script, not on merging it:**
+- **H1 (high):** a failed backup currently warns and continues, then -Force overwrites the definitions it just failed to save. The Security Agent argued the opposite of my choice and is right: nothing here is urgent, and a red line scrolling past forty green ones is the same failure shape as the 45-day phantom health check. Must halt, with an explicit opt-out.
+- **H2 (high):** there is no way to register ONE task. This PR adds the very thing that makes someone want to run the script, and doing so overwrites six unverified definitions including both GDPR purges. Needs a -Only "<task>" parameter or a mandatory confirmation. **Saeed's decision needed:** should this script be able to overwrite six unverified definitions at all, or be reduced to a per-task tool?
+- **H3 (high):** the restore path has never been executed. Export-ScheduledTask emits XML declaring UTF-16; Set-Content -Encoding UTF8 writes UTF-8 with a BOM. It probably still restores, but a recovery mechanism should not rest on "probably". One export-unregister-restore round-trip on the machine settles it.
+- **M1:** a partial backup is indistinguishable from a complete one — per-task try/catch plus a count assertion needed.
+- **M3:** registering the task between 19:00 and 20:00 can fire an immediate catch-up run — a genuine double WhatsApp. Also flagged that install_watchdog_service.ps1 already registers a watchdog at the ROOT path under a different name, so two watchdog tasks exist today by exactly the name/path mismatch mechanism that would cause a double-send.
+- **M4:** -Force re-derives the principal from whoever runs the script, so it must be run interactively as Saeed's own account, never as SYSTEM or another admin.
+**Files changed:** scripts/register_scheduled_tasks.ps1, CLAUDE.md, CHANGELOG.md
+**Tests run:** PowerShell 7.4.6 parse check clean. Windows-only cmdlets; nothing executed. The Security Agent judged a parse check sufficient to merge an additive block evidenced against a real export, and insufficient to rely on the backup machinery — which is why the script is marked do-not-run.
+**Merged to main.**
+**Saeed notified:** This session

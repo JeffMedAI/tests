@@ -1,10 +1,78 @@
 # register_scheduled_tasks.ps1
 # Registers all JeffLocal scheduled tasks in Windows Task Scheduler
 # Run once as Administrator from C:\JeffLocal\
+#
+# ── HOW MUCH OF THIS FILE MATCHES THE REAL MACHINE? ──────────────────────────
+# Every Register-ScheduledTask below uses -Force, so running this file REPLACES
+# the live tasks with exactly what is written here. That is only safe where the
+# text has actually been checked against the machine.
+#
+# CHECKED 2026-09-07 against the live exported XML: Task 2c (Evening Session Close
+# Brief) only. That check found THREE differences in a block written from intent:
+# a 25-minute time limit against the live task's 1 hour (would have started
+# killing the evening brief mid-run); two invented startup switches; and
+# -RunLevel Highest, which would have ELEVATED a task that has run unelevated for
+# months. Three defects in one block nobody thought was risky.
+#
+# NOT CHECKED: every other task in this file. They were written from intent, not
+# read off the machine, and the 2c experience says that is not the same thing.
+# The other SIX registrations all carry -RunLevel Highest - nobody has confirmed
+# any of them actually runs elevated on the machine. Two of the six are the GDPR
+# weekly purges, where a wrong setting is a compliance control failure.
+# [UNVERIFIED - confirm before proceeding] Before running this script in anger,
+# compare each block against the machine:
+#   Export-ScheduledTask -TaskPath "\JeffLocal\" -TaskName "<name>"
+#
+# *** DO NOT RUN THIS SCRIPT YET *** (Security Agent, 2026-09-07)
+# Merged for review and reference only. Three conditions are open, and until they
+# are closed the backup below is NOT the safety net this header used to claim:
+#   H1  A failed backup currently WARNS AND CONTINUES, then -Force overwrites the
+#       very definitions it failed to save. Must halt instead, with an explicit
+#       opt-out, so the decision is recorded rather than defaulted.
+#   H2  There is no way to register ONE task. Running this to add the 19:00 job
+#       also overwrites six unverified definitions, the GDPR purges among them.
+#       Needs a -Only "<task name>" parameter, or a mandatory confirmation.
+#   H3  The restore path has never been executed. Export-ScheduledTask emits XML
+#       declaring UTF-16; Set-Content -Encoding UTF8 writes UTF-8 with a BOM, so
+#       the file's declaration and its bytes disagree. It probably still restores,
+#       but "probably" is not a standard to hold a recovery mechanism to. One
+#       export-unregister-restore round-trip on the machine settles it.
+# Also open: M1 a partial backup looks complete; M4 -Force re-derives the task
+# principal from whoever runs the script, so it must be run interactively as
+# Saeed's own account, never as SYSTEM or another admin.
 
 $ErrorActionPreference = "Stop"
 
 Write-Host "Registering JeffLocal scheduled tasks..." -ForegroundColor Cyan
+
+# ── BACK UP WHAT IS ALREADY THERE, BEFORE ANYTHING IS OVERWRITTEN ────────────
+# Every Register-ScheduledTask below uses -Force, which REPLACES a live task
+# outright. If a task on this machine was ever tuned by hand, running this script
+# silently reverts it and there is no record of what it used to be. That matters
+# most for the tasks carrying the alarms: a setting quietly changed back is the
+# same class of invisible failure as the 11-19 Aug 2026 outage.
+#
+# So: export every existing \JeffLocal\ task to XML first. Restore one with
+#   Register-ScheduledTask -Xml (Get-Content <file> -Raw) -TaskName "<name>" -TaskPath "\JeffLocal\"
+# logs\ is gitignored, so these never reach the repo. Added 2026-09-07.
+$BackupDir = "C:\JeffLocal\logs\task-backups\" + (Get-Date).ToString("yyyy-MM-dd-HHmmss")
+try {
+    $Existing = @(Get-ScheduledTask -TaskPath "\JeffLocal\" -ErrorAction SilentlyContinue)
+    if (@($Existing).Count -gt 0) {
+        New-Item -ItemType Directory -Path $BackupDir -Force | Out-Null
+        foreach ($t in $Existing) {
+            $safe = ($t.TaskName -replace '[\\/:*?"<>|]', '_')
+            Export-ScheduledTask -TaskName $t.TaskName -TaskPath "\JeffLocal\" |
+                Set-Content -Path (Join-Path $BackupDir "$safe.xml") -Encoding UTF8
+        }
+        Write-Host "Backed up $(@($Existing).Count) existing task(s) to $BackupDir" -ForegroundColor Yellow
+    } else {
+        Write-Host "No existing \JeffLocal\ tasks found - nothing to back up." -ForegroundColor Yellow
+    }
+} catch {
+    # A failed backup must not stop the registration, but it must be visible.
+    Write-Host "WARNING: could not back up existing tasks - $_" -ForegroundColor Red
+}
 
 # --- Task 1: Strategy Agent Daily Report (07:00) ---
 $action1 = New-ScheduledTaskAction `
@@ -108,6 +176,95 @@ Register-ScheduledTask `
     -Force
 
 Write-Host "Registered: JeffLocal - Weekday Session Close 1830 (Mon-Fri 18:30)" -ForegroundColor Green
+
+# --- Task 2c: Evening Session Close Brief (19:00, daily) ---
+# ADDED 2026-09-07, Saeed's instruction. This was the ONLY JeffLocal scheduled job
+# missing from this script, so rebuilding a machine from here produced a system
+# with no evening brief - and the evening brief is what tells Saeed a session close
+# failed. The gap was found by the Security Agent during the PR #2 review.
+#
+# It sends the message ONLY. Since 2026-09-04 it performs no close: it reads the
+# marker the 18:30 close leaves at logs\close-state\, reports on the last close
+# that fell due, and shouts if that close did not complete. See CLAUDE.md,
+# "SESSION END PROTOCOL".
+#
+# VERIFIED 2026-09-07 against the elements QUOTED from the live exported XML
+# (Saeed ran Get-ScheduledTask and Export-ScheduledTask and sent both). Every
+# element seen was compared and matches. Elements NOT in what was sent - Enabled,
+# Hidden, AllowHardTerminate, RunOnlyIfIdle, Priority, AllowStartOnDemand,
+# WakeToRun - remain unchecked. The action, arguments and settings below are
+# copied from the real task, NOT reconstructed. My first reconstruction was wrong in a
+# way that would have degraded the job:
+#   - ExecutionTimeLimit was 25 minutes; the live task allows 1 HOUR. The brief
+#     makes several Ollama calls at up to 90s each across two projects, so a
+#     25-minute cap could have killed the evening message mid-run. Corrected.
+#   - It added -NoProfile and -WindowStyle Hidden, which the live task does not
+#     use. Removed: this script exists to REPRODUCE the machine, not to redesign
+#     it, and unrequested changes to the job carrying the alarms are exactly what
+#     the -Force overwrite makes dangerous.
+# Trailing [UNVERIFIED] items are listed above $trigger2c and $settings2c.
+#
+# -Mode Evening is required: without it combined_brief.ps1 defaults to Morning and
+# would send the wrong brief at 19:00.
+$action2c = New-ScheduledTaskAction `
+    -Execute "powershell.exe" `
+    -Argument '-NonInteractive -ExecutionPolicy Bypass -File C:\JeffLocal\scripts\daily\combined_brief.ps1 -Mode Evening'
+
+# Trigger CONFIRMED from the live XML: CalendarTrigger, ScheduleByDay,
+# DaysInterval 1, boundary 19:00 - i.e. daily at 19:00. Matches.
+# Daily, not weekdays: the brief goes out at weekends too. It explains in one line
+# that no close is scheduled on a Saturday or Sunday, while still reporting on the
+# last close that actually fell due - normally Friday's - so a Friday failure is
+# not buried by the weekend. Saeed confirmed 2026-09-07 that he wants that Friday
+# failure to keep reminding him on Saturday and Sunday until it is fixed.
+$trigger2c = New-ScheduledTaskTrigger -Daily -At "19:00"
+
+# Every value here now comes from the live task's exported XML, 2026-09-07.
+# Deliberately NOT set, because the live task carries the cmdlet's own defaults
+# and setting them explicitly would only invite drift:
+#   DisallowStartIfOnBatteries true - StopIfGoingOnBatteries true
+#   IdleSettings 10m/1h, StopOnIdleEnd true, RestartOnIdle false
+#   RestartCount 0
+# [UNVERIFIED] UseUnifiedSchedulingEngine: the live XML says true, but the cmdlet
+# default may be false, in which case this registers on the legacy engine. Settle
+# it on the machine: New-ScheduledTaskSettingsSet | Select UseUnifiedSchedulingEngine
+$settings2c = New-ScheduledTaskSettingsSet `
+    -ExecutionTimeLimit (New-TimeSpan -Hours 1) `
+    -MultipleInstances IgnoreNew `
+    -StartWhenAvailable
+
+Register-ScheduledTask `
+    -TaskName "JeffLocal - Evening Session Close Brief" `
+    -TaskPath "\JeffLocal\" `
+    -Action $action2c `
+    -Trigger $trigger2c `
+    -Settings $settings2c `
+    -Description "Sends the 19:00 evening WhatsApp brief for BOTH projects. Reports on the last session close that fell due and shouts if it did not complete. Performs no close itself since 2026-09-04. Daily." `
+    -Force
+
+Write-Host "Registered: JeffLocal - Evening Session Close Brief (daily 19:00)" -ForegroundColor Green
+
+# NOTE on the two deliberate departures from the live task, both recorded so
+# nobody "corrects" them back by accident:
+#
+# 1. NO -RunLevel Highest, unlike every other task in this file. The live task's
+#    XML has no RunLevel element at all, which means LeastPrivilege - it runs
+#    UNELEVATED, as the interactive user (LogonType InteractiveToken). Adding
+#    -RunLevel Highest would have elevated a job that has run unelevated for
+#    months, changing its token, its environment and what it can touch, for no
+#    reason anyone asked for. Reproduce, do not redesign.
+#    Also deliberately no -User: omitting it registers under whoever runs this
+#    script, with InteractiveToken, which is what the live task has. The live
+#    UserId is a machine-specific SID and hardcoding it would break on any
+#    rebuilt machine - the exact scenario this script exists for.
+#
+# 2. The Description text differs. The live one reads "Evening session-close
+#    brief (7pm). Built from session logs + PROJECT_MEMORY, plain English for
+#    Saeed." That predates 2026-09-04 and now misleads: someone reading Task
+#    Scheduler at 19:30 during an incident would conclude the close had run.
+#    Correcting text that is actively wrong is a fix, not a redesign - but note
+#    the consequence: any future XML comparison between this script and the
+#    machine will show this one difference FOREVER. Do not chase it as drift.
 
 # --- Task 3: Watchdog — continuous loop, starts at boot ---
 $action3 = New-ScheduledTaskAction `
