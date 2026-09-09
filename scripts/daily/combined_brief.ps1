@@ -719,6 +719,16 @@ if ($Mode -eq 'Evening') {
                     # disappears with it. Security Agent L2 accepted, 2026-09-09.
                     # The stamp is still read, but ONLY to say when the work arrived.
                     #
+                    # WHY "on origin" IS SUFFICIENT PROOF, and what would break it.
+                    # strategy_daily.ps1 only ever attempts a push inside
+                    # `if ($CommitExit -eq 0)`, i.e. immediately after creating a
+                    # commit - so the sha in a PUSH-FAILED signal is always seconds
+                    # old and CANNOT already have been on origin when the push
+                    # failed. Finding it on origin later therefore means it genuinely
+                    # arrived. If that precondition is ever removed over there, this
+                    # check must be tightened here in the same commit, because no
+                    # test would fail. Security Agent, 2026-09-09 round-3 review.
+                    #
                     # No sha recorded (markers written before 2026-09-09) = no proof
                     # possible = keep shouting.
                     if ($pfSha -match '^[0-9a-fA-F]{7,40}$') {

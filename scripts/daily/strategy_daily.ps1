@@ -939,6 +939,18 @@ if ($DryRun) {
 
         git commit -m "memory: $($Mode.ToLower()) brief $Today $BriefClock" 2>&1 | Out-Null
         $CommitExit = $LASTEXITCODE
+        # LOAD-BEARING PRECONDITION - DO NOT MOVE THE PUSH OUT FROM UNDER THIS.
+        # A push is only ever attempted inside this branch, i.e. immediately after
+        # a commit that was just created. That is what guarantees the sha reported
+        # in PUSH-FAILED below cannot ALREADY be on origin - and combined_brief.ps1
+        # relies on exactly that when it retires the "did not reach GitHub" warning
+        # on the evidence "this sha is now on an origin branch".
+        #
+        # If a future change pushes work that was NOT just committed here - a retry
+        # loop, a "push any unpushed work" catch-up, a force-with-lease path - that
+        # guarantee is gone and the warning could retire on stale evidence, with no
+        # test failing. Change the retirement check in combined_brief.ps1 in the
+        # same commit. Security Agent, 2026-09-09 round-3 review.
         if ($CommitExit -eq 0) {
             Write-Log "Git commit created"
             if (@($ProtectedDirty).Count -gt 0) {

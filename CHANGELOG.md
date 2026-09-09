@@ -869,3 +869,25 @@ banner. Synthetic marker deleted afterwards.
 **Limitation:** not run on Windows PowerShell 5.1.
 **Open, for Saeed:** does `C:\JeffLocal` have any git remote other than `origin`? If it does, M3 was a live defect rather than a latent one. Not checkable from here. [UNVERIFIED — confirm before proceeding]
 **Saeed notified:** This session — awaiting his go-ahead to merge.
+
+---
+
+## 2026-09-09 — PR #5 Round 3: Security Agent Sign-Off Given
+**Agent:** Lead Agent (Claude Code session), reviewed by Security Agent (round-3 re-review of head 3c00a16)
+**Approved by:** **Security Agent sign-off GIVEN. Saeed's explicit approval still required before this reaches C:\JeffLocal\ — not a bug-fix-autonomy case, because it changes what Saeed is told about whether his work is backed up.**
+**Description:** Round-3 review found no blocking defects. Both round-2 defects (M1 health-check cause, M2 banner ordering) verified fixed; M3, L2, L3, L4 and the 5.1 guard verified. The reviewer ran six adversarial cases of its own on top of the 11 in the harness — remote renamed away from `origin` (warning kept), sha on a second remote only (warning kept), two signals in one marker (no state leak between iterations), sha on both remotes (retires correctly), legacy no-sha signal (warning kept). Two optional items taken in this commit:
+
+- **The precondition that makes the whole design sound is now written down in both files.** `strategy_daily.ps1` only attempts a push immediately after creating a commit, so the SHA in a `PUSH-FAILED` signal cannot already have been on GitHub when the push failed — which is *why* finding it there later proves it arrived. That was load-bearing and documented nowhere. A future change that pushes work not just committed (a retry loop, a catch-up push, a force-with-lease path) would silently reopen retirement-on-stale-evidence **with no test failing**. Cross-referenced comments now sit at both ends.
+- **The banner-ordering test now derives the order from the live file** instead of naming the two sections in a fixed order. As written it would have stayed green if someone reordered `combined_brief.ps1` and reintroduced M2. Verified discriminating with a negative control: forcing the wrong order makes the test fail.
+
+**STANDING CHECK FOR THIS FILE SET — the same mistake twice in one PR.** Both defects I introduced had an identical shape: a value changed at the point of **production** without checking what **consumed** it. In round 2, `-or $f[0] -eq "TAG-PUSH-FAILED"` was two tokens in a lookup, three lines above the branch that made it wrong. **When you add a value to one of these signals (`PUSH-FAILED`, `TAG-PUSH-FAILED`, `PUSH-HELD`, `CLOSED`, `FAILED`), grep every reader of that signal and read the branch each one feeds.** Recorded at the Security Agent's suggestion.
+
+**Known residuals, accepted, not blocking:**
+1. **Remote force-rewind** — push succeeds, tracking ref updates, someone rewrites GitHub history. `--contains` still answers yes and the warning retires. The single false-retire path left in the design; it pre-dates this PR and the removed timestamp gate did not catch it either.
+2. **Harness drift** — the test extracts a copy of the block, so it will silently stop testing the live code after the next edit to `combined_brief.ps1`. Named, not fixed.
+3. **`C:\JeffLocal` remote inventory** — unanswerable from this session. With `--list 'origin/*'` in place, a differently-named remote is now a *false-alarm* risk (warnings never retire) rather than a silence risk. That is the right way round.
+
+**Files changed:** scripts/daily/combined_brief.ps1, scripts/daily/strategy_daily.ps1, CHANGELOG.md
+**Tests run:** 11/11 retirement scenarios plus the banner-ordering test, all against real git repositories with real remotes; ordering test verified discriminating by negative control. Reviewer independently reproduced 11/11 and confirmed the extracted block is byte-identical to the live source. All five scripts in scripts/daily/ parse clean. StrictMode audit clean on every path.
+**Limitation:** nothing in this PR has run on Windows PowerShell 5.1. The Security Agent recommends one `-DryRun` evening run on the target machine before the first live 18:30 close.
+**Saeed notified:** This session — awaiting his explicit "approved".
