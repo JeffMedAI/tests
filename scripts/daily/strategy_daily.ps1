@@ -996,6 +996,28 @@ if ($DryRun) {
                     Write-Output "PUSH-FAILED|$ProjectName|$PushFailReason"
                 } else {
                     Write-Log "Git push complete"
+                    # RECORD THE SUCCESS, so a stale failure can be retired.
+                    # Saeed's instruction 2026-09-09: the "did not reach GitHub"
+                    # banner must STOP once the work reaches GitHub. Unlike the
+                    # close-failure banner - whose claim stays true until the close
+                    # is re-run - this one becomes FALSE the moment a later push
+                    # succeeds, and a warning that repeats something untrue is how
+                    # Saeed learns to stop reading warnings.
+                    #
+                    # Fixed path on purpose: the brief reads one close-state folder
+                    # for BOTH projects, and this file must land where it looks.
+                    # Same hardcoding as the $_CombinedScript path at the top of
+                    # this script. logs\ is gitignored, so it never reaches the repo.
+                    try {
+                        $OkDir = "C:\JeffLocal\logs\close-state"
+                        if (-not (Test-Path $OkDir)) { New-Item -ItemType Directory -Path $OkDir -Force | Out-Null }
+                        $OkSlug = ($ProjectName -replace '[\\/:*?"<>|]', '_')
+                        Set-Content -Path (Join-Path $OkDir "last-push-ok-$OkSlug.txt") `
+                                    -Value (Get-Date).ToString("yyyy-MM-dd HH:mm:ss") -Encoding UTF8
+                    } catch {
+                        # Never let bookkeeping break a close that just succeeded.
+                        Write-Log "WARNING: could not record the successful push - $_"
+                    }
                 }
             }
         } elseif ($CommitExit -eq 1) {

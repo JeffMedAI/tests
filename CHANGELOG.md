@@ -810,3 +810,17 @@ banner. Synthetic marker deleted afterwards.
 **Tests run:** H1 re-verified after the sort change with deliberately scrambled mtimes — correct marker still chosen, stale cause still gone, guard hold still WATCH. M1 re-verified: unmatched failure reports exit 128. Monday's 9-scenario suite: 9/9. Parse clean on all four scripts.
 **Standing gap, unchanged and approved on the code rather than the testing:** nothing has run on Windows PowerShell 5.1. Three -DryRun evening cases should be run there before the alarm path is trusted.
 **Saeed notified:** This session
+
+---
+
+## 2026-09-09 — "Did Not Reach GitHub" Warning Now Retires Itself Once the Work Arrives
+**Agent:** Lead Agent
+**Approved by:** Saeed ("YES", 2026-09-09) — asked and answered explicitly.
+**Why this is different from the close-failure banner.** Saeed's standing instruction (2026-09-07) is that a close failure keeps reminding him until it is fixed, and that is safe because the claim stays true until the close is re-run. The push-failure banner is not like that: "Friday's work did not reach GitHub" becomes FALSE the moment a later push succeeds. Read on a Saturday evening, the brief reads Friday's marker — so if Saturday's 07:00 run pushed successfully, Friday's work IS on GitHub and the banner would be repeating something untrue. A warning that repeats a falsehood is exactly how Saeed learns to stop reading warnings, which is the failure this whole week's work exists to prevent. Raised by the Security Agent as M2 on PR #4; I declined to guess Saeed's preference into the code and put it to him instead.
+**How it works.** strategy_daily.ps1 stamps `logs\close-state\last-push-ok-<project>.txt` on every successful push, morning or evening. combined_brief.ps1 checks that stamp against the LastWriteTime of the marker that recorded the failure: if the successful push is NEWER, the failure is history and the signal is dropped. Fixed close-state path on purpose — the brief reads one folder for both projects, so the stamp must land where it looks; same hardcoding as the existing $_CombinedScript path. logs\ is gitignored, so it never reaches the repo.
+**Fails toward shouting, not silence.** If the stamp is missing, unreadable or unparseable, the warning is SHOWN. A bookkeeping problem must never be able to suppress an alarm — that inversion is what made the original bug so damaging.
+**Files changed:** scripts/daily/strategy_daily.ps1, scripts/daily/combined_brief.ps1, CHANGELOG.md
+**Tests run:** PowerShell 7.4.6, four scenarios against the real extracted code — (1) failure recorded, no success since → SHOWN; (2) last success predates the failure → SHOWN; (3) Saturday 07:00 push succeeded after Friday's failure → retired, silent; (4) corrupt stamp → SHOWN, failing safe. Monday's 9-scenario staleness suite: 9/9. All four brief paths still reach the end (the B1 regression check). Parse clean on all four scripts.
+**Not yet reviewed or merged** — Security Agent review pending, and Saeed must pull after any merge.
+**First evidence from the real machine, same day:** Saeed ran `combined_brief.ps1 -Mode Evening -DryRun` on the Windows PC under PowerShell 5.1 after pulling PR #4. It started, read the session logs and reported staleness correctly. The tail of that run has not been seen yet, so PR #4's alarm path is partially — not fully — evidenced on 5.1.
+**Saeed notified:** This session

@@ -661,7 +661,37 @@ if ($Mode -eq 'Evening') {
             # Harvest push-held signals from EVERY marker read, due or hand-run.
             $HeldSignals += @(@($MarkerLines) | Where-Object { $_ -like "PUSH-HELD|*" })
             foreach ($pf in @(@($MarkerLines) | Where-Object { $_ -like "PUSH-FAILED|*" })) {
-                $FailedPushSignals += [PSCustomObject]@{ Day = $DayName; Sig = [string]$pf }
+                # RETIRE A FAILURE THAT HAS SINCE BEEN FIXED. Saeed's instruction
+                # 2026-09-09. This banner is NOT like the close-failure one: that
+                # stays true until the close is re-run, but "did not reach GitHub"
+                # becomes FALSE the moment a later push succeeds. Read on a Saturday,
+                # the marker is Friday's - and if Saturday's 07:00 push went through,
+                # Friday's work IS on GitHub and the banner would be a lie. A warning
+                # that repeats something untrue is how it stops being read.
+                #
+                # Evidence: strategy_daily.ps1 stamps last-push-ok-<project>.txt on
+                # every successful push. If that stamp is NEWER than the marker that
+                # recorded the failure, the failure is history - drop it.
+                $pfProject = (([string]$pf).Split("|", 3))[1]
+                $Retired   = $false
+                try {
+                    $OkFile = Join-Path (Split-Path $MarkerPath -Parent) `
+                              ("last-push-ok-" + ($pfProject -replace '[\\/:*?"<>|]', '_') + ".txt")
+                    if (Test-Path $OkFile) {
+                        $OkStamp = [datetime]::Parse((Get-Content $OkFile -Raw).Trim())
+                        if ($OkStamp -gt (Get-Item $MarkerPath).LastWriteTime) {
+                            $Retired = $true
+                            Write-Log "PUSH-FAILED for $pfProject retired - a later push succeeded at $OkStamp."
+                        }
+                    }
+                } catch {
+                    # Cannot tell? Then say nothing about it being fixed and SHOW the
+                    # banner. Failing safe here means shouting, not going quiet.
+                    Write-Log "Could not read the last-successful-push stamp for $pfProject - keeping the warning. $_"
+                }
+                if (-not $Retired) {
+                    $FailedPushSignals += [PSCustomObject]@{ Day = $DayName; Sig = [string]$pf }
+                }
             }
             $ClosedAt = @(@($MarkerLines) | Where-Object { $_ -like "CLOSED|*" }) | Select-Object -First 1
             if ($ClosedAt) {
