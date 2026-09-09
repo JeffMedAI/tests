@@ -824,3 +824,26 @@ banner. Synthetic marker deleted afterwards.
 **Not yet reviewed or merged** — Security Agent review pending, and Saeed must pull after any merge.
 **First evidence from the real machine, same day:** Saeed ran `combined_brief.ps1 -Mode Evening -DryRun` on the Windows PC under PowerShell 5.1 after pulling PR #4. It started, read the session logs and reported staleness correctly. The tail of that run has not been seen yet, so PR #4's alarm path is partially — not fully — evidenced on 5.1.
 **Saeed notified:** This session
+
+---
+
+## 2026-09-09 — Push-Failure Retirement Hardened After Security Review (PR #5, round 2)
+**Agent:** Lead Agent (Claude Code session), reviewed by Security Agent
+**Approved by:** Saeed approved the feature ("YES" — the "did not reach GitHub" warning should stop once fixed). The hardening below is the Security Agent's conditions on that approved change, not new scope.
+**Description:** The first version retired the warning on a bare timestamp. Security review found the evidence was weaker than the claim. Six changes:
+
+- **H1 — a restore-tag failure is now its own signal (`TAG-PUSH-FAILED`) and is never retirable.** Previously it shared the `PUSH-FAILED` name, so a later *branch* push retired it — even though that push does not push the tag. Net effect would have been a day with no remote restore point, no alarm, and the local-only tag pruned away by the next clean close. Its wording also claimed "nothing from today has left this computer", which is false in the exact case that produces it alone (the branch push succeeded).
+- **H2 — retirement now requires proof, not inference.** `PUSH-FAILED` carries the failed commit's SHA; the success stamp carries the pushed SHA; the brief retires only when `git branch -r --contains <failed sha>` shows that commit on a remote branch. A timestamp alone could be satisfied by a push of a *different* branch (the close runs `git push origin HEAD`) or by a `git reset --hard` that discarded the work entirely — both would have silenced a warning that was still true.
+- **M1 — a future-dated stamp no longer suppresses the alarm.** A clock set forward during a successful push would otherwise have killed the warning until real time caught up. Now logged and the warning kept.
+- **M2 — retirement demotes, it does not delete.** A retired failure prints one plain "NOW FIXED — no action needed" line naming the day, the project and when the work actually arrived. The loud repeated banner stops, per Saeed's instruction; the record does not vanish. If the retirement check is ever wrong, deleting would have left total silence in the one place Saeed reads — and even when right, a banner that simply stops appearing reads exactly like the alarm having broken.
+- **L1 — `[datetime]::ParseExact` with InvariantCulture** instead of `Parse`. Under a non-Gregorian default calendar `Parse` reads the stamp centuries into the future, which combined with the comparison above would have retired every warning permanently.
+- **Banner wording** — the headline and closing paragraph are now conditional. When only the restore tag failed, the banner says so and states plainly that the work itself IS on GitHub. Fixing the signal text while leaving the wrapper overstating would have put the same defect straight back.
+
+**Known and accepted (Security Agent L2):** only a *scripted* push writes a success stamp. If Saeed or an agent fixes a rejected push by running `git push` by hand, the banner keeps shouting until the next scripted push succeeds — and on a day with nothing to commit, the push is skipped entirely, so it can persist for days. This is the safe error direction and is deliberate. **Do not "fix" it by loosening the check.**
+
+**Backwards compatibility:** markers written before today have no SHA field. Those can never be proven fixed, so they keep their warning — the safe direction.
+
+**Files changed:** scripts/daily/combined_brief.ps1, scripts/daily/strategy_daily.ps1, scripts/daily/session_close.ps1, scripts/daily/health_check.ps1, CHANGELOG.md
+**Tests run:** PowerShell 7.4.6 on Linux. Nine retirement scenarios against real git repositories with real remotes, 9/9 — including the three the Security Agent required: tag-failure-then-successful-branch-push (warning kept), failure-on-branch-A-then-push-of-branch-B (warning kept), future-dated stamp (warning kept). Plus: legacy 3-field signal (kept), missing stamp (kept), corrupt stamp (kept), genuine fix (retired). Banner wording verified in all three shapes (tag-only, push-only, both) — the SHA does not appear in anything Saeed reads. All four scripts parse clean. Every new variable verified declared before first use (the B1 regression guard).
+**Limitation:** not run on the Windows machine. PR #4's own brief run was confirmed complete on Windows PowerShell 5.1 by Saeed on 2026-09-09.
+**Saeed notified:** This session — awaiting his go-ahead to merge.

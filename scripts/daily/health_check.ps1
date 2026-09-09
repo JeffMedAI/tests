@@ -343,9 +343,12 @@ foreach ($repo in @(@{N="Avamed"; P=$RepoRoot}, @{N="St Marks"; P=$SmRepo})) {
                             # Compare the PROJECT FIELD, not the whole line: a future
                             # reason string containing the other project's name would
                             # otherwise cross-match silently. Security Agent L1.
-                            $f = ([string]$line).Split("|", 3)
+                            # Split to 4: PUSH-FAILED carries a sha as a 4th field
+                            # since 2026-09-09, and Split("|",3) would show it glued
+                            # onto the end of the cause. Security Agent H2.
+                            $f = ([string]$line).Split("|", 4)
                             if ($f.Count -lt 2 -or $f[1] -notlike "*$($repo.N)*") { continue }
-                            if ($f[0] -eq "PUSH-FAILED" -and $f.Count -ge 3 -and -not $MarkerSaid) { $MarkerSaid = $f[2] }
+                            if (($f[0] -eq "PUSH-FAILED" -or $f[0] -eq "TAG-PUSH-FAILED") -and $f.Count -ge 3 -and -not $MarkerSaid) { $MarkerSaid = $f[2] }
                             if ($f[0] -eq "PUSH-HELD") { $MarkerHeld = $true }
                         }
                     }
