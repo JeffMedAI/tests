@@ -56,6 +56,19 @@ $PausedProjects = @{
 # How long a project may sit paused before the quiet note starts asking Saeed to
 # confirm it is still correct. One week, Saeed's instruction 2026-09-07 - a pause
 # he set and forgot must not become a permanent blind spot.
+# ── How long a quiet project stays quiet ─────────────────────────────────────
+# SAEED'S DECISION, 2026-09-09: the loud "PART OF THIS BRIEF IS OUT OF DATE"
+# banner starts on the THIRD day, not the first. One or two quiet days are
+# normal - a day off, or a day spent on the other project - and shouting about
+# them is how a banner stops being believed. Days one and two still get a plain
+# one-line note, so a real outage is still visible from the first morning; it
+# just does not arrive as an emergency until it looks like one.
+#
+# This does NOT loosen anything else. A project whose folder cannot be read is
+# still loud immediately, a project with no session log at all is still loud
+# immediately, and the day-named close-failure banner is untouched.
+$StaleLoudAfterDays = 3
+
 $PausedNagAfterHours = 24 * 7
 
 function Write-Log {
@@ -931,6 +944,18 @@ foreach ($p in @(
         # this branch - it always reaches the loud banner. Security Agent H4.
         $ScheduleNotes += "Note: $($p.Name) - nothing new logged since the last session close, and no close has been due since. That is the normal gap, not a problem."
         Write-Log "STALENESS: $($p.Name) last logged $($p.Brief.NewestRealTime.ToString('ddd HH:mm')), after the last due close - quiet note, no banner."
+    } elseif ($p.Brief.StaleHours -lt ($StaleLoudAfterDays * 24)) {
+        # QUIET FOR THE FIRST TWO DAYS. Saeed's decision 2026-09-09. A close HAS
+        # been missed here, so this is not the "no close was due" case above - but
+        # one or two quiet days are ordinary, and a loud banner for an ordinary day
+        # off is the cry-wolf problem in a different coat.
+        #
+        # It is still SAID, every day, from the first one: silence is what let the
+        # 11-19 Aug 2026 outage run for eight days. Only the volume waits.
+        $DaysQuiet = [math]::Floor($p.Brief.StaleHours / 24)
+        $DayWord   = if ($DaysQuiet -le 1) { "a day" } else { "$DaysQuiet days" }
+        $ScheduleNotes += "Note: $($p.Name) - nothing new logged for $DayWord. Normal so far; this becomes a warning at $StaleLoudAfterDays days."
+        Write-Log "STALENESS: $($p.Name) stale $($p.Brief.StaleHours)h - under the $StaleLoudAfterDays-day threshold, quiet note only."
     } else {
         $StaleParts += (Format-StaleLine -Name $p.Name -Hours $p.Brief.StaleHours -LogName $p.Brief.StaleLogName)
     }

@@ -891,3 +891,25 @@ banner. Synthetic marker deleted afterwards.
 **Tests run:** 11/11 retirement scenarios plus the banner-ordering test, all against real git repositories with real remotes; ordering test verified discriminating by negative control. Reviewer independently reproduced 11/11 and confirmed the extracted block is byte-identical to the live source. All five scripts in scripts/daily/ parse clean. StrictMode audit clean on every path.
 **Limitation:** nothing in this PR has run on Windows PowerShell 5.1. The Security Agent recommends one `-DryRun` evening run on the target machine before the first live 18:30 close.
 **Saeed notified:** This session — awaiting his explicit "approved".
+
+---
+
+## 2026-09-09 — Staleness Banner Goes Loud on Day 3, Not Day 1
+**Agent:** Lead Agent (Claude Code session)
+**Approved by:** Saeed, explicit choice this session — asked as "one quiet day: loud banner, or quiet note with the loud banner from day two?", answered **"Loud banner from day 3."**
+**Description:** The "WARNING - PART OF THIS BRIEF IS OUT OF DATE" banner fired after a single day with no session log. One quiet day is ordinary — a day off, or a day spent on the other project — and Saeed's own 2026-09-09 dry run showed the banner firing at "1 day(s)" on exactly such a day. A banner that shouts at an ordinary Tuesday is the cry-wolf problem this week's work exists to prevent, in a different coat.
+
+Days one and two now get a plain one-line note; the loud banner starts on the third day. New threshold `$StaleLoudAfterDays = 3` at the top of `combined_brief.ps1`, beside `$PausedProjects` and `$PausedNagAfterHours`.
+
+**It is still said every day from the first.** Silence is what let the 11–19 Aug 2026 outage run for eight days; only the volume waits. The note names the count and the threshold, so the escalation is never a surprise: *"nothing new logged for 2 days. Normal so far; this becomes a warning at 3 days."*
+
+**Nothing else was loosened — verified by test, not by inspection:**
+- A project whose folder cannot be read is still loud on day one. Unreachable outranks everything and is checked before this branch.
+- A project with **no session log at all** is still loud on day one. It carries no newest-log timestamp, so it can never reach the quiet branch.
+- The day-named close-failure banner is untouched.
+- The existing "no close has been due since" quiet note is untouched — that is a different case (nothing was missed) and still reads differently.
+
+**Files changed:** scripts/daily/combined_brief.ps1, CHANGELOG.md
+**Tests run:** PowerShell 7.4.6, 8 scenarios against the live extracted block, 8/8 — 1 day quiet, 2 days quiet, 71h (just under), exactly 72h (loud), 5 days (loud), no log ever (loud), folder unreadable (loud on day one), and log written after the last due close (quiet, normal gap). Boundary checked at exactly 3 days. Script parses clean.
+**Limitation:** not run on Windows PowerShell 5.1.
+**Saeed notified:** This session.
