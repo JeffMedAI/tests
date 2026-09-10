@@ -349,6 +349,10 @@ function Test-WorkOnOrigin {
         $OnRemote = @(@($OnRemote) | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) })
         return ($GitExit -eq 0 -and @($OnRemote).Count -gt 0)
     } catch {
+        # SAY WHICH IT WAS. Without this the caller logs "is NOT on any origin
+        # branch", when the truth is "I could not ask" - same alarm, but it sends
+        # whoever debugs it on the day to the wrong place. Security Agent G3.
+        Write-Log "Could not ask git whether $Sha is on origin (repo $RepoRoot) - treating as NOT arrived, warning kept. $_"
         return $false
     } finally { $ErrorActionPreference = $PrevEAPGit }
 }
@@ -1364,9 +1368,20 @@ if (-not $DryRun -and -not $SkipCloseHere -and @($FailedPushSignals).Count -gt 0
 # Two "BEHIND GITHUB" lines for one project, every morning.
 # Keep the LAST: the marker is harvested first, so the newest entry is the one
 # that reflects the current state. Security Agent T1/T2, 2026-09-10.
+# Same two guards as the held dedup below: an index that cannot go out of bounds
+# (this one takes [1] only, so it is already safe, but the bounds check is written
+# out so the next editor does not have to re-derive why), and a preference for the
+# last WELL-FORMED entry. Security Agent G1/G2, 2026-09-10.
 $BehindSignals = @(@($BehindSignals) |
-                   Group-Object { (([string]$_.Sig) -split '\|')[1] } |
-                   ForEach-Object { $_.Group | Select-Object -Last 1 })
+                   Group-Object {
+                       $b = @(([string]$_.Sig) -split '\|')
+                       if ($b.Count -gt 1) { $b[1] } else { "" }
+                   } |
+                   ForEach-Object {
+                       $g  = @($_.Group)
+                       $ok = @($g | Where-Object { @(([string]$_.Sig) -split '\|').Count -ge 3 })
+                       if (@($ok).Count -gt 0) { @($ok)[-1] } else { @($g)[-1] }
+                   })
 
 # ── 6b-5. Behind GitHub, but the work is safe ────────────────────────────────
 # Saeed, 2026-09-10. Since the close pushes to a backup branch that nobody else
@@ -1474,9 +1489,32 @@ $(if (@($CloseFailDetail).Count -gt 0) { "!! What went wrong:" + [Environment]::
 # and "dashboard|5" from this morning BOTH through - and because the marker is
 # harvested first, the stale 3-file line rendered ABOVE the current 5-file one.
 # Security Agent T3, 2026-09-10.
+# NEVER INDEX PAST THE END. StrictMode (which -Version Latest resolves to 3.0 on
+# Windows PowerShell 5.1, so this is NOT a pwsh-7 artefact) makes an out-of-bounds
+# index a TERMINATING error. The harvest filter is -like "PUSH-HELD|*", which
+# guarantees ONE pipe, not three - so $p[2] on a truncated line threw, at script
+# top level with no enclosing try, and killed the entire brief. Saeed would have
+# received NO WhatsApp message at all, on the morning after a close crashed
+# mid-write. That is the 11-19 Aug 2026 shape, and it is the same defect class as
+# B1. One malformed line poisoned the whole array, good signals included.
+# The renderer eight lines below already guards with `Count -ge 4`; this dedup
+# runs in FRONT of that guard and must be at least as careful.
+# Security Agent G1, 2026-09-10.
+#
+# And prefer the last WELL-FORMED entry, not simply the last: a malformed line
+# arriving from this run would otherwise win the group, be discarded by the
+# renderer's guard, and take the good marker-sourced line with it - leaving a
+# banner header with nothing under it. Security Agent G2.
 $HeldSignals = @(@($HeldSignals) | ForEach-Object { [string]$_ } |
-                 Group-Object { $p = ($_ -split '\|'); "$($p[1])|$($p[2])" } |
-                 ForEach-Object { $_.Group | Select-Object -Last 1 })
+                 Group-Object {
+                     $p = @($_ -split '\|')
+                     "$(if ($p.Count -gt 1) { $p[1] })|$(if ($p.Count -gt 2) { $p[2] })"
+                 } |
+                 ForEach-Object {
+                     $g  = @($_.Group)
+                     $ok = @($g | Where-Object { @([string]$_ -split '\|').Count -ge 4 })
+                     if (@($ok).Count -gt 0) { @($ok)[-1] } else { @($g)[-1] }
+                 })
 
 if (@($HeldSignals).Count -gt 0) {
     $HeldLines = @()

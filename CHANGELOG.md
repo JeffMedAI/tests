@@ -1119,3 +1119,34 @@ The marker read runs near the top (section 5 needs `$CloseDayFailed` early); the
 **Files changed:** scripts/daily/combined_brief.ps1, CHANGELOG.md
 **Tests run:** **new dedup suite 9/9** — including the assertion neither suite previously made: each dedup's line number is read from the **live file** and asserted to be above its own consumer, so reordering the script fails the test. Plus: entries that differ by construction group to one and the newest is kept; two distinct projects both survive; the current held count is shown, not the stale one; and same project with a different protected path is not collapsed. All other suites: morning 7/7 · S2 re-check 6/6 · push/pull 30/30 · retirement 13/13 · staleness 21/21 · health 6/6. All five scripts parse clean.
 **Limitation:** not run on Windows PowerShell 5.1 — still nothing in this series has.
+
+---
+
+## 2026-09-10 — PR #7 Round 4: My Own Fix Would Have Sent Saeed Nothing At All
+**Agent:** Lead Agent (Claude Code session), reviewed by Security Agent (round 12)
+**Approved by:** Bug-fix autonomy. **Not merged; waiting on tonight's live verification and Saeed's approval.**
+**Description:** Review verdict was **BLOCK**, on a defect **introduced by the previous commit's fix**. The code it replaced could not throw.
+
+**G1 (critical) — the new `$HeldSignals` dedup key crashed the entire brief on a malformed line.**
+The key was `"$($p[1])|$($p[2])"` after splitting on pipes. The harvest filter is `-like "PUSH-HELD|*"`, which guarantees **one** pipe, not three — so `$p[2]` on a truncated line is out of bounds, and under `Set-StrictMode -Version Latest` that is a **terminating** error. It sits at script top level with no enclosing `try`, so the script dies before section 7 sends anything: **Saeed receives no WhatsApp message at all.**
+
+Not a pwsh-7 artefact — `-Version Latest` resolves to 3.0 on Windows PowerShell 5.1, so it would have happened on the real machine. Trigger: an 18:30 close losing power or disk mid-write leaves `...PUSH-HELD|`; the next 07:00 brief then dies. **Silence on the morning after a crashed close** — the exact 11–19 Aug shape. And one malformed line poisoned the whole array, taking the good signals with it.
+
+Two details worth keeping. The renderer eight lines below **already** guards with `Count -ge 4`, so its author treated a short line as possible; my dedup, running in front of that guard, treated it as impossible. And the sibling `$BehindSignals` key I wrote in the same commit takes `[1]` only and could not throw — the held key was the odd one out, in code I wrote minutes apart.
+
+**This is the B1 class for the second time in one series**, and the standing check recorded on 2026-09-09 — *"when you add a value to one of these signals, grep every reader and read the branch each one feeds"* — would not have caught it. Extending that check: **any new index into a split signal must assume the line is truncated.** The filter proves the prefix, never the field count.
+
+**G2 (low) — a malformed newest entry could evict the good one.** `Select-Object -Last 1` picked the newest unconditionally. A truncated line arriving from this run would win its group, then be discarded by the renderer's guard — leaving a banner header with **nothing underneath** and the real warning gone. Both dedups now prefer the last **well-formed** entry, falling back to the last.
+
+**G3 (low)** — an errored check logged *"is NOT on any origin branch"* when the truth was *"I could not ask"*. Same alarm, wrong place to send whoever debugs it. `Test-WorkOnOrigin` now logs its own catch.
+
+**G4 (low) — the test helper file is a copy, and nothing enforced that it still matched.** Editing `Test-WorkOnOrigin` in the live script would leave the retirement suite passing 13/13 against a stale copy — the same "the test cannot see the code" fault, one level up. `run_tests.ps1` now asserts the helper text is a substring of the live script and fails loudly if not. **Verified discriminating**: appending one comment line to the copy makes the suite report `helpers.ps1 is STALE` and exit.
+
+**Harvest order is now asserted, not assumed.** "Last" is only "newest" because the marker read runs before section 6 — a structural property nothing enforced. A future re-order would silently start preferring the **stale** entry with no test failing. Three line-number assertions now read from the live file: marker harvest < section-6 harvest < dedup.
+
+**`$BehindSignals` retirement — logged as technical debt, not built.** The reviewer confirmed this does not block, and gave the reason to record: the residual gap errs toward saying too much (a stale quiet note costs Saeed a sentence and an unnecessary `git pull`), never toward silence, and every blocking finding in this series has been an alarm going quiet. If it is ever built it must use the **same-question** proof — *is HEAD still behind origin/branch?* — not a stamp. This series has twice been burned by proofs that answered a different question (the timestamp gate; the unscoped `branch -r`).
+
+**Files changed:** scripts/daily/combined_brief.ps1, CHANGELOG.md
+**Tests run:** dedup suite **19/19** (was 9) — now including: a truncated held line does not crash and the good line survives it; a trailing-pipe-only line does not crash; a truncated behind line does not crash; empty arrays do not crash either dedup; a well-formed line survives a truncated sibling; same key with the truncated entry last still keeps the well-formed one; and the three harvest-order line assertions. Plus morning 7/7 · S2 6/6 · push/pull 30/30 · retirement 13/13 · staleness 21/21 · health 6/6. All five scripts parse clean.
+**Harness note:** one G2 assertion of mine failed and was **my test being wrong**, not the code — for held signals the key includes the path, so a truncated line lands in its own group and cannot evict the good one; my assertion checked position, which tested `Group-Object`'s output order rather than the guarantee. Replaced with an assertion on survival, plus a new case constructing the situation where eviction genuinely is possible.
+**Limitation:** not run on Windows PowerShell 5.1.
