@@ -1106,6 +1106,30 @@ if ($DryRun) {
                             $Incoming = @((@($IncRaw) -join "") -split "`0" |
                                           ForEach-Object { [string]$_ } |
                                           Where-Object { $_.Trim() -ne "" })
+
+                            # CROSS-CHECK THE PARSE, BECAUSE IT FAILS OPEN.
+                            # -z is right, but it moved this from "split on newlines"
+                            # - which every PowerShell does identically - to
+                            # "reassemble native output and split on NUL", which has
+                            # never executed on Windows PowerShell 5.1, the only place
+                            # this actually runs. If 5.1 drops the NUL bytes the whole
+                            # list collapses into ONE concatenated string, so
+                            # "docs/harmless.md" + "dashboard/app.py" becomes
+                            # "docs/harmless.mddashboard/app.py", which does not start
+                            # with "dashboard/" - and the guard prints
+                            # "Safe: 1 incoming file(s)... Merging." That is the exact
+                            # sentence that was in the log when the live app was
+                            # deleted in testing. Silent, and intermittent, since it
+                            # only bites when the protected path is not first.
+                            #
+                            # The newline form is parsed identically everywhere, so a
+                            # disagreement in COUNT means the parse cannot be trusted.
+                            # Refuse rather than assume - the same principle as $DiffOk.
+                            # Security Agent S1, 2026-09-10.
+                            $IncPlain = @(git -c core.quotePath=false diff --no-renames --name-only "HEAD...origin/$CurBranch" 2>$null |
+                                          ForEach-Object { [string]$_ } |
+                                          Where-Object { $_.Trim() -ne "" })
+                            $ParseOk = (@($Incoming).Count -eq @($IncPlain).Count)
                             $Blocked = @($Incoming | Where-Object {
                                 $f = ($_ -replace '\\', '/')
                                 $hit = $false
@@ -1115,7 +1139,10 @@ if ($DryRun) {
                                 }
                                 $hit
                             })
-                            if (-not $DiffOk) {
+                            if (-not $ParseOk) {
+                                $RefuseReason = "the list of incoming changes could not be read reliably"
+                                Write-Log "  NOT pulling - the two readings of the incoming list disagree ($(@($Incoming).Count) vs $(@($IncPlain).Count)). Refusing rather than trusting either."
+                            } elseif (-not $DiffOk) {
                                 # An empty list from a FAILED diff is not evidence of
                                 # safety - it is absence of evidence, and it would read
                                 # as "0 incoming files, none protected, merging". The

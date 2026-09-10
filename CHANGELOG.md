@@ -1023,3 +1023,25 @@ Fixed with `git -c core.quotePath=false diff --no-renames --name-only -z`. All t
 **Tests run:** push/pull **26/26** (was 15) — the four exploits now all refuse and the live files verifiably survive, plus the Evening-only rule. Retirement **13/13** — including a sha present **only** on `origin/close/*` (warning kept) and the same sha once it reaches `main` (retired). Staleness 21/21, health 6/6. All five scripts parse clean. Negative control run to prove the new tests discriminate.
 **Limitation:** still not run on Windows PowerShell 5.1 — outstanding since PR #5, and this change adds five git invocations to the unattended path.
 **Open for Saeed:** (1) keep `close/<date>` branches forever or prune once their work is on `main`? (2) are `dashboard\` and `config\` the complete protected list — note `scripts\daily\` is deliberately NOT protected, since those are the very files he wants delivered automatically. (3) should auto-pull also run at 07:00, which he was not shown.
+
+---
+
+## 2026-09-10 — Auto-Pull Round 3: Sign-Off Condition S1 Discharged
+**Agent:** Lead Agent (Claude Code session), reviewed by Security Agent
+**Approved by:** Security Agent sign-off **granted, conditional on S1** — S1 is now done. **Saeed's explicit written approval still required before merge; this writes to the production machine unattended.**
+**Description:** The re-review confirmed the three blocking exploits are dead. The reviewer re-ran them itself, added five more attack classes (symlink swap, case-variant `Dashboard/`, submodule/gitlink, copy detection, directory-rename in both directions) — all refused — and ran its own independent negative control. It also chased and cleared two things I had not: multiple merge bases (criss-cross), and whether a pulled `.gitattributes` could execute anything (it cannot; filter/merge drivers must be defined in the untracked `.git/config`).
+
+**S1 — the fix I asked for created a new way to fail OPEN, on the one platform never tested.**
+`-z` was the right call, but it moved the parse from "split on newlines" — which every PowerShell does identically — to "reassemble native output and split on NUL", which has never executed on Windows PowerShell 5.1, the only place this actually runs. If 5.1 drops the NUL bytes, the whole list collapses into **one concatenated string**, and the guard prints *"Safe: 1 incoming file(s), none under dashboard, config. Merging."* — the exact sentence that was in the log when the live app was deleted in testing. Silent, and **intermittent**, because it only bites when the protected path is not first in the list.
+
+Fixed by cross-checking the `-z` parse against the newline form and **refusing when the two readings disagree in count** — the same principle already applied to `$DiffOk`: the guard must be satisfied by proof, never by an error.
+
+**Two things about testing this honestly, both worth recording:**
+1. **My first attempt at the test did not reproduce the failure at all.** I used a newline inside a filename, but git always quotes such paths, so both readings agreed and the test proved nothing. The real cause is a platform difference I cannot reproduce on Linux, so it is now modelled directly: a shim intercepts **only** the `-z` call and returns the entries concatenated with no NUL. Every other git call goes to the real git. Stated plainly in the test file, because a stub that models the wrong thing is worse than no test.
+2. **My first negative control passed by luck and I nearly recorded it as a success.** With the guard removed, that case still refused — because git lists paths bytewise, so `dashboard/` happened to sort first and the collapsed string still began with a protected prefix. That is precisely the "intermittent" property the reviewer warned about. The test now uses `CHANGELOG.md` (uppercase, sorts before `config/`) so the protected path is **not** first. With the guard removed it now reports **`LIVE CONFIG OVERWRITTEN`**; with the guard it refuses. Only then is the guard proven load-bearing.
+
+**GOVERNANCE FACT FOR SAEED, in the Security Agent's words:** `scripts\daily\` is deliberately **not** protected, because those are exactly the files he wants delivered automatically — protecting them would make this change solve nothing. Therefore **the security boundary for those scripts is the pull request review on `main`, not this guard.** Approving a PR now means those scripts run on his PC that evening without a second look. That is a trade he chose, and it should be acknowledged knowingly rather than discovered later.
+
+**Files changed:** scripts/daily/strategy_daily.ps1, CHANGELOG.md
+**Tests run:** push/pull **30/30** (was 26), including the modelled NUL collapse with the protected path deliberately not first, verified load-bearing by negative control. Retirement 13/13, staleness 21/21, health 6/6. All five scripts parse clean.
+**Limitation:** still not run on Windows PowerShell 5.1. The Security Agent's position, which I share: this is now the largest untested surface in the series, and if it is still true after this merge it should become a scheduled task of its own.
