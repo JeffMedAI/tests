@@ -891,3 +891,157 @@ banner. Synthetic marker deleted afterwards.
 **Tests run:** 11/11 retirement scenarios plus the banner-ordering test, all against real git repositories with real remotes; ordering test verified discriminating by negative control. Reviewer independently reproduced 11/11 and confirmed the extracted block is byte-identical to the live source. All five scripts in scripts/daily/ parse clean. StrictMode audit clean on every path.
 **Limitation:** nothing in this PR has run on Windows PowerShell 5.1. The Security Agent recommends one `-DryRun` evening run on the target machine before the first live 18:30 close.
 **Saeed notified:** This session — awaiting his explicit "approved".
+
+---
+
+## 2026-09-09 — Staleness Banner Goes Loud on Day 3, Not Day 1
+**Agent:** Lead Agent (Claude Code session)
+**Approved by:** Saeed, explicit choice this session — asked as "one quiet day: loud banner, or quiet note with the loud banner from day two?", answered **"Loud banner from day 3."**
+**Description:** The "WARNING - PART OF THIS BRIEF IS OUT OF DATE" banner fired after a single day with no session log. One quiet day is ordinary — a day off, or a day spent on the other project — and Saeed's own 2026-09-09 dry run showed the banner firing at "1 day(s)" on exactly such a day. A banner that shouts at an ordinary Tuesday is the cry-wolf problem this week's work exists to prevent, in a different coat.
+
+Days one and two now get a plain one-line note; the loud banner starts on the third day. New threshold `$StaleLoudAfterDays = 3` at the top of `combined_brief.ps1`, beside `$PausedProjects` and `$PausedNagAfterHours`.
+
+**It is still said every day from the first.** Silence is what let the 11–19 Aug 2026 outage run for eight days; only the volume waits. The note names the count and the threshold, so the escalation is never a surprise: *"nothing new logged for 2 days. Normal so far; this becomes a warning at 3 days."*
+
+**Nothing else was loosened — verified by test, not by inspection:**
+- A project whose folder cannot be read is still loud on day one. Unreachable outranks everything and is checked before this branch.
+- A project with **no session log at all** is still loud on day one. It carries no newest-log timestamp, so it can never reach the quiet branch.
+- The day-named close-failure banner is untouched.
+- The existing "no close has been due since" quiet note is untouched — that is a different case (nothing was missed) and still reads differently.
+
+**Files changed:** scripts/daily/combined_brief.ps1, CHANGELOG.md
+**Tests run:** PowerShell 7.4.6, 8 scenarios against the live extracted block, 8/8 — 1 day quiet, 2 days quiet, 71h (just under), exactly 72h (loud), 5 days (loud), no log ever (loud), folder unreadable (loud on day one), and log written after the last due close (quiet, normal gap). Boundary checked at exactly 3 days. Script parses clean.
+**Limitation:** not run on Windows PowerShell 5.1.
+**Saeed notified:** This session.
+
+---
+
+## 2026-09-09 — PR #6 Round 2: Security Agent Blocked the Day-3 Change; Two Real Defects Fixed
+**Agent:** Lead Agent (Claude Code session), reviewed by Security Agent
+**Approved by:** Saeed approved the day-3 threshold itself. Everything below is Security Agent conditions on it. **Still awaiting Saeed's "approved" to merge.**
+**Description:** The first version was **BLOCKED**. Two findings, both correct:
+
+- **F2 (blocking) — I reintroduced the exact defect finding H4 removed, one branch below H4's own fix.** The threshold counted a flat 72 wall-clock hours, so the weekend counted toward it. Concrete: last log Thursday 10:00, nobody works Friday → the loud banner fired on **SUNDAY**, when no close was due and no work was expected, after only two working days. The comment on `Get-LastExpectedCloseTime` already said it in terms — *"the right question is not 'is it the weekend' but 'has a close been due since'"* — and the branch immediately above the new one measures correctly. **Now counted in missed weekday closes**, via a new `Get-CloseTimeNBack` helper. Constant renamed `$StaleLoudAfterCloses` so the name states the unit. A project with no real log at all (`$NewestRealTime` is `$null`) is explicitly routed loud and can never reach the quiet branch.
+
+- **F1 (blocking) — the safety net I claimed does not exist in the morning brief.** I justified quieting the staleness alarm on the grounds that the close-failure banner still fires independently on day one. That is true at 19:00 and **false at 07:00**: the whole marker-reading block is gated on `if ($Mode -eq 'Evening')`, so `$CloseDayFailed` is always false in a morning run and section 6b-2 never fires. Before this PR the morning brief's *only* close-failure signal was the staleness banner, and my change removed it for two days. Saeed agreed to delay the staleness alarm; he was not told that also blinded the morning brief.
+  The note no longer says **"Normal so far"** — in this branch a due close has provably been missed, and in Morning mode the script has not even looked at the marker, so asserting normality is a claim it has not earned. It now reads: *"nothing new logged for 2 working days, and a session close has come and gone since. Not shouting yet; this becomes a warning at 3 working days."*
+
+- **Health check bug found in the same review — a failed close was reported to Saeed as healthy.** `health_check.ps1` tested only `Test-Path` on the close marker. A close that RAN AND FAILED still writes a marker (first line `FAILED|` instead of `CLOSED|`), so the morning brief said *"Last working day closed properly"* the morning after the evening brief had shouted that it had not. Two of Saeed's own messages contradicting each other is how a warning stops being believed. It now requires a `CLOSED|` line and reports the reason from `FAILED-DETAIL` when there is one.
+
+- **F3 — my new comment block had been inserted between the `$PausedNagAfterHours` explanation and its assignment**, so the next reader would attach the pause comment to the staleness threshold. Moved.
+
+**Harness rebuilt.** The reviewer was right that the old one could not have caught either defect: it never varied `$Mode`, never modelled `$CloseDayFailed`, ran every scenario against a single fixed Tuesday, and stubbed the helpers. It now uses the **real** `Get-LastExpectedCloseTime` and `Get-CloseTimeNBack` from the live file and runs a real weekend clock.
+
+**Files changed:** scripts/daily/combined_brief.ps1, scripts/daily/health_check.ps1, CHANGELOG.md
+**Tests run:** PowerShell 7.4.6. Staleness **16/16** — including the reviewer's exact Thursday-log/Sunday-brief scenario (now quiet, was loud), the full Thursday→Tuesday walk, both sides of the third-close boundary, no-log-ever (loud), unreadable folder (loud), and three assertions on the note's wording (does not claim normality, names the missed close, names the threshold). Health check **6/6** — CLOSED marker OK, FAILED marker now PROBLEM, reason surfaced, no dangling text when there is no detail, missing marker still PROBLEM. Both scripts parse clean.
+**Limitation:** not run on Windows PowerShell 5.1.
+**Open for Saeed:** (1) confirm "three days" means three **working** days — under this fix a Monday-start outage goes loud on Thursday rather than Wednesday; (2) whether the **morning** brief should carry the close-failure banner at all. That is a behaviour change beyond this PR and is not being folded in silently.
+**Saeed notified:** This session.
+
+---
+
+## 2026-09-09 — PR #6 Round 3: Approved, With the Escalation Made Honest
+**Agent:** Lead Agent (Claude Code session), reviewed by Security Agent
+**Approved by:** **Security Agent sign-off given** at round 3 (head 7498d9e) with C1 required before merge; C1 is done. **Saeed's explicit "approved" still required before merge.**
+**Description:** The re-review confirmed F1 and F2 discharged and verified the new counting **independently** — the reviewer wrote its own oracle and swept **26,744 combinations** (every day 1 Jan 2026 → Feb 2027, morning and evening briefs, log ages 1–12 days at three times of day), checking both the loud/quiet decision and the number the note states. Zero mismatches, covering both 2026 UK DST transitions, every month end and the year boundary. It also confirmed my arithmetic and withdrew its own instruction: rolling back `$StaleLoudAfterCloses - 1` is right; rolling back the full count would have put the banner on the *fourth* missed close.
+
+Three further changes:
+
+- **C1 (required before merge) — the escalation contradicted the promise it had just made.** The quiet note counted working days; the loud banner that replaced it counted calendar days, one day apart in Saeed's inbox: *"…becomes a warning at 3 working days"* on the Sunday, then *"nothing new logged for 4 day(s)"* on the Monday. A larger, different number in the very message the previous message promised — at the exact moment the design asks him to trust the count. There is now **one shared counter** (`Get-ClosesMissed`) feeding both. The loud line leads with the promised unit and keeps the calendar figure after it: *"nothing new logged for 3 working days (4 day(s) ago)"*.
+- **Found while testing C1 — the counter was bounded at 99 and reported the bound as fact.** A log from 2020 was rendered as *"99 working days"* when the truth was about 1,745. A false number inside an alarm is the exact fault this file exists to avoid. It now reads *"more than 99 working days"*.
+- **C4 — an unreadable close marker was reported as a failed close.** `-ErrorAction SilentlyContinue` swallows the read error, so an empty or unreadable marker found no `CLOSED|` line and was announced as "RAN AND FAILED" with no reason: loud, which is the right direction, but pointing Saeed at the wrong problem. It now says it could not read the marker. The two renderings of `FAILED-DETAIL` in `combined_brief.ps1` and `health_check.ps1` are also aligned, so one marker no longer appears two different ways in two of Saeed's messages.
+
+**KNOWN LIMITATION — BANK HOLIDAYS (Security Agent C2, accepted, not blocking).** The close schedule knows only Saturday and Sunday. The 18:30 task runs on a bank holiday, so that day counts as a missed close. Measured: last log Thursday 25 Mar 2027, **loud on Easter Monday evening** — after two working days, one of them a public holiday. Christmas 2026: last log Thu 24 Dec, **loud Tuesday 29 Dec**. So the residual false-alarm window is exactly the long weekends, roughly five or six times a year. That is a large improvement on `main` (loud on day one, every time) and on round 1 (loud every ordinary weekend), and it is not a regression — but it is the same class surviving in smaller form and is recorded here rather than discovered at Easter.
+**A bank-holiday table must NOT be folded into this change.** `Get-LastExpectedCloseTime` also drives close-failure detection; teaching it about holidays would change which day's marker is demanded and could suppress a real "the close did not run" alarm. If done at all it belongs in `Get-CloseTimeNBack` only, with that interaction as the main review question.
+
+**SEPARATE ISSUE, RAISED NOT FIXED — a restored or re-checked-out session log can silence the staleness system entirely.** `$StaleHours` is measured from `LastWriteTime`. A `git checkout` or a folder restore makes every session log younger than 24h, `$RealLogCount` becomes non-zero, `$IsStale` stays `$false`, and the project bypasses the staleness block completely — no quiet note and no banner. **This is a total-silence path, it is worse than anything in this PR, and it is unchanged by this PR** — I had wrongly described it as amplified by the wider quiet band; the Security Agent corrected that and is right. Its own ticket.
+
+**Files changed:** scripts/daily/combined_brief.ps1, scripts/daily/health_check.ps1, CHANGELOG.md
+**Tests run:** PowerShell 7.4.6. Staleness **21/21** (up from 16) — the five new assertions tie the quiet note and the loud banner to the same number at the threshold, and check the calendar figure is retained alongside it. Health check **6/6**. Reviewer independently reproduced 16/16 and 6/6, confirmed the extracted test blocks are byte-identical to live source, and confirmed `Get-CloseTimeNBack` terminates and errs loud at thresholds of 0, 1 and 10. StrictMode clean on every path; all five scripts parse clean.
+**Limitation:** still not run on Windows PowerShell 5.1 — the only untested surface, outstanding since PR #5. One `-DryRun` morning and evening run on the target machine is recommended before the first live brief.
+**Open for Saeed:** (1) confirm "three days" means three **working** days; (2) whether the **07:00** brief should carry the close-failure banner at all — it never has, and that failure currently only reaches him at 19:00 the night before.
+**Saeed notified:** This session — awaiting his explicit "approved" to merge.
+
+---
+
+## 2026-09-10 — The Close Now Backs Itself Up and Pulls When Safe (Saeed's Request)
+**Agent:** Lead Agent (Claude Code session)
+**Approved by:** Saeed, explicitly, this session: *"WHY DO I HAVE TO PULL AND PUSH? WHY NOT AUTOMATIC SCHEDULED TASK?"* — then chose **"Yes, and also auto-pull when it is safe"** after being shown the trade-off in writing (that it means code can reach the production folder without him looking first).
+
+**The incident that prompted it.** On 9 Sep the 18:30 close ran at 18:32, committed correctly, and pushed its restore tag — but its push to `main` was **rejected** because the PC was still on the PR #4 merge while GitHub had moved to PR #5. The work sat on the machine only, and this morning's 07:00 brief was stuck behind it too. Both were recovered by hand (`dccbaf6..4e5857d`). **The 19:00 banner DID fire** — Saeed confirmed it — which is the first live proof that last week's alarm work does what it was built to do. The alarm worked; the underlying cause had never been fixed.
+
+**Root cause, verified:** there is **no `git pull` in any scheduled task**. Every job pushes and nothing ever receives. Git refuses a push from a copy that is behind, so the moment GitHub moved ahead, every save failed and stayed failing until a human intervened. This is the same mechanism as the 7–9 Sep three-day outage.
+
+**Two changes, deliberately separate, because git glues together two things that should not be:**
+
+1. **A save that can never be refused.** Every close now pushes to `close/<date>` **first**, before touching `main`. Nobody else writes to that branch, so it cannot be rejected as non-fast-forward. Saeed's work reaches GitHub every evening whatever state `main` is in, with no manual step, ever. It still respects the live-deploy guard: unfinished production work means nothing leaves the machine, backup branch included.
+
+2. **An automatic pull, but only when it is safe.** On a "you are behind" rejection the close fetches, inspects what is actually incoming, and merges only if every condition holds. **It refuses** — and falls through to telling Saeed — when any incoming file is under `$NoAutoPullPaths` (`dashboard\`, `config\`), when the rejection is a network or auth failure rather than being behind, or when the merge conflicts (aborted immediately; a half-merged production folder left overnight is far worse than a failed push).
+   The reasoning for pulling at all: anything on `main` arrived through a PR Saeed approved, so bringing it down is delivery of already-approved work. **The gate is the merge, not the pull.** `dashboard\` is different — it *is* the live app on 8765 — and `config\` drives the live Ollama/Gemma pipeline. Those stay his call.
+
+**New signal `BEHIND-REMOTE`, and why it is not an alarm.** With a backup branch, "behind `main`" no longer means the work is at risk, so it must not borrow the loud banner's voice: *"YOUR WORK DID NOT REACH GITHUB"* would simply be false. It is still said every time, quietly, naming why the pull was refused and the one command to fix it.
+**This also closes a trap I would otherwise have set.** The retirement check added in PR #5 asks *"is this sha on an origin branch?"* — and the backup branch **is** an origin branch. A `PUSH-FAILED` raised in this situation would have found its own backup and retired itself the same evening: an alarm silently switching itself off, which is precisely the failure this file set exists to prevent.
+
+**Files changed:** scripts/daily/strategy_daily.ps1, scripts/daily/session_close.ps1, scripts/daily/combined_brief.ps1, CHANGELOG.md
+**Tests run:** PowerShell 7.4.6, **15/15 against real git repositories with real remotes** — not mocks, and not a re-implementation: the live push block is extracted and executed. Nothing to pull (pushes, no alarm; backup branch created) · safe change (auto-pulled, work reached `main`, **the new code verifiably arrived on the PC**, no alarm) · `dashboard\` change (refused; **the live file on disk verified unchanged**) · `config\` change (refused; live config verified unchanged) · merge conflict (aborted, working tree verified clean, no `MERGE_HEAD` left behind, still reported). All earlier suites still pass: staleness 21/21, health check 6/6, retirement 11/11. All five scripts parse clean.
+**Harness note:** the first run showed 7 failures which were a **fixture** fault, not a code fault — the bare test repo defaulted to `master`, so the second clone had no `main` and the scenario never actually put the PC behind. Diagnosed and fixed rather than reported as a result; the fixture now pins `-b main` with a comment saying why.
+**Limitation:** not run on Windows PowerShell 5.1.
+**Still requires:** Security Agent review, then Saeed's explicit approval before merge.
+
+---
+
+## 2026-09-10 — Auto-Pull Round 2: Security Agent BLOCKED It, and Was Right
+**Agent:** Lead Agent (Claude Code session), reviewed by Security Agent
+**Approved by:** Saeed approved the feature. Everything below is Security Agent conditions on it. **Not merged — awaiting re-review, then his explicit approval.**
+**Description:** The first version was **BLOCKED as unsafe to run unattended against the live production folder**, and the finding was real. The reviewer wrote its own exploit and ran it against my extracted live code three times.
+
+**B1 (blocking) — the protected-path check could not see three whole classes of path, and the live app could be DELETED while the log said "Safe".**
+`git diff --name-only` does not report what it appears to. With rename detection on — the default — it prints **only the destination**. So:
+- A remote renaming `dashboard/app.py` → `docs/app_moved.py` showed up as `docs/app_moved.py` alone. The guard passed it, and the merge **deleted the live file**.
+- Renaming the whole `dashboard/` folder removed **the entire live production app** at 18:30, unattended, with no alarm.
+- Git also **quotes any non-ASCII path** by default, so `config/pathways-café.json` arrived as the literal `"config/\303\251.json"` — starting with a quote character — and `-like 'config/*'` was false. One accented filename would have defeated the guard permanently.
+
+Fixed with `git -c core.quotePath=false diff --no-renames --name-only -z`. All three flags are load-bearing and none covers another; there is now a comment saying so. `--no-renames` splits a rename back into delete-old + add-new so the protected path reappears.
+
+**Verified by negative control, not just by the fix passing.** Reverting only those flags makes the same tests report `LIVE APP FILE DELETED`, `ENTIRE LIVE FOLDER DELETED` and `FILE LANDED IN LIVE CONFIG` — while the log line still reads *"Safe: 1 incoming file(s), none under dashboard, config. Merging."* Honest note: a plain **deletion** of a dashboard file was always caught; only the rename and quoting classes were vulnerable.
+
+**Why my 15/15 missed it:** the harness only ever tested a plain content modification — the one shape the matcher did handle. Right mechanism (real repos, real remotes, real extracted code), wrong inputs.
+
+**H1 (high) — the new quiet signal was collected and thrown on the floor in the 07:00 brief.** Only the 18:30 marker path was updated when `BEHIND-REMOTE` was added; neither live call site in `combined_brief.ps1` harvested it. A morning run that was merely behind would have said **nothing at all** — silently reversing the comment sitting directly above that code, which exists precisely because a rejected push must reach the morning brief.
+
+**H2/H3 (high) — I closed the self-retiring trap for one branch and left it open on the other.** A genuine **auth or network** failure still emitted a loud `PUSH-FAILED`, whose sha was already on `origin/close/<date>` from the backup push moments earlier — so the retirement check would find the backup and demote a real failure to *"NOW FIXED — nothing to do"* the same evening. The retirement glob now **excludes `origin/close/*`**. This also stops the check decaying as backup branches accumulate.
+**The two cross-referenced precondition comments were left asserting something no longer true** — that a push only ever happens straight after a fresh commit, so the sha cannot already be on origin. The backup push makes that false. Both comments are corrected in the same commit; leaving them would have set a trap for the next reader, which is exactly what they warn against.
+
+**M1 — the auto-pull was wider than what Saeed approved.** He approved *"the **close** pulls automatically"*. `strategy_daily.ps1` also runs at **07:00**, so production code could have changed right before the surgery day starts. Now **Evening only**, and a morning run that is behind still tells him, naming that rule as the reason.
+**M2** — the message stated one hardcoded cause on every path, including a fetch failure and an aborted conflict, then told him to run a pull that would conflict for him too. It now carries the real reason.
+**M3** — a failed `git diff` left `$Incoming` empty, which read as "nothing incoming, safe to merge". The guard must be satisfied by proof, never by an error. It now refuses.
+**L2** — refuses to auto-pull on a detached HEAD. **L3** — pipe-sanitises the message, as `$PushFailReason` already was.
+
+**Confirmed clean by the reviewer:** StrictMode on every path including the guard-held path (no repeat of B1 from PR #4); the live-deploy guard still holds, backup branch included; `TAG-PUSH-FAILED` still non-retirable; three-dot diff is the right question; `git merge --abort` handling adequate; PRs #1, #2, #3 and #6 untouched. It also confirmed my earlier fixture diagnosis was correct.
+
+**Files changed:** scripts/daily/strategy_daily.ps1, scripts/daily/combined_brief.ps1, CHANGELOG.md
+**Tests run:** push/pull **26/26** (was 15) — the four exploits now all refuse and the live files verifiably survive, plus the Evening-only rule. Retirement **13/13** — including a sha present **only** on `origin/close/*` (warning kept) and the same sha once it reaches `main` (retired). Staleness 21/21, health 6/6. All five scripts parse clean. Negative control run to prove the new tests discriminate.
+**Limitation:** still not run on Windows PowerShell 5.1 — outstanding since PR #5, and this change adds five git invocations to the unattended path.
+**Open for Saeed:** (1) keep `close/<date>` branches forever or prune once their work is on `main`? (2) are `dashboard\` and `config\` the complete protected list — note `scripts\daily\` is deliberately NOT protected, since those are the very files he wants delivered automatically. (3) should auto-pull also run at 07:00, which he was not shown.
+
+---
+
+## 2026-09-10 — Auto-Pull Round 3: Sign-Off Condition S1 Discharged
+**Agent:** Lead Agent (Claude Code session), reviewed by Security Agent
+**Approved by:** Security Agent sign-off **granted, conditional on S1** — S1 is now done. **Saeed's explicit written approval still required before merge; this writes to the production machine unattended.**
+**Description:** The re-review confirmed the three blocking exploits are dead. The reviewer re-ran them itself, added five more attack classes (symlink swap, case-variant `Dashboard/`, submodule/gitlink, copy detection, directory-rename in both directions) — all refused — and ran its own independent negative control. It also chased and cleared two things I had not: multiple merge bases (criss-cross), and whether a pulled `.gitattributes` could execute anything (it cannot; filter/merge drivers must be defined in the untracked `.git/config`).
+
+**S1 — the fix I asked for created a new way to fail OPEN, on the one platform never tested.**
+`-z` was the right call, but it moved the parse from "split on newlines" — which every PowerShell does identically — to "reassemble native output and split on NUL", which has never executed on Windows PowerShell 5.1, the only place this actually runs. If 5.1 drops the NUL bytes, the whole list collapses into **one concatenated string**, and the guard prints *"Safe: 1 incoming file(s), none under dashboard, config. Merging."* — the exact sentence that was in the log when the live app was deleted in testing. Silent, and **intermittent**, because it only bites when the protected path is not first in the list.
+
+Fixed by cross-checking the `-z` parse against the newline form and **refusing when the two readings disagree in count** — the same principle already applied to `$DiffOk`: the guard must be satisfied by proof, never by an error.
+
+**Two things about testing this honestly, both worth recording:**
+1. **My first attempt at the test did not reproduce the failure at all.** I used a newline inside a filename, but git always quotes such paths, so both readings agreed and the test proved nothing. The real cause is a platform difference I cannot reproduce on Linux, so it is now modelled directly: a shim intercepts **only** the `-z` call and returns the entries concatenated with no NUL. Every other git call goes to the real git. Stated plainly in the test file, because a stub that models the wrong thing is worse than no test.
+2. **My first negative control passed by luck and I nearly recorded it as a success.** With the guard removed, that case still refused — because git lists paths bytewise, so `dashboard/` happened to sort first and the collapsed string still began with a protected prefix. That is precisely the "intermittent" property the reviewer warned about. The test now uses `CHANGELOG.md` (uppercase, sorts before `config/`) so the protected path is **not** first. With the guard removed it now reports **`LIVE CONFIG OVERWRITTEN`**; with the guard it refuses. Only then is the guard proven load-bearing.
+
+**GOVERNANCE FACT FOR SAEED, in the Security Agent's words:** `scripts\daily\` is deliberately **not** protected, because those are exactly the files he wants delivered automatically — protecting them would make this change solve nothing. Therefore **the security boundary for those scripts is the pull request review on `main`, not this guard.** Approving a PR now means those scripts run on his PC that evening without a second look. That is a trade he chose, and it should be acknowledged knowingly rather than discovered later.
+
+**Files changed:** scripts/daily/strategy_daily.ps1, CHANGELOG.md
+**Tests run:** push/pull **30/30** (was 26), including the modelled NUL collapse with the protected path deliberately not first, verified load-bearing by negative control. Retirement 13/13, staleness 21/21, health 6/6. All five scripts parse clean.
+**Limitation:** still not run on Windows PowerShell 5.1. The Security Agent's position, which I share: this is now the largest untested surface in the series, and if it is still true after this merge it should become a scheduled task of its own.

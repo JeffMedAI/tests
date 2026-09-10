@@ -58,6 +58,27 @@ $PausedProjects = @{
 # he set and forgot must not become a permanent blind spot.
 $PausedNagAfterHours = 24 * 7
 
+# ── How long a quiet project stays quiet ─────────────────────────────────────
+# SAEED'S DECISION, 2026-09-09: the loud "PART OF THIS BRIEF IS OUT OF DATE"
+# banner starts on the THIRD day, not the first. One or two quiet days are
+# ordinary - a day off, or a day spent on the other project - and shouting about
+# them is how a banner stops being believed. Days one and two still get a plain
+# one-line note, so a real outage is still visible from the first morning; it
+# just does not arrive as an emergency until it looks like one.
+#
+# COUNTED IN MISSED WEEKDAY CLOSES, NOT IN WALL-CLOCK HOURS. The first version of
+# this used a flat 72 hours and so counted the weekend: a Thursday log with nobody
+# working Friday went loud on SUNDAY, when no close was due and no work was
+# expected - after only two working days. That is the same cry-wolf shape this
+# threshold exists to remove, moved from a Tuesday to a Sunday. The comment on
+# Get-LastExpectedCloseTime already said it: the right question is never "how many
+# hours" but "how many closes have come and gone". Security Agent F2, 2026-09-09.
+#
+# This does NOT loosen anything else. A project whose folder cannot be read is
+# still loud immediately, and a project with no session log at all is still loud
+# immediately.
+$StaleLoudAfterCloses = 3
+
 function Write-Log {
     param([string]$Message)
     $ts    = (Get-Date).ToUniversalTime().ToString("yyyy-MM-dd HH:mm:ss UTC")
@@ -270,6 +291,45 @@ function Get-LastExpectedCloseTime {
     return $t
 }
 
+# Roll back N weekday 18:30 closes from the last one that fell due. This is the
+# unit the volume decision is made in - see $StaleLoudAfterCloses above for why
+# hours are the wrong unit. Security Agent F2, 2026-09-09.
+function Get-CloseTimeNBack {
+    param([datetime]$From, [int]$Closes)
+    $t = $From
+    for ($i = 0; $i -lt $Closes; $i++) {
+        $t = $t.AddDays(-1)
+        while ($t.DayOfWeek -eq [DayOfWeek]::Saturday -or $t.DayOfWeek -eq [DayOfWeek]::Sunday) {
+            $t = $t.AddDays(-1)
+        }
+    }
+    return $t
+}
+
+# How many weekday closes have come and gone since this project last logged
+# anything. ONE counter, used by BOTH the quiet note and the loud banner: the
+# note promises "this becomes a warning at 3 working days" and the banner used to
+# answer, one day later, "nothing new logged for 4 day(s)" - a different, larger
+# number in the message that the previous message promised. At the exact moment
+# the design asks Saeed to trust the count, the two numbers disagreed.
+# Security Agent C1, 2026-09-09.
+# The counter is bounded so a very old log cannot spin it. Anything at or above
+# this is reported as "more than N", never as N: saying "99 working days" when the
+# truth is 1,745 is a false number inside an alarm, which is the exact fault this
+# whole file exists to avoid. Found while testing C1, 2026-09-09.
+$ClosesCountCap = 99
+
+function Get-ClosesMissed {
+    param([datetime]$Since, [datetime]$LastDue, [int]$Cap = $script:ClosesCountCap)
+    $n = 0
+    $t = $LastDue
+    while ($n -lt $Cap -and $Since -lt $t) {
+        $n++
+        $t = Get-CloseTimeNBack -From $t -Closes 1
+    }
+    return $n
+}
+
 function Format-StaleAge {
     param([double]$Hours)
     $Days = [math]::Floor($Hours / 24)
@@ -279,9 +339,19 @@ function Format-StaleAge {
 
 # Loud line - for a project that is NOT paused and so should have work logged.
 function Format-StaleLine {
-    param([string]$Name, [double]$Hours, [string]$LogName)
+    param([string]$Name, [double]$Hours, [string]$LogName, [int]$Closes = 0)
     if ($Hours -ge 99999) { return "!!   $Name : NO session log has ever been found" }
     $Src = if ($LogName) { " - still showing $LogName" } else { "" }
+    # LEAD WITH THE SAME UNIT THE QUIET NOTE PROMISED. The calendar figure is kept
+    # after it because it is genuinely useful - it is what a person checks against
+    # a diary - but it must never be the ONLY number, or it silently contradicts
+    # the note that preceded it. Security Agent C1, 2026-09-09.
+    if ($Closes -gt 0) {
+        $CloseWord = if ($Closes -ge $script:ClosesCountCap) { "more than $script:ClosesCountCap working days" }
+                     elseif ($Closes -eq 1) { "1 working day" }
+                     else { "$Closes working days" }
+        return "!!   $Name : nothing new logged for $CloseWord ($(Format-StaleAge -Hours $Hours) ago)$Src"
+    }
     return "!!   $Name : nothing new logged for $(Format-StaleAge -Hours $Hours)$Src"
 }
 
@@ -609,6 +679,11 @@ $FailedPushSignals = @()
 # correct retirement reads identically to the alarm having broken. One plain
 # line costs nothing and cannot silence a truth. Security Agent M2, 2026-09-09.
 $RetiredPushSignals = @()
+# "You are behind GitHub, but tonight's work is safe on its backup branch."
+# NOT an emergency and deliberately not in $FailedPushSignals: that list drives
+# the loud banner, and this states something that is true and not urgent.
+# Saeed, 2026-09-10.
+$BehindSignals = @()
 # Named for the day whose close is being reported on, NOT for today - on a
 # Saturday this is Friday's close. Renamed from $NoCloseToday, which invited
 # exactly the "TODAY'S" wording bug below. Security Agent L2, 2026-09-07.
@@ -672,6 +747,9 @@ if ($Mode -eq 'Evening') {
             $MarkerLines = @(Get-Content -Path $MarkerPath -ErrorAction SilentlyContinue)
             # Harvest push-held signals from EVERY marker read, due or hand-run.
             $HeldSignals += @(@($MarkerLines) | Where-Object { $_ -like "PUSH-HELD|*" })
+            foreach ($br in @(@($MarkerLines) | Where-Object { $_ -like "BEHIND-REMOTE|*" })) {
+                $BehindSignals += [PSCustomObject]@{ Day = $DayName; Sig = [string]$br }
+            }
             foreach ($pf in @(@($MarkerLines) | Where-Object { $_ -like "PUSH-FAILED|*" -or $_ -like "TAG-PUSH-FAILED|*" })) {
                 # RETIRE A FAILURE THAT HAS SINCE BEEN FIXED. Saeed's instruction
                 # 2026-09-09. This banner is NOT like the close-failure one: that
@@ -719,6 +797,14 @@ if ($Mode -eq 'Evening') {
                     # disappears with it. Security Agent L2 accepted, 2026-09-09.
                     # The stamp is still read, but ONLY to say when the work arrived.
                     #
+                    # UPDATED 2026-09-10 - READ THIS BEFORE TRUSTING THE NEXT LINES.
+                    # The close now pushes to origin/close/<date> BEFORE the real
+                    # branch, so the old guarantee ("the sha cannot already be on
+                    # origin") is FALSE. What replaces it is the exclusion below:
+                    # backup branches are filtered out, so "on an origin branch that
+                    # is not a backup" still means the work reached a real branch.
+                    # Security Agent H3, 2026-09-10.
+                    #
                     # WHY "on origin" IS SUFFICIENT PROOF, and what would break it.
                     # strategy_daily.ps1 only ever attempts a push inside
                     # `if ($CommitExit -eq 0)`, i.e. immediately after creating a
@@ -750,7 +836,20 @@ if ($Mode -eq 'Evening') {
                             $PrevEAPGit = $ErrorActionPreference
                             $ErrorActionPreference = 'Continue'
                             try {
-                                $OnRemote = @(git -C $RepoForProject branch -r --contains $pfSha --list 'origin/*' 2>$null)
+                                # EXCLUDE THE BACKUP BRANCHES. Since 2026-09-10 the
+                                # close pushes every commit to origin/close/<date>
+                                # BEFORE trying the real branch, so that sha is on an
+                                # origin branch even when the push that mattered
+                                # failed. Without this exclusion a genuine auth or
+                                # network failure would find its own backup minutes
+                                # later and demote itself to "NOW FIXED - nothing to
+                                # do" - an alarm silently switching itself off, which
+                                # is the exact failure this file exists to prevent.
+                                # It also stops the check decaying as close/* branches
+                                # accumulate. Security Agent H2/H3, 2026-09-10.
+                                $OnRemote = @(git -C $RepoForProject branch -r --contains $pfSha --list 'origin/*' 2>$null |
+                                              ForEach-Object { [string]$_ } |
+                                              Where-Object { ($_ -replace '^\s*', '') -notlike 'origin/close/*' })
                                 $GitExit  = $LASTEXITCODE
                             } finally { $ErrorActionPreference = $PrevEAPGit }
                             $OnRemote = @(@($OnRemote) | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) })
@@ -931,8 +1030,40 @@ foreach ($p in @(
         # this branch - it always reaches the loud banner. Security Agent H4.
         $ScheduleNotes += "Note: $($p.Name) - nothing new logged since the last session close, and no close has been due since. That is the normal gap, not a problem."
         Write-Log "STALENESS: $($p.Name) last logged $($p.Brief.NewestRealTime.ToString('ddd HH:mm')), after the last due close - quiet note, no banner."
+    } elseif ($null -ne $p.Brief.NewestRealTime -and
+              $p.Brief.NewestRealTime -ge (Get-CloseTimeNBack -From $LastDueClose -Closes ($StaleLoudAfterCloses - 1))) {
+        # QUIET FOR THE FIRST TWO MISSED CLOSES. Saeed's decision 2026-09-09.
+        # A close HAS been missed here - that is what separates this from the "no
+        # close was due" branch above - but one or two are ordinary, and a loud
+        # banner for an ordinary day off is the cry-wolf problem in a different coat.
+        #
+        # MEASURED IN CLOSES, NOT HOURS, so the weekend cannot count toward the
+        # three. $null is routed to the loud branch explicitly: a project with no
+        # real log at all has no timestamp to compare and must never land here.
+        # Security Agent F2, 2026-09-09.
+        #
+        # It is still SAID, every day, from the first one: silence is what let the
+        # 11-19 Aug 2026 outage run for eight days. Only the volume waits.
+        $ClosesMissed = Get-ClosesMissed -Since $p.Brief.NewestRealTime -LastDue $LastDueClose -Cap $StaleLoudAfterCloses
+        $CloseWord = if ($ClosesMissed -le 1) { "one working day" } else { "$ClosesMissed working days" }
+        # NO "NORMAL SO FAR". A due close has provably been missed, and in a MORNING
+        # run this script has not even read the close marker - the marker block is
+        # gated on Evening mode - so it cannot know whether the close failed or
+        # nobody worked. Asserting normality here is a claim it has not earned, and
+        # would contradict the loud close-failure banner Saeed may have read the
+        # night before. Say what is true: what was seen, and when it escalates.
+        # Security Agent F1, 2026-09-09.
+        $ScheduleNotes += "Note: $($p.Name) - nothing new logged for $CloseWord, and a session close has come and gone since. Not shouting yet; this becomes a warning at $StaleLoudAfterCloses working days."
+        Write-Log "STALENESS: $($p.Name) has missed $ClosesMissed close(s) - under the $StaleLoudAfterCloses-close threshold, quiet note only."
     } else {
-        $StaleParts += (Format-StaleLine -Name $p.Name -Hours $p.Brief.StaleHours -LogName $p.Brief.StaleLogName)
+        # Same counter as the quiet note above, so the escalation states the number
+        # the note promised. A project with no real log has no timestamp to count
+        # from; it keeps its own "NO session log has ever been found" wording.
+        $LoudCloses = if ($null -ne $p.Brief.NewestRealTime) {
+                          Get-ClosesMissed -Since $p.Brief.NewestRealTime -LastDue $LastDueClose
+                      } else { 0 }
+        $StaleParts += (Format-StaleLine -Name $p.Name -Hours $p.Brief.StaleHours `
+                        -LogName $p.Brief.StaleLogName -Closes $LoudCloses)
     }
 }
 
@@ -1113,6 +1244,14 @@ if (-not $DryRun -and -not $SkipCloseHere) {
         foreach ($pf in @(@($JLOutput) | ForEach-Object { [string]$_ } | Where-Object { $_ -like "PUSH-FAILED|*" -or $_ -like "TAG-PUSH-FAILED|*" })) {
             $FailedPushSignals += [PSCustomObject]@{ Day = $Now.ToString("dddd"); Sig = [string]$pf }
         }
+        # BEHIND-REMOTE too, or it is collected and thrown away. Only the 18:30
+        # marker path was updated when this signal was added, so a morning run that
+        # was merely behind emitted it here and NOBODY read it - silently reversing
+        # the comment directly above, which exists because a rejected push must
+        # surface in the morning brief. Security Agent H1, 2026-09-10.
+        foreach ($br in @(@($JLOutput) | ForEach-Object { [string]$_ } | Where-Object { $_ -like "BEHIND-REMOTE|*" })) {
+            $BehindSignals += [PSCustomObject]@{ Day = $Now.ToString("dddd"); Sig = [string]$br }
+        }
     } catch {
         Write-Log "WARNING: JeffLocal strategy_daily.ps1 failed - $_"
     }
@@ -1150,6 +1289,10 @@ if (-not $DryRun -and -not $SkipCloseHere) {
                     if ($line -like "PUSH-FAILED|*" -or $line -like "TAG-PUSH-FAILED|*") {
                         $script:FailedPushSignals += [PSCustomObject]@{ Day = $Now.ToString("dddd"); Sig = $line }
                     }
+                    # Same omission as the JeffLocal site above. Security Agent H1.
+                    if ($line -like "BEHIND-REMOTE|*") {
+                        $script:BehindSignals += [PSCustomObject]@{ Day = $Now.ToString("dddd"); Sig = $line }
+                    }
                 }
         } catch {
             Write-Log "WARNING: St Marks session close failed - $_"
@@ -1164,6 +1307,28 @@ if (-not $DryRun -and -not $SkipCloseHere) {
 # prepend ends up highest, so this runs FIRST to land BENEATH all of them.
 # Placed after them, "NOW FIXED - no action needed" was the first thing Saeed
 # saw, sitting on top of live alarms. Security Agent M2, 2026-09-09 re-review.
+# ── 6b-5. Behind GitHub, but the work is safe ────────────────────────────────
+# Saeed, 2026-09-10. Since the close pushes to a backup branch that nobody else
+# writes to, "behind main" no longer means the work is at risk - so it must not
+# borrow the loud banner's voice. It is still SAID, every time, because he does
+# need to know there is newer code waiting and why it was not taken
+# automatically. Prepended before the alarm blocks so it lands beneath them.
+if (@($BehindSignals).Count -gt 0) {
+    $BehindLines = @()
+    foreach ($b in @($BehindSignals)) {
+        $bp = ([string]$b.Sig).Split("|", 4)
+        if (@($bp).Count -ge 3) { $BehindLines += "   $($bp[1]): $($bp[2])" }
+    }
+    $BehindBlock = "BEHIND GITHUB - your work is safe, no rush" + [Environment]::NewLine +
+                   (@($BehindLines) -join [Environment]::NewLine) + [Environment]::NewLine + [Environment]::NewLine
+    if (-not $DryRun -and (Test-Path $ReportPath)) {
+        $ExistingReport = Get-Utf8FileText -Path $ReportPath
+        Set-Content -Path $ReportPath -Value ($BehindBlock + $ExistingReport) -Encoding UTF8
+    }
+    Write-Log "BEHIND-REMOTE note shown for $(@($BehindLines).Count) project(s) - quiet, work is on its backup branch."
+    Write-Host $BehindBlock
+}
+
 # ── 6b-4. Failures that have since been fixed - DEMOTED, not deleted ─────────
 # Saeed asked (2026-09-09) for the "did not reach GitHub" banner to stop once the
 # work arrives, and it does: no !! banner, no repetition. But it does not vanish

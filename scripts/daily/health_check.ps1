@@ -423,7 +423,34 @@ try {
     if ($prev.Date -lt $CloseTaskStart) {
         Add-Finding "OK" "Session close" "Nothing to check yet - the 18:30 close starts from 4 Sep 2026."
     } elseif (Test-Path $prevMarker) {
-        Add-Finding "OK" "Session close" "Last working day ($($prev.ToString('ddd dd MMM'))) closed properly."
+        # THE FILE EXISTING IS NOT THE SAME AS THE CLOSE SUCCEEDING. A close that
+        # RAN AND FAILED still writes a marker - its first line is FAILED| instead
+        # of CLOSED| (session_close.ps1). Testing only for the file therefore
+        # reported a failed close to Saeed as "closed properly", in the morning
+        # brief, the day after the evening brief had shouted about it. Two of his
+        # messages contradicting each other is how a warning stops being believed.
+        # Security Agent F1, 2026-09-09.
+        $MarkerBody  = @(Get-Content $prevMarker -ErrorAction SilentlyContinue)
+        $ClosedLine  = @(@($MarkerBody) | Where-Object { $_ -like "CLOSED|*" }) | Select-Object -First 1
+        if ($ClosedLine) {
+            Add-Finding "OK" "Session close" "Last working day ($($prev.ToString('ddd dd MMM'))) closed properly."
+        } elseif (@($MarkerBody).Count -eq 0) {
+            # A MARKER THAT CANNOT BE READ IS NOT A FAILED CLOSE. -ErrorAction
+            # SilentlyContinue swallows the throw, so an unreadable or empty file
+            # would otherwise be reported as "RAN AND FAILED" with no reason -
+            # loud, which is the right direction, but it sends Saeed to the wrong
+            # problem. Same wrong-day class as the banner-naming fix in PR #4.
+            # Security Agent C4, 2026-09-09.
+            Add-Finding "PROBLEM" "Session close" "Could not read the close marker for $($prev.ToString('ddd dd MMM')) - the file is there but empty or unreadable. Cannot tell whether that day closed."
+        } else {
+            # Rendered the same way combined_brief.ps1 renders it ("project: reason"),
+            # so one marker does not appear two different ways in two of Saeed's
+            # messages. Security Agent C4.
+            $FailDetail = @(@($MarkerBody) | Where-Object { $_ -like "FAILED-DETAIL|*" } |
+                            ForEach-Object { (([string]$_).Split("|", 3)[1..2]) -join ": " }) -join "; "
+            $Because = if ($FailDetail) { " Reason: $FailDetail" } else { "" }
+            Add-Finding "PROBLEM" "Session close" "The 18:30 close RAN AND FAILED on $($prev.ToString('ddd dd MMM')).$Because"
+        }
     } else {
         Add-Finding "PROBLEM" "Session close" "The 18:30 close did NOT run on $($prev.ToString('ddd dd MMM')) - that day has no session log, no handover note and no restore point."
     }

@@ -38,7 +38,17 @@ param(
     [string]$ReportsDir  = "C:\JeffLocal\docs\reports",
     [string]$SessionsDir = "C:\JeffLocal\docs\sessions",
     [string]$ProjectDocs = "C:\JeffLocal\docs\project_documents",
-    [string]$MemoryFile  = "C:\JeffLocal\PROJECT_MEMORY.md"
+    [string]$MemoryFile  = "C:\JeffLocal\PROJECT_MEMORY.md",
+    # WHAT MAY NEVER ARRIVE ON THIS MACHINE UNSUPERVISED. Saeed asked (2026-09-10)
+    # for the close to pull automatically so he stops having to do it by hand. It
+    # does - but not for these paths. Everything on main has already been through a
+    # PR he approved, so pulling it is delivery of approved work, not a new
+    # decision. These two are different: dashboard\ IS the live production app
+    # serving reception staff on 8765, and config\ drives the live Ollama/Gemma
+    # pipeline. A change landing in either at 18:30 with nobody watching is a
+    # deployment, and CLAUDE.md reserves that for Saeed. If an incoming change
+    # touches one of these, the close does NOT pull - it says so and waits.
+    [string[]]$NoAutoPullPaths = @("dashboard", "config")
 )
 
 # ── Mode-dependent labels ─────────────────────────────────────────────────────
@@ -939,6 +949,12 @@ if ($DryRun) {
 
         git commit -m "memory: $($Mode.ToLower()) brief $Today $BriefClock" 2>&1 | Out-Null
         $CommitExit = $LASTEXITCODE
+        # SUPERSEDED 2026-09-10 - the paragraph below is no longer true on its own.
+        # The close now pushes to origin/close/<date> BEFORE the real branch, so the
+        # sha in a PUSH-FAILED IS already on an origin branch. combined_brief.ps1's
+        # retirement check now excludes origin/close/* for exactly this reason;
+        # the two must be changed together. Security Agent H3.
+        #
         # LOAD-BEARING PRECONDITION - DO NOT MOVE THE PUSH OUT FROM UNDER THIS.
         # A push is only ever attempted inside this branch, i.e. immediately after
         # a commit that was just created. That is what guarantees the sha reported
@@ -970,13 +986,205 @@ if ($DryRun) {
                 # to the rest of the process - including back into combined_brief.ps1,
                 # which invoked this script in-process. Security Agent L3.
                 $env:LC_ALL = "C"
+
+                # ─────────────────────────────────────────────────────────────
+                # 1. BACKUP BRANCH FIRST - the save that can never be refused.
+                #
+                # Saeed, 2026-09-10, after last night: "WHY DO I HAVE TO PULL AND
+                # PUSH? WHY NOT AUTOMATIC SCHEDULED TASK?" He is right. Git glues
+                # together two things that should be separate: SAVING his work,
+                # which must never need permission and never be refused, and
+                # RECEIVING new code, which is a deployment and needs his say-so.
+                # Because they were glued, every time GitHub moved ahead of his PC
+                # the evening save was rejected and stayed rejected until he fixed
+                # it by hand - three days lost 7-9 Sep, and again on 9 Sep.
+                #
+                # Nobody else ever writes to close/<date>, so this push cannot be
+                # rejected as non-fast-forward. His work reaches GitHub every
+                # evening whatever state main is in, with no manual step, ever.
+                #
+                # It still respects the push guard above: this whole block only
+                # runs when $ProtectedDirty is empty. Unfinished production work
+                # still means nothing leaves the machine, backup branch included.
+                # ─────────────────────────────────────────────────────────────
+                $CurBranch = (git rev-parse --abbrev-ref HEAD 2>$null)
+                if ([string]::IsNullOrWhiteSpace($CurBranch) -or $CurBranch -eq "HEAD") { $CurBranch = "main" }
+                $BackupBranch = "close/$Today"
+                git push origin "HEAD:refs/heads/$BackupBranch" 2>&1 | Out-Null
+                $BackupOk = ($LASTEXITCODE -eq 0)
+                if ($BackupOk) {
+                    Write-Log "Backup branch pushed: $BackupBranch - today's work is on GitHub regardless of $CurBranch."
+                } else {
+                    Write-Log "WARNING: backup branch $BackupBranch did NOT push. The work may be on this machine only."
+                }
+
+                # 2. Now the real branch.
                 $PushOut  = @(git push origin HEAD 2>&1) -join " "
                 # Capture it NOW. Any native command below - git rev-parse included -
                 # resets $LASTEXITCODE, and the generic reason would then report
                 # "exit 0" on a failed push: a banner arguing with itself, inside the
                 # alarm path. Security Agent M1, 2026-09-09.
                 $PushExit = $LASTEXITCODE
-                if ($PushExit -ne 0) {
+
+                # ─────────────────────────────────────────────────────────────
+                # 3. AUTO-PULL, BUT ONLY WHEN IT IS SAFE.
+                #
+                # Saeed asked for this on 2026-09-10 and accepted the trade-off
+                # explicitly. The reasoning: anything on main got there through a
+                # pull request HE approved, so bringing it down is delivery of
+                # already-approved work, not a fresh decision. The gate is the
+                # merge, not the pull.
+                #
+                # The exceptions are $NoAutoPullPaths - dashboard\ and config\ -
+                # where a change arriving unwatched at 18:30 really would be an
+                # unsupervised deployment of the live system. If the incoming
+                # change touches one of those, this does NOT pull. It says so and
+                # leaves it to Saeed, exactly as before.
+                #
+                # Three further refusals, all deliberate:
+                #   - only on a "you are behind" rejection. A network or auth
+                #     failure is not fixed by pulling and must stay loud.
+                #   - only if the merge is clean. A conflict is aborted at once:
+                #     a half-merged production folder left overnight with nobody
+                #     watching is far worse than a failed push.
+                #   - only if the tree is clean afterwards, before pushing again.
+                # Every refusal path falls through to the existing alarm.
+                # ─────────────────────────────────────────────────────────────
+                $AutoPulled   = $false
+                # ALWAYS ASSIGNED before any path can read it. StrictMode turns an
+                # unassigned read into a terminating error, and a crash here takes
+                # the whole brief down - Saeed gets no WhatsApp message at all.
+                # That defect shipped once already in this series (B1, PR #4).
+                $RefuseReason = ""
+                # SAEED APPROVED "the CLOSE pulls automatically". strategy_daily.ps1
+                # also runs at 07:00 from the morning brief, so without this the live
+                # system could change at 07:00, right before the surgery day starts -
+                # scope he was never shown. Evening only until he says otherwise.
+                # Security Agent M1, 2026-09-10.
+                $MayAutoPull = ($Mode -eq 'Evening')
+                # A detached HEAD makes $CurBranch fall back to "main", and merging
+                # origin/main into a detached HEAD unattended moves the working tree
+                # somewhere nobody asked for. Refuse. Security Agent L2.
+                $OnRealBranch = ((git rev-parse --abbrev-ref HEAD 2>$null) -eq $CurBranch)
+                if ($PushExit -ne 0 -and $PushOut -match 'non-fast-forward|fetch first|behind its remote' `
+                    -and $MayAutoPull -and $OnRealBranch) {
+                    try {
+                        Write-Log "Push rejected as behind. Checking whether it is safe to pull automatically..."
+                        git fetch origin $CurBranch 2>&1 | Out-Null
+                        if ($LASTEXITCODE -ne 0) {
+                            $RefuseReason = "could not reach GitHub to see what was waiting"
+                            Write-Log "  Could not fetch $CurBranch - not pulling."
+                        } else {
+                            # Three dots: what changed on THEIR side since the point
+                            # the two copies last agreed. Two dots would also list
+                            # this machine's own new files and refuse every time.
+                            # EVERY FLAG HERE IS LOAD-BEARING. `git diff --name-only`
+                            # on its own does NOT report what it appears to report, and
+                            # the Security Agent proved three separate ways past it -
+                            # each one able to overwrite or DELETE the live app at
+                            # 18:30 while this log line said "Safe". 2026-09-10:
+                            #
+                            #   --no-renames  Rename detection is ON by default and
+                            #     prints ONLY the destination. A remote that renames
+                            #     dashboard/app.py -> docs/app_moved.py shows up as
+                            #     "docs/app_moved.py" alone, passes the check, and the
+                            #     merge DELETES the live file. Renaming the whole
+                            #     dashboard/ folder removes the entire production app
+                            #     with no alarm. --no-renames splits a rename back into
+                            #     delete-old + add-new, so the protected path reappears.
+                            #   -c core.quotePath=false  Git QUOTES any non-ASCII path
+                            #     by default: config/café.json arrives as the literal
+                            #     "config/\303\251.json", starting with a quote
+                            #     character, so -like 'config/*' is false. One accented
+                            #     filename would defeat the guard permanently.
+                            #   -z  NUL-separated, so a newline in a filename cannot
+                            #     forge an extra entry, and no quoting is reintroduced.
+                            #
+                            # Do not remove any one of them thinking the others cover it.
+                            $IncRaw   = @(git -c core.quotePath=false diff --no-renames --name-only -z "HEAD...origin/$CurBranch" 2>$null)
+                            $DiffOk   = ($LASTEXITCODE -eq 0)
+                            $Incoming = @((@($IncRaw) -join "") -split "`0" |
+                                          ForEach-Object { [string]$_ } |
+                                          Where-Object { $_.Trim() -ne "" })
+
+                            # CROSS-CHECK THE PARSE, BECAUSE IT FAILS OPEN.
+                            # -z is right, but it moved this from "split on newlines"
+                            # - which every PowerShell does identically - to
+                            # "reassemble native output and split on NUL", which has
+                            # never executed on Windows PowerShell 5.1, the only place
+                            # this actually runs. If 5.1 drops the NUL bytes the whole
+                            # list collapses into ONE concatenated string, so
+                            # "docs/harmless.md" + "dashboard/app.py" becomes
+                            # "docs/harmless.mddashboard/app.py", which does not start
+                            # with "dashboard/" - and the guard prints
+                            # "Safe: 1 incoming file(s)... Merging." That is the exact
+                            # sentence that was in the log when the live app was
+                            # deleted in testing. Silent, and intermittent, since it
+                            # only bites when the protected path is not first.
+                            #
+                            # The newline form is parsed identically everywhere, so a
+                            # disagreement in COUNT means the parse cannot be trusted.
+                            # Refuse rather than assume - the same principle as $DiffOk.
+                            # Security Agent S1, 2026-09-10.
+                            $IncPlain = @(git -c core.quotePath=false diff --no-renames --name-only "HEAD...origin/$CurBranch" 2>$null |
+                                          ForEach-Object { [string]$_ } |
+                                          Where-Object { $_.Trim() -ne "" })
+                            $ParseOk = (@($Incoming).Count -eq @($IncPlain).Count)
+                            $Blocked = @($Incoming | Where-Object {
+                                $f = ($_ -replace '\\', '/')
+                                $hit = $false
+                                foreach ($prot in @($NoAutoPullPaths)) {
+                                    $pp = ([string]$prot -replace '\\', '/').Trim('/')
+                                    if ($pp -and ($f -eq $pp -or $f -like "$pp/*")) { $hit = $true }
+                                }
+                                $hit
+                            })
+                            if (-not $ParseOk) {
+                                $RefuseReason = "the list of incoming changes could not be read reliably"
+                                Write-Log "  NOT pulling - the two readings of the incoming list disagree ($(@($Incoming).Count) vs $(@($IncPlain).Count)). Refusing rather than trusting either."
+                            } elseif (-not $DiffOk) {
+                                # An empty list from a FAILED diff is not evidence of
+                                # safety - it is absence of evidence, and it would read
+                                # as "0 incoming files, none protected, merging". The
+                                # guard must be satisfied by proof, never by an error.
+                                # Security Agent M3, 2026-09-10.
+                                $RefuseReason = "could not read what was waiting on $CurBranch"
+                                Write-Log "  NOT pulling - the incoming-change list could not be read. Refusing rather than assuming."
+                            } elseif (@($Blocked).Count -gt 0) {
+                                $RefuseReason = "the incoming changes touch the live system ($(@($Blocked)[0]))"
+                                Write-Log "  NOT pulling - $(@($Blocked).Count) incoming change(s) touch protected paths:"
+                                foreach ($b in @($Blocked)) { Write-Log "      $b" }
+                            } else {
+                                Write-Log "  Safe: $(@($Incoming).Count) incoming file(s), none under $($NoAutoPullPaths -join ', '). Merging."
+                                git merge --no-edit "origin/$CurBranch" 2>&1 | Out-Null
+                                if ($LASTEXITCODE -ne 0) {
+                                    # Abort immediately. Never leave a half-merged
+                                    # production folder behind at 18:30.
+                                    git merge --abort 2>&1 | Out-Null
+                                    $RefuseReason = "the changes clash with tonight's work and need a person to decide"
+                                    Write-Log "  Merge CONFLICTED - aborted, nothing changed on disk. Leaving this to Saeed."
+                                } else {
+                                    $PushOut2  = @(git push origin HEAD 2>&1) -join " "
+                                    $PushExit2 = $LASTEXITCODE
+                                    if ($PushExit2 -eq 0) {
+                                        $AutoPulled = $true
+                                        Write-Log "AUTO-PULL SUCCEEDED: pulled $(@($Incoming).Count) file(s) from $CurBranch and pushed. No manual step needed."
+                                    } else {
+                                        $RefuseReason = "the changes came down cleanly but sending the work back up still failed"
+                                        Write-Log "  Pulled cleanly but the push still failed: $PushOut2"
+                                    }
+                                }
+                            }
+                        }
+                    } catch {
+                        $RefuseReason = "the automatic catch-up hit an unexpected error"
+                        Write-Log "  Auto-pull attempt failed - $_. Falling through to the alarm."
+                        # Best effort: never leave a merge half-done.
+                        git merge --abort 2>&1 | Out-Null
+                    }
+                }
+
+                if ($PushExit -ne 0 -and -not $AutoPulled) {
                     # DO NOT throw. A throw here lands in the catch below, which
                     # only writes to a log file nobody reads, and the close then
                     # reports itself as a success. That is exactly how 7-9 Sep 2026
@@ -1016,9 +1224,45 @@ if ($DryRun) {
                     # The reasons above contain none today; this makes that true
                     # by construction rather than by inspection.
                     $PushFailReason = ([string]$PushFailReason) -replace '\|', ' '
-                    # Machine-readable signal for session_close.ps1 and the brief.
-                    # Format: PUSH-FAILED|<project>|<reason>|<sha>
-                    Write-Output "PUSH-FAILED|$ProjectName|$PushFailReason|$($FailedSha.Trim())"
+                    # WHICH ALARM? This depends on whether the work is actually
+                    # at risk, and since the backup branch above that is no longer
+                    # the same question as "did the main push succeed".
+                    #
+                    #   Backup pushed + merely behind  -> the work IS on GitHub.
+                    #     "YOUR WORK DID NOT REACH GITHUB" would be false, and a
+                    #     banner that repeats something untrue is how Saeed learns
+                    #     to stop reading banners. Quiet signal instead.
+                    #   Backup failed, or a network/auth failure -> the work really
+                    #     may be on this machine only. Loud, exactly as before.
+                    #
+                    # This also avoids a trap: the retirement check in
+                    # combined_brief.ps1 asks "is this sha on an origin branch?".
+                    # The backup branch IS an origin branch, so a PUSH-FAILED
+                    # raised here would retire itself the same evening - an alarm
+                    # silently switching itself off, which is the precise failure
+                    # this whole file exists to prevent.
+                    $MerelyBehind = ($PushOut -match 'non-fast-forward|fetch first|behind its remote')
+                    if ($MerelyBehind -and $BackupOk) {
+                        Write-Log "Reporting as BEHIND-REMOTE, not PUSH-FAILED: today's work is safe on $BackupBranch."
+                        # SAY THE REAL REASON. This message used to state one
+                        # hardcoded cause - "the incoming changes touch the live
+                        # system" - on every path, including a fetch failure and an
+                        # aborted conflict. In the conflict case it then told Saeed
+                        # to run a pull that would conflict for him too, with the
+                        # wrong explanation in hand. Security Agent M2, 2026-09-10.
+                        $Why = if ($RefuseReason) { $RefuseReason }
+                               elseif (-not $MayAutoPull) { "the automatic catch-up only runs at the evening close" }
+                               elseif (-not $OnRealBranch) { "this computer is not on a normal branch" }
+                               else { "it could not be brought down automatically" }
+                        # Pipes would shift every field after them - the same
+                        # sanitising $PushFailReason already gets. Security Agent L3.
+                        $Why = ([string]$Why) -replace '\|', ' '
+                        Write-Output "BEHIND-REMOTE|$ProjectName|this computer is behind GitHub, so tonight's work did not go onto $CurBranch - but it IS saved on GitHub as $BackupBranch, so nothing is at risk. Not pulled automatically because $Why. To catch up: git pull --no-edit origin $CurBranch, then git push origin $CurBranch|$BackupBranch"
+                    } else {
+                        # Machine-readable signal for session_close.ps1 and the brief.
+                        # Format: PUSH-FAILED|<project>|<reason>|<sha>
+                        Write-Output "PUSH-FAILED|$ProjectName|$PushFailReason|$($FailedSha.Trim())"
+                    }
                 } else {
                     Write-Log "Git push complete"
                     # RECORD THE SUCCESS, so a stale failure can be retired.
