@@ -961,3 +961,29 @@ Three further changes:
 **Limitation:** still not run on Windows PowerShell 5.1 — the only untested surface, outstanding since PR #5. One `-DryRun` morning and evening run on the target machine is recommended before the first live brief.
 **Open for Saeed:** (1) confirm "three days" means three **working** days; (2) whether the **07:00** brief should carry the close-failure banner at all — it never has, and that failure currently only reaches him at 19:00 the night before.
 **Saeed notified:** This session — awaiting his explicit "approved" to merge.
+
+---
+
+## 2026-09-10 — The Close Now Backs Itself Up and Pulls When Safe (Saeed's Request)
+**Agent:** Lead Agent (Claude Code session)
+**Approved by:** Saeed, explicitly, this session: *"WHY DO I HAVE TO PULL AND PUSH? WHY NOT AUTOMATIC SCHEDULED TASK?"* — then chose **"Yes, and also auto-pull when it is safe"** after being shown the trade-off in writing (that it means code can reach the production folder without him looking first).
+
+**The incident that prompted it.** On 9 Sep the 18:30 close ran at 18:32, committed correctly, and pushed its restore tag — but its push to `main` was **rejected** because the PC was still on the PR #4 merge while GitHub had moved to PR #5. The work sat on the machine only, and this morning's 07:00 brief was stuck behind it too. Both were recovered by hand (`dccbaf6..4e5857d`). **The 19:00 banner DID fire** — Saeed confirmed it — which is the first live proof that last week's alarm work does what it was built to do. The alarm worked; the underlying cause had never been fixed.
+
+**Root cause, verified:** there is **no `git pull` in any scheduled task**. Every job pushes and nothing ever receives. Git refuses a push from a copy that is behind, so the moment GitHub moved ahead, every save failed and stayed failing until a human intervened. This is the same mechanism as the 7–9 Sep three-day outage.
+
+**Two changes, deliberately separate, because git glues together two things that should not be:**
+
+1. **A save that can never be refused.** Every close now pushes to `close/<date>` **first**, before touching `main`. Nobody else writes to that branch, so it cannot be rejected as non-fast-forward. Saeed's work reaches GitHub every evening whatever state `main` is in, with no manual step, ever. It still respects the live-deploy guard: unfinished production work means nothing leaves the machine, backup branch included.
+
+2. **An automatic pull, but only when it is safe.** On a "you are behind" rejection the close fetches, inspects what is actually incoming, and merges only if every condition holds. **It refuses** — and falls through to telling Saeed — when any incoming file is under `$NoAutoPullPaths` (`dashboard\`, `config\`), when the rejection is a network or auth failure rather than being behind, or when the merge conflicts (aborted immediately; a half-merged production folder left overnight is far worse than a failed push).
+   The reasoning for pulling at all: anything on `main` arrived through a PR Saeed approved, so bringing it down is delivery of already-approved work. **The gate is the merge, not the pull.** `dashboard\` is different — it *is* the live app on 8765 — and `config\` drives the live Ollama/Gemma pipeline. Those stay his call.
+
+**New signal `BEHIND-REMOTE`, and why it is not an alarm.** With a backup branch, "behind `main`" no longer means the work is at risk, so it must not borrow the loud banner's voice: *"YOUR WORK DID NOT REACH GITHUB"* would simply be false. It is still said every time, quietly, naming why the pull was refused and the one command to fix it.
+**This also closes a trap I would otherwise have set.** The retirement check added in PR #5 asks *"is this sha on an origin branch?"* — and the backup branch **is** an origin branch. A `PUSH-FAILED` raised in this situation would have found its own backup and retired itself the same evening: an alarm silently switching itself off, which is precisely the failure this file set exists to prevent.
+
+**Files changed:** scripts/daily/strategy_daily.ps1, scripts/daily/session_close.ps1, scripts/daily/combined_brief.ps1, CHANGELOG.md
+**Tests run:** PowerShell 7.4.6, **15/15 against real git repositories with real remotes** — not mocks, and not a re-implementation: the live push block is extracted and executed. Nothing to pull (pushes, no alarm; backup branch created) · safe change (auto-pulled, work reached `main`, **the new code verifiably arrived on the PC**, no alarm) · `dashboard\` change (refused; **the live file on disk verified unchanged**) · `config\` change (refused; live config verified unchanged) · merge conflict (aborted, working tree verified clean, no `MERGE_HEAD` left behind, still reported). All earlier suites still pass: staleness 21/21, health check 6/6, retirement 11/11. All five scripts parse clean.
+**Harness note:** the first run showed 7 failures which were a **fixture** fault, not a code fault — the bare test repo defaulted to `master`, so the second clone had no `main` and the scenario never actually put the PC behind. Diagnosed and fixed rather than reported as a result; the fixture now pins `-b main` with a comment saying why.
+**Limitation:** not run on Windows PowerShell 5.1.
+**Still requires:** Security Agent review, then Saeed's explicit approval before merge.

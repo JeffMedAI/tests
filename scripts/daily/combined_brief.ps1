@@ -679,6 +679,11 @@ $FailedPushSignals = @()
 # correct retirement reads identically to the alarm having broken. One plain
 # line costs nothing and cannot silence a truth. Security Agent M2, 2026-09-09.
 $RetiredPushSignals = @()
+# "You are behind GitHub, but tonight's work is safe on its backup branch."
+# NOT an emergency and deliberately not in $FailedPushSignals: that list drives
+# the loud banner, and this states something that is true and not urgent.
+# Saeed, 2026-09-10.
+$BehindSignals = @()
 # Named for the day whose close is being reported on, NOT for today - on a
 # Saturday this is Friday's close. Renamed from $NoCloseToday, which invited
 # exactly the "TODAY'S" wording bug below. Security Agent L2, 2026-09-07.
@@ -742,6 +747,9 @@ if ($Mode -eq 'Evening') {
             $MarkerLines = @(Get-Content -Path $MarkerPath -ErrorAction SilentlyContinue)
             # Harvest push-held signals from EVERY marker read, due or hand-run.
             $HeldSignals += @(@($MarkerLines) | Where-Object { $_ -like "PUSH-HELD|*" })
+            foreach ($br in @(@($MarkerLines) | Where-Object { $_ -like "BEHIND-REMOTE|*" })) {
+                $BehindSignals += [PSCustomObject]@{ Day = $DayName; Sig = [string]$br }
+            }
             foreach ($pf in @(@($MarkerLines) | Where-Object { $_ -like "PUSH-FAILED|*" -or $_ -like "TAG-PUSH-FAILED|*" })) {
                 # RETIRE A FAILURE THAT HAS SINCE BEEN FIXED. Saeed's instruction
                 # 2026-09-09. This banner is NOT like the close-failure one: that
@@ -1266,6 +1274,28 @@ if (-not $DryRun -and -not $SkipCloseHere) {
 # prepend ends up highest, so this runs FIRST to land BENEATH all of them.
 # Placed after them, "NOW FIXED - no action needed" was the first thing Saeed
 # saw, sitting on top of live alarms. Security Agent M2, 2026-09-09 re-review.
+# ── 6b-5. Behind GitHub, but the work is safe ────────────────────────────────
+# Saeed, 2026-09-10. Since the close pushes to a backup branch that nobody else
+# writes to, "behind main" no longer means the work is at risk - so it must not
+# borrow the loud banner's voice. It is still SAID, every time, because he does
+# need to know there is newer code waiting and why it was not taken
+# automatically. Prepended before the alarm blocks so it lands beneath them.
+if (@($BehindSignals).Count -gt 0) {
+    $BehindLines = @()
+    foreach ($b in @($BehindSignals)) {
+        $bp = ([string]$b.Sig).Split("|", 4)
+        if (@($bp).Count -ge 3) { $BehindLines += "   $($bp[1]): $($bp[2])" }
+    }
+    $BehindBlock = "BEHIND GITHUB - your work is safe, no rush" + [Environment]::NewLine +
+                   (@($BehindLines) -join [Environment]::NewLine) + [Environment]::NewLine + [Environment]::NewLine
+    if (-not $DryRun -and (Test-Path $ReportPath)) {
+        $ExistingReport = Get-Utf8FileText -Path $ReportPath
+        Set-Content -Path $ReportPath -Value ($BehindBlock + $ExistingReport) -Encoding UTF8
+    }
+    Write-Log "BEHIND-REMOTE note shown for $(@($BehindLines).Count) project(s) - quiet, work is on its backup branch."
+    Write-Host $BehindBlock
+}
+
 # ── 6b-4. Failures that have since been fixed - DEMOTED, not deleted ─────────
 # Saeed asked (2026-09-09) for the "did not reach GitHub" banner to stop once the
 # work arrives, and it does: no !! banner, no repetition. But it does not vanish

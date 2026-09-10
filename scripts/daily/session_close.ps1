@@ -99,6 +99,10 @@ if (($Day -eq [DayOfWeek]::Saturday -or $Day -eq [DayOfWeek]::Sunday) -and -not 
 
 # Collected PUSH-HELD signal lines from both projects, handed to the 19:00 brief.
 $HeldSignals = @()
+# Quiet "you are behind, but the work is safe on its backup branch" signal.
+# Deliberately NOT mixed in with $FailedPushSignals: that list drives the loud
+# banner, and this case is not an emergency. Saeed, 2026-09-10.
+$BehindSignals = @()
 
 # Collected PUSH-FAILED lines. Different problem, different banner: HELD is the
 # push guard doing its job on purpose; FAILED is the save to GitHub being
@@ -134,6 +138,7 @@ try {
         # TAG-PUSH-FAILED is a SEPARATE signal on purpose - it must reach the brief,
         # but it must never be retirable by a branch-push stamp. Security Agent H1.
         $FailedPushSignals += @(@($JLOutput) | ForEach-Object { [string]$_ } | Where-Object { $_ -like "PUSH-FAILED|*" -or $_ -like "TAG-PUSH-FAILED|*" })
+        $BehindSignals += @(@($JLOutput) | ForEach-Object { [string]$_ } | Where-Object { $_ -like "BEHIND-REMOTE|*" })
     }
     Write-Log "Avamed close finished."
 } catch {
@@ -163,6 +168,7 @@ try {
             ForEach-Object { Write-Log "  [SM] $_"; $_ }
         $HeldSignals += @(@($SMOutput) | ForEach-Object { [string]$_ } | Where-Object { $_ -like "PUSH-HELD|*" })
         $FailedPushSignals += @(@($SMOutput) | ForEach-Object { [string]$_ } | Where-Object { $_ -like "PUSH-FAILED|*" -or $_ -like "TAG-PUSH-FAILED|*" })
+        $BehindSignals += @(@($SMOutput) | ForEach-Object { [string]$_ } | Where-Object { $_ -like "BEHIND-REMOTE|*" })
         Write-Log "St Marks close finished."
     }
 } catch {
@@ -189,6 +195,7 @@ if ($DryRun) {
     }
     $MarkerLines += @($HeldSignals)
     $MarkerLines += @($FailedPushSignals)
+    $MarkerLines += @($BehindSignals)
     Set-Content -Path $StateFile -Value $MarkerLines -Encoding UTF8
     Write-Log "Marker written: $StateFile ($(@($HeldSignals).Count) push-held, $(@($FailedPushSignals).Count) push-FAILED signal(s))"
 
