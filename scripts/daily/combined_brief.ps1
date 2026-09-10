@@ -797,6 +797,14 @@ if ($Mode -eq 'Evening') {
                     # disappears with it. Security Agent L2 accepted, 2026-09-09.
                     # The stamp is still read, but ONLY to say when the work arrived.
                     #
+                    # UPDATED 2026-09-10 - READ THIS BEFORE TRUSTING THE NEXT LINES.
+                    # The close now pushes to origin/close/<date> BEFORE the real
+                    # branch, so the old guarantee ("the sha cannot already be on
+                    # origin") is FALSE. What replaces it is the exclusion below:
+                    # backup branches are filtered out, so "on an origin branch that
+                    # is not a backup" still means the work reached a real branch.
+                    # Security Agent H3, 2026-09-10.
+                    #
                     # WHY "on origin" IS SUFFICIENT PROOF, and what would break it.
                     # strategy_daily.ps1 only ever attempts a push inside
                     # `if ($CommitExit -eq 0)`, i.e. immediately after creating a
@@ -828,7 +836,20 @@ if ($Mode -eq 'Evening') {
                             $PrevEAPGit = $ErrorActionPreference
                             $ErrorActionPreference = 'Continue'
                             try {
-                                $OnRemote = @(git -C $RepoForProject branch -r --contains $pfSha --list 'origin/*' 2>$null)
+                                # EXCLUDE THE BACKUP BRANCHES. Since 2026-09-10 the
+                                # close pushes every commit to origin/close/<date>
+                                # BEFORE trying the real branch, so that sha is on an
+                                # origin branch even when the push that mattered
+                                # failed. Without this exclusion a genuine auth or
+                                # network failure would find its own backup minutes
+                                # later and demote itself to "NOW FIXED - nothing to
+                                # do" - an alarm silently switching itself off, which
+                                # is the exact failure this file exists to prevent.
+                                # It also stops the check decaying as close/* branches
+                                # accumulate. Security Agent H2/H3, 2026-09-10.
+                                $OnRemote = @(git -C $RepoForProject branch -r --contains $pfSha --list 'origin/*' 2>$null |
+                                              ForEach-Object { [string]$_ } |
+                                              Where-Object { ($_ -replace '^\s*', '') -notlike 'origin/close/*' })
                                 $GitExit  = $LASTEXITCODE
                             } finally { $ErrorActionPreference = $PrevEAPGit }
                             $OnRemote = @(@($OnRemote) | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) })
@@ -1223,6 +1244,14 @@ if (-not $DryRun -and -not $SkipCloseHere) {
         foreach ($pf in @(@($JLOutput) | ForEach-Object { [string]$_ } | Where-Object { $_ -like "PUSH-FAILED|*" -or $_ -like "TAG-PUSH-FAILED|*" })) {
             $FailedPushSignals += [PSCustomObject]@{ Day = $Now.ToString("dddd"); Sig = [string]$pf }
         }
+        # BEHIND-REMOTE too, or it is collected and thrown away. Only the 18:30
+        # marker path was updated when this signal was added, so a morning run that
+        # was merely behind emitted it here and NOBODY read it - silently reversing
+        # the comment directly above, which exists because a rejected push must
+        # surface in the morning brief. Security Agent H1, 2026-09-10.
+        foreach ($br in @(@($JLOutput) | ForEach-Object { [string]$_ } | Where-Object { $_ -like "BEHIND-REMOTE|*" })) {
+            $BehindSignals += [PSCustomObject]@{ Day = $Now.ToString("dddd"); Sig = [string]$br }
+        }
     } catch {
         Write-Log "WARNING: JeffLocal strategy_daily.ps1 failed - $_"
     }
@@ -1259,6 +1288,10 @@ if (-not $DryRun -and -not $SkipCloseHere) {
                     if ($line -like "PUSH-HELD|*")   { $script:HeldSignals += $line }
                     if ($line -like "PUSH-FAILED|*" -or $line -like "TAG-PUSH-FAILED|*") {
                         $script:FailedPushSignals += [PSCustomObject]@{ Day = $Now.ToString("dddd"); Sig = $line }
+                    }
+                    # Same omission as the JeffLocal site above. Security Agent H1.
+                    if ($line -like "BEHIND-REMOTE|*") {
+                        $script:BehindSignals += [PSCustomObject]@{ Day = $Now.ToString("dddd"); Sig = $line }
                     }
                 }
         } catch {

@@ -987,3 +987,39 @@ Three further changes:
 **Harness note:** the first run showed 7 failures which were a **fixture** fault, not a code fault — the bare test repo defaulted to `master`, so the second clone had no `main` and the scenario never actually put the PC behind. Diagnosed and fixed rather than reported as a result; the fixture now pins `-b main` with a comment saying why.
 **Limitation:** not run on Windows PowerShell 5.1.
 **Still requires:** Security Agent review, then Saeed's explicit approval before merge.
+
+---
+
+## 2026-09-10 — Auto-Pull Round 2: Security Agent BLOCKED It, and Was Right
+**Agent:** Lead Agent (Claude Code session), reviewed by Security Agent
+**Approved by:** Saeed approved the feature. Everything below is Security Agent conditions on it. **Not merged — awaiting re-review, then his explicit approval.**
+**Description:** The first version was **BLOCKED as unsafe to run unattended against the live production folder**, and the finding was real. The reviewer wrote its own exploit and ran it against my extracted live code three times.
+
+**B1 (blocking) — the protected-path check could not see three whole classes of path, and the live app could be DELETED while the log said "Safe".**
+`git diff --name-only` does not report what it appears to. With rename detection on — the default — it prints **only the destination**. So:
+- A remote renaming `dashboard/app.py` → `docs/app_moved.py` showed up as `docs/app_moved.py` alone. The guard passed it, and the merge **deleted the live file**.
+- Renaming the whole `dashboard/` folder removed **the entire live production app** at 18:30, unattended, with no alarm.
+- Git also **quotes any non-ASCII path** by default, so `config/pathways-café.json` arrived as the literal `"config/\303\251.json"` — starting with a quote character — and `-like 'config/*'` was false. One accented filename would have defeated the guard permanently.
+
+Fixed with `git -c core.quotePath=false diff --no-renames --name-only -z`. All three flags are load-bearing and none covers another; there is now a comment saying so. `--no-renames` splits a rename back into delete-old + add-new so the protected path reappears.
+
+**Verified by negative control, not just by the fix passing.** Reverting only those flags makes the same tests report `LIVE APP FILE DELETED`, `ENTIRE LIVE FOLDER DELETED` and `FILE LANDED IN LIVE CONFIG` — while the log line still reads *"Safe: 1 incoming file(s), none under dashboard, config. Merging."* Honest note: a plain **deletion** of a dashboard file was always caught; only the rename and quoting classes were vulnerable.
+
+**Why my 15/15 missed it:** the harness only ever tested a plain content modification — the one shape the matcher did handle. Right mechanism (real repos, real remotes, real extracted code), wrong inputs.
+
+**H1 (high) — the new quiet signal was collected and thrown on the floor in the 07:00 brief.** Only the 18:30 marker path was updated when `BEHIND-REMOTE` was added; neither live call site in `combined_brief.ps1` harvested it. A morning run that was merely behind would have said **nothing at all** — silently reversing the comment sitting directly above that code, which exists precisely because a rejected push must reach the morning brief.
+
+**H2/H3 (high) — I closed the self-retiring trap for one branch and left it open on the other.** A genuine **auth or network** failure still emitted a loud `PUSH-FAILED`, whose sha was already on `origin/close/<date>` from the backup push moments earlier — so the retirement check would find the backup and demote a real failure to *"NOW FIXED — nothing to do"* the same evening. The retirement glob now **excludes `origin/close/*`**. This also stops the check decaying as backup branches accumulate.
+**The two cross-referenced precondition comments were left asserting something no longer true** — that a push only ever happens straight after a fresh commit, so the sha cannot already be on origin. The backup push makes that false. Both comments are corrected in the same commit; leaving them would have set a trap for the next reader, which is exactly what they warn against.
+
+**M1 — the auto-pull was wider than what Saeed approved.** He approved *"the **close** pulls automatically"*. `strategy_daily.ps1` also runs at **07:00**, so production code could have changed right before the surgery day starts. Now **Evening only**, and a morning run that is behind still tells him, naming that rule as the reason.
+**M2** — the message stated one hardcoded cause on every path, including a fetch failure and an aborted conflict, then told him to run a pull that would conflict for him too. It now carries the real reason.
+**M3** — a failed `git diff` left `$Incoming` empty, which read as "nothing incoming, safe to merge". The guard must be satisfied by proof, never by an error. It now refuses.
+**L2** — refuses to auto-pull on a detached HEAD. **L3** — pipe-sanitises the message, as `$PushFailReason` already was.
+
+**Confirmed clean by the reviewer:** StrictMode on every path including the guard-held path (no repeat of B1 from PR #4); the live-deploy guard still holds, backup branch included; `TAG-PUSH-FAILED` still non-retirable; three-dot diff is the right question; `git merge --abort` handling adequate; PRs #1, #2, #3 and #6 untouched. It also confirmed my earlier fixture diagnosis was correct.
+
+**Files changed:** scripts/daily/strategy_daily.ps1, scripts/daily/combined_brief.ps1, CHANGELOG.md
+**Tests run:** push/pull **26/26** (was 15) — the four exploits now all refuse and the live files verifiably survive, plus the Evening-only rule. Retirement **13/13** — including a sha present **only** on `origin/close/*` (warning kept) and the same sha once it reaches `main` (retired). Staleness 21/21, health 6/6. All five scripts parse clean. Negative control run to prove the new tests discriminate.
+**Limitation:** still not run on Windows PowerShell 5.1 — outstanding since PR #5, and this change adds five git invocations to the unattended path.
+**Open for Saeed:** (1) keep `close/<date>` branches forever or prune once their work is on `main`? (2) are `dashboard\` and `config\` the complete protected list — note `scripts\daily\` is deliberately NOT protected, since those are the very files he wants delivered automatically. (3) should auto-pull also run at 07:00, which he was not shown.
