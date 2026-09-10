@@ -1150,3 +1150,27 @@ Two details worth keeping. The renderer eight lines below **already** guards wit
 **Tests run:** dedup suite **19/19** (was 9) — now including: a truncated held line does not crash and the good line survives it; a trailing-pipe-only line does not crash; a truncated behind line does not crash; empty arrays do not crash either dedup; a well-formed line survives a truncated sibling; same key with the truncated entry last still keeps the well-formed one; and the three harvest-order line assertions. Plus morning 7/7 · S2 6/6 · push/pull 30/30 · retirement 13/13 · staleness 21/21 · health 6/6. All five scripts parse clean.
 **Harness note:** one G2 assertion of mine failed and was **my test being wrong**, not the code — for held signals the key includes the path, so a truncated line lands in its own group and cannot evict the good one; my assertion checked position, which tested `Group-Object`'s output order rather than the guarantee. Replaced with an assertion on survival, plus a new case constructing the situation where eviction genuinely is possible.
 **Limitation:** not run on Windows PowerShell 5.1.
+
+---
+
+## 2026-09-10 — PR #7 Round 5: Security Agent Sign-Off GRANTED
+**Agent:** Lead Agent (Claude Code session), reviewed by Security Agent (round 13)
+**Approved by:** **Security Agent sign-off: PASS at d31f043.** Bug-fix autonomy applies — touches neither auth, patient identity fields, nor compliance logic. **Still requires Saeed's explicit approval, and is deliberately held until tonight's 18:30 close verifies the auto-backup change (PR #6) on the real machine.**
+**Description:** G1 and G2 confirmed fixed. The reviewer answered my question from **mechanism rather than observation**, which is a stronger guarantee than a passing test:
+
+**Can the filter that now protects against the G1 crash itself throw? No, and for four reasons that all hold structurally.** The type cast binds tighter than the split operator, so it parses as intended — worth checking, because had it parsed the other way the filter would have counted 1 for every input and silently discarded **every well-formed line**. `$_` inside the filter is guaranteed already `System.String`, because the upstream `ForEach-Object { [string]$_ }` runs before `Group-Object` — so the cast is a no-op and cannot fail. There is no index at all, only `@(...).Count`. And `-split` with a fixed valid regex against a string has no failure mode.
+
+**One asymmetry, documented in the code rather than changed.** The **behind** dedup reads `$_.Sig`, and under StrictMode a missing property is terminating. It is unreachable today — all four producers construct `[PSCustomObject]@{ Day=; Sig= }` literally — but it is the one guard in the two dedups that is safe **by convention rather than by structure**. A comment now says so, addressed to whoever adds a fifth producer. The held dedup cannot throw at all.
+
+**The reviewer's sharpening of my own lesson, which is the part worth keeping.** I recorded that writing a safe key and an unsafe key minutes apart was the useful signal. Its refinement: that inconsistency does not depend on a rare disk event, and it means the mental model was *"the filter proves the shape"* — which produced a safe result once **by luck of the field count, not by rule**. The extended standing check (*any new index into a split signal must assume the line is truncated; the `-like` filter proves the prefix, never the field count*) is stronger than the 2026-09-09 grep rule because it is a property of the code being written rather than a search someone must remember to run.
+
+**Also taken this round:** the currency guard now covers **every** extracted copy the retirement suite depends on, not just `helpers.ps1` — `retire_block.ps1` was equally stale-able. Verified discriminating by deliberately drifting it: the suite reports `retire_block.ps1 is STALE` and exits 1.
+
+**Independently re-verified by the reviewer, not taken on my word:** every round-12 crash input plus six new ones run against the live file with no throw; the poisoning case fixed (a malformed line no longer takes good signals with it); five eviction/ordering cases; `@($g)[-1]` proved safe because `Group-Object` never emits an empty group; the G4 guard proved discriminating by drifting the copy itself; and the three harvest-order line numbers confirmed against the live file (796 < 1262 < 1375/1508).
+
+**Can any warning now be silenced that should be shown? No.** The only remaining ways a signal disappears are that it stops being emitted (the documented `$BehindSignals` retirement gap, logged as debt) or that it is malformed and the renderer's pre-existing guard drops it — and the fallback now guarantees a malformed-only group still **reaches** that guard rather than vanishing upstream.
+
+**Files changed:** scripts/daily/combined_brief.ps1, CHANGELOG.md
+**Tests run:** dedup 19/19 · retirement 13/13 · morning 7/7 · S2 6/6 · push/pull 30/30 · staleness 21/21 · health 6/6 — **82 assertions**, all re-run independently by the reviewer. All five scripts parse clean.
+**Limitation:** not run on Windows PowerShell 5.1 — still nothing in this series has, and tonight is the first live test of PR #6 on the real machine.
+**Deferred by agreement:** `$BehindSignals` retirement (technical debt, must use the same-question proof); backup-branch pruning (removed at S1, returns as its own change with the sha-against-sha fix).

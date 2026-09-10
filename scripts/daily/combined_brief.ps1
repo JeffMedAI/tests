@@ -1379,6 +1379,15 @@ $BehindSignals = @(@($BehindSignals) |
                    } |
                    ForEach-Object {
                        $g  = @($_.Group)
+                       # NOTE FOR WHOEVER ADDS A FIFTH PRODUCER: this filter and the
+                       # key above both read $_.Sig, and under StrictMode a MISSING
+                       # PROPERTY is terminating. It is unreachable today because all
+                       # four producers construct [PSCustomObject]@{ Day=; Sig= }
+                       # literally - but it is the one guard in these two dedups that
+                       # is safe by convention rather than by structure. The held
+                       # dedup below cannot throw at all: its members are already
+                       # [string] before Group-Object sees them, and it indexes
+                       # nothing. Security Agent, round 13.
                        $ok = @($g | Where-Object { @(([string]$_.Sig) -split '\|').Count -ge 3 })
                        if (@($ok).Count -gt 0) { @($ok)[-1] } else { @($g)[-1] }
                    })
