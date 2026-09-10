@@ -29,6 +29,13 @@ $Today  = $Now.ToString("yyyy-MM-dd")
 $NowUTC = (Get-Date).ToUniversalTime().ToString("HH:mm")
 $LogFile = "C:\JeffLocal\scripts\daily\combined_brief_last_run.log"
 
+# Repo roots, named once. The push-failure retirement check below asks git
+# whether a commit actually reached a remote, so it needs the working copy for
+# whichever project the signal names. Declared here rather than inline so the
+# check is testable off this machine. Security Agent H2, 2026-09-09.
+$AvamedRepoRoot  = "C:\JeffLocal"
+$StMarksRepoRoot = "C:\JeffLocal\SMCPHARMA"
+
 # ── Deliberately paused projects ─────────────────────────────────────────────
 # Saeed's instruction 2026-09-07. A project listed here is paused ON PURPOSE, so
 # "no work logged" is the expected state, not a fault. It gets a quiet one-line
@@ -597,6 +604,11 @@ $HeldSignals     = @()
 # under Set-StrictMode that crashed the entire brief on a healthy evening -
 # no WhatsApp message at all. Never let this list go undeclared.
 $FailedPushSignals = @()
+# Retired failures are DEMOTED, never deleted. If the retirement logic is ever
+# wrong, deleting leaves total silence in the one place Saeed reads, and a
+# correct retirement reads identically to the alarm having broken. One plain
+# line costs nothing and cannot silence a truth. Security Agent M2, 2026-09-09.
+$RetiredPushSignals = @()
 # Named for the day whose close is being reported on, NOT for today - on a
 # Saturday this is Friday's close. Renamed from $NoCloseToday, which invited
 # exactly the "TODAY'S" wording bug below. Security Agent L2, 2026-09-07.
@@ -660,8 +672,133 @@ if ($Mode -eq 'Evening') {
             $MarkerLines = @(Get-Content -Path $MarkerPath -ErrorAction SilentlyContinue)
             # Harvest push-held signals from EVERY marker read, due or hand-run.
             $HeldSignals += @(@($MarkerLines) | Where-Object { $_ -like "PUSH-HELD|*" })
-            foreach ($pf in @(@($MarkerLines) | Where-Object { $_ -like "PUSH-FAILED|*" })) {
-                $FailedPushSignals += [PSCustomObject]@{ Day = $DayName; Sig = [string]$pf }
+            foreach ($pf in @(@($MarkerLines) | Where-Object { $_ -like "PUSH-FAILED|*" -or $_ -like "TAG-PUSH-FAILED|*" })) {
+                # RETIRE A FAILURE THAT HAS SINCE BEEN FIXED. Saeed's instruction
+                # 2026-09-09. This banner is NOT like the close-failure one: that
+                # stays true until the close is re-run, but "did not reach GitHub"
+                # becomes FALSE the moment a later push succeeds. Read on a Saturday,
+                # the marker is Friday's - and if Saturday's 07:00 push went through,
+                # Friday's work IS on GitHub and the banner would be a lie. A warning
+                # that repeats something untrue is how it stops being read.
+                #
+                # Evidence: strategy_daily.ps1 stamps last-push-ok-<project>.txt on
+                # every successful push. If that stamp is NEWER than the marker that
+                # recorded the failure, the failure is history - drop it.
+                # Format: PUSH-FAILED|<project>|<reason>|<sha>. Older markers
+                # written before 2026-09-09 have no 4th field; those can never be
+                # PROVEN fixed, so they keep their warning. Safe direction.
+                $pfParts   = ([string]$pf).Split("|", 4)
+                $pfProject = if (@($pfParts).Count -ge 2) { [string]$pfParts[1] } else { "" }
+                $pfSha     = if (@($pfParts).Count -ge 4) { ([string]$pfParts[3]).Trim() } else { "" }
+                $pfIsTag   = ([string]$pf) -like "TAG-PUSH-FAILED|*"
+                $Retired   = $false
+                $RetiredAt = ""
+
+                # A TAG push failure is NEVER retirable by a branch-push stamp: the
+                # later push does not push that tag, so the restore point is still
+                # missing and the claim is still true. Retiring it would leave a day
+                # with no remote restore point and no alarm, and the next clean close
+                # would prune the local-only tag away. Security Agent H1, 2026-09-09.
+                if (-not $pfIsTag) {
+                  try {
+                    # THE PROOF, AND NOTHING ELSE. Ask git the question the banner
+                    # actually asks: is the commit that failed to push now on GitHub?
+                    #
+                    # The first version of this decided on a timestamp - "did a push
+                    # succeed after the failure?" - which is a DIFFERENT question. A
+                    # push of another branch satisfied it (the close runs
+                    # `git push origin HEAD`, so the branch varies), and so did a
+                    # `git reset --hard` that discarded the work entirely. Both would
+                    # have switched off a warning that was still true.
+                    #
+                    # The timestamp gate that used to sit in front of this has now
+                    # been REMOVED as well. It could only ever withhold a retirement
+                    # that git had already proved correct - which is a false alarm on
+                    # the one banner that must stay believed. Its own failure mode
+                    # (a clock set forward suppressing the alarm for months) also
+                    # disappears with it. Security Agent L2 accepted, 2026-09-09.
+                    # The stamp is still read, but ONLY to say when the work arrived.
+                    #
+                    # WHY "on origin" IS SUFFICIENT PROOF, and what would break it.
+                    # strategy_daily.ps1 only ever attempts a push inside
+                    # `if ($CommitExit -eq 0)`, i.e. immediately after creating a
+                    # commit - so the sha in a PUSH-FAILED signal is always seconds
+                    # old and CANNOT already have been on origin when the push
+                    # failed. Finding it on origin later therefore means it genuinely
+                    # arrived. If that precondition is ever removed over there, this
+                    # check must be tightened here in the same commit, because no
+                    # test would fail. Security Agent, 2026-09-09 round-3 review.
+                    #
+                    # No sha recorded (markers written before 2026-09-09) = no proof
+                    # possible = keep shouting.
+                    if ($pfSha -match '^[0-9a-fA-F]{7,40}$') {
+                        $RepoForProject = if ($pfProject -match 'STMARKS|SMCPHARMA|St Marks') {
+                                              $StMarksRepoRoot
+                                          } else { $AvamedRepoRoot }
+                        if (Test-Path $RepoForProject) {
+                            # SCOPE IT TO origin. Unscoped, this searches EVERY
+                            # remote-tracking namespace: push the commit to a fork and
+                            # the warning retires while the work never reached GitHub.
+                            # Reproduced by the Security Agent, M3 2026-09-09.
+                            #
+                            # $ErrorActionPreference is "Stop" for this whole script.
+                            # On Windows PowerShell 5.1 a native command writing to
+                            # stderr under Stop can terminate, which would send every
+                            # retirement down the catch below - safe, but it would
+                            # quietly disable this check. Same guard strategy_daily.ps1
+                            # wraps its git calls in.
+                            $PrevEAPGit = $ErrorActionPreference
+                            $ErrorActionPreference = 'Continue'
+                            try {
+                                $OnRemote = @(git -C $RepoForProject branch -r --contains $pfSha --list 'origin/*' 2>$null)
+                                $GitExit  = $LASTEXITCODE
+                            } finally { $ErrorActionPreference = $PrevEAPGit }
+                            $OnRemote = @(@($OnRemote) | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) })
+                            if ($GitExit -eq 0 -and @($OnRemote).Count -gt 0) {
+                                $Retired = $true
+                                Write-Log "PUSH-FAILED for $pfProject retired - commit $pfSha is on $(@($OnRemote).Count) origin branch(es)."
+                                # WHEN it arrived - presentation only. Nothing below
+                                # can change $Retired, so a missing, corrupt or
+                                # future-dated stamp costs a phrase, never an alarm.
+                                try {
+                                    $OkFile = Join-Path (Split-Path $MarkerPath -Parent) `
+                                              ("last-push-ok-" + ($pfProject -replace '[\\/:*?"<>|]', '_') + ".txt")
+                                    if (Test-Path $OkFile) {
+                                        $OkParts = ([string](Get-Content $OkFile -Raw)).Trim().Split("|", 2)
+                                        # ParseExact + InvariantCulture, not Parse:
+                                        # Parse reads the machine's culture, and under
+                                        # a non-Gregorian default calendar this date
+                                        # lands centuries away. Security Agent L1.
+                                        $OkStamp = [datetime]::ParseExact(([string]$OkParts[0]).Trim(), `
+                                                   'yyyy-MM-dd HH:mm:ss', [Globalization.CultureInfo]::InvariantCulture)
+                                        if ($OkStamp -le $Now.AddMinutes(5)) {
+                                            $RetiredAt = $OkStamp.ToString("ddd HH:mm")
+                                        } else {
+                                            Write-Log "Last-push stamp for $pfProject is dated in the FUTURE ($OkStamp) - not quoting a time."
+                                        }
+                                    }
+                                } catch {
+                                    Write-Log "Could not read the last-successful-push time for $pfProject - saying 'later' instead. $_"
+                                }
+                            } else {
+                                Write-Log "Commit $pfSha for $pfProject is NOT on any origin branch - keeping the warning."
+                            }
+                        } else {
+                            Write-Log "Cannot reach $RepoForProject to verify $pfSha - keeping the warning."
+                        }
+                    }
+                  } catch {
+                    # Cannot tell? Then say nothing about it being fixed and SHOW the
+                    # banner. Failing safe here means shouting, not going quiet.
+                    Write-Log "Could not verify whether $pfProject's work reached GitHub - keeping the warning. $_"
+                  }
+                }
+
+                if ($Retired) {
+                    $RetiredPushSignals += [PSCustomObject]@{ Day = $DayName; Project = $pfProject; At = $RetiredAt }
+                } else {
+                    $FailedPushSignals += [PSCustomObject]@{ Day = $DayName; Sig = [string]$pf }
+                }
             }
             $ClosedAt = @(@($MarkerLines) | Where-Object { $_ -like "CLOSED|*" }) | Select-Object -First 1
             if ($ClosedAt) {
@@ -973,7 +1110,7 @@ if (-not $DryRun -and -not $SkipCloseHere) {
         # 07:00 run failed to push and said nothing; and since no close runs at a
         # weekend, a Friday-night failure would otherwise stay invisible until
         # Monday. Security Agent H2, 2026-09-09.
-        foreach ($pf in @(@($JLOutput) | ForEach-Object { [string]$_ } | Where-Object { $_ -like "PUSH-FAILED|*" })) {
+        foreach ($pf in @(@($JLOutput) | ForEach-Object { [string]$_ } | Where-Object { $_ -like "PUSH-FAILED|*" -or $_ -like "TAG-PUSH-FAILED|*" })) {
             $FailedPushSignals += [PSCustomObject]@{ Day = $Now.ToString("dddd"); Sig = [string]$pf }
         }
     } catch {
@@ -1010,7 +1147,7 @@ if (-not $DryRun -and -not $SkipCloseHere) {
                 ForEach-Object {
                     $line = [string]$_
                     if ($line -like "PUSH-HELD|*")   { $script:HeldSignals += $line }
-                    if ($line -like "PUSH-FAILED|*") {
+                    if ($line -like "PUSH-FAILED|*" -or $line -like "TAG-PUSH-FAILED|*") {
                         $script:FailedPushSignals += [PSCustomObject]@{ Day = $Now.ToString("dddd"); Sig = $line }
                     }
                 }
@@ -1020,6 +1157,34 @@ if (-not $DryRun -and -not $SkipCloseHere) {
     } else {
         Write-Log "WARNING: SMCPHARMA not found at $SmRepo - skipped its session close"
     }
+}
+
+# ORDER MATTERS: this block PREPENDS, and so do the three alarm banners that
+# follow it (6b-2 close failed, 6c push held, 6b-3 push failed). The LAST
+# prepend ends up highest, so this runs FIRST to land BENEATH all of them.
+# Placed after them, "NOW FIXED - no action needed" was the first thing Saeed
+# saw, sitting on top of live alarms. Security Agent M2, 2026-09-09 re-review.
+# ── 6b-4. Failures that have since been fixed - DEMOTED, not deleted ─────────
+# Saeed asked (2026-09-09) for the "did not reach GitHub" banner to stop once the
+# work arrives, and it does: no !! banner, no repetition. But it does not vanish
+# without trace. If the retirement check above is ever wrong, deleting the signal
+# would leave total silence in the one place Saeed reads - and even when it is
+# right, a banner that simply stops appearing reads exactly like the alarm having
+# broken. One plain line says which it was. Security Agent M2, 2026-09-09.
+if (@($RetiredPushSignals).Count -gt 0) {
+    $FixedLines = @()
+    foreach ($r in @($RetiredPushSignals)) {
+        $When = if ([string]::IsNullOrWhiteSpace([string]$r.At)) { "since" } else { "at $($r.At)" }
+        $FixedLines += "   $($r.Day)'s save to GitHub failed for $($r.Project), but the work has arrived $When - it IS on GitHub now. Nothing to do."
+    }
+    $FixedBlock = "NOW FIXED - no action needed" + [Environment]::NewLine +
+                  (@($FixedLines) -join [Environment]::NewLine) + [Environment]::NewLine + [Environment]::NewLine
+    if (-not $DryRun -and (Test-Path $ReportPath)) {
+        $ExistingReport = Get-Utf8FileText -Path $ReportPath
+        Set-Content -Path $ReportPath -Value ($FixedBlock + $ExistingReport) -Encoding UTF8
+    }
+    Write-Log "Retired $(@($RetiredPushSignals).Count) push-failure signal(s) - demoted to a plain line, not deleted."
+    Write-Host $FixedBlock
 }
 
 # ── 6b-2. The 18:30 close did not run? Say so, loudly, tonight ───────────────
@@ -1106,8 +1271,10 @@ $HeldBody
 if (@($FailedPushSignals).Count -gt 0) {
     $FailLines = @()
     foreach ($entry in @($FailedPushSignals)) {
-        $parts = ([string]$entry.Sig).Split("|", 3)
-        if ($parts.Count -ge 3) { $FailLines += "!!   $($parts[1]): $($parts[2])" }
+        # Split to 4: the sha is a 4th field now, and Split("|",3) would glue it
+        # onto the end of the reason Saeed reads. Security Agent H2, 2026-09-09.
+        $parts = ([string]$entry.Sig).Split("|", 4)
+        if (@($parts).Count -ge 3) { $FailLines += "!!   $($parts[1]): $($parts[2])" }
     }
     $FailBody = (@($FailLines) -join [Environment]::NewLine)
     # NAME THE DAY. Read on a Saturday, the marker is Friday's, so "TODAY'S" would
@@ -1116,15 +1283,39 @@ if (@($FailedPushSignals).Count -gt 0) {
     $FailDays = @(@($FailedPushSignals) | ForEach-Object { $_.Day } | Select-Object -Unique)
     $FailWhen = if (@($FailDays).Count -eq 1) { (@($FailDays)[0]).ToUpper() + "'S" }
                 else { (@($FailDays) -join " AND ").ToUpper() }
-    $FailBanner = @"
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!! $FailWhen WORK DID NOT REACH GITHUB
-$FailBody
-!!
+    # DO NOT OVERSTATE WHEN ONLY THE RESTORE TAG FAILED. If every signal here is
+    # a TAG-PUSH-FAILED, the commits DID reach GitHub and "your work did not
+    # reach GitHub / it is not backed up" is false. The same overstatement was
+    # just removed from the signal text itself (Security Agent H1); leaving it in
+    # the banner wrapped around that signal would put it straight back.
+    $AnyRealPushFail = @(@($FailedPushSignals) |
+                         Where-Object { ([string]$_.Sig) -notlike "TAG-PUSH-FAILED|*" }).Count -gt 0
+    $FailHead = if ($AnyRealPushFail) { "$FailWhen WORK DID NOT REACH GITHUB" }
+                else { "$FailWhen RESTORE POINT DID NOT REACH GITHUB" }
+    # The soft text makes NO claim about the work itself. TAG-PUSH-FAILED can be
+    # emitted in a run where nothing was committed and so no push was attempted -
+    # and if unpushed commits already existed from an earlier day, "your work IS on
+    # GitHub" would be false. Say only what this signal knows. Security Agent L4.
+    $FailTail = if ($AnyRealPushFail) {
+@"
 !! Your work is NOT lost - it is saved on this computer. But it is
 !! NOT backed up, and it will keep failing every day until this is
 !! fixed. Do not ignore this: work piling up unsent, with everything
 !! else looking healthy, is how the 11-19 Aug 2026 outage happened.
+"@
+    } else {
+@"
+!! This is about the RESTORE POINT, not about your work: there is no
+!! snapshot to roll back to for that day. It will not fix itself - a
+!! later close only ever cuts THAT day's tag, never an earlier one.
+"@
+    }
+    $FailBanner = @"
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!! $FailHead
+$FailBody
+!!
+$FailTail
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 "@
@@ -1132,7 +1323,7 @@ $FailBody
         $ExistingReport = Get-Utf8FileText -Path $ReportPath
         Set-Content -Path $ReportPath -Value ($FailBanner + $ExistingReport) -Encoding UTF8
     }
-    Write-Log "PUSH FAILED banner added - $(@($FailLines).Count) line(s), $(@(@($FailedPushSignals) | ForEach-Object { ([string]$_.Sig).Split('|',3)[1] } | Select-Object -Unique).Count) project(s)"
+    Write-Log "PUSH FAILED banner added - $(@($FailLines).Count) line(s), $(@(@($FailedPushSignals) | ForEach-Object { ([string]$_.Sig).Split('|',4)[1] } | Select-Object -Unique).Count) project(s)"
     Write-Host $FailBanner
 }
 

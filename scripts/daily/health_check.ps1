@@ -343,8 +343,21 @@ foreach ($repo in @(@{N="Avamed"; P=$RepoRoot}, @{N="St Marks"; P=$SmRepo})) {
                             # Compare the PROJECT FIELD, not the whole line: a future
                             # reason string containing the other project's name would
                             # otherwise cross-match silently. Security Agent L1.
-                            $f = ([string]$line).Split("|", 3)
+                            # Split to 4: PUSH-FAILED carries a sha as a 4th field
+                            # since 2026-09-09, and Split("|",3) would show it glued
+                            # onto the end of the cause. Security Agent H2.
+                            $f = ([string]$line).Split("|", 4)
                             if ($f.Count -lt 2 -or $f[1] -notlike "*$($repo.N)*") { continue }
+                            # PUSH-FAILED ONLY. $MarkerSaid is read inside the
+                            # "N change(s) not sent to GitHub" branch, so a
+                            # TAG-PUSH-FAILED reason there produces a line that
+                            # argues with itself - "3 changes NOT sent to GitHub.
+                            # The restore point did not reach GitHub" - with the
+                            # reassuring half second, and it wrongly clears
+                            # $guardHolding below, which can escalate a healthy
+                            # push-guard hold to PROBLEM. Security Agent M1,
+                            # 2026-09-09 (re-review). The tag failure still reaches
+                            # Saeed through the evening brief's own banner.
                             if ($f[0] -eq "PUSH-FAILED" -and $f.Count -ge 3 -and -not $MarkerSaid) { $MarkerSaid = $f[2] }
                             if ($f[0] -eq "PUSH-HELD") { $MarkerHeld = $true }
                         }

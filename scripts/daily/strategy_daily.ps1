@@ -939,6 +939,18 @@ if ($DryRun) {
 
         git commit -m "memory: $($Mode.ToLower()) brief $Today $BriefClock" 2>&1 | Out-Null
         $CommitExit = $LASTEXITCODE
+        # LOAD-BEARING PRECONDITION - DO NOT MOVE THE PUSH OUT FROM UNDER THIS.
+        # A push is only ever attempted inside this branch, i.e. immediately after
+        # a commit that was just created. That is what guarantees the sha reported
+        # in PUSH-FAILED below cannot ALREADY be on origin - and combined_brief.ps1
+        # relies on exactly that when it retires the "did not reach GitHub" warning
+        # on the evidence "this sha is now on an origin branch".
+        #
+        # If a future change pushes work that was NOT just committed here - a retry
+        # loop, a "push any unpushed work" catch-up, a force-with-lease path - that
+        # guarantee is gone and the warning could retire on stale evidence, with no
+        # test failing. Change the retirement check in combined_brief.ps1 in the
+        # same commit. Security Agent, 2026-09-09 round-3 review.
         if ($CommitExit -eq 0) {
             Write-Log "Git commit created"
             if (@($ProtectedDirty).Count -gt 0) {
@@ -992,10 +1004,51 @@ if ($DryRun) {
                         }
                     Write-Log "PUSH FAILED: $PushFailReason"
                     Write-Log "  git said: $PushOut"
+                    # NAME THE COMMIT THAT DID NOT MAKE IT. A bare timestamp proves
+                    # only "a push happened", never "THIS work reached GitHub" - so
+                    # a later push of a DIFFERENT branch, or a git reset --hard that
+                    # discards the work entirely, would otherwise be accepted as
+                    # evidence and retire a warning that is still true.
+                    # Security Agent H2, 2026-09-09.
+                    $FailedSha = (git rev-parse HEAD 2>$null)
+                    if ([string]::IsNullOrWhiteSpace($FailedSha)) { $FailedSha = "" }
+                    # A pipe inside the reason would shift every field after it.
+                    # The reasons above contain none today; this makes that true
+                    # by construction rather than by inspection.
+                    $PushFailReason = ([string]$PushFailReason) -replace '\|', ' '
                     # Machine-readable signal for session_close.ps1 and the brief.
-                    Write-Output "PUSH-FAILED|$ProjectName|$PushFailReason"
+                    # Format: PUSH-FAILED|<project>|<reason>|<sha>
+                    Write-Output "PUSH-FAILED|$ProjectName|$PushFailReason|$($FailedSha.Trim())"
                 } else {
                     Write-Log "Git push complete"
+                    # RECORD THE SUCCESS, so a stale failure can be retired.
+                    # Saeed's instruction 2026-09-09: the "did not reach GitHub"
+                    # banner must STOP once the work reaches GitHub. Unlike the
+                    # close-failure banner - whose claim stays true until the close
+                    # is re-run - this one becomes FALSE the moment a later push
+                    # succeeds, and a warning that repeats something untrue is how
+                    # Saeed learns to stop reading warnings.
+                    #
+                    # Fixed path on purpose: the brief reads one close-state folder
+                    # for BOTH projects, and this file must land where it looks.
+                    # Same hardcoding as the $_CombinedScript path at the top of
+                    # this script. logs\ is gitignored, so it never reaches the repo.
+                    try {
+                        $OkDir = "C:\JeffLocal\logs\close-state"
+                        if (-not (Test-Path $OkDir)) { New-Item -ItemType Directory -Path $OkDir -Force | Out-Null }
+                        $OkSlug = ($ProjectName -replace '[\\/:*?"<>|]', '_')
+                        # Record WHAT was pushed, not only when. The brief proves a
+                        # retirement against this sha; a timestamp alone cannot tell
+                        # "Friday's work arrived" from "some other branch arrived".
+                        # Security Agent H2, 2026-09-09.
+                        $OkSha = (git rev-parse HEAD 2>$null)
+                        if ([string]::IsNullOrWhiteSpace($OkSha)) { $OkSha = "" }
+                        Set-Content -Path (Join-Path $OkDir "last-push-ok-$OkSlug.txt") `
+                                    -Value ((Get-Date).ToString("yyyy-MM-dd HH:mm:ss") + "|" + $OkSha.Trim()) -Encoding UTF8
+                    } catch {
+                        # Never let bookkeeping break a close that just succeeded.
+                        Write-Log "WARNING: could not record the successful push - $_"
+                    }
                 }
             }
         } elseif ($CommitExit -eq 1) {
@@ -1035,7 +1088,21 @@ if ($DryRun) {
                 if ($LASTEXITCODE -ne 0) {
                     $PushFailed = $true
                     Write-Log "WARNING: restore tag $RestoreTag was created locally but NOT pushed."
-                    Write-Output "PUSH-FAILED|$ProjectName|the restore point for today also did not reach GitHub - nothing from today has left this computer"
+                    # ITS OWN SIGNAL NAME, for two reasons. First, a later branch
+                    # push does not push this tag, so the branch-push stamp must
+                    # never be allowed to retire this line - it would leave a day
+                    # with no remote restore point and no alarm, and the next clean
+                    # close would then prune the local-only tag away.
+                    # Second, the old wording claimed "nothing from today has left
+                    # this computer", which is FALSE in the case that produces this
+                    # line on its own: the branch push SUCCEEDED. An alarm that
+                    # overstates is the same trust problem this week's work exists
+                    # to fix. Security Agent H1, 2026-09-09.
+                    # Say NOTHING about the commits here. This block is reached even
+                    # when nothing was committed - in which case no push was attempted
+                    # and "today's commits reached GitHub" would be false. Claim only
+                    # what this signal actually knows. Security Agent L4, 2026-09-09.
+                    Write-Output "TAG-PUSH-FAILED|$ProjectName|the restore point $RestoreTag did not reach GitHub - there is no snapshot to roll back to for that day|$RestoreTag"
                 } else {
                     Write-Log "Restore tag created and pushed: $RestoreTag"
                 }
@@ -1056,7 +1123,30 @@ if ($DryRun) {
                     }
                 }
             } else {
-                Write-Log "Restore tag already exists: $RestoreTag"
+                # THE TAG EXISTS LOCALLY - BUT IS IT ON GITHUB? This used to stop
+                # here. The close overwrites the day's marker with Set-Content, so a
+                # hand-run `session_close.ps1 -Force` later the same day rewrote the
+                # marker while this branch silently declined to re-emit the alarm.
+                # Net result: no remote restore point for that day, and no alarm
+                # anywhere. A PUSH-FAILED recurs on a retry; TAG-PUSH-FAILED is now
+                # the ONLY carrier of this fact, so it must too.
+                # Security Agent L3, 2026-09-09.
+                $RemoteTag = @(git ls-remote --tags origin "refs/tags/$RestoreTag" 2>$null)
+                $LsExit    = $LASTEXITCODE
+                $RemoteTag = @(@($RemoteTag) | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) })
+                if ($LsExit -eq 0 -and @($RemoteTag).Count -gt 0) {
+                    Write-Log "Restore tag already exists and is on GitHub: $RestoreTag"
+                } else {
+                    Write-Log "Restore tag $RestoreTag exists locally but is NOT on GitHub - retrying the push."
+                    git push origin $RestoreTag 2>&1 | Out-Null
+                    if ($LASTEXITCODE -ne 0) {
+                        $PushFailed = $true
+                        Write-Log "WARNING: restore tag $RestoreTag still did not reach GitHub."
+                        Write-Output "TAG-PUSH-FAILED|$ProjectName|the restore point $RestoreTag did not reach GitHub - there is no snapshot to roll back to for that day|$RestoreTag"
+                    } else {
+                        Write-Log "Restore tag pushed on retry: $RestoreTag"
+                    }
+                }
             }
         } catch {
             Write-Log "WARNING: Restore tag creation failed - $_"
