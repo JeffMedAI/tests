@@ -718,225 +718,238 @@ if ($CloseDay -ne $Now.Date) {
 $IsWeekendNow = $Now.DayOfWeek -eq [DayOfWeek]::Saturday -or
                 $Now.DayOfWeek -eq [DayOfWeek]::Sunday
 
-$SkipCloseHere = $false
-if ($Mode -eq 'Evening') {
-    $SkipCloseHere = $true
+# SAEED'S DECISION, 2026-09-10: the morning brief must carry the close-failure
+# alarm too. Until now the whole marker read below sat inside `if ($Mode -eq
+# 'Evening')`, so $CloseDayFailed was ALWAYS false at 07:00 and section 6b-2
+# never fired. A close that ran and failed on Monday evening was shouted about
+# once at 19:00 and then never mentioned again - Tuesday's 07:00 brief said
+# nothing, and if Saeed missed the one evening message he might never hear of it.
+#
+# Two things were tangled in one gate and are now separated:
+#   $SkipCloseHere is the WRITE side - whether this script runs the close itself.
+#     Still evening-only, unchanged.
+#   The marker read is READ-ONLY. It looks at logs\close-state and sets the
+#     reporting variables. Nothing about it needs to be evening-only, and the
+#     day-naming logic already handles "the last close that fell due", which is
+#     correct at 07:00 exactly as it is at 19:00.
+# Security Agent F1 (PR #6) identified this; Saeed approved the fix.
+$SkipCloseHere = ($Mode -eq 'Evening')
 
-    # WHICH MARKERS TO READ.
-    # The due close, always - that is the one whose absence is an alarm.
-    # PLUS today's, when today is not the due day. session_close.ps1 names its
-    # marker after the day it ACTUALLY RAN ($Today there), and -Force exists so a
-    # close can be run by hand at a weekend - CLAUDE.md documents it. Reading only
-    # the due day would silently drop a hand-run Saturday close that FAILED, and
-    # would drop its PUSH-HELD lines too, leaving unfinished work sitting unpushed
-    # in the live dashboard\ folder with no banner. Security Agent H6, 2026-09-07.
-    $MarkersToRead = @([PSCustomObject]@{ Date = $CloseDay; WasDue = $true })
-    if ($Now.Date -ne $CloseDay) {
-        $MarkersToRead += [PSCustomObject]@{ Date = $Now.Date; WasDue = $false }
-    }
 
-    foreach ($m in $MarkersToRead) {
-      # Wrapped: reading a marker must NEVER be able to kill the whole brief.
-      # That is what B1 did, and it is the same shape as the unreadable-folder
-      # fault from PR #2 - a throw under $ErrorActionPreference = "Stop",
-      # outside any try, and Saeed gets no message at all. Security Agent, 2026-09-09.
-      try {
-        $MarkerPath = "C:\JeffLocal\logs\close-state\$($m.Date.ToString('yyyy-MM-dd'))-close.txt"
-        $DayName    = $m.Date.ToString('dddd')
-        if (Test-Path $MarkerPath) {
-            $MarkerLines = @(Get-Content -Path $MarkerPath -ErrorAction SilentlyContinue)
-            # Harvest push-held signals from EVERY marker read, due or hand-run.
-            $HeldSignals += @(@($MarkerLines) | Where-Object { $_ -like "PUSH-HELD|*" })
-            foreach ($br in @(@($MarkerLines) | Where-Object { $_ -like "BEHIND-REMOTE|*" })) {
-                $BehindSignals += [PSCustomObject]@{ Day = $DayName; Sig = [string]$br }
-            }
-            foreach ($pf in @(@($MarkerLines) | Where-Object { $_ -like "PUSH-FAILED|*" -or $_ -like "TAG-PUSH-FAILED|*" })) {
-                # RETIRE A FAILURE THAT HAS SINCE BEEN FIXED. Saeed's instruction
-                # 2026-09-09. This banner is NOT like the close-failure one: that
-                # stays true until the close is re-run, but "did not reach GitHub"
-                # becomes FALSE the moment a later push succeeds. Read on a Saturday,
-                # the marker is Friday's - and if Saturday's 07:00 push went through,
-                # Friday's work IS on GitHub and the banner would be a lie. A warning
-                # that repeats something untrue is how it stops being read.
+# WHICH MARKERS TO READ.
+# The due close, always - that is the one whose absence is an alarm.
+# PLUS today's, when today is not the due day. session_close.ps1 names its
+# marker after the day it ACTUALLY RAN ($Today there), and -Force exists so a
+# close can be run by hand at a weekend - CLAUDE.md documents it. Reading only
+# the due day would silently drop a hand-run Saturday close that FAILED, and
+# would drop its PUSH-HELD lines too, leaving unfinished work sitting unpushed
+# in the live dashboard\ folder with no banner. Security Agent H6, 2026-09-07.
+$MarkersToRead = @([PSCustomObject]@{ Date = $CloseDay; WasDue = $true })
+if ($Now.Date -ne $CloseDay) {
+    $MarkersToRead += [PSCustomObject]@{ Date = $Now.Date; WasDue = $false }
+}
+
+foreach ($m in $MarkersToRead) {
+  # Wrapped: reading a marker must NEVER be able to kill the whole brief.
+  # That is what B1 did, and it is the same shape as the unreadable-folder
+  # fault from PR #2 - a throw under $ErrorActionPreference = "Stop",
+  # outside any try, and Saeed gets no message at all. Security Agent, 2026-09-09.
+  try {
+    $MarkerPath = "C:\JeffLocal\logs\close-state\$($m.Date.ToString('yyyy-MM-dd'))-close.txt"
+    $DayName    = $m.Date.ToString('dddd')
+    if (Test-Path $MarkerPath) {
+        $MarkerLines = @(Get-Content -Path $MarkerPath -ErrorAction SilentlyContinue)
+        # Harvest push-held signals from EVERY marker read, due or hand-run.
+        $HeldSignals += @(@($MarkerLines) | Where-Object { $_ -like "PUSH-HELD|*" })
+        foreach ($br in @(@($MarkerLines) | Where-Object { $_ -like "BEHIND-REMOTE|*" })) {
+            $BehindSignals += [PSCustomObject]@{ Day = $DayName; Sig = [string]$br }
+        }
+        foreach ($pf in @(@($MarkerLines) | Where-Object { $_ -like "PUSH-FAILED|*" -or $_ -like "TAG-PUSH-FAILED|*" })) {
+            # RETIRE A FAILURE THAT HAS SINCE BEEN FIXED. Saeed's instruction
+            # 2026-09-09. This banner is NOT like the close-failure one: that
+            # stays true until the close is re-run, but "did not reach GitHub"
+            # becomes FALSE the moment a later push succeeds. Read on a Saturday,
+            # the marker is Friday's - and if Saturday's 07:00 push went through,
+            # Friday's work IS on GitHub and the banner would be a lie. A warning
+            # that repeats something untrue is how it stops being read.
+            #
+            # Evidence: strategy_daily.ps1 stamps last-push-ok-<project>.txt on
+            # every successful push. If that stamp is NEWER than the marker that
+            # recorded the failure, the failure is history - drop it.
+            # Format: PUSH-FAILED|<project>|<reason>|<sha>. Older markers
+            # written before 2026-09-09 have no 4th field; those can never be
+            # PROVEN fixed, so they keep their warning. Safe direction.
+            $pfParts   = ([string]$pf).Split("|", 4)
+            $pfProject = if (@($pfParts).Count -ge 2) { [string]$pfParts[1] } else { "" }
+            $pfSha     = if (@($pfParts).Count -ge 4) { ([string]$pfParts[3]).Trim() } else { "" }
+            $pfIsTag   = ([string]$pf) -like "TAG-PUSH-FAILED|*"
+            $Retired   = $false
+            $RetiredAt = ""
+
+            # A TAG push failure is NEVER retirable by a branch-push stamp: the
+            # later push does not push that tag, so the restore point is still
+            # missing and the claim is still true. Retiring it would leave a day
+            # with no remote restore point and no alarm, and the next clean close
+            # would prune the local-only tag away. Security Agent H1, 2026-09-09.
+            if (-not $pfIsTag) {
+              try {
+                # THE PROOF, AND NOTHING ELSE. Ask git the question the banner
+                # actually asks: is the commit that failed to push now on GitHub?
                 #
-                # Evidence: strategy_daily.ps1 stamps last-push-ok-<project>.txt on
-                # every successful push. If that stamp is NEWER than the marker that
-                # recorded the failure, the failure is history - drop it.
-                # Format: PUSH-FAILED|<project>|<reason>|<sha>. Older markers
-                # written before 2026-09-09 have no 4th field; those can never be
-                # PROVEN fixed, so they keep their warning. Safe direction.
-                $pfParts   = ([string]$pf).Split("|", 4)
-                $pfProject = if (@($pfParts).Count -ge 2) { [string]$pfParts[1] } else { "" }
-                $pfSha     = if (@($pfParts).Count -ge 4) { ([string]$pfParts[3]).Trim() } else { "" }
-                $pfIsTag   = ([string]$pf) -like "TAG-PUSH-FAILED|*"
-                $Retired   = $false
-                $RetiredAt = ""
-
-                # A TAG push failure is NEVER retirable by a branch-push stamp: the
-                # later push does not push that tag, so the restore point is still
-                # missing and the claim is still true. Retiring it would leave a day
-                # with no remote restore point and no alarm, and the next clean close
-                # would prune the local-only tag away. Security Agent H1, 2026-09-09.
-                if (-not $pfIsTag) {
-                  try {
-                    # THE PROOF, AND NOTHING ELSE. Ask git the question the banner
-                    # actually asks: is the commit that failed to push now on GitHub?
-                    #
-                    # The first version of this decided on a timestamp - "did a push
-                    # succeed after the failure?" - which is a DIFFERENT question. A
-                    # push of another branch satisfied it (the close runs
-                    # `git push origin HEAD`, so the branch varies), and so did a
-                    # `git reset --hard` that discarded the work entirely. Both would
-                    # have switched off a warning that was still true.
-                    #
-                    # The timestamp gate that used to sit in front of this has now
-                    # been REMOVED as well. It could only ever withhold a retirement
-                    # that git had already proved correct - which is a false alarm on
-                    # the one banner that must stay believed. Its own failure mode
-                    # (a clock set forward suppressing the alarm for months) also
-                    # disappears with it. Security Agent L2 accepted, 2026-09-09.
-                    # The stamp is still read, but ONLY to say when the work arrived.
-                    #
-                    # UPDATED 2026-09-10 - READ THIS BEFORE TRUSTING THE NEXT LINES.
-                    # The close now pushes to origin/close/<date> BEFORE the real
-                    # branch, so the old guarantee ("the sha cannot already be on
-                    # origin") is FALSE. What replaces it is the exclusion below:
-                    # backup branches are filtered out, so "on an origin branch that
-                    # is not a backup" still means the work reached a real branch.
-                    # Security Agent H3, 2026-09-10.
-                    #
-                    # WHY "on origin" IS SUFFICIENT PROOF, and what would break it.
-                    # strategy_daily.ps1 only ever attempts a push inside
-                    # `if ($CommitExit -eq 0)`, i.e. immediately after creating a
-                    # commit - so the sha in a PUSH-FAILED signal is always seconds
-                    # old and CANNOT already have been on origin when the push
-                    # failed. Finding it on origin later therefore means it genuinely
-                    # arrived. If that precondition is ever removed over there, this
-                    # check must be tightened here in the same commit, because no
-                    # test would fail. Security Agent, 2026-09-09 round-3 review.
-                    #
-                    # No sha recorded (markers written before 2026-09-09) = no proof
-                    # possible = keep shouting.
-                    if ($pfSha -match '^[0-9a-fA-F]{7,40}$') {
-                        $RepoForProject = if ($pfProject -match 'STMARKS|SMCPHARMA|St Marks') {
-                                              $StMarksRepoRoot
-                                          } else { $AvamedRepoRoot }
-                        if (Test-Path $RepoForProject) {
-                            # SCOPE IT TO origin. Unscoped, this searches EVERY
-                            # remote-tracking namespace: push the commit to a fork and
-                            # the warning retires while the work never reached GitHub.
-                            # Reproduced by the Security Agent, M3 2026-09-09.
-                            #
-                            # $ErrorActionPreference is "Stop" for this whole script.
-                            # On Windows PowerShell 5.1 a native command writing to
-                            # stderr under Stop can terminate, which would send every
-                            # retirement down the catch below - safe, but it would
-                            # quietly disable this check. Same guard strategy_daily.ps1
-                            # wraps its git calls in.
-                            $PrevEAPGit = $ErrorActionPreference
-                            $ErrorActionPreference = 'Continue'
+                # The first version of this decided on a timestamp - "did a push
+                # succeed after the failure?" - which is a DIFFERENT question. A
+                # push of another branch satisfied it (the close runs
+                # `git push origin HEAD`, so the branch varies), and so did a
+                # `git reset --hard` that discarded the work entirely. Both would
+                # have switched off a warning that was still true.
+                #
+                # The timestamp gate that used to sit in front of this has now
+                # been REMOVED as well. It could only ever withhold a retirement
+                # that git had already proved correct - which is a false alarm on
+                # the one banner that must stay believed. Its own failure mode
+                # (a clock set forward suppressing the alarm for months) also
+                # disappears with it. Security Agent L2 accepted, 2026-09-09.
+                # The stamp is still read, but ONLY to say when the work arrived.
+                #
+                # UPDATED 2026-09-10 - READ THIS BEFORE TRUSTING THE NEXT LINES.
+                # The close now pushes to origin/close/<date> BEFORE the real
+                # branch, so the old guarantee ("the sha cannot already be on
+                # origin") is FALSE. What replaces it is the exclusion below:
+                # backup branches are filtered out, so "on an origin branch that
+                # is not a backup" still means the work reached a real branch.
+                # Security Agent H3, 2026-09-10.
+                #
+                # WHY "on origin" IS SUFFICIENT PROOF, and what would break it.
+                # strategy_daily.ps1 only ever attempts a push inside
+                # `if ($CommitExit -eq 0)`, i.e. immediately after creating a
+                # commit - so the sha in a PUSH-FAILED signal is always seconds
+                # old and CANNOT already have been on origin when the push
+                # failed. Finding it on origin later therefore means it genuinely
+                # arrived. If that precondition is ever removed over there, this
+                # check must be tightened here in the same commit, because no
+                # test would fail. Security Agent, 2026-09-09 round-3 review.
+                #
+                # No sha recorded (markers written before 2026-09-09) = no proof
+                # possible = keep shouting.
+                if ($pfSha -match '^[0-9a-fA-F]{7,40}$') {
+                    $RepoForProject = if ($pfProject -match 'STMARKS|SMCPHARMA|St Marks') {
+                                          $StMarksRepoRoot
+                                      } else { $AvamedRepoRoot }
+                    if (Test-Path $RepoForProject) {
+                        # SCOPE IT TO origin. Unscoped, this searches EVERY
+                        # remote-tracking namespace: push the commit to a fork and
+                        # the warning retires while the work never reached GitHub.
+                        # Reproduced by the Security Agent, M3 2026-09-09.
+                        #
+                        # $ErrorActionPreference is "Stop" for this whole script.
+                        # On Windows PowerShell 5.1 a native command writing to
+                        # stderr under Stop can terminate, which would send every
+                        # retirement down the catch below - safe, but it would
+                        # quietly disable this check. Same guard strategy_daily.ps1
+                        # wraps its git calls in.
+                        $PrevEAPGit = $ErrorActionPreference
+                        $ErrorActionPreference = 'Continue'
+                        try {
+                            # EXCLUDE THE BACKUP BRANCHES. Since 2026-09-10 the
+                            # close pushes every commit to origin/close/<date>
+                            # BEFORE trying the real branch, so that sha is on an
+                            # origin branch even when the push that mattered
+                            # failed. Without this exclusion a genuine auth or
+                            # network failure would find its own backup minutes
+                            # later and demote itself to "NOW FIXED - nothing to
+                            # do" - an alarm silently switching itself off, which
+                            # is the exact failure this file exists to prevent.
+                            # It also stops the check decaying as close/* branches
+                            # accumulate. Security Agent H2/H3, 2026-09-10.
+                            $OnRemote = @(git -C $RepoForProject branch -r --contains $pfSha --list 'origin/*' 2>$null |
+                                          ForEach-Object { [string]$_ } |
+                                          Where-Object { ($_ -replace '^\s*', '') -notlike 'origin/close/*' })
+                            $GitExit  = $LASTEXITCODE
+                        } finally { $ErrorActionPreference = $PrevEAPGit }
+                        $OnRemote = @(@($OnRemote) | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) })
+                        if ($GitExit -eq 0 -and @($OnRemote).Count -gt 0) {
+                            $Retired = $true
+                            Write-Log "PUSH-FAILED for $pfProject retired - commit $pfSha is on $(@($OnRemote).Count) origin branch(es)."
+                            # WHEN it arrived - presentation only. Nothing below
+                            # can change $Retired, so a missing, corrupt or
+                            # future-dated stamp costs a phrase, never an alarm.
                             try {
-                                # EXCLUDE THE BACKUP BRANCHES. Since 2026-09-10 the
-                                # close pushes every commit to origin/close/<date>
-                                # BEFORE trying the real branch, so that sha is on an
-                                # origin branch even when the push that mattered
-                                # failed. Without this exclusion a genuine auth or
-                                # network failure would find its own backup minutes
-                                # later and demote itself to "NOW FIXED - nothing to
-                                # do" - an alarm silently switching itself off, which
-                                # is the exact failure this file exists to prevent.
-                                # It also stops the check decaying as close/* branches
-                                # accumulate. Security Agent H2/H3, 2026-09-10.
-                                $OnRemote = @(git -C $RepoForProject branch -r --contains $pfSha --list 'origin/*' 2>$null |
-                                              ForEach-Object { [string]$_ } |
-                                              Where-Object { ($_ -replace '^\s*', '') -notlike 'origin/close/*' })
-                                $GitExit  = $LASTEXITCODE
-                            } finally { $ErrorActionPreference = $PrevEAPGit }
-                            $OnRemote = @(@($OnRemote) | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) })
-                            if ($GitExit -eq 0 -and @($OnRemote).Count -gt 0) {
-                                $Retired = $true
-                                Write-Log "PUSH-FAILED for $pfProject retired - commit $pfSha is on $(@($OnRemote).Count) origin branch(es)."
-                                # WHEN it arrived - presentation only. Nothing below
-                                # can change $Retired, so a missing, corrupt or
-                                # future-dated stamp costs a phrase, never an alarm.
-                                try {
-                                    $OkFile = Join-Path (Split-Path $MarkerPath -Parent) `
-                                              ("last-push-ok-" + ($pfProject -replace '[\\/:*?"<>|]', '_') + ".txt")
-                                    if (Test-Path $OkFile) {
-                                        $OkParts = ([string](Get-Content $OkFile -Raw)).Trim().Split("|", 2)
-                                        # ParseExact + InvariantCulture, not Parse:
-                                        # Parse reads the machine's culture, and under
-                                        # a non-Gregorian default calendar this date
-                                        # lands centuries away. Security Agent L1.
-                                        $OkStamp = [datetime]::ParseExact(([string]$OkParts[0]).Trim(), `
-                                                   'yyyy-MM-dd HH:mm:ss', [Globalization.CultureInfo]::InvariantCulture)
-                                        if ($OkStamp -le $Now.AddMinutes(5)) {
-                                            $RetiredAt = $OkStamp.ToString("ddd HH:mm")
-                                        } else {
-                                            Write-Log "Last-push stamp for $pfProject is dated in the FUTURE ($OkStamp) - not quoting a time."
-                                        }
+                                $OkFile = Join-Path (Split-Path $MarkerPath -Parent) `
+                                          ("last-push-ok-" + ($pfProject -replace '[\\/:*?"<>|]', '_') + ".txt")
+                                if (Test-Path $OkFile) {
+                                    $OkParts = ([string](Get-Content $OkFile -Raw)).Trim().Split("|", 2)
+                                    # ParseExact + InvariantCulture, not Parse:
+                                    # Parse reads the machine's culture, and under
+                                    # a non-Gregorian default calendar this date
+                                    # lands centuries away. Security Agent L1.
+                                    $OkStamp = [datetime]::ParseExact(([string]$OkParts[0]).Trim(), `
+                                               'yyyy-MM-dd HH:mm:ss', [Globalization.CultureInfo]::InvariantCulture)
+                                    if ($OkStamp -le $Now.AddMinutes(5)) {
+                                        $RetiredAt = $OkStamp.ToString("ddd HH:mm")
+                                    } else {
+                                        Write-Log "Last-push stamp for $pfProject is dated in the FUTURE ($OkStamp) - not quoting a time."
                                     }
-                                } catch {
-                                    Write-Log "Could not read the last-successful-push time for $pfProject - saying 'later' instead. $_"
                                 }
-                            } else {
-                                Write-Log "Commit $pfSha for $pfProject is NOT on any origin branch - keeping the warning."
+                            } catch {
+                                Write-Log "Could not read the last-successful-push time for $pfProject - saying 'later' instead. $_"
                             }
                         } else {
-                            Write-Log "Cannot reach $RepoForProject to verify $pfSha - keeping the warning."
+                            Write-Log "Commit $pfSha for $pfProject is NOT on any origin branch - keeping the warning."
                         }
+                    } else {
+                        Write-Log "Cannot reach $RepoForProject to verify $pfSha - keeping the warning."
                     }
-                  } catch {
-                    # Cannot tell? Then say nothing about it being fixed and SHOW the
-                    # banner. Failing safe here means shouting, not going quiet.
-                    Write-Log "Could not verify whether $pfProject's work reached GitHub - keeping the warning. $_"
-                  }
                 }
+              } catch {
+                # Cannot tell? Then say nothing about it being fixed and SHOW the
+                # banner. Failing safe here means shouting, not going quiet.
+                Write-Log "Could not verify whether $pfProject's work reached GitHub - keeping the warning. $_"
+              }
+            }
 
-                if ($Retired) {
-                    $RetiredPushSignals += [PSCustomObject]@{ Day = $DayName; Project = $pfProject; At = $RetiredAt }
-                } else {
-                    $FailedPushSignals += [PSCustomObject]@{ Day = $DayName; Sig = [string]$pf }
-                }
-            }
-            $ClosedAt = @(@($MarkerLines) | Where-Object { $_ -like "CLOSED|*" }) | Select-Object -First 1
-            if ($ClosedAt) {
-                Write-Log "$DayName's close ran ($ClosedAt) - this brief reports only."
+            if ($Retired) {
+                $RetiredPushSignals += [PSCustomObject]@{ Day = $DayName; Project = $pfProject; At = $RetiredAt }
             } else {
-                # Marker present but no CLOSED line: the close RAN and FAILED. Treat
-                # it exactly as harshly as a missing marker - the outcome for Saeed is
-                # the same (no session log, no handover, no restore point) and a
-                # half-done close reported as fine is how failures hide. A hand-run
-                # weekend close that failed lands here too. Security Agent 2026-09-04.
-                $CloseDayFailed  = $true
-                $FailedDayNames += $DayName
-                $CloseFailDetail += @(@($MarkerLines) | Where-Object { $_ -like "FAILED-DETAIL|*" } |
-                    ForEach-Object { "  - $DayName" + ": " + (([string]$_).Split("|", 3)[1..2] -join ": ") })
-                Write-Log "WARNING: $DayName's close RAN AND FAILED."
+                $FailedPushSignals += [PSCustomObject]@{ Day = $DayName; Sig = [string]$pf }
             }
-        } elseif ($m.WasDue) {
-            # A close FELL DUE that day and left no marker at all. That is an alarm
-            # on any day of the week, including when read on a Saturday: the weekend
-            # never excuses a weekday close that did not happen. What the weekend
-            # does excuse - that no close runs TODAY - is $IsWeekendNow, not this.
-            # Security Agent H2 and H5, 2026-09-07.
+        }
+        $ClosedAt = @(@($MarkerLines) | Where-Object { $_ -like "CLOSED|*" }) | Select-Object -First 1
+        if ($ClosedAt) {
+            Write-Log "$DayName's close ran ($ClosedAt) - this brief reports only."
+        } else {
+            # Marker present but no CLOSED line: the close RAN and FAILED. Treat
+            # it exactly as harshly as a missing marker - the outcome for Saeed is
+            # the same (no session log, no handover, no restore point) and a
+            # half-done close reported as fine is how failures hide. A hand-run
+            # weekend close that failed lands here too. Security Agent 2026-09-04.
             $CloseDayFailed  = $true
             $FailedDayNames += $DayName
-            Write-Log "WARNING: no close marker at $MarkerPath - $DayName's close did not run."
-        } else {
-            # No hand-run close today. Nothing was due, so there is nothing to say.
-            Write-Log "No hand-run close marker for today ($DayName) - none was due."
+            $CloseFailDetail += @(@($MarkerLines) | Where-Object { $_ -like "FAILED-DETAIL|*" } |
+                ForEach-Object { "  - $DayName" + ": " + (([string]$_).Split("|", 3)[1..2] -join ": ") })
+            Write-Log "WARNING: $DayName's close RAN AND FAILED."
         }
-      } catch {
-        # Do not go quiet. A marker we cannot read is itself worth shouting about,
-        # and the brief must still be sent.
-        Write-Log "WARNING: could not read the close marker for $($m.Date.ToString('yyyy-MM-dd')) - $_"
-        if ($m.WasDue) {
-            $CloseDayFailed  = $true
-            $FailedDayNames += $m.Date.ToString('dddd')
-        }
-      }
+    } elseif ($m.WasDue) {
+        # A close FELL DUE that day and left no marker at all. That is an alarm
+        # on any day of the week, including when read on a Saturday: the weekend
+        # never excuses a weekday close that did not happen. What the weekend
+        # does excuse - that no close runs TODAY - is $IsWeekendNow, not this.
+        # Security Agent H2 and H5, 2026-09-07.
+        $CloseDayFailed  = $true
+        $FailedDayNames += $DayName
+        Write-Log "WARNING: no close marker at $MarkerPath - $DayName's close did not run."
+    } else {
+        # No hand-run close today. Nothing was due, so there is nothing to say.
+        Write-Log "No hand-run close marker for today ($DayName) - none was due."
     }
+  } catch {
+    # Do not go quiet. A marker we cannot read is itself worth shouting about,
+    # and the brief must still be sent.
+    Write-Log "WARNING: could not read the close marker for $($m.Date.ToString('yyyy-MM-dd')) - $_"
+    if ($m.WasDue) {
+        $CloseDayFailed  = $true
+        $FailedDayNames += $m.Date.ToString('dddd')
+    }
+  }
 }
 
 # May the brief say "today's close ran"? Only in the evening, only if nothing

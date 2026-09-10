@@ -1045,3 +1045,30 @@ Fixed by cross-checking the `-z` parse against the newline form and **refusing w
 **Files changed:** scripts/daily/strategy_daily.ps1, CHANGELOG.md
 **Tests run:** push/pull **30/30** (was 26), including the modelled NUL collapse with the protected path deliberately not first, verified load-bearing by negative control. Retirement 13/13, staleness 21/21, health 6/6. All five scripts parse clean.
 **Limitation:** still not run on Windows PowerShell 5.1. The Security Agent's position, which I share: this is now the largest untested surface in the series, and if it is still true after this merge it should become a scheduled task of its own.
+
+---
+
+## 2026-09-10 — The 07:00 Brief Gains the Close-Failure Alarm; Backups Prune Themselves
+**Agent:** Lead Agent (Claude Code session)
+**Approved by:** Saeed, both explicitly this session — *"Yes — add it"* to the morning close-failure alarm, and *"Tidy up once safely saved"* to backup pruning.
+**NOT MERGED YET, on purpose.** Tonight's 18:30 close is the first live run of the auto-backup/auto-pull change on Saeed's machine, and nothing in this series has executed on Windows PowerShell 5.1. Stacking further changes on top of something unverified is how the 7–9 Sep outage happened. These merge after tonight is confirmed good.
+
+**1. The 07:00 brief now carries the "evening close did not run" alarm.**
+Found by the Security Agent during the PR #6 review (F1). The entire close-marker read sat inside `if ($Mode -eq 'Evening')`, so `$CloseDayFailed` was **always false** in a morning run and section 6b-2 never fired. A close that ran and failed on Monday evening was shouted about once at 19:00 and then never mentioned again — Tuesday's 07:00 brief said nothing about it. If Saeed missed the one evening message, he might never hear of it at all.
+
+Two things were tangled in a single gate and are now separated:
+- `$SkipCloseHere` — the **write** side, whether this script runs the close itself. Still evening-only, unchanged.
+- The marker read — **read-only**. It looks at `logs\close-state` and sets the reporting variables. Nothing about it needs to be evening-only, and the day-naming logic already answers "the last close that fell due", which is correct at 07:00 exactly as at 19:00.
+
+The `if` wrapper was removed and its body dedented rather than left as `if ($true)`, which would have misled the next reader.
+
+**2. Backup branches prune themselves — by proof, not by age.**
+Roughly 250 `close/<date>` branches a year per project would otherwise accumulate forever. A backup exists for exactly one reason: to hold work that might not have reached the real branch. So it is deleted **only** when `git merge-base --is-ancestor origin/close/<date> origin/<branch>` confirms the work it was protecting is already on the real branch. Age alone is never sufficient.
+
+Three further refusals, all deliberate: never while a push has failed (deleting backups during a save outage is the worst possible instinct, and it is the rule the restore-tag prune already follows); never this run's own backup (the run that creates a backup must not be the run that removes it); and the most recent 10 are kept regardless.
+
+**Files changed:** scripts/daily/combined_brief.ps1, scripts/daily/strategy_daily.ps1, CHANGELOG.md
+**Tests run:** PowerShell 7.4.6. Morning alarm **7/7** — failed close in Morning mode fires and names the day; Evening still fires unchanged; a healthy close stays silent; a **missing** marker is loud; `BEHIND-REMOTE` is read from the marker in the morning; and behind-but-safe is not escalated to a close failure. Pruning **6/6** against a real remote — the branch whose work never reached `main` **survives** with the log saying why, this run's own backup survives, at least 10 are kept, and a failed push stops pruning entirely. All earlier suites still pass: push/pull 30/30, retirement 13/13, staleness 21/21, health 6/6. **83 tests in total.** All five scripts parse clean.
+**Harness note:** one morning-alarm assertion initially failed because my test read a variable outside the function scope that set it, not because of a code fault; and the prune test's "before" count was wrong because `Measure-Object` returns a single object. Both were test bugs, diagnosed and fixed rather than reported as results.
+**Limitation:** not run on Windows PowerShell 5.1.
+**Still requires:** Security Agent review, tonight's live verification, then Saeed's explicit approval.

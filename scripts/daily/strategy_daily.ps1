@@ -1366,6 +1366,63 @@ if ($DryRun) {
                         Write-Log "Pruned old restore tag: $oldTag"
                     }
                 }
+
+                # ─────────────────────────────────────────────────────────────
+                # PRUNE OLD BACKUP BRANCHES - but only ones that are provably
+                # redundant. Saeed approved this on 2026-09-10 ("tidy up once
+                # safely saved"); roughly 250 close/<date> branches a year per
+                # project would otherwise pile up forever.
+                #
+                # A backup branch exists for exactly one reason: to hold work that
+                # might not have reached the real branch. So it may be deleted ONLY
+                # when its tip is already an ancestor of origin/<branch> - i.e. the
+                # work it was protecting is demonstrably on the real branch. That is
+                # a proof, not an age heuristic, which is why age alone is not used.
+                #
+                # Three further refusals:
+                #   - never while a push has failed. Deleting backups during a save
+                #     outage is the worst possible instinct, and it is the same rule
+                #     the restore-tag prune above already follows.
+                #   - never today's own branch, whatever the ancestry says. The run
+                #     that created a backup must never be the run that removes it.
+                #   - keep the most recent $KeepBackups regardless, so there is
+                #     always a short history to fall back on by hand.
+                # Security Agent M4, 2026-09-10.
+                # ─────────────────────────────────────────────────────────────
+                $KeepBackups = 10
+                if ($PushFailed) {
+                    Write-Log "Skipping backup-branch prune - a push has failed, keeping every backup."
+                } else {
+                    try {
+                        $AllBackups = @(git ls-remote --heads origin "refs/heads/close/*" 2>$null |
+                                        ForEach-Object { ([string]$_ -split "\s+")[-1] } |
+                                        Where-Object { $_ -like "refs/heads/close/*" } |
+                                        ForEach-Object { $_ -replace '^refs/heads/', '' } |
+                                        Sort-Object)
+                        if ($LASTEXITCODE -eq 0 -and @($AllBackups).Count -gt $KeepBackups) {
+                            $Candidates = @($AllBackups | Select-Object -First (@($AllBackups).Count - $KeepBackups))
+                            foreach ($bb in $Candidates) {
+                                if ($bb -eq $BackupBranch) {
+                                    Write-Log "  Keeping $bb - it is this run's own backup."
+                                    continue
+                                }
+                                # PROOF, not age: is this backup's work already on the
+                                # real branch? Anything other than a clean yes keeps it.
+                                git merge-base --is-ancestor "origin/$bb" "origin/$CurBranch" 2>&1 | Out-Null
+                                if ($LASTEXITCODE -eq 0) {
+                                    git push origin --delete $bb 2>&1 | Out-Null
+                                    if ($LASTEXITCODE -eq 0) { Write-Log "  Pruned backup branch $bb - its work is on $CurBranch." }
+                                    else { Write-Log "  Could not delete $bb - leaving it." }
+                                } else {
+                                    Write-Log "  KEEPING $bb - its work is NOT yet on $CurBranch."
+                                }
+                            }
+                        }
+                    } catch {
+                        # Housekeeping must never break a close that just succeeded.
+                        Write-Log "  Backup-branch prune skipped - $_"
+                    }
+                }
             } else {
                 # THE TAG EXISTS LOCALLY - BUT IS IT ON GITHUB? This used to stop
                 # here. The close overwrites the day's marker with Set-Content, so a
