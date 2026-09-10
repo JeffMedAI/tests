@@ -1062,13 +1062,40 @@ Two things were tangled in a single gate and are now separated:
 
 The `if` wrapper was removed and its body dedented rather than left as `if ($true)`, which would have misled the next reader.
 
-**2. Backup branches prune themselves — by proof, not by age.**
-Roughly 250 `close/<date>` branches a year per project would otherwise accumulate forever. A backup exists for exactly one reason: to hold work that might not have reached the real branch. So it is deleted **only** when `git merge-base --is-ancestor origin/close/<date> origin/<branch>` confirms the work it was protecting is already on the real branch. Age alone is never sufficient.
-
-Three further refusals, all deliberate: never while a push has failed (deleting backups during a save outage is the worst possible instinct, and it is the rule the restore-tag prune already follows); never this run's own backup (the run that creates a backup must not be the run that removes it); and the most recent 10 are kept regardless.
+**2. Backup-branch pruning — BUILT, THEN PULLED FROM THIS CHANGE.** See the round-2 entry below.
 
 **Files changed:** scripts/daily/combined_brief.ps1, scripts/daily/strategy_daily.ps1, CHANGELOG.md
 **Tests run:** PowerShell 7.4.6. Morning alarm **7/7** — failed close in Morning mode fires and names the day; Evening still fires unchanged; a healthy close stays silent; a **missing** marker is loud; `BEHIND-REMOTE` is read from the marker in the morning; and behind-but-safe is not escalated to a close failure. Pruning **6/6** against a real remote — the branch whose work never reached `main` **survives** with the log saying why, this run's own backup survives, at least 10 are kept, and a failed push stops pruning entirely. All earlier suites still pass: push/pull 30/30, retirement 13/13, staleness 21/21, health 6/6. **83 tests in total.** All five scripts parse clean.
 **Harness note:** one morning-alarm assertion initially failed because my test read a variable outside the function scope that set it, not because of a code fault; and the prune test's "before" count was wrong because `Measure-Object` returns a single object. Both were test bugs, diagnosed and fixed rather than reported as results.
 **Limitation:** not run on Windows PowerShell 5.1.
 **Still requires:** Security Agent review, tonight's live verification, then Saeed's explicit approval.
+
+---
+
+## 2026-09-10 — PR #7 Round 2: Pruning Pulled Out After It Was Shown to Destroy Work
+**Agent:** Lead Agent (Claude Code session), reviewed by Security Agent (round 10 of this series)
+**Approved by:** Saeed approved both features. The decision to **split them** is mine, on the Security Agent's recommendation. **Not merged — waiting on tonight's live verification and Saeed's approval.**
+**Description:** The review was **DO NOT MERGE AS-IS**. One finding could destroy the only remote copy of a day's work, and the reviewer reproduced it end to end.
+
+**S1 (high) — the prune enumerated from the remote but proved from local refs, and could delete the only remote copy of work.**
+`git ls-remote` asks GitHub what exists. `git merge-base --is-ancestor origin/<bb> origin/<branch>` asks the **local** remote-tracking refs. Two different authorities, with nothing between them refreshing the second. Reproduced: `origin/main` is rewound on GitHub (force-push, branch rewrite after a squash-merge, a bad revert from another session); the PC's stale local ref still contains the old commit; the prune consults the stale ref, gets a yes, and deletes the branch. The reviewer's fixture ended with the commit reachable from **zero** remote refs, while the log asserted *"Pruned backup branch … its work is on main."* A false statement printed at the moment the work is destroyed.
+
+**PRUNING HAS BEEN REMOVED FROM THIS CHANGE ENTIRELY**, on the Security Agent's recommendation and my agreement. It is pure housekeeping — it saves clutter in a branch list — and it was stacked on an auto-backup change that has never executed on the target machine. The morning alarm fixes a real reporting hole and should not wait behind it. The prune returns as its own change, with the sha-against-sha fix (`ls-remote` already returns the sha in field 1; it was being discarded), and with the reviewer's adversarial tests folded in permanently.
+
+**S2 (medium-high) — the 07:00 brief would have shouted "the save to GitHub failed" about work that the same 07:00 run had just saved.**
+The marker read runs near the top (section 5 needs `$CloseDayFailed` early); the morning's own git safety net runs much later. So the proof *"has this work reached GitHub?"* was asked **before** the push that puts it there, and its answer rendered after. The retirement mechanism exists precisely so that banner stops the moment work arrives — asking too early defeats it on the one run that fixes the problem, and lands a false loud banner on the morning after a failure, exactly when Saeed most needs it to be true. New section 6b-0 re-proves retirement after sections 6/6b, Morning only. The proof is factored into `Test-WorkOnOrigin` so both call sites use identical logic.
+
+**S3 (medium) — the close-failure banner claimed "nothing saved to GitHub", which is false by 07:00.** Three of its four claims hold in the morning; that one does not, because the morning safety net has already pushed by the time the banner is prepended. Now conditional on mode.
+
+**S4 (medium) — duplicate lines in the morning brief.** With the marker read no longer evening-gated, `$HeldSignals` and `$BehindSignals` fill from **two** sources — yesterday's marker and this morning's own close output — and `session_close.ps1` writes the same signals into the marker. An unfinished `dashboard\` folder produced a byte-identical warning twice in one message. Both lists are de-duplicated before rendering.
+
+**S5, S6** — both concerned only the prune and left with it.
+
+**The dedent was verified clean, not eyeballed:** 216 lines out, 216 in, byte-identical after stripping exactly four leading spaces; no here-strings anywhere in the moved block, so the terminator-column hazard did not arise; no orphan brace. The reviewer also walked every statement in the moved block and confirmed it is genuinely read-only — no file write, no directory creation, no deletion, no side-effecting git call.
+
+**Where my harness was blind, in the reviewer's words and worth recording:** `t_prune.ps1` ran `git fetch origin` immediately before the block, which is *exactly and only* the condition under which S1 cannot occur — the suite was structurally blind to its own worst failure. `t_morning.ps1` tested the marker block in isolation with the dates hardcoded, so it could not see S2, S3 or S4 at all. Every assertion in both was true; the gap was what they declined to ask.
+
+**Files changed:** scripts/daily/combined_brief.ps1, scripts/daily/strategy_daily.ps1 (prune removed), CHANGELOG.md
+**Tests run:** morning alarm 7/7 · **new S2 re-check suite 6/6** (work arrived during the run → retired; did not arrive → kept; only on a backup branch → kept; tag failure never retired; legacy no-sha signal kept; Evening mode untouched) · push/pull 30/30 · retirement 13/13 · staleness 21/21 · health 6/6. All five scripts parse clean.
+**Limitation:** not run on Windows PowerShell 5.1.
+**Open questions the reviewer could not answer from the codebase, and nor can I:** does anything other than Saeed's PC push to `origin/close/*`, and has `main` in this repo ever been force-pushed? Both bear on how likely S1 is in practice, and both matter when the prune returns.

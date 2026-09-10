@@ -330,6 +330,35 @@ function Get-ClosesMissed {
     return $n
 }
 
+# Is this commit on a REAL origin branch (not a close/<date> backup)? Factored
+# out so the same proof can be re-run after the morning brief's own git safety
+# net has pushed - see the re-check after section 6b. Security Agent S2,
+# 2026-09-10. Returns $true only on a clean, positive answer; every error,
+# empty result or unreachable repo returns $false, which KEEPS the warning.
+function Test-WorkOnOrigin {
+    param([string]$Sha, [string]$RepoRoot)
+    if ($Sha -notmatch '^[0-9a-fA-F]{7,40}$') { return $false }
+    if (-not (Test-Path $RepoRoot)) { return $false }
+    $PrevEAPGit = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        $OnRemote = @(git -C $RepoRoot branch -r --contains $Sha --list 'origin/*' 2>$null |
+                      ForEach-Object { [string]$_ } |
+                      Where-Object { ($_ -replace '^\s*', '') -notlike 'origin/close/*' })
+        $GitExit  = $LASTEXITCODE
+        $OnRemote = @(@($OnRemote) | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) })
+        return ($GitExit -eq 0 -and @($OnRemote).Count -gt 0)
+    } catch {
+        return $false
+    } finally { $ErrorActionPreference = $PrevEAPGit }
+}
+
+function Repo-ForProject {
+    param([string]$ProjectField)
+    if ($ProjectField -match 'STMARKS|SMCPHARMA|St Marks') { return $StMarksRepoRoot }
+    return $AvamedRepoRoot
+}
+
 function Format-StaleAge {
     param([double]$Hours)
     $Days = [math]::Floor($Hours / 24)
@@ -1320,6 +1349,36 @@ if (-not $DryRun -and -not $SkipCloseHere) {
 # prepend ends up highest, so this runs FIRST to land BENEATH all of them.
 # Placed after them, "NOW FIXED - no action needed" was the first thing Saeed
 # saw, sitting on top of live alarms. Security Agent M2, 2026-09-09 re-review.
+# ── 6b-0. RE-PROVE RETIREMENT, AFTER this run's own push ─────────────────────
+# The marker read happens near the top of the script, because section 5 needs
+# $CloseDayFailed early. In MORNING mode that is now BEFORE sections 6/6b run the
+# git safety net - so the question "has this work reached GitHub yet?" was asked
+# before the push that puts it there, and its answer would be rendered after.
+#
+# Result without this: the 07:00 brief shouts "the save to GitHub failed" about
+# work that the same 07:00 run has just saved. The whole retirement mechanism
+# exists (Saeed, 2026-09-09) so that banner stops the moment the work arrives;
+# asking too early defeats it on the one run that fixes the problem, and lands a
+# false loud banner on the morning after a failure - exactly when Saeed most
+# needs it to be true. Security Agent S2, 2026-09-10.
+if (-not $DryRun -and -not $SkipCloseHere -and @($FailedPushSignals).Count -gt 0) {
+    $StillFailed = @()
+    foreach ($entry in @($FailedPushSignals)) {
+        $ep = ([string]$entry.Sig).Split("|", 4)
+        # Tag failures are never retirable, and a signal with no sha cannot be proven.
+        if (([string]$entry.Sig) -like "TAG-PUSH-FAILED|*" -or @($ep).Count -lt 4) {
+            $StillFailed += $entry; continue
+        }
+        if (Test-WorkOnOrigin -Sha ([string]$ep[3]).Trim() -RepoRoot (Repo-ForProject -ProjectField ([string]$ep[1]))) {
+            $RetiredPushSignals += [PSCustomObject]@{ Day = $entry.Day; Project = [string]$ep[1]; At = "" }
+            Write-Log "Retired on re-check: $($ep[1])'s work reached GitHub during this run."
+        } else {
+            $StillFailed += $entry
+        }
+    }
+    $FailedPushSignals = @($StillFailed)
+}
+
 # ── 6b-5. Behind GitHub, but the work is safe ────────────────────────────────
 # Saeed, 2026-09-10. Since the close pushes to a backup branch that nobody else
 # writes to, "behind main" no longer means the work is at risk - so it must not
@@ -1382,13 +1441,20 @@ if ($CloseDayFailed) {
         (@($FailedDayNames)[0]).ToUpper() + "'S SESSION CLOSE DID NOT COMPLETE"
     }
     $FailedDayPlain = (@($FailedDayNames) -join " and ")
+    # "NOTHING SAVED TO GITHUB" IS FALSE BY 07:00. The morning brief runs the git
+    # safety net (sections 6/6b) BEFORE this banner is prepended, so by the time
+    # Saeed reads it that day's work has usually been committed and pushed. Three
+    # of the four claims stay true at 07:00; this one does not, and a banner with
+    # one false clause in it is a banner he learns to discount - the same trust
+    # problem this file has now corrected six times. Security Agent S3, 2026-09-10.
+    $SavedClause = if ($Mode -eq 'Evening') { ", nothing saved to GitHub" } else { "" }
     # "has"/"have", and no "18:30": a hand-run weekend close is not an 18:30 one.
     $FailedDayVerb  = if (@($FailedDayNames).Count -gt 1) { "have" } else { "has" }
     $NoCloseBanner = @"
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !! $FailedDayLabel
 !! The session close did not complete, so $FailedDayPlain $FailedDayVerb no
-!! session log, no handover note, nothing saved to GitHub, no restore point.
+!! session log, no handover note$SavedClause, no restore point.
 $(if (@($CloseFailDetail).Count -gt 0) { "!! What went wrong:" + [Environment]::NewLine + (@($CloseFailDetail) -join [Environment]::NewLine) } else { "!! It did not run at all." })
 !!
 !! Your work is NOT lost - it is still on the computer.
@@ -1408,6 +1474,17 @@ $(if (@($CloseFailDetail).Count -gt 0) { "!! What went wrong:" + [Environment]::
 # The report file was written in section 5 and the send in section 7 reads it back
 # off disk, so prepending here reaches him the same evening with no second
 # message and no second browser session.
+# DE-DUPLICATE BEFORE RENDERING. Since the marker read moved out of the Evening
+# gate, a Morning run fills these from TWO sources: yesterday's marker, and this
+# morning's own strategy_daily.ps1 output. session_close.ps1 writes the same
+# signals into the marker, so an unfinished dashboard\ folder produces a
+# byte-identical PUSH-HELD line from each - and Saeed sees the same warning
+# twice in one message. Security Agent S4, 2026-09-10.
+$HeldSignals   = @(@($HeldSignals)   | ForEach-Object { [string]$_ } | Select-Object -Unique)
+$BehindSignals = @(@($BehindSignals) |
+                   Group-Object { ([string]$_.Sig) } |
+                   ForEach-Object { $_.Group | Select-Object -First 1 })
+
 if (@($HeldSignals).Count -gt 0) {
     $HeldLines = @()
     foreach ($sig in @($HeldSignals)) {
