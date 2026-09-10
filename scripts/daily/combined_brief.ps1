@@ -861,44 +861,21 @@ foreach ($m in $MarkersToRead) {
                 # No sha recorded (markers written before 2026-09-09) = no proof
                 # possible = keep shouting.
                 if ($pfSha -match '^[0-9a-fA-F]{7,40}$') {
-                    $RepoForProject = if ($pfProject -match 'STMARKS|SMCPHARMA|St Marks') {
-                                          $StMarksRepoRoot
-                                      } else { $AvamedRepoRoot }
+                    # ONE PROOF, ONE IMPLEMENTATION. This used to be an inline copy
+                    # of the same logic that section 6b-0 now calls as a function -
+                    # near-identical duplicates, which is the worst state for drift:
+                    # the next editor assumes syncing them is safe, and one of them
+                    # is subtly not the other. Both now route through
+                    # Test-WorkOnOrigin, which carries the origin scoping, the
+                    # close/* backup exclusion and the 5.1 stderr guard in one
+                    # place. The last-push-ok stamp read stays HERE, because it is
+                    # presentation for this call site only. Security Agent T4,
+                    # 2026-09-10.
+                    $RepoForProject = Repo-ForProject -ProjectField $pfProject
                     if (Test-Path $RepoForProject) {
-                        # SCOPE IT TO origin. Unscoped, this searches EVERY
-                        # remote-tracking namespace: push the commit to a fork and
-                        # the warning retires while the work never reached GitHub.
-                        # Reproduced by the Security Agent, M3 2026-09-09.
-                        #
-                        # $ErrorActionPreference is "Stop" for this whole script.
-                        # On Windows PowerShell 5.1 a native command writing to
-                        # stderr under Stop can terminate, which would send every
-                        # retirement down the catch below - safe, but it would
-                        # quietly disable this check. Same guard strategy_daily.ps1
-                        # wraps its git calls in.
-                        $PrevEAPGit = $ErrorActionPreference
-                        $ErrorActionPreference = 'Continue'
-                        try {
-                            # EXCLUDE THE BACKUP BRANCHES. Since 2026-09-10 the
-                            # close pushes every commit to origin/close/<date>
-                            # BEFORE trying the real branch, so that sha is on an
-                            # origin branch even when the push that mattered
-                            # failed. Without this exclusion a genuine auth or
-                            # network failure would find its own backup minutes
-                            # later and demote itself to "NOW FIXED - nothing to
-                            # do" - an alarm silently switching itself off, which
-                            # is the exact failure this file exists to prevent.
-                            # It also stops the check decaying as close/* branches
-                            # accumulate. Security Agent H2/H3, 2026-09-10.
-                            $OnRemote = @(git -C $RepoForProject branch -r --contains $pfSha --list 'origin/*' 2>$null |
-                                          ForEach-Object { [string]$_ } |
-                                          Where-Object { ($_ -replace '^\s*', '') -notlike 'origin/close/*' })
-                            $GitExit  = $LASTEXITCODE
-                        } finally { $ErrorActionPreference = $PrevEAPGit }
-                        $OnRemote = @(@($OnRemote) | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) })
-                        if ($GitExit -eq 0 -and @($OnRemote).Count -gt 0) {
+                        if (Test-WorkOnOrigin -Sha $pfSha -RepoRoot $RepoForProject) {
                             $Retired = $true
-                            Write-Log "PUSH-FAILED for $pfProject retired - commit $pfSha is on $(@($OnRemote).Count) origin branch(es)."
+                            Write-Log "PUSH-FAILED for $pfProject retired - commit $pfSha is on a real origin branch."
                             # WHEN it arrived - presentation only. Nothing below
                             # can change $Retired, so a missing, corrupt or
                             # future-dated stamp costs a phrase, never an alarm.
@@ -1379,6 +1356,18 @@ if (-not $DryRun -and -not $SkipCloseHere -and @($FailedPushSignals).Count -gt 0
     $FailedPushSignals = @($StillFailed)
 }
 
+# DE-DUPLICATE THE BEHIND SIGNALS - ABOVE THEIR CONSUMER, AND KEYED ON PROJECT.
+# This was originally placed next to the held-signal dedup, 96 lines BELOW the
+# block that renders it, so it was dead code that never ran. And its key was the
+# whole signal, which embeds close/$Today - so yesterday's marker entry and this
+# morning's entry differ by construction every single day and could never group.
+# Two "BEHIND GITHUB" lines for one project, every morning.
+# Keep the LAST: the marker is harvested first, so the newest entry is the one
+# that reflects the current state. Security Agent T1/T2, 2026-09-10.
+$BehindSignals = @(@($BehindSignals) |
+                   Group-Object { (([string]$_.Sig) -split '\|')[1] } |
+                   ForEach-Object { $_.Group | Select-Object -Last 1 })
+
 # ── 6b-5. Behind GitHub, but the work is safe ────────────────────────────────
 # Saeed, 2026-09-10. Since the close pushes to a backup branch that nobody else
 # writes to, "behind main" no longer means the work is at risk - so it must not
@@ -1474,16 +1463,20 @@ $(if (@($CloseFailDetail).Count -gt 0) { "!! What went wrong:" + [Environment]::
 # The report file was written in section 5 and the send in section 7 reads it back
 # off disk, so prepending here reaches him the same evening with no second
 # message and no second browser session.
-# DE-DUPLICATE BEFORE RENDERING. Since the marker read moved out of the Evening
-# gate, a Morning run fills these from TWO sources: yesterday's marker, and this
+# DE-DUPLICATE THE HELD SIGNALS. Since the marker read moved out of the Evening
+# gate, a Morning run fills this from TWO sources: yesterday's marker, and this
 # morning's own strategy_daily.ps1 output. session_close.ps1 writes the same
-# signals into the marker, so an unfinished dashboard\ folder produces a
-# byte-identical PUSH-HELD line from each - and Saeed sees the same warning
-# twice in one message. Security Agent S4, 2026-09-10.
-$HeldSignals   = @(@($HeldSignals)   | ForEach-Object { [string]$_ } | Select-Object -Unique)
-$BehindSignals = @(@($BehindSignals) |
-                   Group-Object { ([string]$_.Sig) } |
-                   ForEach-Object { $_.Group | Select-Object -First 1 })
+# signal into the marker, so an unfinished dashboard\ folder produces one from
+# each. Security Agent S4, 2026-09-10.
+#
+# KEY ON PROJECT AND PATH, NOT THE WHOLE LINE, AND KEEP THE LAST. The count is
+# field 3, so `Select-Object -Unique` let "dashboard|3" from yesterday's marker
+# and "dashboard|5" from this morning BOTH through - and because the marker is
+# harvested first, the stale 3-file line rendered ABOVE the current 5-file one.
+# Security Agent T3, 2026-09-10.
+$HeldSignals = @(@($HeldSignals) | ForEach-Object { [string]$_ } |
+                 Group-Object { $p = ($_ -split '\|'); "$($p[1])|$($p[2])" } |
+                 ForEach-Object { $_.Group | Select-Object -Last 1 })
 
 if (@($HeldSignals).Count -gt 0) {
     $HeldLines = @()
