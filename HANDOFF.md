@@ -76,11 +76,14 @@ DID NOT WORK - read this part:
 ## NEXT + BLOCKERS
 
 NEXT:
-1. Saeed's answer on nine proposed confidence rules (see CHANGELOG 2026-09-10).
-   He challenged me for guessing. He is right. Rules not yet in CLAUDE.md -
-   needs his approval, do not add them unilaterally.
-2. Merge PR #7 with his approval, then he pulls. Merging is also what will
-   finally exercise the untested auto-pull path.
+1. DONE 11 Sep - Saeed APPROVED the nine confidence rules. They are now in
+   CLAUDE.md under UNCERTAINTY LABELLING. Read them. R2 is the important one:
+   [Certain] means a command was run THIS SESSION and its output can be quoted.
+   Not memory. Not inference. He raised this because I was guessing and he was
+   right to.
+2. Merge PR #7 - Saeed said "WILL DECIDE LATER" on 11 Sep. DO NOT merge without
+   asking him again. Merging is also what will finally exercise the untested
+   auto-pull path.
 3. Rebuild backup-branch pruning, own PR. Fix is sha-against-sha: `ls-remote`
    already returns the sha in field 1, the old code threw it away with `[-1]`.
 4. `$BehindSignals` retirement - logged as debt. Must use the same-question

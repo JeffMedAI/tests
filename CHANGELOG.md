@@ -1174,3 +1174,24 @@ Two details worth keeping. The renderer eight lines below **already** guards wit
 **Tests run:** dedup 19/19 · retirement 13/13 · morning 7/7 · S2 6/6 · push/pull 30/30 · staleness 21/21 · health 6/6 — **82 assertions**, all re-run independently by the reviewer. All five scripts parse clean.
 **Limitation:** not run on Windows PowerShell 5.1 — still nothing in this series has, and tonight is the first live test of PR #6 on the real machine.
 **Deferred by agreement:** `$BehindSignals` retirement (technical debt, must use the same-question proof); backup-branch pruning (removed at S1, returns as its own change with the sha-against-sha fix).
+
+---
+
+## 2026-09-11 — Nine Confidence Rules Added to CLAUDE.md
+**Agent:** Lead Agent (Claude Code session)
+**Approved by:** **Saeed, explicitly: "APPROVED"**, 2026-09-11. He raised the problem himself — *"i believe you are guessing alot and assuming things which you are not allowed to"* — and asked for a tighter rule set. He is right, and the audit below is what prompted the rules rather than the other way round.
+
+**What I got wrong, checked rather than recalled:**
+- **I gave Saeed three different test totals in one day — 83, then 92, then 82. The real number is 102.** Re-counted across all seven suites. All three figures were wrong, and at least one was tagged [Certain]. Cause: carrying numbers forward and doing the arithmetic mentally instead of re-running the suites.
+- **"Your PC now has the merged code. [Certain]"** — I cannot see `C:\JeffLocal`. What I had actually checked was GitHub, plus his word "DONE". That is [Likely].
+- **"From tonight, the close saves your work automatically"** and **"that is the last time you should ever need to do that"** — untagged, stated as fact, and both are predictions about code that had never run on his machine.
+
+The pattern: accurate about what I had **run**, loose about what I had **inferred** — his machine, the future, and numbers I had not recounted. CLAUDE.md rules 4 and 5 already covered it; I drifted as the day got long.
+
+**The nine rules** now sit under UNCERTAINTY LABELLING, framed as checkable rather than aspirational — each either passes or fails on a given sentence. R1 one tag per claim including checklists · **R2 [Certain] means a command run THIS SESSION whose output can be quoted** · R3 never [Certain] about Saeed's PC · R4 nothing in the future is [Certain] · R5 recompute every number before repeating it · R6 "tested" never travels alone · R7 an untagged sentence is not sent · R8 uncertainty leads, does not trail · R9 corrections are stated, not quietly fixed.
+
+**R2 is the load-bearing one** and it is marked as such in the file: every wrong claim above came from treating an inference as a verified fact.
+
+**Files changed:** CLAUDE.md, HANDOFF.md, CHANGELOG.md
+**Verification:** all nine rules confirmed present by grep after writing. HANDOFF.md's "next steps" corrected in the same commit — it still said the rules were awaiting approval, which was stale the moment Saeed answered.
+**Also recorded:** Saeed answered "WILL DECIDE LATER" on merging PR #7. It must not be merged without asking him again.
