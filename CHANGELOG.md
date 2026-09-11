@@ -1275,3 +1275,30 @@ The first version of fix 5 capped BLOCKERS at 3 and PENDING SAEED at 4; both wer
 **Files changed:** scripts/daily/combined_brief.ps1, scripts/daily/strategy_daily.ps1, tests/daily/*.ps1, CHANGELOG.md
 **Tests run:** 62 assertions, all passing, pwsh 7.4.6 / Linux. Negative control run on H1: restoring the caps turns the suite red.
 **Still outstanding:** S1 (awaiting Saeed's decision), `gdpr_purge.py` scope, and a deliberate Windows PowerShell 5.1 run.
+
+---
+
+## 2026-09-11 — Option A: One Plain-English Rewrite, and It Happens at Send Time
+
+**Agent:** Lead Agent (Claude Code session)
+**Approved by:** Saeed — "Option A", 2026-09-11, chosen between two written options after the code review established that my stated root cause was wrong.
+
+**The correction.** I told Saeed the SECOND rewrite turned his commit subjects into policy statements. The repo disproved it: `docs/sessions/2026-09-10-1800.md` line 9 — the file on disk, which is pass 1's output — already read "If we cannot reliably understand the incoming file list, the process must be refused." from the commit "fix(close): refuse when the incoming-file list cannot be parsed reliably". Pass 1 did the damage. Pass 2 only changed "refused" to "stopped".
+
+**What Option A changes.** The session log is a RECORD, so it now stores the record.
+- `strategy_daily.ps1` no longer calls `Get-BusinessRewrite` when writing the session log. New `Format-CommitSubject` tidies each commit subject deterministically — strip the conventional-commit prefix, capitalise, terminate — with no model involved, so there is nothing to drift and nothing to fail. This also makes the Ollama-is-down fallback readable, which was the one real cost of Option A.
+- `combined_brief.ps1` now rewrites every WHAT WE DID line once, at send time, human-written or machine-written alike. A bad rewrite now affects one message instead of being written permanently into the archive.
+- The bypass machinery from the earlier fix (`Test-IsAutoWrittenLog`, `$WhatWeDidAuto`, `$AutoAll`, the fold-in block) is REMOVED rather than left dormant. Dead code that never fires is exactly the trap recorded in HANDOFF.md — a dedup in this same file was once both unreachable and unmatchable, each fault hiding the other.
+- Placeholder handling is unchanged and still correct: boilerplate is dropped and replaced with one line naming the right day.
+
+**Net effect on the model:** the pipeline went from two LLM passes over Saeed's daily brief to one. That is the right direction under CLAUDE.md's core safety rule — every extra pass is a place where a fact can drift.
+
+**Known and accepted:** session logs already on disk still hold the old paraphrase. They are a historical record and are not being rewritten; they age out of the brief's 24-hour window on their own.
+
+**Files changed:** scripts/daily/strategy_daily.ps1, scripts/daily/combined_brief.ps1, tests/daily/ (t_brief_fix3.ps1 renamed to t_single_rewrite.ps1), CHANGELOG.md
+**Tests run:** 71 assertions, all passing, pwsh 7.4.6 / Linux.
+- Static guard: the session-log writer does not call the rewriter and does tidy deterministically — asserted on the CODE with comments stripped, so a comment mentioning the rewriter cannot satisfy it.
+- Spy: every line reaching Saeed went through the rewriter exactly ONCE — not twice (the 2026-09-10 fault) and not zero times (raw developer wording).
+- Negative controls fired on both halves: restoring the rewrite in the close turns t_brief_fixes.ps1 red; rewriting twice in the brief turns t_single_rewrite.ps1 red.
+- The currency guard also earned its place: it refused to run against a function that had been removed, rather than silently testing nothing.
+**Still outstanding:** `gdpr_purge.py` scope for the new archive folder, and a deliberate Windows PowerShell 5.1 run.

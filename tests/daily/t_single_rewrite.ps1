@@ -1,7 +1,14 @@
-# Fix 3 proper: prove the automation's own lines NEVER reach the rewriter.
-# The e2e test could not prove this - Ollama is down in this container, so the
-# rewritten and un-rewritten paths look identical. This replaces Get-Business-
-# Rewrite with a spy that records what it was asked to rewrite.
+# Option A (Saeed's decision, 2026-09-11): there is exactly ONE plain-English
+# rewrite in the whole pipeline, and it happens at send time.
+#
+# The close stores the plain git record - guarded statically in t_brief_fixes.ps1.
+# This file guards the other half: every WHAT WE DID line reaching Saeed has been
+# through the rewriter exactly ONCE - not twice (the 2026-09-10 fault, where two
+# passes of a small model turned a commit subject into a policy statement), and
+# not zero times (which would send him raw developer wording).
+#
+# A plain end-to-end test cannot prove this: Ollama is down in this container, so
+# the rewritten and un-rewritten paths render identically. Hence a spy.
 param([string]$ScriptPath)
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
@@ -15,7 +22,7 @@ function Assert-True { param($Cond,$Name)
   if ($Cond) { $script:Pass++; Write-Host "  ok   $Name" } else { $script:Fail++; Write-Host "  FAIL $Name" } }
 
 $Needed = @("Get-Utf8FileText","Add-PlainEnglishNotes","Select-NearUnique","Get-BusinessRewrite",
-            "Test-IsPlaceholderLog","Test-IsAutoWrittenLog","Test-IsNoneLine","Remove-NoneLines",
+            "Test-IsPlaceholderLog","Test-IsNoneLine","Remove-NoneLines",
             "Test-IsDoneLine","Get-LastExpectedCloseTime","Get-ProjectBrief")
 foreach ($fn in $Needed) {
   $m = [regex]::Match($Src, "(?ms)^function\s+$fn\s*\{.*?^\}")
@@ -42,11 +49,11 @@ $Day = (Get-Date).ToString("yyyy-MM-dd")
 @"
 # SESSION SUMMARY - [$Day 18:00]
 # Tool: strategy_daily.ps1 (automated session close at 18:30)
-# AUTOGEN-REWRITTEN: already rewritten once.
+#   WHAT WE DID below is the plain git record.
 
 ## WHAT WE DID
 
-- AUTOLINE stopped the close when the file list cannot be read.
+- AUTOLINE refuse when the incoming-file list cannot be parsed reliably.
 "@ | Set-Content -Path (Join-Path $Sessions "$Day-1800.md") -Encoding UTF8
 
 @"
@@ -65,14 +72,20 @@ $Saw = @($global:SpySaw)
 Write-Host "The rewriter was handed $(@($Saw).Count) line(s):"
 $Saw | ForEach-Object { Write-Host "   | $_" }
 
-Write-Host "`nFIX 3 - the automation's line bypasses the rewriter"
-Assert-True (-not (@($Saw) | Where-Object { $_ -like "*AUTOLINE*" })) "rewriter NEVER saw the automated line"
-Assert-True ($T -match "AUTOLINE")                                     "automated line still reaches Saeed"
-Assert-True ($T -notmatch "REWRITTEN::AUTOLINE")                       "automated line was not re-worded"
+Write-Host "`nOPTION A - every line is rewritten exactly once"
+$autoSaw  = @(@($Saw) | Where-Object { $_ -like "*AUTOLINE*" })
+$humanSaw = @(@($Saw) | Where-Object { $_ -like "*HUMANLINE*" })
+Assert-True (@($autoSaw).Count  -eq 1) "the machine-written line went to the rewriter exactly once"
+Assert-True (@($humanSaw).Count -eq 1) "the human-written line went to the rewriter exactly once"
 
-Write-Host "`nControl - a human line IS still rewritten"
-Assert-True (@($Saw) | Where-Object { $_ -like "*HUMANLINE*" })        "rewriter DID see the human line"
-Assert-True ($T -match "REWRITTEN::.*HUMANLINE")                       "human line went through the rewriter"
+Write-Host "`nNo double rewrite - the 2026-09-10 fault"
+# A line already carrying the marker would mean it had been through twice.
+Assert-True (-not (@($Saw) | Where-Object { $_ -like "REWRITTEN::*" })) "the rewriter was never handed its own output"
+Assert-True ($T -notmatch "REWRITTEN::REWRITTEN::")                     "no line was rewritten twice"
+
+Write-Host "`nAnd nothing is sent raw"
+Assert-True ($T -match "REWRITTEN::.*AUTOLINE")  "the machine-written line reached Saeed rewritten"
+Assert-True ($T -match "REWRITTEN::.*HUMANLINE") "the human-written line reached Saeed rewritten"
 
 Remove-Item -Recurse -Force $Root
 Write-Host "`n================================"

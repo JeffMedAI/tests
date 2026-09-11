@@ -274,35 +274,6 @@ function Test-IsPlaceholderLog {
 }
 
 # ---------------------------------------------------------------------------
-# Was this session log written by the automation (strategy_daily.ps1 /
-# session_close.ps1) rather than by a human?
-#
-# It matters because strategy_daily.ps1 ALREADY puts its WHAT WE DID lines
-# through Get-BusinessRewrite before writing them. Rewriting them a second time
-# here ran every line through a small local model TWICE, and the second pass
-# drifted off the facts: on 2026-09-10 the commit subject "stop the close if the
-# incoming file list cannot be parsed" reached Saeed's phone as "If we cannot
-# reliably understand the incoming file list, the process must be stopped" - a
-# design rule dressed up as a day's work. Saeed flagged it. Fix 3, 2026-09-11.
-#
-# Header-only match, for the same reason Test-IsPlaceholderLog is header-only:
-# a real session log that DISCUSSES the automation must not be mistaken for one.
-function Test-IsAutoWrittenLog {
-    param([string]$Content)
-    if ([string]::IsNullOrWhiteSpace($Content)) { return $false }
-    $Head = (@($Content -split "`n") | Select-Object -First 10) -join "`n"
-    # Match the marker written FOR this purpose, not the "# Tool:" line. The
-    # Tool: header is inheritable by accident - a human starting today's log from
-    # a copy of yesterday's auto log keeps line 2 intact, and their caveman
-    # fragments would then go to Saeed raw with the rewrite silently disabled.
-    # AUTOGEN-PLACEHOLDER already works this way for the staleness alarm.
-    # Code review S3, 2026-09-11. Logs written before this marker existed simply
-    # do not match, so they are rewritten as they always were - the safe
-    # direction, and it means the bad logs already on disk are still fixable.
-    return ($Head -match '(?m)^\s*#\s*AUTOGEN-REWRITTEN')
-}
-
-# ---------------------------------------------------------------------------
 # Is this line a bare "nothing to report" placeholder?
 #
 # Exact match only, with a short allowed tail. On 2026-09-10 the brief said
@@ -603,10 +574,6 @@ function Get-ProjectBrief {
 
     # Extract the 4 standard sections
     $WhatWeDid = @(); $Blockers = @(); $Approvals = @(); $NextTasks = @()
-    # Fix 3 - WHAT WE DID lines that the automation already rewrote are held
-    # apart from human-written ones, so they are not sent through the local
-    # model a second time. See Test-IsAutoWrittenLog.
-    $WhatWeDidAuto = @()
     # True only if EVERY log read was an autogen placeholder. Their boilerplate
     # explains the alarm mechanism, which is not Saeed's day's work - it is
     # replaced with one plain line further down.
@@ -618,8 +585,7 @@ function Get-ProjectBrief {
     foreach ($session in $SessionSummaries) {
         $lines  = $session.Content -split "`n"
         $inDid  = $false; $inBlock = $false; $inApproval = $false; $inNext = $false
-        $IsAuto        = Test-IsAutoWrittenLog -Content $session.Content
-        $IsPlaceholder = Test-IsPlaceholderLog  -Content $session.Content
+        $IsPlaceholder = Test-IsPlaceholderLog -Content $session.Content
         if ($IsPlaceholder) { $SawPlaceholder = $true } else { $AnyRealContent = $true }
 
         foreach ($line in $lines) {
@@ -647,11 +613,13 @@ function Get-ProjectBrief {
                 $IsDone = Test-IsDoneLine -Line $clean
 
                 if ($inDid) {
-                    # Fix 3 - placeholder boilerplate is dropped here and one
-                    # short line is substituted after the loop.
-                    if     ($IsPlaceholder) { }
-                    elseif ($IsAuto)        { $WhatWeDidAuto += $stripped }
-                    else                    { $WhatWeDid     += $stripped }
+                    # Placeholder boilerplate is dropped here and one short line
+                    # is substituted after the loop. Everything else - human or
+                    # machine-written - goes through the SINGLE rewrite below.
+                    # Saeed's decision (Option A, 2026-09-11): the session log
+                    # stores the plain record, and the one plain-English pass
+                    # happens here, at send time.
+                    if (-not $IsPlaceholder) { $WhatWeDid += $stripped }
                 }
                 if ($inBlock)    { $Blockers  += $stripped }
                 if ($inApproval) { if ($IsDone) { $DoneDropped++ } else { $Approvals  += $stripped } }
@@ -679,8 +647,6 @@ function Get-ProjectBrief {
     # above this block describes. Caught by t_brief_fixes.ps1 before it shipped.
     $DidNoNone     = Remove-NoneLines -Lines $WhatWeDid
     $WhatWeDid     = @($DidNoNone)
-    $AutoNoNone    = Remove-NoneLines -Lines $WhatWeDidAuto
-    $WhatWeDidAuto = @($AutoNoNone)
     $BlockNoNone   = Remove-NoneLines -Lines $Blockers
     $Blockers      = @($BlockNoNone)
     $AppNoNone     = Remove-NoneLines -Lines $Approvals
@@ -712,13 +678,6 @@ function Get-ProjectBrief {
     $WhatWeDidNear   = Select-NearUnique -Lines $WhatWeDid
     $WhatWeDidAll    = @($WhatWeDidNear)
     $WhatWeDidCapped = @($WhatWeDidAll | Select-Object -First $MaxDid)
-    # Fix 3 - lines the automation already rewrote. Deduplicated and capped like
-    # the rest, but NEVER passed to Get-BusinessRewrite again.
-    $AutoNear        = Select-NearUnique -Lines $WhatWeDidAuto
-    # Drop anything the human list already carries: the two lists are
-    # deduplicated separately, so a line present in both was rendered twice AND
-    # counted twice in "(+N more)". Code review S6, 2026-09-11.
-    $AutoAll         = @(@($AutoNear) | Where-Object { @($WhatWeDidAll) -notcontains $_ })
     $BlockersNear    = Select-NearUnique -Lines $Blockers
     $BlockersAll     = @($BlockersNear)
     $BlockersCapped  = @($BlockersAll | Select-Object -First $MaxBlockers)
@@ -756,20 +715,7 @@ function Get-ProjectBrief {
     $ApprovalsFinal = if ($ApprovalsAI) { ,$ApprovalsAI } else { Write-Log "AI rewrite unavailable ($ProjectLabel THINGS I NEED YOU TO OK) - word-glossary fallback"; Add-PlainEnglishNotes -Lines $ApprovalsCapped }
     $NextTasksFinal = if ($NextTasksAI) { ,$NextTasksAI } else { Write-Log "AI rewrite unavailable ($ProjectLabel WHAT'S NEXT) - word-glossary fallback"; Add-PlainEnglishNotes -Lines $NextTasksCapped }
 
-    # ── Fix 3: fold in the automation's own lines, unrewritten ───────────────
-    # These already went through Get-BusinessRewrite once, inside
-    # strategy_daily.ps1, before they were written to the session log. Running
-    # them through a second time is what turned a commit subject into a policy
-    # statement on Saeed's phone. They are appended as-is, sharing the WHAT WE
-    # DID cap so the message does not grow.
     $WhatWeDidFinal = @($WhatWeDidFinal)
-    $DidRoom = $MaxDid - @($WhatWeDidFinal).Count
-    if ($DidRoom -lt 0) { $DidRoom = 0 }
-    $AutoShown = @($AutoAll | Select-Object -First $DidRoom)
-    if (@($AutoShown).Count -gt 0) {
-        $WhatWeDidFinal = @(@($WhatWeDidFinal) + @($AutoShown))
-        Write-Log "$ProjectLabel WHAT WE DID - $(@($AutoShown).Count) line(s) from the automated log, passed through WITHOUT a second rewrite"
-    }
 
     # A day where the only log was an autogen placeholder has no work to report.
     # Its boilerplate explains the staleness alarm, which is not Saeed's day -
@@ -795,7 +741,7 @@ function Get-ProjectBrief {
     $BlockersFinal  = @($BlockersFinal)
     $ApprovalsFinal = @($ApprovalsFinal)
     $NextTasksFinal = @($NextTasksFinal)
-    $DidTotal = @($WhatWeDidAll).Count + @($AutoAll).Count
+    $DidTotal = @($WhatWeDidAll).Count
     $DidOver  = $DidTotal - @($WhatWeDidFinal).Count
     if ($DidOver -gt 0)  { $WhatWeDidFinal  = @(@($WhatWeDidFinal)  + @("(+$DidOver more - ask me)")) }
     $BlockOver = @($BlockersAll).Count - @($BlockersFinal).Count

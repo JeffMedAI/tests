@@ -18,16 +18,16 @@ function Assert-True { param($Cond,$Name) Assert-Eq ([bool]$Cond) $true $Name }
 function Assert-False { param($Cond,$Name) Assert-Eq ([bool]$Cond) $false $Name }
 
 # ── currency guard ───────────────────────────────────────────────────────────
-foreach ($fn in @("Test-IsAutoWrittenLog","Test-IsNoneLine","Remove-NoneLines","Test-IsDoneLine")) {
+foreach ($fn in @("Test-IsNoneLine","Remove-NoneLines","Test-IsDoneLine")) {
     if ($Src -notmatch "(?m)^function\s+$fn\s*\{") { throw "GUARD: $fn is not in the live script - tests would prove nothing" }
 }
 # Extract each function body and define it here.
-foreach ($fn in @("Test-IsAutoWrittenLog","Test-IsNoneLine","Remove-NoneLines","Test-IsDoneLine")) {
+foreach ($fn in @("Test-IsNoneLine","Remove-NoneLines","Test-IsDoneLine")) {
     $m = [regex]::Match($Src, "(?ms)^function\s+$fn\s*\{.*?^\}")
     if (-not $m.Success) { throw "GUARD: could not extract $fn" }
     Invoke-Expression $m.Value
 }
-Write-Host "Loaded 4 function(s) from the live script."
+Write-Host "Loaded 3 function(s) from the live script."
 
 # ── Fix 1: ticked items are done ─────────────────────────────────────────────
 Write-Host "`nFIX 1 - a ticked box is done, not an open approval"
@@ -76,43 +76,32 @@ Assert-Eq @($keep3).Count 2 "a section with no none-lines is untouched"
 $keep4 = Remove-NoneLines -Lines @()
 Assert-Eq @($keep4).Count 0 "empty input survives"
 
-# ── Fix 3: which logs were machine-written ───────────────────────────────────
-Write-Host "`nFIX 3 - automation's own logs are recognised"
-$auto = @"
-# SESSION SUMMARY - [2026-09-10 18:00]
-# Tool: strategy_daily.ps1 (automated session close at 18:30)
-# AUTOGEN-REWRITTEN: already through the plain-English rewrite once.
 
-## WHAT WE DID
-- Stopped the close when the file list cannot be read.
-"@
-Assert-True (Test-IsAutoWrittenLog -Content $auto) "AUTOGEN-REWRITTEN marker detected"
+# -- Option A: the close stores the plain git record, tidied without a model ---
+$DailySrc = Get-Content -Path (Join-Path $RepoRoot "scripts/daily/strategy_daily.ps1") -Raw
+if ($DailySrc -notmatch "(?m)^function\s+Format-CommitSubject\s*\{") { throw "GUARD: Format-CommitSubject is not in strategy_daily.ps1" }
+$fm = [regex]::Match($DailySrc, "(?ms)^function\s+Format-CommitSubject\s*\{.*?^\}")
+Invoke-Expression $fm.Value
 
-# The reason the marker exists at all: the "# Tool:" header is inheritable by
-# accident. A human starting today's log from a copy of yesterday's auto log
-# keeps that line, and keying on it would silently switch their rewrite off.
-$toolOnly = @"
-# SESSION SUMMARY - [2026-09-11 14:00]
-# Tool: strategy_daily.ps1 (automated session close at 18:30)
+# The close must NOT rewrite what it stores - that is the whole of Option A.
+# Assert on the CODE between $DidLines and $DidSection, ignoring comments, so
+# the guard cannot be satisfied by a comment that merely mentions the rewriter.
+$wm = [regex]::Match($DailySrc, '(?ms)^\s*\$DidLines\s*=.*?^\s*\$DidSection\s*=')
+Assert-True ($wm.Success) "found the session-log writer's WHAT WE DID block"
+$writerCode = (@($wm.Value -split "`n") | Where-Object { $_ -notmatch '^\s*#' }) -join "`n"
+Assert-True ($writerCode -notmatch 'Get-BusinessRewrite') "the session-log writer does NOT call the rewriter"
+Assert-True ($writerCode -match 'Format-CommitSubject')   "the session-log writer tidies deterministically instead"
 
-## WHAT WE DID
-- Added review checkbox. Amber->green on confirm.
-"@
-Assert-False (Test-IsAutoWrittenLog -Content $toolOnly) "a copied '# Tool:' header alone does NOT disable the rewrite"
-
-$human = @"
-# SESSION SUMMARY - [2026-09-11 14:00]
-# Written by hand.
-
-## WHAT WE DID
-- Talked through the brief with Saeed. He said it reads too long.
-- Note: strategy_daily.ps1 is the tool that writes the automated log.
-"@
-Assert-False (Test-IsAutoWrittenLog -Content $human) "a human log that MENTIONS the tool is not auto"
-Assert-False (Test-IsAutoWrittenLog -Content "")     "empty content is not auto"
-
-$late = ("# padding`n" * 12) + "# AUTOGEN-REWRITTEN`n"
-Assert-False (Test-IsAutoWrittenLog -Content $late) "a marker below the header block does not count"
+Write-Host "`nOPTION A - commit subjects tidied deterministically, no model"
+Assert-Eq (Format-CommitSubject "fix(close): refuse when the incoming-file list cannot be parsed reliably") "Refuse when the incoming-file list cannot be parsed reliably." "conventional prefix with scope stripped"
+Assert-Eq (Format-CommitSubject "feat: back up unconditionally") "Back up unconditionally." "conventional prefix without scope"
+Assert-Eq (Format-CommitSubject "docs(brief)!: breaking change") "Breaking change." "breaking-change marker stripped"
+Assert-Eq (Format-CommitSubject "Merge branch 'main' of https://github.com/x") "Merge branch 'main' of https://github.com/x." "a normal sentence is left alone"
+Assert-Eq (Format-CommitSubject "Fixed the thing.") "Fixed the thing." "already a sentence - unchanged"
+Assert-Eq (Format-CommitSubject "does it work?") "Does it work?" "existing terminator kept"
+Assert-Eq (Format-CommitSubject "  fix: trailing space  ") "Trailing space." "trimmed"
+Assert-Eq (Format-CommitSubject "") "" "empty stays empty"
+Assert-Eq (Format-CommitSubject "fix:") "fix:" "a prefix with nothing after it is not swallowed"
 
 Write-Host "`n================================"
 Write-Host "PASS: $Pass   FAIL: $Fail"

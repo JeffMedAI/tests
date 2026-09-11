@@ -19,7 +19,7 @@ function Assert-NotMatch { param($Text,$Pattern,$Name)
   else { $script:Fail++; Write-Host "  FAIL $Name - should NOT contain: $Pattern" } }
 
 $Needed = @("Get-Utf8FileText","Add-PlainEnglishNotes","Select-NearUnique","Get-BusinessRewrite",
-            "Test-IsPlaceholderLog","Test-IsAutoWrittenLog","Test-IsNoneLine","Remove-NoneLines",
+            "Test-IsPlaceholderLog","Test-IsNoneLine","Remove-NoneLines",
             "Test-IsDoneLine","Get-LastExpectedCloseTime","Get-ProjectBrief")
 foreach ($fn in $Needed) {
   $m = [regex]::Match($Src, "(?ms)^function\s+$fn\s*\{.*?^\}")
@@ -36,14 +36,14 @@ $Stamp = (Get-Date).ToString("yyyy-MM-dd") + "-1800"
 @"
 # SESSION SUMMARY - [$(Get-Date -Format 'yyyy-MM-dd') 18:00]
 # Tool: strategy_daily.ps1 (automated session close at 18:30)
-# AUTOGEN-REWRITTEN: already rewritten once.
+#   WHAT WE DID below is the plain git record.
 # Built from the day's actual git activity - 7 commit(s).
 
 ---
 
 ## WHAT WE DID
 
-- Stopped the close when the incoming file list cannot be read.
+- Refuse when the incoming-file list cannot be parsed reliably.
 - Files changed today: 4 (CHANGELOG.md, combined_brief.ps1)
 
 ---
@@ -93,8 +93,9 @@ Write-Host "`nFIX 2 - no self-contradiction under WHAT'S STUCK"
 Assert-Match    $T "Three security items"          "the real blocker is shown"
 Assert-NotMatch $T "(?m)^\s*-\s*None\s*$"          "the bare 'None' line is gone"
 
-Write-Host "`nFIX 3 - the automation's line is passed through, not re-worded"
-Assert-Match    $T "Stopped the close when the incoming file list cannot be read\." "auto line is verbatim"
+Write-Host "`nOPTION A - the stored record is the plain git line"
+Assert-Match    $T "incoming-file list"                "the day's work reaches Saeed"
+Assert-NotMatch $T "must be refused"                   "no policy-speak: the log stores the record, not a paraphrase"
 
 Write-Host "`nH1 - ALARM SECTIONS ARE NEVER CAPPED (Security Agent, 2026-09-11)"
 # The first version of Fix 5 capped approvals at 4 and blockers at 3. That
