@@ -207,6 +207,10 @@ STRICT OUTPUT FORMAT:
 - No headings, no options, no alternatives, no markdown, no asterisks, no extra
   commentary before or after.
 - Each output line must be ONE sentence only, same order as the input.
+- HARD LIMIT: 16 words per line. Shorter is better. Cut every word that is not
+  carrying meaning. No preamble like "We must", "This refers to", "Please note".
+- Use the past tense for work already done. Do not turn a description of what
+  happened into a rule about what should happen.
 - Do not add any fact that is not already in the input line. Do not drop any line.
 - No code, no file paths, no jargon words — explain the idea in everyday words instead.
 
@@ -267,6 +271,68 @@ function Test-IsPlaceholderLog {
     $Head = (@($Content -split "`n") | Select-Object -First 10) -join "`n"
     return ($Head -match '(?m)^\s*#\s*AUTOGEN-PLACEHOLDER') -or
            ($Head -match '(?m)^\s*#.*No human session today')
+}
+
+# ---------------------------------------------------------------------------
+# Was this session log written by the automation (strategy_daily.ps1 /
+# session_close.ps1) rather than by a human?
+#
+# It matters because strategy_daily.ps1 ALREADY puts its WHAT WE DID lines
+# through Get-BusinessRewrite before writing them. Rewriting them a second time
+# here ran every line through a small local model TWICE, and the second pass
+# drifted off the facts: on 2026-09-10 the commit subject "stop the close if the
+# incoming file list cannot be parsed" reached Saeed's phone as "If we cannot
+# reliably understand the incoming file list, the process must be stopped" - a
+# design rule dressed up as a day's work. Saeed flagged it. Fix 3, 2026-09-11.
+#
+# Header-only match, for the same reason Test-IsPlaceholderLog is header-only:
+# a real session log that DISCUSSES the automation must not be mistaken for one.
+function Test-IsAutoWrittenLog {
+    param([string]$Content)
+    if ([string]::IsNullOrWhiteSpace($Content)) { return $false }
+    $Head = (@($Content -split "`n") | Select-Object -First 10) -join "`n"
+    return ($Head -match '(?m)^\s*#\s*Tool:\s*(strategy_daily|session_close)\.ps1')
+}
+
+# ---------------------------------------------------------------------------
+# Is this line a bare "nothing to report" placeholder?
+#
+# Exact match only, with a short allowed tail. On 2026-09-10 the brief said
+# "Work is progressing without any current issues." and then listed three real
+# blockers underneath, because the source log carried a "None" line NEXT TO
+# real ones and each line was rewritten separately. Fix 2, 2026-09-11.
+#
+# Deliberately strict. A loose "starts with no/none" test would eat real
+# blockers like "No GPhC number yet" - which is a blocker, not an absence of
+# one. If in doubt this returns $false and the line is KEPT.
+function Test-IsNoneLine {
+    param([string]$Line)
+    $t = ([string]$Line).Trim().TrimEnd('.', '!', ';', ',').Trim()
+    if ($t.Length -eq 0) { return $false }
+    if ($t.Length -gt 40) { return $false }
+    return ($t -match '^(?i)(none|n/a|na|nothing|no blockers?|nothing stuck|nothing blocking|nothing outstanding|nothing pending|nothing to report|no issues?|no current blockers?|unblocked|all clear)( right now| at present| currently| today| so far| yet)?$')
+}
+
+# Drop bare "none" lines from a section. If that empties the section the caller
+# renders its own standard "Nothing stuck right now." placeholder, so the wording
+# stays consistent and a contradiction can never be printed.
+function Remove-NoneLines {
+    param([string[]]$Lines)
+    $in = @(@($Lines) | ForEach-Object { [string]$_ })
+    if (@($in).Count -eq 0) { return ,$in }
+    $kept = @($in | Where-Object { -not (Test-IsNoneLine -Line $_) })
+    return ,$kept
+}
+
+# Is this line a ticked checkbox - i.e. already DONE?
+#
+# The parser below strips the box off every line with `\[.\]`, which matches
+# "[x]" and "[ ]" identically, and the renderer then puts a FRESH EMPTY box
+# back on. So anything Saeed had already signed off came back to his phone
+# every night asking to be signed off again, for months. Fix 1, 2026-09-11.
+function Test-IsDoneLine {
+    param([string]$Line)
+    return (([string]$Line).Trim() -match '^(?:\d+\.\s*)?-?\s*\[[xX]\]')
 }
 
 # When did the most recent session close FALL DUE? (weekday 18:30, per
@@ -527,10 +593,24 @@ function Get-ProjectBrief {
 
     # Extract the 4 standard sections
     $WhatWeDid = @(); $Blockers = @(); $Approvals = @(); $NextTasks = @()
+    # Fix 3 - WHAT WE DID lines that the automation already rewrote are held
+    # apart from human-written ones, so they are not sent through the local
+    # model a second time. See Test-IsAutoWrittenLog.
+    $WhatWeDidAuto = @()
+    # True only if EVERY log read was an autogen placeholder. Their boilerplate
+    # explains the alarm mechanism, which is not Saeed's day's work - it is
+    # replaced with one plain line further down.
+    $AnyRealContent  = $false
+    $SawPlaceholder  = $false
+    # Fix 1 - how many already-ticked items were dropped, for the run log.
+    $DoneDropped = 0
 
     foreach ($session in $SessionSummaries) {
         $lines  = $session.Content -split "`n"
         $inDid  = $false; $inBlock = $false; $inApproval = $false; $inNext = $false
+        $IsAuto        = Test-IsAutoWrittenLog -Content $session.Content
+        $IsPlaceholder = Test-IsPlaceholderLog  -Content $session.Content
+        if ($IsPlaceholder) { $SawPlaceholder = $true } else { $AnyRealContent = $true }
 
         foreach ($line in $lines) {
             if ($line -match "^## WHAT WE DID")   { $inDid=$true;      $inBlock=$false; $inApproval=$false; $inNext=$false; continue }
@@ -550,10 +630,22 @@ function Get-ProjectBrief {
                     -replace "^(\d+\.\s*|-\s*\[.\]\s*|-\s*|\[.\]\s*)", "" `
                     -replace "^\*\*", "" -replace "\*\*$", "" -replace "\*\*", ""
 
-                if ($inDid)      { $WhatWeDid += $stripped }
+                # Fix 1 - an item Saeed has ALREADY ticked is done. It must not
+                # come back as a fresh empty box asking for the same approval.
+                # Only the checkbox sections are filtered: a "[x]" inside WHAT
+                # WE DID is a record of work and stays.
+                $IsDone = Test-IsDoneLine -Line $clean
+
+                if ($inDid) {
+                    # Fix 3 - placeholder boilerplate is dropped here and one
+                    # short line is substituted after the loop.
+                    if     ($IsPlaceholder) { }
+                    elseif ($IsAuto)        { $WhatWeDidAuto += $stripped }
+                    else                    { $WhatWeDid     += $stripped }
+                }
                 if ($inBlock)    { $Blockers  += $stripped }
-                if ($inApproval) { $Approvals += $stripped }
-                if ($inNext)     { $NextTasks += $stripped }
+                if ($inApproval) { if ($IsDone) { $DoneDropped++ } else { $Approvals  += $stripped } }
+                if ($inNext)     { if ($IsDone) { $DoneDropped++ } else { $NextTasks  += $stripped } }
             }
         }
     }
@@ -565,14 +657,48 @@ function Get-ProjectBrief {
     # call itself in @(...), treats the whole returned array as ONE pipeline
     # object instead of N. Capture to a variable first, THEN re-wrap/pipe that
     # variable (safe, since it's already a real array by then).
-    $WhatWeDidNear = Select-NearUnique -Lines $WhatWeDid
-    $WhatWeDidCapped = @($WhatWeDidNear | Select-Object -First 6)
-    $BlockersNear = Select-NearUnique -Lines $Blockers
-    $BlockersCapped  = @($BlockersNear)
-    $ApprovalsNear = Select-NearUnique -Lines $Approvals
-    $ApprovalsCapped = @($ApprovalsNear)
-    $NextTasksNear = Select-NearUnique -Lines $NextTasks
-    $NextTasksCapped = @($NextTasksNear | Select-Object -First 4)
+    # Fix 2 - a bare "None" sitting next to real items made the brief contradict
+    # itself in one breath ("Work is progressing without any current issues",
+    # then three real blockers - 2026-09-10). Drop the none-lines HERE, before
+    # the rewrite: afterwards the model has reworded them and "None" is no
+    # longer recognisable as one. Test-IsNoneLine is strict by design and keeps
+    # anything it is not sure about.
+    # Capture to a variable FIRST, then re-wrap. Remove-NoneLines returns ,$x
+    # like its neighbours, and `@(Remove-NoneLines ...)` around the call itself
+    # collapses the whole returned array into ONE element - the trap the note
+    # above this block describes. Caught by t_brief_fixes.ps1 before it shipped.
+    $DidNoNone     = Remove-NoneLines -Lines $WhatWeDid
+    $WhatWeDid     = @($DidNoNone)
+    $AutoNoNone    = Remove-NoneLines -Lines $WhatWeDidAuto
+    $WhatWeDidAuto = @($AutoNoNone)
+    $BlockNoNone   = Remove-NoneLines -Lines $Blockers
+    $Blockers      = @($BlockNoNone)
+    $AppNoNone     = Remove-NoneLines -Lines $Approvals
+    $Approvals     = @($AppNoNone)
+    $NextNoNone    = Remove-NoneLines -Lines $NextTasks
+    $NextTasks     = @($NextNoNone)
+
+    # Fix 5 - Saeed asked for shorter messages. Every section is capped, and the
+    # overflow is COUNTED and shown ("+3 more - ask me"), never silently
+    # dropped. The full text is always in docs\reports\ if he wants it.
+    $MaxDid = 4; $MaxNext = 3; $MaxBlockers = 3; $MaxApprovals = 4
+
+    $WhatWeDidNear   = Select-NearUnique -Lines $WhatWeDid
+    $WhatWeDidAll    = @($WhatWeDidNear)
+    $WhatWeDidCapped = @($WhatWeDidAll | Select-Object -First $MaxDid)
+    # Fix 3 - lines the automation already rewrote. Deduplicated and capped like
+    # the rest, but NEVER passed to Get-BusinessRewrite again.
+    $AutoNear        = Select-NearUnique -Lines $WhatWeDidAuto
+    $AutoAll         = @($AutoNear)
+    $BlockersNear    = Select-NearUnique -Lines $Blockers
+    $BlockersAll     = @($BlockersNear)
+    $BlockersCapped  = @($BlockersAll | Select-Object -First $MaxBlockers)
+    $ApprovalsNear   = Select-NearUnique -Lines $Approvals
+    $ApprovalsAll    = @($ApprovalsNear)
+    $ApprovalsCapped = @($ApprovalsAll | Select-Object -First $MaxApprovals)
+    $NextTasksNear   = Select-NearUnique -Lines $NextTasks
+    $NextTasksAll    = @($NextTasksNear)
+    $NextTasksCapped = @($NextTasksAll | Select-Object -First $MaxNext)
 
     $WhatWeDidAI = Get-BusinessRewrite -Lines $WhatWeDidCapped
     $BlockersAI  = Get-BusinessRewrite -Lines $BlockersCapped
@@ -596,6 +722,51 @@ function Get-ProjectBrief {
     $ApprovalsFinal = if ($ApprovalsAI) { ,$ApprovalsAI } else { Write-Log "AI rewrite unavailable ($ProjectLabel THINGS I NEED YOU TO OK) - word-glossary fallback"; Add-PlainEnglishNotes -Lines $ApprovalsCapped }
     $NextTasksFinal = if ($NextTasksAI) { ,$NextTasksAI } else { Write-Log "AI rewrite unavailable ($ProjectLabel WHAT'S NEXT) - word-glossary fallback"; Add-PlainEnglishNotes -Lines $NextTasksCapped }
 
+    # ── Fix 3: fold in the automation's own lines, unrewritten ───────────────
+    # These already went through Get-BusinessRewrite once, inside
+    # strategy_daily.ps1, before they were written to the session log. Running
+    # them through a second time is what turned a commit subject into a policy
+    # statement on Saeed's phone. They are appended as-is, sharing the WHAT WE
+    # DID cap so the message does not grow.
+    $WhatWeDidFinal = @($WhatWeDidFinal)
+    $DidRoom = $MaxDid - @($WhatWeDidFinal).Count
+    if ($DidRoom -lt 0) { $DidRoom = 0 }
+    $AutoShown = @($AutoAll | Select-Object -First $DidRoom)
+    if (@($AutoShown).Count -gt 0) {
+        $WhatWeDidFinal = @(@($WhatWeDidFinal) + @($AutoShown))
+        Write-Log "$ProjectLabel WHAT WE DID - $(@($AutoShown).Count) line(s) from the automated log, passed through WITHOUT a second rewrite"
+    }
+
+    # A day where the only log was an autogen placeholder has no work to report.
+    # Its boilerplate explains the staleness alarm, which is not Saeed's day -
+    # on 2026-09-10 it reached him as "The system automatically closes because
+    # no work or activity was recorded today." One plain line says it better.
+    # The staleness / paused / close-failure banners above do the explaining.
+    if ($SawPlaceholder -and -not $AnyRealContent -and @($WhatWeDidFinal).Count -eq 0) {
+        $WhatWeDidFinal = @("No work recorded today.")
+    }
+
+    if ($DoneDropped -gt 0) {
+        Write-Log "$ProjectLabel - $DoneDropped already-ticked item(s) dropped; they are done and are not re-asked"
+    }
+
+    # ── Fix 5: honest overflow markers ───────────────────────────────────────
+    # Shown count vs real count. Nothing is hidden - Saeed is told there is more
+    # and that he can ask for it. Computed AFTER the rewrite because the rewrite
+    # must receive exactly the number of lines it was given.
+    $BlockersFinal  = @($BlockersFinal)
+    $ApprovalsFinal = @($ApprovalsFinal)
+    $NextTasksFinal = @($NextTasksFinal)
+    $DidTotal = @($WhatWeDidAll).Count + @($AutoAll).Count
+    $DidOver  = $DidTotal - @($WhatWeDidFinal).Count
+    if ($DidOver -gt 0)  { $WhatWeDidFinal  = @(@($WhatWeDidFinal)  + @("(+$DidOver more - ask me)")) }
+    $BlockOver = @($BlockersAll).Count - @($BlockersFinal).Count
+    if ($BlockOver -gt 0) { $BlockersFinal  = @(@($BlockersFinal)  + @("(+$BlockOver more - ask me)")) }
+    $AppOver = @($ApprovalsAll).Count - @($ApprovalsFinal).Count
+    if ($AppOver -gt 0)   { $ApprovalsFinal = @(@($ApprovalsFinal) + @("(+$AppOver more - ask me)")) }
+    $NextOver = @($NextTasksAll).Count - @($NextTasksFinal).Count
+    if ($NextOver -gt 0)  { $NextTasksFinal = @(@($NextTasksFinal) + @("(+$NextOver more - ask me)")) }
+
     # When the project cannot be read, every section is empty - but "Nothing stuck
     # right now" under a banner that says "This is NOT 'nothing to report'" is the
     # exact false comfort this fix exists to remove. Say what is true instead: we
@@ -607,7 +778,9 @@ function Get-ProjectBrief {
 
     $Did      = if ($WhatWeDidFinal.Count -gt 0) { ($WhatWeDidFinal | ForEach-Object { "  - $_" }) -join "`n" } else { $EmptyDid }
     $Blocking = if ($BlockersFinal.Count -gt 0)  { ($BlockersFinal  | ForEach-Object { "  - $_" }) -join "`n" } else { $EmptyBlocking }
-    $Approve  = if ($ApprovalsFinal.Count -gt 0) { ($ApprovalsFinal | ForEach-Object { "  - [ ] $_" }) -join "`n" } else { $EmptyApprove }
+    # The overflow marker is a note about the list, not an item in it - giving it
+    # a checkbox would ask Saeed to tick "(+2 more)".
+    $Approve  = if ($ApprovalsFinal.Count -gt 0) { ($ApprovalsFinal | ForEach-Object { if ([string]$_ -like "(+*more - ask me)") { "  $_" } else { "  - [ ] $_" } }) -join "`n" } else { $EmptyApprove }
     $Next     = if ($NextTasksFinal.Count -gt 0) { ($NextTasksFinal | ForEach-Object { "  - $_" }) -join "`n" } else { $EmptyNext }
 
     $FallbackLine = if ($FallbackNote) { "`n  $FallbackNote`n" } else { "" }
@@ -1622,20 +1795,111 @@ $FailTail
     Write-Host $FailBanner
 }
 
-# ── 7. Send combined report via WhatsApp ─────────────────────────────────────
+# ── 7. Keep a copy of what was actually sent ─────────────────────────────────
+# Saeed's request, 2026-09-11: "CREATE A LOG FOR WHATSAP MESSAGES. KEEP 3 LATEST
+# ONES AND PURGE THE OLDER ONES AUTOMATICALLY."
+#
+# Why it is worth having: he had been getting already-approved items back in the
+# approvals list "for a long time" and neither of us could say how long, because
+# there was no record of any message after it left the machine. The report in
+# docs\reports\ is what we MEANT to send; this is what we DID send, banners and
+# all, byte for byte.
+#
+# Written BEFORE the send, so a message that fails to send is still on record.
+$WhatsAppLogDir   = "C:\JeffLocal\logs\whatsapp-sent"
+$KeepWhatsAppLogs = 3
+$WhatsAppLogPath  = $null
+
+# Only files this script itself writes are ever considered for deletion.
+$WhatsAppLogPattern = "*-whatsapp.txt"
+
+if (-not $DryRun) {
+    try {
+        if (-not (Test-Path $WhatsAppLogDir)) {
+            New-Item -ItemType Directory -Path $WhatsAppLogDir -Force | Out-Null
+        }
+        $Stamp           = Get-Date -Format "yyyy-MM-dd-HHmm"
+        $WhatsAppLogPath = Join-Path $WhatsAppLogDir "$Stamp-$Mode-whatsapp.txt"
+        $SentText        = if (Test-Path $ReportPath) { Get-Utf8FileText -Path $ReportPath } else { $CombinedReport }
+        $Header = @"
+# WhatsApp message sent by combined_brief.ps1
+# Mode: $Mode   Written: $(Get-Date -Format "yyyy-MM-dd HH:mm:ss")
+# Source report: $ReportPath
+# Characters: $(([string]$SentText).Length)
+# ---------------------------------------------------------------------------
+
+"@
+        Set-Content -Path $WhatsAppLogPath -Value ($Header + $SentText) -Encoding UTF8
+        Write-Log "WhatsApp copy saved: $WhatsAppLogPath ($(([string]$SentText).Length) chars)"
+    } catch {
+        # A failed archive must never stop the message going out.
+        Write-Log "WARNING: could not save WhatsApp copy - $_"
+        $WhatsAppLogPath = $null
+    }
+}
+
+# ── 8. Send combined report via WhatsApp ─────────────────────────────────────
 if ($DryRun) {
     Write-Log "DryRun: skipped WhatsApp send"
 } else {
     $PythonScript = "C:\JeffLocal\scripts\daily\send_whatsapp.py"
+    $SendOutcome  = "NOT SENT - sender script not found"
     if (Test-Path $PythonScript) {
         try {
             $result = python $PythonScript $ReportPath 2>&1
+            $SendOutcome = "SENT - $result"
             Write-Log "WhatsApp send result: $result"
         } catch {
+            $SendOutcome = "SEND FAILED - $_"
             Write-Log "WARNING: WhatsApp send failed - $_"
         }
     } else {
         Write-Log "WARNING: WhatsApp sender not found at $PythonScript"
+    }
+    # Record the outcome on the copy, so the archive says whether it arrived.
+    if ($WhatsAppLogPath -and (Test-Path $WhatsAppLogPath)) {
+        try {
+            Add-Content -Path $WhatsAppLogPath -Encoding UTF8 `
+                -Value "`n# ---------------------------------------------------------------------------`n# Send outcome: $SendOutcome`n"
+        } catch {
+            Write-Log "WARNING: could not record send outcome on the WhatsApp copy - $_"
+        }
+    }
+}
+
+# ── 9. Purge old WhatsApp copies, keeping the newest 3 ───────────────────────
+# Saeed gave explicit written permission for this deletion on 2026-09-11
+# ("PURGE THE OLDER ONES AUTOMATICALLY"). CLAUDE.md otherwise forbids deleting
+# anything without it, so the scope is kept as narrow as it can be:
+#   - one named folder, never recursed into
+#   - only files matching $WhatsAppLogPattern, which only this script writes
+#   - files only, never directories
+#   - nothing deleted at all unless MORE than $KeepWhatsAppLogs exist
+#   - each deletion logged by name, each wrapped in its own try/catch
+# Newest-first by LastWriteTime, so the three most recent always survive even if
+# a file is written out of order or a name is hand-edited.
+if ($DryRun) {
+    Write-Log "DryRun: skipped WhatsApp copy purge"
+} elseif (Test-Path $WhatsAppLogDir) {
+    try {
+        $Copies = @(Get-ChildItem -Path $WhatsAppLogDir -Filter $WhatsAppLogPattern -File |
+                    Sort-Object LastWriteTime -Descending)
+        if (@($Copies).Count -gt $KeepWhatsAppLogs) {
+            $Doomed = @($Copies | Select-Object -Skip $KeepWhatsAppLogs)
+            foreach ($old in $Doomed) {
+                try {
+                    Remove-Item -LiteralPath $old.FullName -Force
+                    Write-Log "WhatsApp copy purged: $($old.Name)"
+                } catch {
+                    Write-Log "WARNING: could not purge $($old.Name) - $_"
+                }
+            }
+            Write-Log "WhatsApp copies: kept newest $KeepWhatsAppLogs, purged $(@($Doomed).Count)"
+        } else {
+            Write-Log "WhatsApp copies: $(@($Copies).Count) on disk, nothing to purge"
+        }
+    } catch {
+        Write-Log "WARNING: WhatsApp copy purge failed - $_"
     }
 }
 

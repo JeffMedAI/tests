@@ -1195,3 +1195,42 @@ The pattern: accurate about what I had **run**, loose about what I had **inferre
 **Files changed:** CLAUDE.md, HANDOFF.md, CHANGELOG.md
 **Verification:** all nine rules confirmed present by grep after writing. HANDOFF.md's "next steps" corrected in the same commit — it still said the rules were awaiting approval, which was stale the moment Saeed answered.
 **Also recorded:** Saeed answered "WILL DECIDE LATER" on merging PR #7. It must not be merged without asking him again.
+---
+
+## 2026-09-11 — Five Brief Fixes: Ticks, Contradictions, Double Rewrite, WhatsApp Log, Length
+**Agent:** Lead Agent (Claude Code session)
+**Approved by:** Saeed — explicit written approval in session on 2026-09-11 ("YES" to fixes 1 and 2, "DO IT PROPERLY" to fix 3), plus two further instructions: "CREATE A LOG FOR WHATSAP MESSAGES. KEEP 3 LATEST ONES AND PURGE THE OLDER ONES AUTOMATICALLY" and "IT IS TOO LONG, I NEED A PRECISE BUT SHORTER MESSAGES IN BUSINESS ENGLISH".
+**Prompted by:** Saeed pasted the actual 2026-09-10 19:00 evening brief. Reading the real output found three faults that no test had caught, because every test until now checked the machinery and none read the message.
+
+**Fix 1 — an already-ticked item came back asking for approval.**
+The parser stripped the checkbox with `\[.\]`, which matches "[x]" and "[ ]" identically, and the renderer then added a FRESH EMPTY box to every line. So anything Saeed had signed off returned to his phone every night as outstanding. He confirmed this had been happening "for a long time". New `Test-IsDoneLine` excludes ticked lines from PENDING SAEED and WHAT TO DO NEXT. A "[x]" inside WHAT WE DID is a record of work and is kept.
+
+**Fix 2 — the brief contradicted itself in one breath.**
+WHAT'S STUCK read "Work is progressing without any current issues." and then listed three real blockers. Cause: the source section carried a bare "None" NEXT TO real items, and each line was rewritten separately so nothing compared them. New `Test-IsNoneLine` / `Remove-NoneLines` drop bare none-lines BEFORE the rewrite — afterwards the model has reworded them and "None" is unrecognisable. Deliberately strict: "No GPhC number yet" and "None of the gates are signed" are blockers and are kept. If the filter empties a section, the standard "Nothing stuck right now." placeholder renders, so a contradiction cannot be printed.
+
+**Fix 3 — the day's work section described the code, not the day.**
+Root cause: a DOUBLE REWRITE by the local model. strategy_daily.ps1 runs the day's commit subjects through Get-BusinessRewrite and writes the result into the session log; combined_brief.ps1 then read that section back and ran Get-BusinessRewrite AGAIN. Two passes of a small model drifted off the facts: the commit "stop the close if the incoming file list cannot be parsed" reached Saeed as "If we cannot reliably understand the incoming file list, the process must be stopped" — a design rule presented as a day's achievement. New `Test-IsAutoWrittenLog` detects machine-written session logs by their `# Tool:` header (header-only, like Test-IsPlaceholderLog, so a human log that DISCUSSES the automation is not misread). Their WHAT WE DID lines are appended verbatim and never rewritten again. Autogen placeholder boilerplate, which explains the staleness alarm rather than the day, is replaced with one line: "No work recorded today."
+
+**Fix 4 — no record of what was actually sent.**
+Neither Saeed nor Claude could say how long the ticked-item fault had been running, because nothing was kept after a message left the machine. Every sent message is now archived to `logs\whatsapp-sent\<stamp>-<mode>-whatsapp.txt`, byte for byte including the prepended banners, with the send outcome appended. Written BEFORE the send, so a message that fails to send is still on record. Copies beyond the newest 3 are deleted — Saeed's explicit written permission, CLAUDE.md otherwise forbids deletion. Scope kept as narrow as possible: one named folder, no recursion, files only, pattern `*-whatsapp.txt` which only this script writes, nothing deleted unless MORE than 3 exist, each deletion logged by name and individually wrapped. `logs/` is already gitignored, so archives never reach GitHub.
+
+**Fix 5 — the message was too long.**
+Sections capped at 4 done / 3 next / 3 blockers / 4 approvals (blockers and approvals were previously uncapped, which is why the 2026-09-10 message ran to three WhatsApp messages). The overflow is COUNTED and shown as "(+N more - ask me)", never silently dropped; the full text always remains in docs\reports\. The rewrite prompt in BOTH scripts gained a 16-word hard limit and an instruction to use the past tense and not to turn a description of what happened into a rule about what should happen.
+
+**Files changed:** scripts/daily/combined_brief.ps1, scripts/daily/strategy_daily.ps1 (prompt only), CHANGELOG.md
+
+**Tests run:** 53 assertions, all passing, on PowerShell 7.4.6 / Linux.
+- t_brief_fixes.ps1 (31) — unit tests for the four new functions, including hostile inputs for the none-filter.
+- t_brief_e2e.ps1 (7) — builds a real session-log folder and reads the rendered section.
+- t_whatsapp_log.ps1 (10) — retention and purge, seeded with decoy files, a near-miss filename and a nested subfolder, all of which survive.
+- t_brief_fix3.ps1 (5) — replaces the rewriter with a spy and proves it is never handed an automation-written line.
+Negative controls were run on all four guards; each one goes red when its guard is reverted.
+
+**Faults found during development, recorded because they matter:**
+- The first version of fix 2 used `@(Remove-NoneLines ...)` around the call itself, which collapses the returned array into ONE element — the exact trap a comment in that same file warns about. Caught by the unit test before it shipped, not by review.
+- The first negative control for fix 3 DID NOT FIRE. Ollama is not running in the test container, so the rewritten and un-rewritten paths looked identical and the test proved only that the line survived. It was replaced with the spy test above, which fails correctly when the guard is reverted.
+
+**Reviews:** independent code review of fix 3 and Security Agent review of all five changes, both requested by Saeed on 2026-09-11 and run before merge.
+**Saeed notified:** This session.
+**Still outstanding:** nothing in this series has been deliberately tested on Windows PowerShell 5.1, which is what actually runs on Saeed's machine.
+

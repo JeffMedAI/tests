@@ -208,6 +208,10 @@ STRICT OUTPUT FORMAT:
 - No headings, no options, no alternatives, no markdown, no asterisks, no extra
   commentary before or after.
 - Each output line must be ONE sentence only, same order as the input.
+- HARD LIMIT: 16 words per line. Shorter is better. Cut every word that is not
+  carrying meaning. No preamble like "We must", "This refers to", "Please note".
+- Use the past tense for work already done. Do not turn a description of what
+  happened into a rule about what should happen.
 - Do not add any fact that is not already in the input line. Do not drop any line.
 - No code, no file paths, no jargon words — explain the idea in everyday words instead.
 
