@@ -208,6 +208,10 @@ STRICT OUTPUT FORMAT:
 - No headings, no options, no alternatives, no markdown, no asterisks, no extra
   commentary before or after.
 - Each output line must be ONE sentence only, same order as the input.
+- HARD LIMIT: 16 words per line. Shorter is better. Cut every word that is not
+  carrying meaning. No preamble like "We must", "This refers to", "Please note".
+- Use the past tense for work already done. Do not turn a description of what
+  happened into a rule about what should happen.
 - Do not add any fact that is not already in the input line. Do not drop any line.
 - No code, no file paths, no jargon words — explain the idea in everyday words instead.
 
@@ -566,6 +570,38 @@ Write-Log "Report saved: $ReportPath"
 #                       staleness banner in combined_brief.ps1 still fires if
 #                       the days keep going by empty. An automated log must
 #                       never silence that alarm unless real work backs it up.
+# ---------------------------------------------------------------------------
+# Turn a git commit subject into a readable sentence, WITHOUT a language model.
+#
+# Saeed chose this (Option A, 2026-09-11) after the reviews established that the
+# distortion he complained about happened HERE, at the moment the session log is
+# written - not later when the brief is sent. The log used to store the model's
+# paraphrase of each commit, so "fix(close): refuse when the incoming-file list
+# cannot be parsed reliably" was stored as "If we cannot reliably understand the
+# incoming file list, the process must be refused" - a rule, not a record - and
+# no later stage could recover the original.
+#
+# The session log is a RECORD. It now stores what actually happened. The single
+# plain-English rewrite happens once, in combined_brief.ps1, at the moment the
+# message is sent - where a bad result affects one message and not the archive.
+#
+# This function is deterministic on purpose: strip the conventional-commit
+# prefix, capitalise, terminate. No model, so nothing to drift and nothing to
+# fail. It also makes the Ollama-is-down fallback readable, which was the one
+# real cost of Option A.
+function Format-CommitSubject {
+    param([string]$Subject)
+    $t = ([string]$Subject).Trim()
+    if ($t -eq "") { return "" }
+    # "fix(close): ", "feat: ", "docs(brief)!: " - lowercase type only, so a
+    # subject that merely contains a colon ("Merge branch 'main'") is untouched.
+    $t = $t -replace '^[a-z]+(\([^)]*\))?!?:\s*', ''
+    if ($t -eq "") { return ([string]$Subject).Trim() }
+    $t = $t.Substring(0,1).ToUpper() + $t.Substring(1)
+    if ($t -notmatch '[.!?]$') { $t = "$t." }
+    return $t
+}
+
 $SessionLogPath = $null
 if ($Mode -eq 'Evening') {
     $TodayLogs = Get-ChildItem -Path $SessionsDir -Filter "$Today-*.md" -ErrorAction SilentlyContinue |
@@ -636,14 +672,23 @@ if ($Mode -eq 'Evening') {
 
         if (@($TodayCommits).Count -gt 0 -or @($Uncommitted).Count -gt 0) {
             # Real work happened. Describe it in Saeed's language, not git's.
+            # NO Get-BusinessRewrite here. See Format-CommitSubject above - this
+            # file stores the record, combined_brief.ps1 does the one rewrite at
+            # send time. Saeed's decision, 2026-09-11.
             $DidLines  = @($TodayCommits | Select-Object -First 12)
-            $Rewritten = Get-BusinessRewrite -Lines $DidLines
-            $DidFinal  = if ($Rewritten) { @($Rewritten) } else { @(Add-PlainEnglishNotes -Lines $DidLines) }
+            $DidFinal  = @(@($DidLines) | ForEach-Object { Format-CommitSubject -Subject ([string]$_) } |
+                           Where-Object { $_ -ne "" })
             $DidSection = (@($DidFinal) | ForEach-Object { "- $_" }) -join "`n"
 
             $FileNote = ""
             if (@($FilesTouched).Count -gt 0) {
-                $shown = (@($FilesTouched) | Select-Object -First 6) -join ", "
+                # Leaf names only. These lines are assembled deterministically and
+                # are NOT sent through the rewrite, so "scripts/daily/combined_brief.ps1"
+                # used to reach Saeed's phone verbatim - against this file's own
+                # prompt rule ("no file paths") and CLAUDE.md's plain-English
+                # requirement. Code review S4, 2026-09-11.
+                $shown = (@($FilesTouched) | Select-Object -First 6 |
+                          ForEach-Object { Split-Path -Leaf ([string]$_) }) -join ", "
                 $more  = if (@($FilesTouched).Count -gt 6) { ", ..." } else { "" }
                 $FileNote = "`n- Files changed today: $(@($FilesTouched).Count) ($shown$more)"
             }
@@ -661,6 +706,10 @@ if ($Mode -eq 'Evening') {
 # SESSION SUMMARY - [$Today 18:00]
 # Tool: strategy_daily.ps1 (automated session close at $BriefClock)
 # Built from the day's actual git activity - $(@($TodayCommits).Count) commit(s).
+#   WHAT WE DID below is the plain git record, deliberately NOT run through the
+#   plain-English rewrite - that happens once, in combined_brief.ps1, when the
+#   message is sent. Storing the model's paraphrase instead of the facts is what
+#   put design rules on Saeed's phone on 2026-09-10. Saeed's decision, 2026-09-11.
 
 ---
 
@@ -1366,6 +1415,7 @@ if ($DryRun) {
                         Write-Log "Pruned old restore tag: $oldTag"
                     }
                 }
+
             } else {
                 # THE TAG EXISTS LOCALLY - BUT IS IT ON GITHUB? This used to stop
                 # here. The close overwrites the day's marker with Set-Content, so a

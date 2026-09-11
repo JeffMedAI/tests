@@ -207,6 +207,10 @@ STRICT OUTPUT FORMAT:
 - No headings, no options, no alternatives, no markdown, no asterisks, no extra
   commentary before or after.
 - Each output line must be ONE sentence only, same order as the input.
+- HARD LIMIT: 16 words per line. Shorter is better. Cut every word that is not
+  carrying meaning. No preamble like "We must", "This refers to", "Please note".
+- Use the past tense for work already done. Do not turn a description of what
+  happened into a rule about what should happen.
 - Do not add any fact that is not already in the input line. Do not drop any line.
 - No code, no file paths, no jargon words — explain the idea in everyday words instead.
 
@@ -269,6 +273,49 @@ function Test-IsPlaceholderLog {
            ($Head -match '(?m)^\s*#.*No human session today')
 }
 
+# ---------------------------------------------------------------------------
+# Is this line a bare "nothing to report" placeholder?
+#
+# Exact match only, with a short allowed tail. On 2026-09-10 the brief said
+# "Work is progressing without any current issues." and then listed three real
+# blockers underneath, because the source log carried a "None" line NEXT TO
+# real ones and each line was rewritten separately. Fix 2, 2026-09-11.
+#
+# Deliberately strict. A loose "starts with no/none" test would eat real
+# blockers like "No GPhC number yet" - which is a blocker, not an absence of
+# one. If in doubt this returns $false and the line is KEPT.
+function Test-IsNoneLine {
+    param([string]$Line)
+    $t = ([string]$Line).Trim().TrimEnd('.', '!', ';', ',').Trim()
+    if ($t.Length -eq 0) { return $false }
+    if ($t.Length -gt 40) { return $false }
+    return ($t -match '^(?i)(none|n/a|na|nothing|no blockers?|nothing stuck|nothing blocking|nothing outstanding|nothing pending|nothing to report|no issues?|no current blockers?|unblocked|all clear)( right now| at present| currently| today| so far| yet)?$')
+}
+
+# Drop bare "none" lines from a section. If that empties the section the caller
+# renders its own standard "Nothing stuck right now." placeholder, so the wording
+# stays consistent and a contradiction can never be printed.
+function Remove-NoneLines {
+    param([string[]]$Lines)
+    $in = @(@($Lines) | ForEach-Object { [string]$_ })
+    if (@($in).Count -eq 0) { return ,$in }
+    $kept = @($in | Where-Object { -not (Test-IsNoneLine -Line $_) })
+    return ,$kept
+}
+
+# Is this line a ticked checkbox - i.e. already DONE?
+#
+# The parser below strips the box off every line with `\[.\]`, which matches
+# "[x]" and "[ ]" identically, and the renderer then puts a FRESH EMPTY box
+# back on. So anything Saeed had already signed off came back to his phone
+# every night asking to be signed off again, for months. Fix 1, 2026-09-11.
+function Test-IsDoneLine {
+    param([string]$Line)
+    # [-*+] as well as "-": markdown allows all three bullet characters, and a
+    # "* [x]" item was not being recognised. Security Agent L2, 2026-09-11.
+    return (([string]$Line).Trim() -match '^(?:\d+\.\s*)?[-*+]?\s*\[[xX]\]')
+}
+
 # When did the most recent session close FALL DUE? (weekday 18:30, per
 # session_close.ps1). Everything about "is this project overdue" is measured
 # against this, not against a flat 24 hours.
@@ -328,6 +375,39 @@ function Get-ClosesMissed {
         $t = Get-CloseTimeNBack -From $t -Closes 1
     }
     return $n
+}
+
+# Is this commit on a REAL origin branch (not a close/<date> backup)? Factored
+# out so the same proof can be re-run after the morning brief's own git safety
+# net has pushed - see the re-check after section 6b. Security Agent S2,
+# 2026-09-10. Returns $true only on a clean, positive answer; every error,
+# empty result or unreachable repo returns $false, which KEEPS the warning.
+function Test-WorkOnOrigin {
+    param([string]$Sha, [string]$RepoRoot)
+    if ($Sha -notmatch '^[0-9a-fA-F]{7,40}$') { return $false }
+    if (-not (Test-Path $RepoRoot)) { return $false }
+    $PrevEAPGit = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        $OnRemote = @(git -C $RepoRoot branch -r --contains $Sha --list 'origin/*' 2>$null |
+                      ForEach-Object { [string]$_ } |
+                      Where-Object { ($_ -replace '^\s*', '') -notlike 'origin/close/*' })
+        $GitExit  = $LASTEXITCODE
+        $OnRemote = @(@($OnRemote) | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) })
+        return ($GitExit -eq 0 -and @($OnRemote).Count -gt 0)
+    } catch {
+        # SAY WHICH IT WAS. Without this the caller logs "is NOT on any origin
+        # branch", when the truth is "I could not ask" - same alarm, but it sends
+        # whoever debugs it on the day to the wrong place. Security Agent G3.
+        Write-Log "Could not ask git whether $Sha is on origin (repo $RepoRoot) - treating as NOT arrived, warning kept. $_"
+        return $false
+    } finally { $ErrorActionPreference = $PrevEAPGit }
+}
+
+function Repo-ForProject {
+    param([string]$ProjectField)
+    if ($ProjectField -match 'STMARKS|SMCPHARMA|St Marks') { return $StMarksRepoRoot }
+    return $AvamedRepoRoot
 }
 
 function Format-StaleAge {
@@ -494,10 +574,19 @@ function Get-ProjectBrief {
 
     # Extract the 4 standard sections
     $WhatWeDid = @(); $Blockers = @(); $Approvals = @(); $NextTasks = @()
+    # True only if EVERY log read was an autogen placeholder. Their boilerplate
+    # explains the alarm mechanism, which is not Saeed's day's work - it is
+    # replaced with one plain line further down.
+    $AnyRealContent  = $false
+    $SawPlaceholder  = $false
+    # Fix 1 - how many already-ticked items were dropped, for the run log.
+    $DoneDropped = 0
 
     foreach ($session in $SessionSummaries) {
         $lines  = $session.Content -split "`n"
         $inDid  = $false; $inBlock = $false; $inApproval = $false; $inNext = $false
+        $IsPlaceholder = Test-IsPlaceholderLog -Content $session.Content
+        if ($IsPlaceholder) { $SawPlaceholder = $true } else { $AnyRealContent = $true }
 
         foreach ($line in $lines) {
             if ($line -match "^## WHAT WE DID")   { $inDid=$true;      $inBlock=$false; $inApproval=$false; $inNext=$false; continue }
@@ -517,10 +606,24 @@ function Get-ProjectBrief {
                     -replace "^(\d+\.\s*|-\s*\[.\]\s*|-\s*|\[.\]\s*)", "" `
                     -replace "^\*\*", "" -replace "\*\*$", "" -replace "\*\*", ""
 
-                if ($inDid)      { $WhatWeDid += $stripped }
+                # Fix 1 - an item Saeed has ALREADY ticked is done. It must not
+                # come back as a fresh empty box asking for the same approval.
+                # Only the checkbox sections are filtered: a "[x]" inside WHAT
+                # WE DID is a record of work and stays.
+                $IsDone = Test-IsDoneLine -Line $clean
+
+                if ($inDid) {
+                    # Placeholder boilerplate is dropped here and one short line
+                    # is substituted after the loop. Everything else - human or
+                    # machine-written - goes through the SINGLE rewrite below.
+                    # Saeed's decision (Option A, 2026-09-11): the session log
+                    # stores the plain record, and the one plain-English pass
+                    # happens here, at send time.
+                    if (-not $IsPlaceholder) { $WhatWeDid += $stripped }
+                }
                 if ($inBlock)    { $Blockers  += $stripped }
-                if ($inApproval) { $Approvals += $stripped }
-                if ($inNext)     { $NextTasks += $stripped }
+                if ($inApproval) { if ($IsDone) { $DoneDropped++ } else { $Approvals  += $stripped } }
+                if ($inNext)     { if ($IsDone) { $DoneDropped++ } else { $NextTasks  += $stripped } }
             }
         }
     }
@@ -532,14 +635,58 @@ function Get-ProjectBrief {
     # call itself in @(...), treats the whole returned array as ONE pipeline
     # object instead of N. Capture to a variable first, THEN re-wrap/pipe that
     # variable (safe, since it's already a real array by then).
-    $WhatWeDidNear = Select-NearUnique -Lines $WhatWeDid
-    $WhatWeDidCapped = @($WhatWeDidNear | Select-Object -First 6)
-    $BlockersNear = Select-NearUnique -Lines $Blockers
-    $BlockersCapped  = @($BlockersNear)
-    $ApprovalsNear = Select-NearUnique -Lines $Approvals
-    $ApprovalsCapped = @($ApprovalsNear)
-    $NextTasksNear = Select-NearUnique -Lines $NextTasks
-    $NextTasksCapped = @($NextTasksNear | Select-Object -First 4)
+    # Fix 2 - a bare "None" sitting next to real items made the brief contradict
+    # itself in one breath ("Work is progressing without any current issues",
+    # then three real blockers - 2026-09-10). Drop the none-lines HERE, before
+    # the rewrite: afterwards the model has reworded them and "None" is no
+    # longer recognisable as one. Test-IsNoneLine is strict by design and keeps
+    # anything it is not sure about.
+    # Capture to a variable FIRST, then re-wrap. Remove-NoneLines returns ,$x
+    # like its neighbours, and `@(Remove-NoneLines ...)` around the call itself
+    # collapses the whole returned array into ONE element - the trap the note
+    # above this block describes. Caught by t_brief_fixes.ps1 before it shipped.
+    $DidNoNone     = Remove-NoneLines -Lines $WhatWeDid
+    $WhatWeDid     = @($DidNoNone)
+    $BlockNoNone   = Remove-NoneLines -Lines $Blockers
+    $Blockers      = @($BlockNoNone)
+    $AppNoNone     = Remove-NoneLines -Lines $Approvals
+    $Approvals     = @($AppNoNone)
+    $NextNoNone    = Remove-NoneLines -Lines $NextTasks
+    $NextTasks     = @($NextNoNone)
+
+    # Fix 5 - Saeed asked for shorter messages, so WHAT WE DID and WHAT'S NEXT
+    # are capped. The overflow is COUNTED and shown ("+3 more - ask me"), never
+    # silently dropped, and the full text is always in docs\reports\.
+    #
+    # BLOCKERS AND APPROVALS ARE NOT CAPPED, AND MUST NOT BE. Security Agent H1,
+    # 2026-09-11, on the first version of this change - which did cap them at 3
+    # and 4, and was wrong to.
+    #
+    # Those two sections are ALARMS. Capping them selects by log order, not by
+    # severity, so "unauthenticated intake endpoint" - one of the three security
+    # items CLAUDE.md names as a go-live blocker - can fall past position 3 and
+    # become the integer in "(+3 more)". The whole SESSION END PROTOCOL is built
+    # on an alarm that keeps shouting until it is fixed; a blocker reduced to a
+    # number does not shout, and it inverts the burden onto Saeed to ask. That is
+    # the shape of the 11-19 Aug 2026 outage, rebuilt inside a tidy-up.
+    #
+    # The numbers below are runaway guards against a corrupted log with hundreds
+    # of lines, not editorial limits. Lowering them is Saeed's decision to make
+    # explicitly, not one to take inside a change about message length.
+    $MaxDid = 4; $MaxNext = 3; $MaxBlockers = 25; $MaxApprovals = 25
+
+    $WhatWeDidNear   = Select-NearUnique -Lines $WhatWeDid
+    $WhatWeDidAll    = @($WhatWeDidNear)
+    $WhatWeDidCapped = @($WhatWeDidAll | Select-Object -First $MaxDid)
+    $BlockersNear    = Select-NearUnique -Lines $Blockers
+    $BlockersAll     = @($BlockersNear)
+    $BlockersCapped  = @($BlockersAll | Select-Object -First $MaxBlockers)
+    $ApprovalsNear   = Select-NearUnique -Lines $Approvals
+    $ApprovalsAll    = @($ApprovalsNear)
+    $ApprovalsCapped = @($ApprovalsAll | Select-Object -First $MaxApprovals)
+    $NextTasksNear   = Select-NearUnique -Lines $NextTasks
+    $NextTasksAll    = @($NextTasksNear)
+    $NextTasksCapped = @($NextTasksAll | Select-Object -First $MaxNext)
 
     $WhatWeDidAI = Get-BusinessRewrite -Lines $WhatWeDidCapped
     $BlockersAI  = Get-BusinessRewrite -Lines $BlockersCapped
@@ -558,10 +705,51 @@ function Get-ProjectBrief {
     # element same as Write-Output, so a 1-item array collapses to a scalar
     # string and the .Count check two lines down throws under strict mode —
     # found while testing the Ollama-down fallback with a 1-line brief section.
-    $WhatWeDidFinal = if ($WhatWeDidAI) { ,$WhatWeDidAI } else { Write-Log "AI rewrite unavailable ($ProjectLabel WHAT WE DID) - word-glossary fallback"; Add-PlainEnglishNotes -Lines $WhatWeDidCapped }
+    # The "AI rewrite unavailable" line is a real diagnostic for Ollama being
+    # down, so it must not fire on a healthy run. After Fix 3 a project whose
+    # WHAT WE DID came entirely from the automation hands this an EMPTY array,
+    # which is falsey, which used to log the warning every single evening.
+    # Security Agent L4, 2026-09-11.
+    $WhatWeDidFinal = if ($WhatWeDidAI) { ,$WhatWeDidAI } elseif (@($WhatWeDidCapped).Count -eq 0) { ,@() } else { Write-Log "AI rewrite unavailable ($ProjectLabel WHAT WE DID) - word-glossary fallback"; Add-PlainEnglishNotes -Lines $WhatWeDidCapped }
     $BlockersFinal  = if ($BlockersAI)  { ,$BlockersAI }  else { Write-Log "AI rewrite unavailable ($ProjectLabel WHAT'S STUCK) - word-glossary fallback"; Add-PlainEnglishNotes -Lines $BlockersCapped }
     $ApprovalsFinal = if ($ApprovalsAI) { ,$ApprovalsAI } else { Write-Log "AI rewrite unavailable ($ProjectLabel THINGS I NEED YOU TO OK) - word-glossary fallback"; Add-PlainEnglishNotes -Lines $ApprovalsCapped }
     $NextTasksFinal = if ($NextTasksAI) { ,$NextTasksAI } else { Write-Log "AI rewrite unavailable ($ProjectLabel WHAT'S NEXT) - word-glossary fallback"; Add-PlainEnglishNotes -Lines $NextTasksCapped }
+
+    $WhatWeDidFinal = @($WhatWeDidFinal)
+
+    # A day where the only log was an autogen placeholder has no work to report.
+    # Its boilerplate explains the staleness alarm, which is not Saeed's day -
+    # on 2026-09-10 it reached him as "The system automatically closes because
+    # no work or activity was recorded today." One plain line says it better.
+    # The staleness / paused / close-failure banners above do the explaining.
+    if ($SawPlaceholder -and -not $AnyRealContent -and @($WhatWeDidFinal).Count -eq 0) {
+        # Name the right day. In Morning mode this sits under "WHAT WE DID
+        # YESTERDAY", where "today" is simply wrong - and CLAUDE.md's "every
+        # alarm names its day" rule exists to stop exactly this. Code review S5.
+        $NoWorkDay = if ($Mode -eq 'Morning') { "yesterday" } else { "today" }
+        $WhatWeDidFinal = @("No work recorded $NoWorkDay.")
+    }
+
+    if ($DoneDropped -gt 0) {
+        Write-Log "$ProjectLabel - $DoneDropped already-ticked item(s) dropped; they are done and are not re-asked"
+    }
+
+    # ── Fix 5: honest overflow markers ───────────────────────────────────────
+    # Shown count vs real count. Nothing is hidden - Saeed is told there is more
+    # and that he can ask for it. Computed AFTER the rewrite because the rewrite
+    # must receive exactly the number of lines it was given.
+    $BlockersFinal  = @($BlockersFinal)
+    $ApprovalsFinal = @($ApprovalsFinal)
+    $NextTasksFinal = @($NextTasksFinal)
+    $DidTotal = @($WhatWeDidAll).Count
+    $DidOver  = $DidTotal - @($WhatWeDidFinal).Count
+    if ($DidOver -gt 0)  { $WhatWeDidFinal  = @(@($WhatWeDidFinal)  + @("(+$DidOver more - ask me)")) }
+    $BlockOver = @($BlockersAll).Count - @($BlockersFinal).Count
+    if ($BlockOver -gt 0) { $BlockersFinal  = @(@($BlockersFinal)  + @("(+$BlockOver more - ask me)")) }
+    $AppOver = @($ApprovalsAll).Count - @($ApprovalsFinal).Count
+    if ($AppOver -gt 0)   { $ApprovalsFinal = @(@($ApprovalsFinal) + @("(+$AppOver more - ask me)")) }
+    $NextOver = @($NextTasksAll).Count - @($NextTasksFinal).Count
+    if ($NextOver -gt 0)  { $NextTasksFinal = @(@($NextTasksFinal) + @("(+$NextOver more - ask me)")) }
 
     # When the project cannot be read, every section is empty - but "Nothing stuck
     # right now" under a banner that says "This is NOT 'nothing to report'" is the
@@ -574,7 +762,9 @@ function Get-ProjectBrief {
 
     $Did      = if ($WhatWeDidFinal.Count -gt 0) { ($WhatWeDidFinal | ForEach-Object { "  - $_" }) -join "`n" } else { $EmptyDid }
     $Blocking = if ($BlockersFinal.Count -gt 0)  { ($BlockersFinal  | ForEach-Object { "  - $_" }) -join "`n" } else { $EmptyBlocking }
-    $Approve  = if ($ApprovalsFinal.Count -gt 0) { ($ApprovalsFinal | ForEach-Object { "  - [ ] $_" }) -join "`n" } else { $EmptyApprove }
+    # The overflow marker is a note about the list, not an item in it - giving it
+    # a checkbox would ask Saeed to tick "(+2 more)".
+    $Approve  = if ($ApprovalsFinal.Count -gt 0) { ($ApprovalsFinal | ForEach-Object { if ([string]$_ -like "(+*more - ask me)") { "  $_" } else { "  - [ ] $_" } }) -join "`n" } else { $EmptyApprove }
     $Next     = if ($NextTasksFinal.Count -gt 0) { ($NextTasksFinal | ForEach-Object { "  - $_" }) -join "`n" } else { $EmptyNext }
 
     $FallbackLine = if ($FallbackNote) { "`n  $FallbackNote`n" } else { "" }
@@ -718,225 +908,215 @@ if ($CloseDay -ne $Now.Date) {
 $IsWeekendNow = $Now.DayOfWeek -eq [DayOfWeek]::Saturday -or
                 $Now.DayOfWeek -eq [DayOfWeek]::Sunday
 
-$SkipCloseHere = $false
-if ($Mode -eq 'Evening') {
-    $SkipCloseHere = $true
+# SAEED'S DECISION, 2026-09-10: the morning brief must carry the close-failure
+# alarm too. Until now the whole marker read below sat inside `if ($Mode -eq
+# 'Evening')`, so $CloseDayFailed was ALWAYS false at 07:00 and section 6b-2
+# never fired. A close that ran and failed on Monday evening was shouted about
+# once at 19:00 and then never mentioned again - Tuesday's 07:00 brief said
+# nothing, and if Saeed missed the one evening message he might never hear of it.
+#
+# Two things were tangled in one gate and are now separated:
+#   $SkipCloseHere is the WRITE side - whether this script runs the close itself.
+#     Still evening-only, unchanged.
+#   The marker read is READ-ONLY. It looks at logs\close-state and sets the
+#     reporting variables. Nothing about it needs to be evening-only, and the
+#     day-naming logic already handles "the last close that fell due", which is
+#     correct at 07:00 exactly as it is at 19:00.
+# Security Agent F1 (PR #6) identified this; Saeed approved the fix.
+$SkipCloseHere = ($Mode -eq 'Evening')
 
-    # WHICH MARKERS TO READ.
-    # The due close, always - that is the one whose absence is an alarm.
-    # PLUS today's, when today is not the due day. session_close.ps1 names its
-    # marker after the day it ACTUALLY RAN ($Today there), and -Force exists so a
-    # close can be run by hand at a weekend - CLAUDE.md documents it. Reading only
-    # the due day would silently drop a hand-run Saturday close that FAILED, and
-    # would drop its PUSH-HELD lines too, leaving unfinished work sitting unpushed
-    # in the live dashboard\ folder with no banner. Security Agent H6, 2026-09-07.
-    $MarkersToRead = @([PSCustomObject]@{ Date = $CloseDay; WasDue = $true })
-    if ($Now.Date -ne $CloseDay) {
-        $MarkersToRead += [PSCustomObject]@{ Date = $Now.Date; WasDue = $false }
-    }
 
-    foreach ($m in $MarkersToRead) {
-      # Wrapped: reading a marker must NEVER be able to kill the whole brief.
-      # That is what B1 did, and it is the same shape as the unreadable-folder
-      # fault from PR #2 - a throw under $ErrorActionPreference = "Stop",
-      # outside any try, and Saeed gets no message at all. Security Agent, 2026-09-09.
-      try {
-        $MarkerPath = "C:\JeffLocal\logs\close-state\$($m.Date.ToString('yyyy-MM-dd'))-close.txt"
-        $DayName    = $m.Date.ToString('dddd')
-        if (Test-Path $MarkerPath) {
-            $MarkerLines = @(Get-Content -Path $MarkerPath -ErrorAction SilentlyContinue)
-            # Harvest push-held signals from EVERY marker read, due or hand-run.
-            $HeldSignals += @(@($MarkerLines) | Where-Object { $_ -like "PUSH-HELD|*" })
-            foreach ($br in @(@($MarkerLines) | Where-Object { $_ -like "BEHIND-REMOTE|*" })) {
-                $BehindSignals += [PSCustomObject]@{ Day = $DayName; Sig = [string]$br }
-            }
-            foreach ($pf in @(@($MarkerLines) | Where-Object { $_ -like "PUSH-FAILED|*" -or $_ -like "TAG-PUSH-FAILED|*" })) {
-                # RETIRE A FAILURE THAT HAS SINCE BEEN FIXED. Saeed's instruction
-                # 2026-09-09. This banner is NOT like the close-failure one: that
-                # stays true until the close is re-run, but "did not reach GitHub"
-                # becomes FALSE the moment a later push succeeds. Read on a Saturday,
-                # the marker is Friday's - and if Saturday's 07:00 push went through,
-                # Friday's work IS on GitHub and the banner would be a lie. A warning
-                # that repeats something untrue is how it stops being read.
+# WHICH MARKERS TO READ.
+# The due close, always - that is the one whose absence is an alarm.
+# PLUS today's, when today is not the due day. session_close.ps1 names its
+# marker after the day it ACTUALLY RAN ($Today there), and -Force exists so a
+# close can be run by hand at a weekend - CLAUDE.md documents it. Reading only
+# the due day would silently drop a hand-run Saturday close that FAILED, and
+# would drop its PUSH-HELD lines too, leaving unfinished work sitting unpushed
+# in the live dashboard\ folder with no banner. Security Agent H6, 2026-09-07.
+$MarkersToRead = @([PSCustomObject]@{ Date = $CloseDay; WasDue = $true })
+if ($Now.Date -ne $CloseDay) {
+    $MarkersToRead += [PSCustomObject]@{ Date = $Now.Date; WasDue = $false }
+}
+
+foreach ($m in $MarkersToRead) {
+  # Wrapped: reading a marker must NEVER be able to kill the whole brief.
+  # That is what B1 did, and it is the same shape as the unreadable-folder
+  # fault from PR #2 - a throw under $ErrorActionPreference = "Stop",
+  # outside any try, and Saeed gets no message at all. Security Agent, 2026-09-09.
+  try {
+    $MarkerPath = "C:\JeffLocal\logs\close-state\$($m.Date.ToString('yyyy-MM-dd'))-close.txt"
+    $DayName    = $m.Date.ToString('dddd')
+    if (Test-Path $MarkerPath) {
+        $MarkerLines = @(Get-Content -Path $MarkerPath -ErrorAction SilentlyContinue)
+        # Harvest push-held signals from EVERY marker read, due or hand-run.
+        $HeldSignals += @(@($MarkerLines) | Where-Object { $_ -like "PUSH-HELD|*" })
+        foreach ($br in @(@($MarkerLines) | Where-Object { $_ -like "BEHIND-REMOTE|*" })) {
+            $BehindSignals += [PSCustomObject]@{ Day = $DayName; Sig = [string]$br }
+        }
+        foreach ($pf in @(@($MarkerLines) | Where-Object { $_ -like "PUSH-FAILED|*" -or $_ -like "TAG-PUSH-FAILED|*" })) {
+            # RETIRE A FAILURE THAT HAS SINCE BEEN FIXED. Saeed's instruction
+            # 2026-09-09. This banner is NOT like the close-failure one: that
+            # stays true until the close is re-run, but "did not reach GitHub"
+            # becomes FALSE the moment a later push succeeds. Read on a Saturday,
+            # the marker is Friday's - and if Saturday's 07:00 push went through,
+            # Friday's work IS on GitHub and the banner would be a lie. A warning
+            # that repeats something untrue is how it stops being read.
+            #
+            # Evidence: strategy_daily.ps1 stamps last-push-ok-<project>.txt on
+            # every successful push. If that stamp is NEWER than the marker that
+            # recorded the failure, the failure is history - drop it.
+            # Format: PUSH-FAILED|<project>|<reason>|<sha>. Older markers
+            # written before 2026-09-09 have no 4th field; those can never be
+            # PROVEN fixed, so they keep their warning. Safe direction.
+            $pfParts   = ([string]$pf).Split("|", 4)
+            $pfProject = if (@($pfParts).Count -ge 2) { [string]$pfParts[1] } else { "" }
+            $pfSha     = if (@($pfParts).Count -ge 4) { ([string]$pfParts[3]).Trim() } else { "" }
+            $pfIsTag   = ([string]$pf) -like "TAG-PUSH-FAILED|*"
+            $Retired   = $false
+            $RetiredAt = ""
+
+            # A TAG push failure is NEVER retirable by a branch-push stamp: the
+            # later push does not push that tag, so the restore point is still
+            # missing and the claim is still true. Retiring it would leave a day
+            # with no remote restore point and no alarm, and the next clean close
+            # would prune the local-only tag away. Security Agent H1, 2026-09-09.
+            if (-not $pfIsTag) {
+              try {
+                # THE PROOF, AND NOTHING ELSE. Ask git the question the banner
+                # actually asks: is the commit that failed to push now on GitHub?
                 #
-                # Evidence: strategy_daily.ps1 stamps last-push-ok-<project>.txt on
-                # every successful push. If that stamp is NEWER than the marker that
-                # recorded the failure, the failure is history - drop it.
-                # Format: PUSH-FAILED|<project>|<reason>|<sha>. Older markers
-                # written before 2026-09-09 have no 4th field; those can never be
-                # PROVEN fixed, so they keep their warning. Safe direction.
-                $pfParts   = ([string]$pf).Split("|", 4)
-                $pfProject = if (@($pfParts).Count -ge 2) { [string]$pfParts[1] } else { "" }
-                $pfSha     = if (@($pfParts).Count -ge 4) { ([string]$pfParts[3]).Trim() } else { "" }
-                $pfIsTag   = ([string]$pf) -like "TAG-PUSH-FAILED|*"
-                $Retired   = $false
-                $RetiredAt = ""
-
-                # A TAG push failure is NEVER retirable by a branch-push stamp: the
-                # later push does not push that tag, so the restore point is still
-                # missing and the claim is still true. Retiring it would leave a day
-                # with no remote restore point and no alarm, and the next clean close
-                # would prune the local-only tag away. Security Agent H1, 2026-09-09.
-                if (-not $pfIsTag) {
-                  try {
-                    # THE PROOF, AND NOTHING ELSE. Ask git the question the banner
-                    # actually asks: is the commit that failed to push now on GitHub?
-                    #
-                    # The first version of this decided on a timestamp - "did a push
-                    # succeed after the failure?" - which is a DIFFERENT question. A
-                    # push of another branch satisfied it (the close runs
-                    # `git push origin HEAD`, so the branch varies), and so did a
-                    # `git reset --hard` that discarded the work entirely. Both would
-                    # have switched off a warning that was still true.
-                    #
-                    # The timestamp gate that used to sit in front of this has now
-                    # been REMOVED as well. It could only ever withhold a retirement
-                    # that git had already proved correct - which is a false alarm on
-                    # the one banner that must stay believed. Its own failure mode
-                    # (a clock set forward suppressing the alarm for months) also
-                    # disappears with it. Security Agent L2 accepted, 2026-09-09.
-                    # The stamp is still read, but ONLY to say when the work arrived.
-                    #
-                    # UPDATED 2026-09-10 - READ THIS BEFORE TRUSTING THE NEXT LINES.
-                    # The close now pushes to origin/close/<date> BEFORE the real
-                    # branch, so the old guarantee ("the sha cannot already be on
-                    # origin") is FALSE. What replaces it is the exclusion below:
-                    # backup branches are filtered out, so "on an origin branch that
-                    # is not a backup" still means the work reached a real branch.
-                    # Security Agent H3, 2026-09-10.
-                    #
-                    # WHY "on origin" IS SUFFICIENT PROOF, and what would break it.
-                    # strategy_daily.ps1 only ever attempts a push inside
-                    # `if ($CommitExit -eq 0)`, i.e. immediately after creating a
-                    # commit - so the sha in a PUSH-FAILED signal is always seconds
-                    # old and CANNOT already have been on origin when the push
-                    # failed. Finding it on origin later therefore means it genuinely
-                    # arrived. If that precondition is ever removed over there, this
-                    # check must be tightened here in the same commit, because no
-                    # test would fail. Security Agent, 2026-09-09 round-3 review.
-                    #
-                    # No sha recorded (markers written before 2026-09-09) = no proof
-                    # possible = keep shouting.
-                    if ($pfSha -match '^[0-9a-fA-F]{7,40}$') {
-                        $RepoForProject = if ($pfProject -match 'STMARKS|SMCPHARMA|St Marks') {
-                                              $StMarksRepoRoot
-                                          } else { $AvamedRepoRoot }
-                        if (Test-Path $RepoForProject) {
-                            # SCOPE IT TO origin. Unscoped, this searches EVERY
-                            # remote-tracking namespace: push the commit to a fork and
-                            # the warning retires while the work never reached GitHub.
-                            # Reproduced by the Security Agent, M3 2026-09-09.
-                            #
-                            # $ErrorActionPreference is "Stop" for this whole script.
-                            # On Windows PowerShell 5.1 a native command writing to
-                            # stderr under Stop can terminate, which would send every
-                            # retirement down the catch below - safe, but it would
-                            # quietly disable this check. Same guard strategy_daily.ps1
-                            # wraps its git calls in.
-                            $PrevEAPGit = $ErrorActionPreference
-                            $ErrorActionPreference = 'Continue'
+                # The first version of this decided on a timestamp - "did a push
+                # succeed after the failure?" - which is a DIFFERENT question. A
+                # push of another branch satisfied it (the close runs
+                # `git push origin HEAD`, so the branch varies), and so did a
+                # `git reset --hard` that discarded the work entirely. Both would
+                # have switched off a warning that was still true.
+                #
+                # The timestamp gate that used to sit in front of this has now
+                # been REMOVED as well. It could only ever withhold a retirement
+                # that git had already proved correct - which is a false alarm on
+                # the one banner that must stay believed. Its own failure mode
+                # (a clock set forward suppressing the alarm for months) also
+                # disappears with it. Security Agent L2 accepted, 2026-09-09.
+                # The stamp is still read, but ONLY to say when the work arrived.
+                #
+                # UPDATED 2026-09-10 - READ THIS BEFORE TRUSTING THE NEXT LINES.
+                # The close now pushes to origin/close/<date> BEFORE the real
+                # branch, so the old guarantee ("the sha cannot already be on
+                # origin") is FALSE. What replaces it is the exclusion below:
+                # backup branches are filtered out, so "on an origin branch that
+                # is not a backup" still means the work reached a real branch.
+                # Security Agent H3, 2026-09-10.
+                #
+                # WHY "on origin" IS SUFFICIENT PROOF, and what would break it.
+                # strategy_daily.ps1 only ever attempts a push inside
+                # `if ($CommitExit -eq 0)`, i.e. immediately after creating a
+                # commit - so the sha in a PUSH-FAILED signal is always seconds
+                # old and CANNOT already have been on origin when the push
+                # failed. Finding it on origin later therefore means it genuinely
+                # arrived. If that precondition is ever removed over there, this
+                # check must be tightened here in the same commit, because no
+                # test would fail. Security Agent, 2026-09-09 round-3 review.
+                #
+                # No sha recorded (markers written before 2026-09-09) = no proof
+                # possible = keep shouting.
+                if ($pfSha -match '^[0-9a-fA-F]{7,40}$') {
+                    # ONE PROOF, ONE IMPLEMENTATION. This used to be an inline copy
+                    # of the same logic that section 6b-0 now calls as a function -
+                    # near-identical duplicates, which is the worst state for drift:
+                    # the next editor assumes syncing them is safe, and one of them
+                    # is subtly not the other. Both now route through
+                    # Test-WorkOnOrigin, which carries the origin scoping, the
+                    # close/* backup exclusion and the 5.1 stderr guard in one
+                    # place. The last-push-ok stamp read stays HERE, because it is
+                    # presentation for this call site only. Security Agent T4,
+                    # 2026-09-10.
+                    $RepoForProject = Repo-ForProject -ProjectField $pfProject
+                    if (Test-Path $RepoForProject) {
+                        if (Test-WorkOnOrigin -Sha $pfSha -RepoRoot $RepoForProject) {
+                            $Retired = $true
+                            Write-Log "PUSH-FAILED for $pfProject retired - commit $pfSha is on a real origin branch."
+                            # WHEN it arrived - presentation only. Nothing below
+                            # can change $Retired, so a missing, corrupt or
+                            # future-dated stamp costs a phrase, never an alarm.
                             try {
-                                # EXCLUDE THE BACKUP BRANCHES. Since 2026-09-10 the
-                                # close pushes every commit to origin/close/<date>
-                                # BEFORE trying the real branch, so that sha is on an
-                                # origin branch even when the push that mattered
-                                # failed. Without this exclusion a genuine auth or
-                                # network failure would find its own backup minutes
-                                # later and demote itself to "NOW FIXED - nothing to
-                                # do" - an alarm silently switching itself off, which
-                                # is the exact failure this file exists to prevent.
-                                # It also stops the check decaying as close/* branches
-                                # accumulate. Security Agent H2/H3, 2026-09-10.
-                                $OnRemote = @(git -C $RepoForProject branch -r --contains $pfSha --list 'origin/*' 2>$null |
-                                              ForEach-Object { [string]$_ } |
-                                              Where-Object { ($_ -replace '^\s*', '') -notlike 'origin/close/*' })
-                                $GitExit  = $LASTEXITCODE
-                            } finally { $ErrorActionPreference = $PrevEAPGit }
-                            $OnRemote = @(@($OnRemote) | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) })
-                            if ($GitExit -eq 0 -and @($OnRemote).Count -gt 0) {
-                                $Retired = $true
-                                Write-Log "PUSH-FAILED for $pfProject retired - commit $pfSha is on $(@($OnRemote).Count) origin branch(es)."
-                                # WHEN it arrived - presentation only. Nothing below
-                                # can change $Retired, so a missing, corrupt or
-                                # future-dated stamp costs a phrase, never an alarm.
-                                try {
-                                    $OkFile = Join-Path (Split-Path $MarkerPath -Parent) `
-                                              ("last-push-ok-" + ($pfProject -replace '[\\/:*?"<>|]', '_') + ".txt")
-                                    if (Test-Path $OkFile) {
-                                        $OkParts = ([string](Get-Content $OkFile -Raw)).Trim().Split("|", 2)
-                                        # ParseExact + InvariantCulture, not Parse:
-                                        # Parse reads the machine's culture, and under
-                                        # a non-Gregorian default calendar this date
-                                        # lands centuries away. Security Agent L1.
-                                        $OkStamp = [datetime]::ParseExact(([string]$OkParts[0]).Trim(), `
-                                                   'yyyy-MM-dd HH:mm:ss', [Globalization.CultureInfo]::InvariantCulture)
-                                        if ($OkStamp -le $Now.AddMinutes(5)) {
-                                            $RetiredAt = $OkStamp.ToString("ddd HH:mm")
-                                        } else {
-                                            Write-Log "Last-push stamp for $pfProject is dated in the FUTURE ($OkStamp) - not quoting a time."
-                                        }
+                                $OkFile = Join-Path (Split-Path $MarkerPath -Parent) `
+                                          ("last-push-ok-" + ($pfProject -replace '[\\/:*?"<>|]', '_') + ".txt")
+                                if (Test-Path $OkFile) {
+                                    $OkParts = ([string](Get-Content $OkFile -Raw)).Trim().Split("|", 2)
+                                    # ParseExact + InvariantCulture, not Parse:
+                                    # Parse reads the machine's culture, and under
+                                    # a non-Gregorian default calendar this date
+                                    # lands centuries away. Security Agent L1.
+                                    $OkStamp = [datetime]::ParseExact(([string]$OkParts[0]).Trim(), `
+                                               'yyyy-MM-dd HH:mm:ss', [Globalization.CultureInfo]::InvariantCulture)
+                                    if ($OkStamp -le $Now.AddMinutes(5)) {
+                                        $RetiredAt = $OkStamp.ToString("ddd HH:mm")
+                                    } else {
+                                        Write-Log "Last-push stamp for $pfProject is dated in the FUTURE ($OkStamp) - not quoting a time."
                                     }
-                                } catch {
-                                    Write-Log "Could not read the last-successful-push time for $pfProject - saying 'later' instead. $_"
                                 }
-                            } else {
-                                Write-Log "Commit $pfSha for $pfProject is NOT on any origin branch - keeping the warning."
+                            } catch {
+                                Write-Log "Could not read the last-successful-push time for $pfProject - saying 'later' instead. $_"
                             }
                         } else {
-                            Write-Log "Cannot reach $RepoForProject to verify $pfSha - keeping the warning."
+                            Write-Log "Commit $pfSha for $pfProject is NOT on any origin branch - keeping the warning."
                         }
+                    } else {
+                        Write-Log "Cannot reach $RepoForProject to verify $pfSha - keeping the warning."
                     }
-                  } catch {
-                    # Cannot tell? Then say nothing about it being fixed and SHOW the
-                    # banner. Failing safe here means shouting, not going quiet.
-                    Write-Log "Could not verify whether $pfProject's work reached GitHub - keeping the warning. $_"
-                  }
                 }
+              } catch {
+                # Cannot tell? Then say nothing about it being fixed and SHOW the
+                # banner. Failing safe here means shouting, not going quiet.
+                Write-Log "Could not verify whether $pfProject's work reached GitHub - keeping the warning. $_"
+              }
+            }
 
-                if ($Retired) {
-                    $RetiredPushSignals += [PSCustomObject]@{ Day = $DayName; Project = $pfProject; At = $RetiredAt }
-                } else {
-                    $FailedPushSignals += [PSCustomObject]@{ Day = $DayName; Sig = [string]$pf }
-                }
-            }
-            $ClosedAt = @(@($MarkerLines) | Where-Object { $_ -like "CLOSED|*" }) | Select-Object -First 1
-            if ($ClosedAt) {
-                Write-Log "$DayName's close ran ($ClosedAt) - this brief reports only."
+            if ($Retired) {
+                $RetiredPushSignals += [PSCustomObject]@{ Day = $DayName; Project = $pfProject; At = $RetiredAt }
             } else {
-                # Marker present but no CLOSED line: the close RAN and FAILED. Treat
-                # it exactly as harshly as a missing marker - the outcome for Saeed is
-                # the same (no session log, no handover, no restore point) and a
-                # half-done close reported as fine is how failures hide. A hand-run
-                # weekend close that failed lands here too. Security Agent 2026-09-04.
-                $CloseDayFailed  = $true
-                $FailedDayNames += $DayName
-                $CloseFailDetail += @(@($MarkerLines) | Where-Object { $_ -like "FAILED-DETAIL|*" } |
-                    ForEach-Object { "  - $DayName" + ": " + (([string]$_).Split("|", 3)[1..2] -join ": ") })
-                Write-Log "WARNING: $DayName's close RAN AND FAILED."
+                $FailedPushSignals += [PSCustomObject]@{ Day = $DayName; Sig = [string]$pf }
             }
-        } elseif ($m.WasDue) {
-            # A close FELL DUE that day and left no marker at all. That is an alarm
-            # on any day of the week, including when read on a Saturday: the weekend
-            # never excuses a weekday close that did not happen. What the weekend
-            # does excuse - that no close runs TODAY - is $IsWeekendNow, not this.
-            # Security Agent H2 and H5, 2026-09-07.
+        }
+        $ClosedAt = @(@($MarkerLines) | Where-Object { $_ -like "CLOSED|*" }) | Select-Object -First 1
+        if ($ClosedAt) {
+            Write-Log "$DayName's close ran ($ClosedAt) - this brief reports only."
+        } else {
+            # Marker present but no CLOSED line: the close RAN and FAILED. Treat
+            # it exactly as harshly as a missing marker - the outcome for Saeed is
+            # the same (no session log, no handover, no restore point) and a
+            # half-done close reported as fine is how failures hide. A hand-run
+            # weekend close that failed lands here too. Security Agent 2026-09-04.
             $CloseDayFailed  = $true
             $FailedDayNames += $DayName
-            Write-Log "WARNING: no close marker at $MarkerPath - $DayName's close did not run."
-        } else {
-            # No hand-run close today. Nothing was due, so there is nothing to say.
-            Write-Log "No hand-run close marker for today ($DayName) - none was due."
+            $CloseFailDetail += @(@($MarkerLines) | Where-Object { $_ -like "FAILED-DETAIL|*" } |
+                ForEach-Object { "  - $DayName" + ": " + (([string]$_).Split("|", 3)[1..2] -join ": ") })
+            Write-Log "WARNING: $DayName's close RAN AND FAILED."
         }
-      } catch {
-        # Do not go quiet. A marker we cannot read is itself worth shouting about,
-        # and the brief must still be sent.
-        Write-Log "WARNING: could not read the close marker for $($m.Date.ToString('yyyy-MM-dd')) - $_"
-        if ($m.WasDue) {
-            $CloseDayFailed  = $true
-            $FailedDayNames += $m.Date.ToString('dddd')
-        }
-      }
+    } elseif ($m.WasDue) {
+        # A close FELL DUE that day and left no marker at all. That is an alarm
+        # on any day of the week, including when read on a Saturday: the weekend
+        # never excuses a weekday close that did not happen. What the weekend
+        # does excuse - that no close runs TODAY - is $IsWeekendNow, not this.
+        # Security Agent H2 and H5, 2026-09-07.
+        $CloseDayFailed  = $true
+        $FailedDayNames += $DayName
+        Write-Log "WARNING: no close marker at $MarkerPath - $DayName's close did not run."
+    } else {
+        # No hand-run close today. Nothing was due, so there is nothing to say.
+        Write-Log "No hand-run close marker for today ($DayName) - none was due."
     }
+  } catch {
+    # Do not go quiet. A marker we cannot read is itself worth shouting about,
+    # and the brief must still be sent.
+    Write-Log "WARNING: could not read the close marker for $($m.Date.ToString('yyyy-MM-dd')) - $_"
+    if ($m.WasDue) {
+        $CloseDayFailed  = $true
+        $FailedDayNames += $m.Date.ToString('dddd')
+    }
+  }
 }
 
 # May the brief say "today's close ran"? Only in the evening, only if nothing
@@ -1307,6 +1487,68 @@ if (-not $DryRun -and -not $SkipCloseHere) {
 # prepend ends up highest, so this runs FIRST to land BENEATH all of them.
 # Placed after them, "NOW FIXED - no action needed" was the first thing Saeed
 # saw, sitting on top of live alarms. Security Agent M2, 2026-09-09 re-review.
+# ── 6b-0. RE-PROVE RETIREMENT, AFTER this run's own push ─────────────────────
+# The marker read happens near the top of the script, because section 5 needs
+# $CloseDayFailed early. In MORNING mode that is now BEFORE sections 6/6b run the
+# git safety net - so the question "has this work reached GitHub yet?" was asked
+# before the push that puts it there, and its answer would be rendered after.
+#
+# Result without this: the 07:00 brief shouts "the save to GitHub failed" about
+# work that the same 07:00 run has just saved. The whole retirement mechanism
+# exists (Saeed, 2026-09-09) so that banner stops the moment the work arrives;
+# asking too early defeats it on the one run that fixes the problem, and lands a
+# false loud banner on the morning after a failure - exactly when Saeed most
+# needs it to be true. Security Agent S2, 2026-09-10.
+if (-not $DryRun -and -not $SkipCloseHere -and @($FailedPushSignals).Count -gt 0) {
+    $StillFailed = @()
+    foreach ($entry in @($FailedPushSignals)) {
+        $ep = ([string]$entry.Sig).Split("|", 4)
+        # Tag failures are never retirable, and a signal with no sha cannot be proven.
+        if (([string]$entry.Sig) -like "TAG-PUSH-FAILED|*" -or @($ep).Count -lt 4) {
+            $StillFailed += $entry; continue
+        }
+        if (Test-WorkOnOrigin -Sha ([string]$ep[3]).Trim() -RepoRoot (Repo-ForProject -ProjectField ([string]$ep[1]))) {
+            $RetiredPushSignals += [PSCustomObject]@{ Day = $entry.Day; Project = [string]$ep[1]; At = "" }
+            Write-Log "Retired on re-check: $($ep[1])'s work reached GitHub during this run."
+        } else {
+            $StillFailed += $entry
+        }
+    }
+    $FailedPushSignals = @($StillFailed)
+}
+
+# DE-DUPLICATE THE BEHIND SIGNALS - ABOVE THEIR CONSUMER, AND KEYED ON PROJECT.
+# This was originally placed next to the held-signal dedup, 96 lines BELOW the
+# block that renders it, so it was dead code that never ran. And its key was the
+# whole signal, which embeds close/$Today - so yesterday's marker entry and this
+# morning's entry differ by construction every single day and could never group.
+# Two "BEHIND GITHUB" lines for one project, every morning.
+# Keep the LAST: the marker is harvested first, so the newest entry is the one
+# that reflects the current state. Security Agent T1/T2, 2026-09-10.
+# Same two guards as the held dedup below: an index that cannot go out of bounds
+# (this one takes [1] only, so it is already safe, but the bounds check is written
+# out so the next editor does not have to re-derive why), and a preference for the
+# last WELL-FORMED entry. Security Agent G1/G2, 2026-09-10.
+$BehindSignals = @(@($BehindSignals) |
+                   Group-Object {
+                       $b = @(([string]$_.Sig) -split '\|')
+                       if ($b.Count -gt 1) { $b[1] } else { "" }
+                   } |
+                   ForEach-Object {
+                       $g  = @($_.Group)
+                       # NOTE FOR WHOEVER ADDS A FIFTH PRODUCER: this filter and the
+                       # key above both read $_.Sig, and under StrictMode a MISSING
+                       # PROPERTY is terminating. It is unreachable today because all
+                       # four producers construct [PSCustomObject]@{ Day=; Sig= }
+                       # literally - but it is the one guard in these two dedups that
+                       # is safe by convention rather than by structure. The held
+                       # dedup below cannot throw at all: its members are already
+                       # [string] before Group-Object sees them, and it indexes
+                       # nothing. Security Agent, round 13.
+                       $ok = @($g | Where-Object { @(([string]$_.Sig) -split '\|').Count -ge 3 })
+                       if (@($ok).Count -gt 0) { @($ok)[-1] } else { @($g)[-1] }
+                   })
+
 # ── 6b-5. Behind GitHub, but the work is safe ────────────────────────────────
 # Saeed, 2026-09-10. Since the close pushes to a backup branch that nobody else
 # writes to, "behind main" no longer means the work is at risk - so it must not
@@ -1369,13 +1611,20 @@ if ($CloseDayFailed) {
         (@($FailedDayNames)[0]).ToUpper() + "'S SESSION CLOSE DID NOT COMPLETE"
     }
     $FailedDayPlain = (@($FailedDayNames) -join " and ")
+    # "NOTHING SAVED TO GITHUB" IS FALSE BY 07:00. The morning brief runs the git
+    # safety net (sections 6/6b) BEFORE this banner is prepended, so by the time
+    # Saeed reads it that day's work has usually been committed and pushed. Three
+    # of the four claims stay true at 07:00; this one does not, and a banner with
+    # one false clause in it is a banner he learns to discount - the same trust
+    # problem this file has now corrected six times. Security Agent S3, 2026-09-10.
+    $SavedClause = if ($Mode -eq 'Evening') { ", nothing saved to GitHub" } else { "" }
     # "has"/"have", and no "18:30": a hand-run weekend close is not an 18:30 one.
     $FailedDayVerb  = if (@($FailedDayNames).Count -gt 1) { "have" } else { "has" }
     $NoCloseBanner = @"
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !! $FailedDayLabel
 !! The session close did not complete, so $FailedDayPlain $FailedDayVerb no
-!! session log, no handover note, nothing saved to GitHub, no restore point.
+!! session log, no handover note$SavedClause, no restore point.
 $(if (@($CloseFailDetail).Count -gt 0) { "!! What went wrong:" + [Environment]::NewLine + (@($CloseFailDetail) -join [Environment]::NewLine) } else { "!! It did not run at all." })
 !!
 !! Your work is NOT lost - it is still on the computer.
@@ -1395,6 +1644,44 @@ $(if (@($CloseFailDetail).Count -gt 0) { "!! What went wrong:" + [Environment]::
 # The report file was written in section 5 and the send in section 7 reads it back
 # off disk, so prepending here reaches him the same evening with no second
 # message and no second browser session.
+# DE-DUPLICATE THE HELD SIGNALS. Since the marker read moved out of the Evening
+# gate, a Morning run fills this from TWO sources: yesterday's marker, and this
+# morning's own strategy_daily.ps1 output. session_close.ps1 writes the same
+# signal into the marker, so an unfinished dashboard\ folder produces one from
+# each. Security Agent S4, 2026-09-10.
+#
+# KEY ON PROJECT AND PATH, NOT THE WHOLE LINE, AND KEEP THE LAST. The count is
+# field 3, so `Select-Object -Unique` let "dashboard|3" from yesterday's marker
+# and "dashboard|5" from this morning BOTH through - and because the marker is
+# harvested first, the stale 3-file line rendered ABOVE the current 5-file one.
+# Security Agent T3, 2026-09-10.
+# NEVER INDEX PAST THE END. StrictMode (which -Version Latest resolves to 3.0 on
+# Windows PowerShell 5.1, so this is NOT a pwsh-7 artefact) makes an out-of-bounds
+# index a TERMINATING error. The harvest filter is -like "PUSH-HELD|*", which
+# guarantees ONE pipe, not three - so $p[2] on a truncated line threw, at script
+# top level with no enclosing try, and killed the entire brief. Saeed would have
+# received NO WhatsApp message at all, on the morning after a close crashed
+# mid-write. That is the 11-19 Aug 2026 shape, and it is the same defect class as
+# B1. One malformed line poisoned the whole array, good signals included.
+# The renderer eight lines below already guards with `Count -ge 4`; this dedup
+# runs in FRONT of that guard and must be at least as careful.
+# Security Agent G1, 2026-09-10.
+#
+# And prefer the last WELL-FORMED entry, not simply the last: a malformed line
+# arriving from this run would otherwise win the group, be discarded by the
+# renderer's guard, and take the good marker-sourced line with it - leaving a
+# banner header with nothing under it. Security Agent G2.
+$HeldSignals = @(@($HeldSignals) | ForEach-Object { [string]$_ } |
+                 Group-Object {
+                     $p = @($_ -split '\|')
+                     "$(if ($p.Count -gt 1) { $p[1] })|$(if ($p.Count -gt 2) { $p[2] })"
+                 } |
+                 ForEach-Object {
+                     $g  = @($_.Group)
+                     $ok = @($g | Where-Object { @([string]$_ -split '\|').Count -ge 4 })
+                     if (@($ok).Count -gt 0) { @($ok)[-1] } else { @($g)[-1] }
+                 })
+
 if (@($HeldSignals).Count -gt 0) {
     $HeldLines = @()
     foreach ($sig in @($HeldSignals)) {
@@ -1492,20 +1779,148 @@ $FailTail
     Write-Host $FailBanner
 }
 
-# ── 7. Send combined report via WhatsApp ─────────────────────────────────────
+# ── 7. Keep a copy of what was actually sent ─────────────────────────────────
+# Saeed's request, 2026-09-11: "CREATE A LOG FOR WHATSAP MESSAGES. KEEP 3 LATEST
+# ONES AND PURGE THE OLDER ONES AUTOMATICALLY."
+#
+# Why it is worth having: he had been getting already-approved items back in the
+# approvals list "for a long time" and neither of us could say how long, because
+# there was no record of any message after it left the machine. The report in
+# docs\reports\ is what we MEANT to send; this is what we DID send, banners and
+# all, byte for byte.
+#
+# Written BEFORE the send, so a message that fails to send is still on record.
+$WhatsAppLogDir   = "C:\JeffLocal\logs\whatsapp-sent"
+$KeepWhatsAppLogs = 3
+$WhatsAppLogPath  = $null
+
+# Only files this script itself writes are ever considered for deletion.
+$WhatsAppLogPattern = "*-whatsapp.txt"
+
+if (-not $DryRun) {
+    try {
+        if (-not (Test-Path $WhatsAppLogDir)) {
+            New-Item -ItemType Directory -Path $WhatsAppLogDir -Force | Out-Null
+        }
+        # Seconds, not just minutes, plus a collision suffix. A hand re-run
+        # inside the same clock minute - which is exactly what someone does
+        # when investigating a failed send - used to overwrite the copy of the
+        # failed send it was there to preserve. Security Agent M3, 2026-09-11.
+        $Stamp           = Get-Date -Format "yyyy-MM-dd-HHmmss"
+        $WhatsAppLogPath = Join-Path $WhatsAppLogDir "$Stamp-$Mode-whatsapp.txt"
+        $Dup = 2
+        while (Test-Path $WhatsAppLogPath) {
+            $WhatsAppLogPath = Join-Path $WhatsAppLogDir "$Stamp-$Mode-$Dup-whatsapp.txt"
+            $Dup++
+        }
+        # $ReportPath is the message WITH the banners prepended; $CombinedReport
+        # is the pre-banner text. Falling back silently would let the archive
+        # claim a message went out without banners it actually carried.
+        # Security Agent L3, 2026-09-11.
+        $Unbannered = -not (Test-Path $ReportPath)
+        $SentText   = if ($Unbannered) { $CombinedReport } else { Get-Utf8FileText -Path $ReportPath }
+        if ($Unbannered) { Write-Log "WARNING: report file missing - WhatsApp copy is the PRE-BANNER text, not what was sent" }
+        $Header = @"
+# WhatsApp message sent by combined_brief.ps1
+# Mode: $Mode   Written: $(Get-Date -Format "yyyy-MM-dd HH:mm:ss")
+# Source report: $ReportPath
+# Characters: $(([string]$SentText).Length)
+# ---------------------------------------------------------------------------
+
+"@
+        Set-Content -Path $WhatsAppLogPath -Value ($Header + $SentText) -Encoding UTF8
+        Write-Log "WhatsApp copy saved: $WhatsAppLogPath ($(([string]$SentText).Length) chars)"
+    } catch {
+        # A failed archive must never stop the message going out.
+        Write-Log "WARNING: could not save WhatsApp copy - $_"
+        $WhatsAppLogPath = $null
+    }
+}
+
+# ── 8. Send combined report via WhatsApp ─────────────────────────────────────
 if ($DryRun) {
     Write-Log "DryRun: skipped WhatsApp send"
 } else {
     $PythonScript = "C:\JeffLocal\scripts\daily\send_whatsapp.py"
+    $SendOutcome  = "NOT SENT - sender script not found"
     if (Test-Path $PythonScript) {
         try {
+            # `python` is a NATIVE command: a non-zero exit does NOT throw, so
+            # catch never fires and a crashed sender was being recorded as
+            # "SENT - Traceback (most recent call last)...". The one artefact
+            # built to answer "did it actually arrive?" would have asserted yes
+            # on exactly the days it did not. Code review S2, 2026-09-11.
             $result = python $PythonScript $ReportPath 2>&1
-            Write-Log "WhatsApp send result: $result"
+            $SendExit = $LASTEXITCODE
+            if ($SendExit -eq 0) {
+                $SendOutcome = "SENT - $result"
+                Write-Log "WhatsApp send result: $result"
+            } else {
+                $SendOutcome = "SEND FAILED (exit $SendExit) - $result"
+                Write-Log "WARNING: WhatsApp send exited $SendExit - $result"
+            }
         } catch {
+            $SendOutcome = "SEND FAILED - $_"
             Write-Log "WARNING: WhatsApp send failed - $_"
         }
     } else {
         Write-Log "WARNING: WhatsApp sender not found at $PythonScript"
+    }
+    # Record the outcome on the copy, so the archive says whether it arrived.
+    if ($WhatsAppLogPath -and (Test-Path $WhatsAppLogPath)) {
+        try {
+            Add-Content -Path $WhatsAppLogPath -Encoding UTF8 `
+                -Value "`n# ---------------------------------------------------------------------------`n# Send outcome: $SendOutcome`n"
+        } catch {
+            Write-Log "WARNING: could not record send outcome on the WhatsApp copy - $_"
+        }
+    }
+}
+
+# ── 9. Purge old WhatsApp copies, keeping the newest 3 ───────────────────────
+# Saeed gave explicit written permission for this deletion on 2026-09-11
+# ("PURGE THE OLDER ONES AUTOMATICALLY"). CLAUDE.md otherwise forbids deleting
+# anything without it, so the scope is kept as narrow as it can be:
+#   - one named folder, never recursed into
+#   - only files matching $WhatsAppLogPattern, which only this script writes
+#   - files only, never directories
+#   - nothing deleted at all unless MORE than $KeepWhatsAppLogs exist
+#   - each deletion logged by name, each wrapped in its own try/catch
+# Newest-first by LastWriteTime, so the three most recent always survive even if
+# a file is written out of order or a name is hand-edited.
+if ($DryRun) {
+    Write-Log "DryRun: skipped WhatsApp copy purge"
+} elseif (Test-Path $WhatsAppLogDir) {
+    try {
+        # Sorted by NAME, because the name carries a lexically sortable
+        # yyyy-MM-dd-HHmmss stamp this script wrote itself. LastWriteTime is the
+        # weaker key: a restore, a copy between machines, or a touch while being
+        # read bumps it, which would pin a stale copy at the head of the sort and
+        # push a genuinely recent archive into the delete list - at exactly the
+        # moment someone is investigating a bad message. LastWriteTime is kept as
+        # the tie-break only. Security Agent M2, 2026-09-11.
+        #
+        # -Attributes !ReparsePoint: never follow or delete a symlink/junction
+        # that happens to match the pattern. Security Agent L1, 2026-09-11.
+        $Copies = @(Get-ChildItem -Path $WhatsAppLogDir -Filter $WhatsAppLogPattern -File |
+                    Where-Object { -not ($_.Attributes -band [System.IO.FileAttributes]::ReparsePoint) } |
+                    Sort-Object -Property @{Expression='Name';Descending=$true}, @{Expression='LastWriteTime';Descending=$true})
+        if (@($Copies).Count -gt $KeepWhatsAppLogs) {
+            $Doomed = @($Copies | Select-Object -Skip $KeepWhatsAppLogs)
+            foreach ($old in $Doomed) {
+                try {
+                    Remove-Item -LiteralPath $old.FullName -Force
+                    Write-Log "WhatsApp copy purged: $($old.Name)"
+                } catch {
+                    Write-Log "WARNING: could not purge $($old.Name) - $_"
+                }
+            }
+            Write-Log "WhatsApp copies: kept newest $KeepWhatsAppLogs, purged $(@($Doomed).Count)"
+        } else {
+            Write-Log "WhatsApp copies: $(@($Copies).Count) on disk, nothing to purge"
+        }
+    } catch {
+        Write-Log "WARNING: WhatsApp copy purge failed - $_"
     }
 }
 
