@@ -1234,3 +1234,44 @@ Negative controls were run on all four guards; each one goes red when its guard 
 **Saeed notified:** This session.
 **Still outstanding:** nothing in this series has been deliberately tested on Windows PowerShell 5.1, which is what actually runs on Saeed's machine.
 
+
+---
+
+## 2026-09-11 — Review Round on the Five Brief Fixes: My Stated Root Cause Was Wrong
+
+**Agent:** Lead Agent (Claude Code session)
+**Reviews:** independent code review of fix 3, and Security Agent review of all five changes — both requested by Saeed.
+**Outcome:** Security Agent APPROVED WITH REQUIRED CHANGES. Code review found one critical conceptual defect and one new high-severity silent failure. All findings actioned except S1, which is put to Saeed because it reverses something I told him as fact.
+
+**S1 — CRITICAL, and it corrects me. The distortion happens in pass 1, not pass 2.**
+I told Saeed the SECOND rewrite was what turned commit subjects into policy statements. That is wrong, and the repo's own data disproves it. `docs/sessions/2026-09-10-1800.md` line 9 — the file ON DISK, which is the output of pass 1 before combined_brief.ps1 has touched it — already reads "If we cannot reliably understand the incoming file list, the process must be refused." The commit subject was "fix(close): refuse when the incoming-file list cannot be parsed reliably". Pass 1 alone turned a description into a rule; pass 2 only changed "refused" to "stopped".
+Consequence: fix 3 stops the drift getting worse but does NOT fix the symptom, and by forwarding stored lines verbatim it makes the bad logs already on disk permanently un-correctable downstream. The real fix is in strategy_daily.ps1's pass 1. Put to Saeed with a recommendation rather than actioned unilaterally, because the choice changes what is permanently stored in every session log.
+
+**S2 — HIGH, new silent failure that I introduced. A failed send was recorded as "SENT".**
+`python` is a native command: a non-zero exit does not throw, so the catch never fired and `$LASTEXITCODE` was never read. A crashed sender would have been archived as `# Send outcome: SENT - Traceback (most recent call last)...`. The one artefact built to answer "did it actually arrive?" would have asserted yes on exactly the days it did not — the same shape as the 11–19 Aug 2026 outage. Now checks the exit code.
+
+**H1 — HIGH, and also mine. I capped the alarms while trying to shorten the message.**
+The first version of fix 5 capped BLOCKERS at 3 and PENDING SAEED at 4; both were previously uncapped. Capping selects by log order, not severity, so "unauthenticated intake endpoint" — one of the three security items CLAUDE.md names as a go-live blocker — could fall past position 3 and become the integer in "(+3 more)". A blocker reduced to a number does not shout, and it inverts the burden onto Saeed to ask. Caps on those two sections removed; the numbers left in place are runaway guards (25) against a corrupted log, not editorial limits. Lowering them is Saeed's explicit decision, not one to take inside a change about message length. Caps on WHAT WE DID and WHAT'S NEXT are kept — nothing in those sections is an alarm.
+
+**S3 — MEDIUM. Keyed on a header a human can inherit.** `Test-IsAutoWrittenLog` matched `# Tool: strategy_daily.ps1`. Anyone starting today's log from a copy of yesterday's auto log keeps that line, which would silently switch the rewrite off for their caveman fragments. Now matches a dedicated `# AUTOGEN-REWRITTEN` marker written for this purpose only, the same way `AUTOGEN-PLACEHOLDER` works for the staleness alarm. Logs written before the marker existed do not match, so they are still rewritten — the safe direction, and it keeps the bad logs on disk fixable.
+
+**S4 — MEDIUM. Raw repo paths reached WhatsApp.** The deterministic "Files changed today" line is not produced by the rewrite, so bypassing the second pass forwarded `scripts/daily/combined_brief.ps1` verbatim — against this file's own prompt rule and CLAUDE.md's plain-English requirement. Leaf filenames only now.
+
+**S5 — LOW/MEDIUM. "No work recorded today." printed under "WHAT WE DID YESTERDAY"** in Morning mode. CLAUDE.md's "every alarm names its day" rule exists to stop exactly this. Now names the right day.
+
+**S6 — LOW.** A line present in both a human and an auto log was rendered twice and counted twice in "(+N more)".
+
+**M2 — MEDIUM. Retention keyed on the wrong thing.** The purge sorted by LastWriteTime, but "the 3 latest" is defined by the filename stamp this script writes itself. A restore, a copy between machines, or a touch while being read bumps LastWriteTime and would have pinned a stale copy at the head of the sort, pushing a genuinely recent archive into the delete list — at exactly the moment someone is investigating a bad message. Now sorted by name, LastWriteTime as tie-break only, with a regression test that fakes a timestamp a year into the future.
+
+**M3 — MEDIUM. Same-minute re-runs overwrote the archive.** A hand re-run inside the same clock minute — what someone does when investigating a failed send — overwrote the copy of the failed send it existed to preserve. Stamp now carries seconds, plus a collision suffix.
+
+**L1 — reparse points.** The purge now skips symlinks and junctions matching the pattern.
+**L2 — `* [x]` and `+ [x]` bullets** were not recognised as ticked. Failed safe (a re-ask), now handled.
+**L3 —** if the report file is missing, the archive falls back to the pre-banner text; it now logs that the copy is unbannered rather than implying the banners were never sent.
+**L4 —** "AI rewrite unavailable" was logging on healthy runs once fix 3 routed all lines around the rewriter, eroding a real diagnostic for Ollama being down.
+
+**Cleared by the Security Agent, verified by reading rather than assumption:** no banner can be capped or hidden (all banners are assembled outside `Get-ProjectBrief`, and the close-failure / PUSH-HELD / PUSH-FAILED banners are prepended to the saved report later still); `Test-IsNoneLine` is genuinely strict against hostile inputs; "No work recorded today." cannot print on a day that had work; fix 1 cannot suppress a genuinely outstanding approval; `logs/` is gitignored at line 17 with no negation; the archive carries no patient-identifiable data on any path found, though it should be added to `gdpr_purge.py`'s scope for completeness; and no PowerShell 5.1 throw was found in the new code — the three new array re-wraps in fact fix a pre-existing StrictMode hazard that could have killed the whole brief.
+
+**Files changed:** scripts/daily/combined_brief.ps1, scripts/daily/strategy_daily.ps1, tests/daily/*.ps1, CHANGELOG.md
+**Tests run:** 62 assertions, all passing, pwsh 7.4.6 / Linux. Negative control run on H1: restoring the caps turns the suite red.
+**Still outstanding:** S1 (awaiting Saeed's decision), `gdpr_purge.py` scope, and a deliberate Windows PowerShell 5.1 run.

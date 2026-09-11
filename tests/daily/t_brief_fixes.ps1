@@ -36,6 +36,8 @@ Assert-True  (Test-IsDoneLine "- [X] Alarm system done.")                 "upper
 Assert-True  (Test-IsDoneLine "  - [x] indented tick")                    "indented tick is done"
 Assert-True  (Test-IsDoneLine "[x] no dash")                              "tick with no dash is done"
 Assert-True  (Test-IsDoneLine "1. [x] numbered tick")                     "numbered tick is done"
+Assert-True  (Test-IsDoneLine "* [x] asterisk bullet")                    "asterisk bullet tick is done"
+Assert-True  (Test-IsDoneLine "+ [x] plus bullet")                        "plus bullet tick is done"
 Assert-False (Test-IsDoneLine "- [ ] Create staff accounts")              "empty box is NOT done"
 Assert-False (Test-IsDoneLine "- Create staff accounts")                  "plain line is NOT done"
 Assert-False (Test-IsDoneLine "- Fix the [x] rendering bug")              "[x] mid-line is NOT done"
@@ -79,15 +81,24 @@ Write-Host "`nFIX 3 - automation's own logs are recognised"
 $auto = @"
 # SESSION SUMMARY - [2026-09-10 18:00]
 # Tool: strategy_daily.ps1 (automated session close at 18:30)
-# Built from the day's actual git activity - 7 commit(s).
+# AUTOGEN-REWRITTEN: already through the plain-English rewrite once.
 
 ## WHAT WE DID
 - Stopped the close when the file list cannot be read.
 "@
-Assert-True (Test-IsAutoWrittenLog -Content $auto) "strategy_daily header detected"
+Assert-True (Test-IsAutoWrittenLog -Content $auto) "AUTOGEN-REWRITTEN marker detected"
 
-$auto2 = $auto -replace "strategy_daily", "session_close"
-Assert-True (Test-IsAutoWrittenLog -Content $auto2) "session_close header detected"
+# The reason the marker exists at all: the "# Tool:" header is inheritable by
+# accident. A human starting today's log from a copy of yesterday's auto log
+# keeps that line, and keying on it would silently switch their rewrite off.
+$toolOnly = @"
+# SESSION SUMMARY - [2026-09-11 14:00]
+# Tool: strategy_daily.ps1 (automated session close at 18:30)
+
+## WHAT WE DID
+- Added review checkbox. Amber->green on confirm.
+"@
+Assert-False (Test-IsAutoWrittenLog -Content $toolOnly) "a copied '# Tool:' header alone does NOT disable the rewrite"
 
 $human = @"
 # SESSION SUMMARY - [2026-09-11 14:00]
@@ -100,8 +111,8 @@ $human = @"
 Assert-False (Test-IsAutoWrittenLog -Content $human) "a human log that MENTIONS the tool is not auto"
 Assert-False (Test-IsAutoWrittenLog -Content "")     "empty content is not auto"
 
-$late = ("# padding`n" * 12) + "# Tool: strategy_daily.ps1`n"
-Assert-False (Test-IsAutoWrittenLog -Content $late) "a Tool: line below the header block does not count"
+$late = ("# padding`n" * 12) + "# AUTOGEN-REWRITTEN`n"
+Assert-False (Test-IsAutoWrittenLog -Content $late) "a marker below the header block does not count"
 
 Write-Host "`n================================"
 Write-Host "PASS: $Pass   FAIL: $Fail"

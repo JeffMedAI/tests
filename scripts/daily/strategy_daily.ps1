@@ -647,7 +647,13 @@ if ($Mode -eq 'Evening') {
 
             $FileNote = ""
             if (@($FilesTouched).Count -gt 0) {
-                $shown = (@($FilesTouched) | Select-Object -First 6) -join ", "
+                # Leaf names only. These lines are assembled deterministically and
+                # are NOT sent through the rewrite, so "scripts/daily/combined_brief.ps1"
+                # used to reach Saeed's phone verbatim - against this file's own
+                # prompt rule ("no file paths") and CLAUDE.md's plain-English
+                # requirement. Code review S4, 2026-09-11.
+                $shown = (@($FilesTouched) | Select-Object -First 6 |
+                          ForEach-Object { Split-Path -Leaf ([string]$_) }) -join ", "
                 $more  = if (@($FilesTouched).Count -gt 6) { ", ..." } else { "" }
                 $FileNote = "`n- Files changed today: $(@($FilesTouched).Count) ($shown$more)"
             }
@@ -665,6 +671,11 @@ if ($Mode -eq 'Evening') {
 # SESSION SUMMARY - [$Today 18:00]
 # Tool: strategy_daily.ps1 (automated session close at $BriefClock)
 # Built from the day's actual git activity - $(@($TodayCommits).Count) commit(s).
+# AUTOGEN-REWRITTEN: the WHAT WE DID lines below have ALREADY been through the
+#   plain-English rewrite once. combined_brief.ps1 reads this marker and forwards
+#   them as they are, instead of rewriting them a second time - two passes of a
+#   small model drift off the facts. DO NOT paste this header into a hand-written
+#   log: it would silently switch the rewrite off for your text.
 
 ---
 

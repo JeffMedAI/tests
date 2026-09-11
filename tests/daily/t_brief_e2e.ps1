@@ -36,6 +36,7 @@ $Stamp = (Get-Date).ToString("yyyy-MM-dd") + "-1800"
 @"
 # SESSION SUMMARY - [$(Get-Date -Format 'yyyy-MM-dd') 18:00]
 # Tool: strategy_daily.ps1 (automated session close at 18:30)
+# AUTOGEN-REWRITTEN: already rewritten once.
 # Built from the day's actual git activity - 7 commit(s).
 
 ---
@@ -95,9 +96,17 @@ Assert-NotMatch $T "(?m)^\s*-\s*None\s*$"          "the bare 'None' line is gone
 Write-Host "`nFIX 3 - the automation's line is passed through, not re-worded"
 Assert-Match    $T "Stopped the close when the incoming file list cannot be read\." "auto line is verbatim"
 
-Write-Host "`nFIX 5 - capped, with an honest overflow marker"
-Assert-Match    $T "\(\+1 more - ask me\)"         "6 approvals minus 1 ticked = 5, cap 4, +1 flagged"
-Assert-NotMatch $T "\[ \] \(\+"                    "the overflow marker gets no checkbox"
+Write-Host "`nH1 - ALARM SECTIONS ARE NEVER CAPPED (Security Agent, 2026-09-11)"
+# The first version of Fix 5 capped approvals at 4 and blockers at 3. That
+# selects by log order, not severity, so a real security blocker could become
+# the integer in "(+3 more)". All five open approvals must be present.
+Assert-Match    $T "\[ \] Create staff accounts"     "approval 1 of 5 present"
+Assert-Match    $T "Sign governance gates"           "approval 2 of 5 present"
+Assert-Match    $T "HMAC"                            "approval 3 of 5 present"
+Assert-Match    $T "three security items"            "approval 4 of 5 present"
+Assert-Match    $T "NHS SBS and DSPT"                "approval 5 of 5 present"
+Assert-NotMatch $T "\(\+\d+ more - ask me\)"        "no overflow marker - nothing was hidden"
+Assert-NotMatch $T "\[ \] \(\+"                     "the overflow marker never gets a checkbox"
 
 Remove-Item -Recurse -Force $Root
 Write-Host "`n================================"

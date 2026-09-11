@@ -42,6 +42,7 @@ $Day = (Get-Date).ToString("yyyy-MM-dd")
 @"
 # SESSION SUMMARY - [$Day 18:00]
 # Tool: strategy_daily.ps1 (automated session close at 18:30)
+# AUTOGEN-REWRITTEN: already rewritten once.
 
 ## WHAT WE DID
 

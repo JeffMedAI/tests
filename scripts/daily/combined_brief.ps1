@@ -291,7 +291,15 @@ function Test-IsAutoWrittenLog {
     param([string]$Content)
     if ([string]::IsNullOrWhiteSpace($Content)) { return $false }
     $Head = (@($Content -split "`n") | Select-Object -First 10) -join "`n"
-    return ($Head -match '(?m)^\s*#\s*Tool:\s*(strategy_daily|session_close)\.ps1')
+    # Match the marker written FOR this purpose, not the "# Tool:" line. The
+    # Tool: header is inheritable by accident - a human starting today's log from
+    # a copy of yesterday's auto log keeps line 2 intact, and their caveman
+    # fragments would then go to Saeed raw with the rewrite silently disabled.
+    # AUTOGEN-PLACEHOLDER already works this way for the staleness alarm.
+    # Code review S3, 2026-09-11. Logs written before this marker existed simply
+    # do not match, so they are rewritten as they always were - the safe
+    # direction, and it means the bad logs already on disk are still fixable.
+    return ($Head -match '(?m)^\s*#\s*AUTOGEN-REWRITTEN')
 }
 
 # ---------------------------------------------------------------------------
@@ -332,7 +340,9 @@ function Remove-NoneLines {
 # every night asking to be signed off again, for months. Fix 1, 2026-09-11.
 function Test-IsDoneLine {
     param([string]$Line)
-    return (([string]$Line).Trim() -match '^(?:\d+\.\s*)?-?\s*\[[xX]\]')
+    # [-*+] as well as "-": markdown allows all three bullet characters, and a
+    # "* [x]" item was not being recognised. Security Agent L2, 2026-09-11.
+    return (([string]$Line).Trim() -match '^(?:\d+\.\s*)?[-*+]?\s*\[[xX]\]')
 }
 
 # When did the most recent session close FALL DUE? (weekday 18:30, per
@@ -678,10 +688,26 @@ function Get-ProjectBrief {
     $NextNoNone    = Remove-NoneLines -Lines $NextTasks
     $NextTasks     = @($NextNoNone)
 
-    # Fix 5 - Saeed asked for shorter messages. Every section is capped, and the
-    # overflow is COUNTED and shown ("+3 more - ask me"), never silently
-    # dropped. The full text is always in docs\reports\ if he wants it.
-    $MaxDid = 4; $MaxNext = 3; $MaxBlockers = 3; $MaxApprovals = 4
+    # Fix 5 - Saeed asked for shorter messages, so WHAT WE DID and WHAT'S NEXT
+    # are capped. The overflow is COUNTED and shown ("+3 more - ask me"), never
+    # silently dropped, and the full text is always in docs\reports\.
+    #
+    # BLOCKERS AND APPROVALS ARE NOT CAPPED, AND MUST NOT BE. Security Agent H1,
+    # 2026-09-11, on the first version of this change - which did cap them at 3
+    # and 4, and was wrong to.
+    #
+    # Those two sections are ALARMS. Capping them selects by log order, not by
+    # severity, so "unauthenticated intake endpoint" - one of the three security
+    # items CLAUDE.md names as a go-live blocker - can fall past position 3 and
+    # become the integer in "(+3 more)". The whole SESSION END PROTOCOL is built
+    # on an alarm that keeps shouting until it is fixed; a blocker reduced to a
+    # number does not shout, and it inverts the burden onto Saeed to ask. That is
+    # the shape of the 11-19 Aug 2026 outage, rebuilt inside a tidy-up.
+    #
+    # The numbers below are runaway guards against a corrupted log with hundreds
+    # of lines, not editorial limits. Lowering them is Saeed's decision to make
+    # explicitly, not one to take inside a change about message length.
+    $MaxDid = 4; $MaxNext = 3; $MaxBlockers = 25; $MaxApprovals = 25
 
     $WhatWeDidNear   = Select-NearUnique -Lines $WhatWeDid
     $WhatWeDidAll    = @($WhatWeDidNear)
@@ -689,7 +715,10 @@ function Get-ProjectBrief {
     # Fix 3 - lines the automation already rewrote. Deduplicated and capped like
     # the rest, but NEVER passed to Get-BusinessRewrite again.
     $AutoNear        = Select-NearUnique -Lines $WhatWeDidAuto
-    $AutoAll         = @($AutoNear)
+    # Drop anything the human list already carries: the two lists are
+    # deduplicated separately, so a line present in both was rendered twice AND
+    # counted twice in "(+N more)". Code review S6, 2026-09-11.
+    $AutoAll         = @(@($AutoNear) | Where-Object { @($WhatWeDidAll) -notcontains $_ })
     $BlockersNear    = Select-NearUnique -Lines $Blockers
     $BlockersAll     = @($BlockersNear)
     $BlockersCapped  = @($BlockersAll | Select-Object -First $MaxBlockers)
@@ -717,7 +746,12 @@ function Get-ProjectBrief {
     # element same as Write-Output, so a 1-item array collapses to a scalar
     # string and the .Count check two lines down throws under strict mode —
     # found while testing the Ollama-down fallback with a 1-line brief section.
-    $WhatWeDidFinal = if ($WhatWeDidAI) { ,$WhatWeDidAI } else { Write-Log "AI rewrite unavailable ($ProjectLabel WHAT WE DID) - word-glossary fallback"; Add-PlainEnglishNotes -Lines $WhatWeDidCapped }
+    # The "AI rewrite unavailable" line is a real diagnostic for Ollama being
+    # down, so it must not fire on a healthy run. After Fix 3 a project whose
+    # WHAT WE DID came entirely from the automation hands this an EMPTY array,
+    # which is falsey, which used to log the warning every single evening.
+    # Security Agent L4, 2026-09-11.
+    $WhatWeDidFinal = if ($WhatWeDidAI) { ,$WhatWeDidAI } elseif (@($WhatWeDidCapped).Count -eq 0) { ,@() } else { Write-Log "AI rewrite unavailable ($ProjectLabel WHAT WE DID) - word-glossary fallback"; Add-PlainEnglishNotes -Lines $WhatWeDidCapped }
     $BlockersFinal  = if ($BlockersAI)  { ,$BlockersAI }  else { Write-Log "AI rewrite unavailable ($ProjectLabel WHAT'S STUCK) - word-glossary fallback"; Add-PlainEnglishNotes -Lines $BlockersCapped }
     $ApprovalsFinal = if ($ApprovalsAI) { ,$ApprovalsAI } else { Write-Log "AI rewrite unavailable ($ProjectLabel THINGS I NEED YOU TO OK) - word-glossary fallback"; Add-PlainEnglishNotes -Lines $ApprovalsCapped }
     $NextTasksFinal = if ($NextTasksAI) { ,$NextTasksAI } else { Write-Log "AI rewrite unavailable ($ProjectLabel WHAT'S NEXT) - word-glossary fallback"; Add-PlainEnglishNotes -Lines $NextTasksCapped }
@@ -743,7 +777,11 @@ function Get-ProjectBrief {
     # no work or activity was recorded today." One plain line says it better.
     # The staleness / paused / close-failure banners above do the explaining.
     if ($SawPlaceholder -and -not $AnyRealContent -and @($WhatWeDidFinal).Count -eq 0) {
-        $WhatWeDidFinal = @("No work recorded today.")
+        # Name the right day. In Morning mode this sits under "WHAT WE DID
+        # YESTERDAY", where "today" is simply wrong - and CLAUDE.md's "every
+        # alarm names its day" rule exists to stop exactly this. Code review S5.
+        $NoWorkDay = if ($Mode -eq 'Morning') { "yesterday" } else { "today" }
+        $WhatWeDidFinal = @("No work recorded $NoWorkDay.")
     }
 
     if ($DoneDropped -gt 0) {
@@ -1818,9 +1856,24 @@ if (-not $DryRun) {
         if (-not (Test-Path $WhatsAppLogDir)) {
             New-Item -ItemType Directory -Path $WhatsAppLogDir -Force | Out-Null
         }
-        $Stamp           = Get-Date -Format "yyyy-MM-dd-HHmm"
+        # Seconds, not just minutes, plus a collision suffix. A hand re-run
+        # inside the same clock minute - which is exactly what someone does
+        # when investigating a failed send - used to overwrite the copy of the
+        # failed send it was there to preserve. Security Agent M3, 2026-09-11.
+        $Stamp           = Get-Date -Format "yyyy-MM-dd-HHmmss"
         $WhatsAppLogPath = Join-Path $WhatsAppLogDir "$Stamp-$Mode-whatsapp.txt"
-        $SentText        = if (Test-Path $ReportPath) { Get-Utf8FileText -Path $ReportPath } else { $CombinedReport }
+        $Dup = 2
+        while (Test-Path $WhatsAppLogPath) {
+            $WhatsAppLogPath = Join-Path $WhatsAppLogDir "$Stamp-$Mode-$Dup-whatsapp.txt"
+            $Dup++
+        }
+        # $ReportPath is the message WITH the banners prepended; $CombinedReport
+        # is the pre-banner text. Falling back silently would let the archive
+        # claim a message went out without banners it actually carried.
+        # Security Agent L3, 2026-09-11.
+        $Unbannered = -not (Test-Path $ReportPath)
+        $SentText   = if ($Unbannered) { $CombinedReport } else { Get-Utf8FileText -Path $ReportPath }
+        if ($Unbannered) { Write-Log "WARNING: report file missing - WhatsApp copy is the PRE-BANNER text, not what was sent" }
         $Header = @"
 # WhatsApp message sent by combined_brief.ps1
 # Mode: $Mode   Written: $(Get-Date -Format "yyyy-MM-dd HH:mm:ss")
@@ -1846,9 +1899,20 @@ if ($DryRun) {
     $SendOutcome  = "NOT SENT - sender script not found"
     if (Test-Path $PythonScript) {
         try {
+            # `python` is a NATIVE command: a non-zero exit does NOT throw, so
+            # catch never fires and a crashed sender was being recorded as
+            # "SENT - Traceback (most recent call last)...". The one artefact
+            # built to answer "did it actually arrive?" would have asserted yes
+            # on exactly the days it did not. Code review S2, 2026-09-11.
             $result = python $PythonScript $ReportPath 2>&1
-            $SendOutcome = "SENT - $result"
-            Write-Log "WhatsApp send result: $result"
+            $SendExit = $LASTEXITCODE
+            if ($SendExit -eq 0) {
+                $SendOutcome = "SENT - $result"
+                Write-Log "WhatsApp send result: $result"
+            } else {
+                $SendOutcome = "SEND FAILED (exit $SendExit) - $result"
+                Write-Log "WARNING: WhatsApp send exited $SendExit - $result"
+            }
         } catch {
             $SendOutcome = "SEND FAILED - $_"
             Write-Log "WARNING: WhatsApp send failed - $_"
@@ -1882,8 +1946,19 @@ if ($DryRun) {
     Write-Log "DryRun: skipped WhatsApp copy purge"
 } elseif (Test-Path $WhatsAppLogDir) {
     try {
+        # Sorted by NAME, because the name carries a lexically sortable
+        # yyyy-MM-dd-HHmmss stamp this script wrote itself. LastWriteTime is the
+        # weaker key: a restore, a copy between machines, or a touch while being
+        # read bumps it, which would pin a stale copy at the head of the sort and
+        # push a genuinely recent archive into the delete list - at exactly the
+        # moment someone is investigating a bad message. LastWriteTime is kept as
+        # the tie-break only. Security Agent M2, 2026-09-11.
+        #
+        # -Attributes !ReparsePoint: never follow or delete a symlink/junction
+        # that happens to match the pattern. Security Agent L1, 2026-09-11.
         $Copies = @(Get-ChildItem -Path $WhatsAppLogDir -Filter $WhatsAppLogPattern -File |
-                    Sort-Object LastWriteTime -Descending)
+                    Where-Object { -not ($_.Attributes -band [System.IO.FileAttributes]::ReparsePoint) } |
+                    Sort-Object -Property @{Expression='Name';Descending=$true}, @{Expression='LastWriteTime';Descending=$true})
         if (@($Copies).Count -gt $KeepWhatsAppLogs) {
             $Doomed = @($Copies | Select-Object -Skip $KeepWhatsAppLogs)
             foreach ($old in $Doomed) {
