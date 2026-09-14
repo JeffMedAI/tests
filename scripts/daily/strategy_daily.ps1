@@ -168,6 +168,23 @@ function Select-NearUnique {
     return ,$keep
 }
 
+# ── Mask anything that must never reach a message or a stored record ────────
+# Security Agent condition, 2026-09-14 - see combined_brief.ps1. MASK, never
+# drop. Kept identical to combined_brief.ps1's copy - update both.
+function Protect-BriefLines {
+    param([string[]]$Lines)
+    $out = @()
+    foreach ($line in @($Lines)) {
+        $t = [string]$line
+        $t = $t -replace '(?i)\b(secret|token|password|passwd|api[_ -]?key|key)(\s*[:=]\s*)\S+', '$1$2[hidden]'
+        $t = $t -replace '\b[A-Fa-f0-9]{32,}\b', '[hidden]'
+        $t = $t -replace '\b\d{3}[ -]?\d{3}[ -]?\d{4}\b', '[number hidden]'
+        $t = $t -replace '(?i)\b[A-Z]:\\[^\s,;)]*', '[file path]'
+        $out += $t
+    }
+    return ,$out
+}
+
 # ── AI rewrite, with a deterministic fallback ─────────────────────────────────
 # Calls the project's local Ollama model to rewrite each line into plain,
 # professional, non-technical business English — real sentence rewriting, not word-swapping.
@@ -500,6 +517,14 @@ $WhatWeDidFinal = if ($WhatWeDidAI) { ,$WhatWeDidAI } else { Write-Log "AI rewri
 $BlockersFinal  = @($BlockersAI)
 $ApprovalsFinal = @($ApprovalsAI)
 $NextTasksFinal = if ($NextTasksAI) { ,$NextTasksAI } else { Write-Log "AI rewrite unavailable for WHAT'S NEXT - using word-glossary fallback"; Add-PlainEnglishNotes -Lines $NextTasksCapped }
+
+# Mask secrets / NHS-number patterns / file paths before anything is sent or
+# stored. Capture first, then re-wrap (the ,$x return trap).
+$p1 = Protect-BriefLines -Lines $WhatWeDidFinal;  $WhatWeDidFinal  = @($p1)
+$p2 = Protect-BriefLines -Lines $BlockersFinal;   $BlockersFinal   = @($p2)
+$p3 = Protect-BriefLines -Lines $ApprovalsFinal;  $ApprovalsFinal  = @($p3)
+$p4 = Protect-BriefLines -Lines $NextTasksFinal;  $NextTasksFinal  = @($p4)
+$p5 = Protect-BriefLines -Lines $NextTasksCapped; $NextTasksCapped = @($p5)
 
 $DidSection      = if ($WhatWeDidFinal.Count -gt 0) { ($WhatWeDidFinal | ForEach-Object { "- $_" }) -join "`n" } else { "- Nothing logged in the last day. Ask me and I'll check for you." }
 $BlockerSection  = if ($BlockersFinal.Count -gt 0)  { ($BlockersFinal  | ForEach-Object { "- $_" }) -join "`n" } else { "- Nothing stuck right now." }

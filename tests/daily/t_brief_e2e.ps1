@@ -18,7 +18,7 @@ function Assert-NotMatch { param($Text,$Pattern,$Name)
   if ($Text -notmatch $Pattern) { $script:Pass++; Write-Host "  ok   $Name" }
   else { $script:Fail++; Write-Host "  FAIL $Name - should NOT contain: $Pattern" } }
 
-$Needed = @("Get-Utf8FileText","Add-PlainEnglishNotes","Select-NearUnique","Get-BusinessRewrite",
+$Needed = @("Get-Utf8FileText","Add-PlainEnglishNotes","Select-NearUnique","Protect-BriefLines","Get-BusinessRewrite",
             "Test-IsPlaceholderLog","Test-IsNoneLine","Remove-NoneLines",
             "Test-IsDoneLine","Get-LastExpectedCloseTime","Get-ProjectBrief")
 foreach ($fn in $Needed) {
@@ -130,6 +130,28 @@ Assert-Match    $Daily '## NEXT \+ BLOCKERS\s+\$NextSectionRecord'           "HA
 Assert-NotMatch $Daily '## WHAT TO DO NEXT SESSION\s+\$NextSection\s'        "session logs store the record, not the rewrite"
 Assert-NotMatch $Daily '\$(Blockers|Approvals)AI\s*=\s*Get-BusinessRewrite' "strategy_daily never rewrites blockers/approvals"
 Assert-NotMatch $Src   '\$(Blockers|Approvals)AI\s*=\s*Get-BusinessRewrite' "combined_brief never rewrites blockers/approvals"
+
+Write-Host "`nSECURITY CONDITION 2026-09-14 - sensitive values are masked, lines are kept"
+$Masked = Protect-BriefLines -Lines @(
+  "Rotate HMAC secret=abc123XYZ before go-live.",
+  "Leaked hash 0123456789abcdef0123456789abcdef found.",
+  "Test patient 943 476 5919 still in queue.",
+  "See C:\JeffLocal\config\secrets.json for detail.",
+  "Create staff accounts with names, roles and emails.")
+Assert-NotMatch ($Masked -join "`n") "abc123XYZ"              "secret value hidden"
+Assert-NotMatch ($Masked -join "`n") "0123456789abcdef"       "long hex hidden"
+Assert-NotMatch ($Masked -join "`n") "943 476 5919"           "NHS-number pattern hidden"
+Assert-NotMatch ($Masked -join "`n") "secrets\.json"          "file path hidden"
+Assert-Match    ($Masked -join "`n") "Rotate HMAC secret=\[hidden\] before go-live" "alarm line survives, only the value masked"
+Assert-Match    ($Masked -join "`n") "(?m)^Create staff accounts with names, roles and emails\.$" "ordinary line untouched"
+Assert-Match    @($Masked).Count "^5$"                       "no line dropped"
+
+Write-Host "`nSECURITY L5 - the REAL prompt still carries the tense rule (the stub cannot hide a regression)"
+Assert-Match $Src 'Every line is work that has NOT happened yet'  "Planned wording present in live prompt"
+Assert-Match $Src 'Get-BusinessRewrite -Lines \$NextTasksCapped -Kind Planned' "WHAT'S NEXT called with -Kind Planned"
+Assert-Match $Src 'Get-BusinessRewrite -Lines \$WhatWeDidCapped -Kind Done'    "WHAT WE DID called with -Kind Done"
+Assert-Match $Src 'Protect-BriefLines -Lines \$ApprovalsFinal'   "approvals are masked before sending"
+Assert-Match $Daily 'Protect-BriefLines -Lines \$NextTasksCapped' "stored WHAT'S NEXT record is masked"
 
 Remove-Item -Recurse -Force $Root
 Write-Host "`n================================"

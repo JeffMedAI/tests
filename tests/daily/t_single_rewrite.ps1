@@ -21,7 +21,7 @@ $Pass = 0; $Fail = 0
 function Assert-True { param($Cond,$Name)
   if ($Cond) { $script:Pass++; Write-Host "  ok   $Name" } else { $script:Fail++; Write-Host "  FAIL $Name" } }
 
-$Needed = @("Get-Utf8FileText","Add-PlainEnglishNotes","Select-NearUnique","Get-BusinessRewrite",
+$Needed = @("Get-Utf8FileText","Add-PlainEnglishNotes","Select-NearUnique","Protect-BriefLines","Get-BusinessRewrite",
             "Test-IsPlaceholderLog","Test-IsNoneLine","Remove-NoneLines",
             "Test-IsDoneLine","Get-LastExpectedCloseTime","Get-ProjectBrief")
 foreach ($fn in $Needed) {
@@ -35,7 +35,7 @@ function Write-Log { param([string]$Message) }
 # that went through it is visible in the rendered text.
 $global:SpySaw = New-Object System.Collections.ArrayList
 function Get-BusinessRewrite {
-    param([string[]]$Lines, [string]$OllamaUrl, [string]$Model, [int]$TimeoutSec)
+    param([string[]]$Lines, [string]$OllamaUrl, [string]$Model, [int]$TimeoutSec, [string]$Kind)
     foreach ($l in @($Lines)) { [void]$global:SpySaw.Add([string]$l) }
     if (-not $Lines -or @($Lines).Count -eq 0) { return ,@($Lines) }
     return ,@(@($Lines) | ForEach-Object { "REWRITTEN::$_" })

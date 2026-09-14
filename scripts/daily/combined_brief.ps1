@@ -166,6 +166,26 @@ function Select-NearUnique {
     return ,$keep
 }
 
+# ── Mask anything that must never reach a WhatsApp message ──────────────────
+# Security Agent condition, 2026-09-14. Blockers and approvals now go out word
+# for word, so an agent pasting a secret, an NHS number or a file path into a
+# log line would reach Saeed's phone unchanged. MASK, never drop: the line is
+# an alarm and must still arrive (H1 rule) - only the sensitive part is hidden.
+# Kept identical to strategy_daily.ps1's copy - update both.
+function Protect-BriefLines {
+    param([string[]]$Lines)
+    $out = @()
+    foreach ($line in @($Lines)) {
+        $t = [string]$line
+        $t = $t -replace '(?i)\b(secret|token|password|passwd|api[_ -]?key|key)(\s*[:=]\s*)\S+', '$1$2[hidden]'
+        $t = $t -replace '\b[A-Fa-f0-9]{32,}\b', '[hidden]'
+        $t = $t -replace '\b\d{3}[ -]?\d{3}[ -]?\d{4}\b', '[number hidden]'
+        $t = $t -replace '(?i)\b[A-Z]:\\[^\s,;)]*', '[file path]'
+        $out += $t
+    }
+    return ,$out
+}
+
 # ── AI rewrite, with a deterministic fallback ─────────────────────────────────
 # Calls the project's local Ollama model to rewrite each line into plain,
 # professional, non-technical business English — real sentence rewriting, not word-swapping.
@@ -724,6 +744,13 @@ function Get-ProjectBrief {
     $NextTasksFinal = if ($NextTasksAI) { ,$NextTasksAI } else { Write-Log "AI rewrite unavailable ($ProjectLabel WHAT'S NEXT) - word-glossary fallback"; Add-PlainEnglishNotes -Lines $NextTasksCapped }
 
     $WhatWeDidFinal = @($WhatWeDidFinal)
+
+    # Mask secrets / NHS-number patterns / file paths in every section that is
+    # sent. Capture first, then re-wrap - the ,$x return trap described above.
+    $p1 = Protect-BriefLines -Lines $WhatWeDidFinal; $WhatWeDidFinal = @($p1)
+    $p2 = Protect-BriefLines -Lines $BlockersFinal;  $BlockersFinal  = @($p2)
+    $p3 = Protect-BriefLines -Lines $ApprovalsFinal; $ApprovalsFinal = @($p3)
+    $p4 = Protect-BriefLines -Lines $NextTasksFinal; $NextTasksFinal = @($p4)
 
     # A day where the only log was an autogen placeholder has no work to report.
     # Its boilerplate explains the staleness alarm, which is not Saeed's day -
