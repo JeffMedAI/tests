@@ -168,6 +168,23 @@ function Select-NearUnique {
     return ,$keep
 }
 
+# ── Mask anything that must never reach a message or a stored record ────────
+# Security Agent condition, 2026-09-14 - see combined_brief.ps1. MASK, never
+# drop. Kept identical to combined_brief.ps1's copy - update both.
+function Protect-BriefLines {
+    param([string[]]$Lines)
+    $out = @()
+    foreach ($line in @($Lines)) {
+        $t = [string]$line
+        $t = $t -replace '(?i)\b(secret|token|password|passwd|api[_ -]?key)(\s*[:=]\s*)\S+', '$1$2[hidden]'
+        $t = $t -replace '\b[A-Fa-f0-9]{32,}\b', '[hidden]'
+        $t = $t -replace '\b\d{3}[ -]?\d{3}[ -]?\d{4}\b', '[number hidden]'
+        $t = $t -replace '(?i)\b[A-Z]:\\[^\s,;)]*', '[file path]'
+        $out += $t
+    }
+    return ,$out
+}
+
 # ── AI rewrite, with a deterministic fallback ─────────────────────────────────
 # Calls the project's local Ollama model to rewrite each line into plain,
 # professional, non-technical business English — real sentence rewriting, not word-swapping.
@@ -181,7 +198,10 @@ function Get-BusinessRewrite {
         [string[]]$Lines,
         [string]$OllamaUrl = "http://localhost:11434/api/generate",
         [string]$Model = "gemma4:e2b",
-        [int]$TimeoutSec = 90
+        [int]$TimeoutSec = 90,
+        # 'Done' (WHAT WE DID) or 'Planned' (WHAT'S NEXT). A single tense rule
+        # for every section made the model write to-do items as finished work.
+        [ValidateSet('Done', 'Planned')][string]$Kind = 'Done'
     )
 
     if (-not $Lines -or $Lines.Count -eq 0) { return ,$Lines }
@@ -208,6 +228,9 @@ STRICT OUTPUT FORMAT:
 - No headings, no options, no alternatives, no markdown, no asterisks, no extra
   commentary before or after.
 - Each output line must be ONE sentence only, same order as the input.
+- HARD LIMIT: 16 words per line. Shorter is better. Cut every word that is not
+  carrying meaning. No preamble like "We must", "This refers to", "Please note".
+- KEEP EACH LINE'S ORIGINAL TENSE AND STATUS. $(if ($Kind -eq 'Planned') { 'Every line is work that has NOT happened yet. Write it as planned or to-do ("We will...", "Next: ..."). Never write it as already done.' } else { 'Every line is work already done. Use the past tense. Do not turn it into a rule about what should happen.' })
 - Do not add any fact that is not already in the input line. Do not drop any line.
 - No code, no file paths, no jargon words — explain the idea in everyday words instead.
 
@@ -470,10 +493,12 @@ $NextTasksCapped = @($NextTasksNear | Select-Object -First 5)
 # Try the AI rewrite first (real sentence simplifying); anything it can't
 # handle (Ollama down, timeout, bad output) falls back to the word-glossary
 # version so the brief always sends something readable.
-$WhatWeDidAI = Get-BusinessRewrite -Lines $WhatWeDidCapped
-$BlockersAI  = Get-BusinessRewrite -Lines $BlockersCapped
-$ApprovalsAI = Get-BusinessRewrite -Lines $ApprovalsCapped
-$NextTasksAI = Get-BusinessRewrite -Lines $NextTasksCapped
+# Blockers and approvals skip the rewrite and go out word for word - see the
+# matching note in combined_brief.ps1 (Saeed's decision 2026-09-14).
+$WhatWeDidAI = Get-BusinessRewrite -Lines $WhatWeDidCapped -Kind Done
+$BlockersAI  = @($BlockersCapped)
+$ApprovalsAI = @($ApprovalsCapped)
+$NextTasksAI = Get-BusinessRewrite -Lines $NextTasksCapped -Kind Planned
 
 # Get-BusinessRewrite returns $null (a real null, not an empty array) only when
 # the Ollama call itself failed/timed out — Saeed needs to see that on the
@@ -489,14 +514,29 @@ Write-Log "Ollama AI rewrite fallback used: $OllamaFallbackUsed"
 # .Count check further down throws under strict mode — found while testing
 # the Ollama-down fallback with a 1-line brief section.
 $WhatWeDidFinal = if ($WhatWeDidAI) { ,$WhatWeDidAI } else { Write-Log "AI rewrite unavailable for WHAT WE DID - using word-glossary fallback"; Add-PlainEnglishNotes -Lines $WhatWeDidCapped }
-$BlockersFinal  = if ($BlockersAI)  { ,$BlockersAI }  else { Write-Log "AI rewrite unavailable for WHAT'S STUCK - using word-glossary fallback"; Add-PlainEnglishNotes -Lines $BlockersCapped }
-$ApprovalsFinal = if ($ApprovalsAI) { ,$ApprovalsAI } else { Write-Log "AI rewrite unavailable for THINGS I NEED YOU TO OK - using word-glossary fallback"; Add-PlainEnglishNotes -Lines $ApprovalsCapped }
+$BlockersFinal  = @($BlockersAI)
+$ApprovalsFinal = @($ApprovalsAI)
 $NextTasksFinal = if ($NextTasksAI) { ,$NextTasksAI } else { Write-Log "AI rewrite unavailable for WHAT'S NEXT - using word-glossary fallback"; Add-PlainEnglishNotes -Lines $NextTasksCapped }
+
+# Mask secrets / NHS-number patterns / file paths before anything is sent or
+# stored. Capture first, then re-wrap (the ,$x return trap).
+$p1 = Protect-BriefLines -Lines $WhatWeDidFinal;  $WhatWeDidFinal  = @($p1)
+$p2 = Protect-BriefLines -Lines $BlockersFinal;   $BlockersFinal   = @($p2)
+$p3 = Protect-BriefLines -Lines $ApprovalsFinal;  $ApprovalsFinal  = @($p3)
+$p4 = Protect-BriefLines -Lines $NextTasksFinal;  $NextTasksFinal  = @($p4)
+$p5 = Protect-BriefLines -Lines $NextTasksCapped; $NextTasksCapped = @($p5)
 
 $DidSection      = if ($WhatWeDidFinal.Count -gt 0) { ($WhatWeDidFinal | ForEach-Object { "- $_" }) -join "`n" } else { "- Nothing logged in the last day. Ask me and I'll check for you." }
 $BlockerSection  = if ($BlockersFinal.Count -gt 0)  { ($BlockersFinal  | ForEach-Object { "- $_" }) -join "`n" } else { "- Nothing stuck right now." }
 $ApprovalSection = if ($ApprovalsFinal.Count -gt 0) { ($ApprovalsFinal | ForEach-Object { "- [ ] $_" }) -join "`n" } else { "- Nothing needs your OK right now." }
 $NextSection     = if ($NextTasksFinal.Count -gt 0) { ($NextTasksFinal | ForEach-Object { "- $_" }) -join "`n" } else { "- Nothing lined up yet. Ask me and I'll check for you." }
+# The RECORD copy of WHAT'S NEXT - original words, never the AI rewrite. The
+# session log and HANDOFF.md below are read back in as tomorrow's input, so
+# storing the rewrite fed the model its own output every day and the wording
+# drifted ("needs them moved" -> "needed them relocated", to-dos -> "was
+# obtained"). Stored files hold facts; only the sent message is reworded.
+# Same rule as Format-CommitSubject. Saeed's decision, 2026-09-14.
+$NextSectionRecord = if (@($NextTasksCapped).Count -gt 0) { (@($NextTasksCapped) | ForEach-Object { "- $_" }) -join "`n" } else { "- Nothing lined up yet." }
 
 # The raw git commit list and the internal "memory drift" check are for the
 # engineering side, not for Saeed's daily read — logged for troubleshooting,
@@ -566,6 +606,38 @@ Write-Log "Report saved: $ReportPath"
 #                       staleness banner in combined_brief.ps1 still fires if
 #                       the days keep going by empty. An automated log must
 #                       never silence that alarm unless real work backs it up.
+# ---------------------------------------------------------------------------
+# Turn a git commit subject into a readable sentence, WITHOUT a language model.
+#
+# Saeed chose this (Option A, 2026-09-11) after the reviews established that the
+# distortion he complained about happened HERE, at the moment the session log is
+# written - not later when the brief is sent. The log used to store the model's
+# paraphrase of each commit, so "fix(close): refuse when the incoming-file list
+# cannot be parsed reliably" was stored as "If we cannot reliably understand the
+# incoming file list, the process must be refused" - a rule, not a record - and
+# no later stage could recover the original.
+#
+# The session log is a RECORD. It now stores what actually happened. The single
+# plain-English rewrite happens once, in combined_brief.ps1, at the moment the
+# message is sent - where a bad result affects one message and not the archive.
+#
+# This function is deterministic on purpose: strip the conventional-commit
+# prefix, capitalise, terminate. No model, so nothing to drift and nothing to
+# fail. It also makes the Ollama-is-down fallback readable, which was the one
+# real cost of Option A.
+function Format-CommitSubject {
+    param([string]$Subject)
+    $t = ([string]$Subject).Trim()
+    if ($t -eq "") { return "" }
+    # "fix(close): ", "feat: ", "docs(brief)!: " - lowercase type only, so a
+    # subject that merely contains a colon ("Merge branch 'main'") is untouched.
+    $t = $t -replace '^[a-z]+(\([^)]*\))?!?:\s*', ''
+    if ($t -eq "") { return ([string]$Subject).Trim() }
+    $t = $t.Substring(0,1).ToUpper() + $t.Substring(1)
+    if ($t -notmatch '[.!?]$') { $t = "$t." }
+    return $t
+}
+
 $SessionLogPath = $null
 if ($Mode -eq 'Evening') {
     $TodayLogs = Get-ChildItem -Path $SessionsDir -Filter "$Today-*.md" -ErrorAction SilentlyContinue |
@@ -636,14 +708,23 @@ if ($Mode -eq 'Evening') {
 
         if (@($TodayCommits).Count -gt 0 -or @($Uncommitted).Count -gt 0) {
             # Real work happened. Describe it in Saeed's language, not git's.
+            # NO Get-BusinessRewrite here. See Format-CommitSubject above - this
+            # file stores the record, combined_brief.ps1 does the one rewrite at
+            # send time. Saeed's decision, 2026-09-11.
             $DidLines  = @($TodayCommits | Select-Object -First 12)
-            $Rewritten = Get-BusinessRewrite -Lines $DidLines
-            $DidFinal  = if ($Rewritten) { @($Rewritten) } else { @(Add-PlainEnglishNotes -Lines $DidLines) }
+            $DidFinal  = @(@($DidLines) | ForEach-Object { Format-CommitSubject -Subject ([string]$_) } |
+                           Where-Object { $_ -ne "" })
             $DidSection = (@($DidFinal) | ForEach-Object { "- $_" }) -join "`n"
 
             $FileNote = ""
             if (@($FilesTouched).Count -gt 0) {
-                $shown = (@($FilesTouched) | Select-Object -First 6) -join ", "
+                # Leaf names only. These lines are assembled deterministically and
+                # are NOT sent through the rewrite, so "scripts/daily/combined_brief.ps1"
+                # used to reach Saeed's phone verbatim - against this file's own
+                # prompt rule ("no file paths") and CLAUDE.md's plain-English
+                # requirement. Code review S4, 2026-09-11.
+                $shown = (@($FilesTouched) | Select-Object -First 6 |
+                          ForEach-Object { Split-Path -Leaf ([string]$_) }) -join ", "
                 $more  = if (@($FilesTouched).Count -gt 6) { ", ..." } else { "" }
                 $FileNote = "`n- Files changed today: $(@($FilesTouched).Count) ($shown$more)"
             }
@@ -661,6 +742,10 @@ if ($Mode -eq 'Evening') {
 # SESSION SUMMARY - [$Today 18:00]
 # Tool: strategy_daily.ps1 (automated session close at $BriefClock)
 # Built from the day's actual git activity - $(@($TodayCommits).Count) commit(s).
+#   WHAT WE DID below is the plain git record, deliberately NOT run through the
+#   plain-English rewrite - that happens once, in combined_brief.ps1, when the
+#   message is sent. Storing the model's paraphrase instead of the facts is what
+#   put design rules on Saeed's phone on 2026-09-10. Saeed's decision, 2026-09-11.
 
 ---
 
@@ -684,7 +769,7 @@ $ApprovalSection
 
 ## WHAT TO DO NEXT SESSION
 
-$NextSection
+$NextSectionRecord
 
 ---
 
@@ -727,7 +812,7 @@ $ApprovalSection
 
 ## WHAT TO DO NEXT SESSION
 
-$NextSection
+$NextSectionRecord
 
 ---
 
@@ -810,7 +895,7 @@ $CommitList
 
 ## NEXT + BLOCKERS
 
-$NextSection
+$NextSectionRecord
 
 $BlockerSection
 
@@ -1366,6 +1451,7 @@ if ($DryRun) {
                         Write-Log "Pruned old restore tag: $oldTag"
                     }
                 }
+
             } else {
                 # THE TAG EXISTS LOCALLY - BUT IS IT ON GITHUB? This used to stop
                 # here. The close overwrites the day's marker with Set-Content, so a

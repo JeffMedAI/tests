@@ -1045,3 +1045,260 @@ Fixed by cross-checking the `-z` parse against the newline form and **refusing w
 **Files changed:** scripts/daily/strategy_daily.ps1, CHANGELOG.md
 **Tests run:** push/pull **30/30** (was 26), including the modelled NUL collapse with the protected path deliberately not first, verified load-bearing by negative control. Retirement 13/13, staleness 21/21, health 6/6. All five scripts parse clean.
 **Limitation:** still not run on Windows PowerShell 5.1. The Security Agent's position, which I share: this is now the largest untested surface in the series, and if it is still true after this merge it should become a scheduled task of its own.
+
+---
+
+## 2026-09-10 — The 07:00 Brief Gains the Close-Failure Alarm; Backups Prune Themselves
+**Agent:** Lead Agent (Claude Code session)
+**Approved by:** Saeed, both explicitly this session — *"Yes — add it"* to the morning close-failure alarm, and *"Tidy up once safely saved"* to backup pruning.
+**NOT MERGED YET, on purpose.** Tonight's 18:30 close is the first live run of the auto-backup/auto-pull change on Saeed's machine, and nothing in this series has executed on Windows PowerShell 5.1. Stacking further changes on top of something unverified is how the 7–9 Sep outage happened. These merge after tonight is confirmed good.
+
+**1. The 07:00 brief now carries the "evening close did not run" alarm.**
+Found by the Security Agent during the PR #6 review (F1). The entire close-marker read sat inside `if ($Mode -eq 'Evening')`, so `$CloseDayFailed` was **always false** in a morning run and section 6b-2 never fired. A close that ran and failed on Monday evening was shouted about once at 19:00 and then never mentioned again — Tuesday's 07:00 brief said nothing about it. If Saeed missed the one evening message, he might never hear of it at all.
+
+Two things were tangled in a single gate and are now separated:
+- `$SkipCloseHere` — the **write** side, whether this script runs the close itself. Still evening-only, unchanged.
+- The marker read — **read-only**. It looks at `logs\close-state` and sets the reporting variables. Nothing about it needs to be evening-only, and the day-naming logic already answers "the last close that fell due", which is correct at 07:00 exactly as at 19:00.
+
+The `if` wrapper was removed and its body dedented rather than left as `if ($true)`, which would have misled the next reader.
+
+**2. Backup-branch pruning — BUILT, THEN PULLED FROM THIS CHANGE.** See the round-2 entry below.
+
+**Files changed:** scripts/daily/combined_brief.ps1, scripts/daily/strategy_daily.ps1, CHANGELOG.md
+**Tests run:** PowerShell 7.4.6. Morning alarm **7/7** — failed close in Morning mode fires and names the day; Evening still fires unchanged; a healthy close stays silent; a **missing** marker is loud; `BEHIND-REMOTE` is read from the marker in the morning; and behind-but-safe is not escalated to a close failure. Pruning **6/6** against a real remote — the branch whose work never reached `main` **survives** with the log saying why, this run's own backup survives, at least 10 are kept, and a failed push stops pruning entirely. All earlier suites still pass: push/pull 30/30, retirement 13/13, staleness 21/21, health 6/6. **83 tests in total.** All five scripts parse clean.
+**Harness note:** one morning-alarm assertion initially failed because my test read a variable outside the function scope that set it, not because of a code fault; and the prune test's "before" count was wrong because `Measure-Object` returns a single object. Both were test bugs, diagnosed and fixed rather than reported as results.
+**Limitation:** not run on Windows PowerShell 5.1.
+**Still requires:** Security Agent review, tonight's live verification, then Saeed's explicit approval.
+
+---
+
+## 2026-09-10 — PR #7 Round 2: Pruning Pulled Out After It Was Shown to Destroy Work
+**Agent:** Lead Agent (Claude Code session), reviewed by Security Agent (round 10 of this series)
+**Approved by:** Saeed approved both features. The decision to **split them** is mine, on the Security Agent's recommendation. **Not merged — waiting on tonight's live verification and Saeed's approval.**
+**Description:** The review was **DO NOT MERGE AS-IS**. One finding could destroy the only remote copy of a day's work, and the reviewer reproduced it end to end.
+
+**S1 (high) — the prune enumerated from the remote but proved from local refs, and could delete the only remote copy of work.**
+`git ls-remote` asks GitHub what exists. `git merge-base --is-ancestor origin/<bb> origin/<branch>` asks the **local** remote-tracking refs. Two different authorities, with nothing between them refreshing the second. Reproduced: `origin/main` is rewound on GitHub (force-push, branch rewrite after a squash-merge, a bad revert from another session); the PC's stale local ref still contains the old commit; the prune consults the stale ref, gets a yes, and deletes the branch. The reviewer's fixture ended with the commit reachable from **zero** remote refs, while the log asserted *"Pruned backup branch … its work is on main."* A false statement printed at the moment the work is destroyed.
+
+**PRUNING HAS BEEN REMOVED FROM THIS CHANGE ENTIRELY**, on the Security Agent's recommendation and my agreement. It is pure housekeeping — it saves clutter in a branch list — and it was stacked on an auto-backup change that has never executed on the target machine. The morning alarm fixes a real reporting hole and should not wait behind it. The prune returns as its own change, with the sha-against-sha fix (`ls-remote` already returns the sha in field 1; it was being discarded), and with the reviewer's adversarial tests folded in permanently.
+
+**S2 (medium-high) — the 07:00 brief would have shouted "the save to GitHub failed" about work that the same 07:00 run had just saved.**
+The marker read runs near the top (section 5 needs `$CloseDayFailed` early); the morning's own git safety net runs much later. So the proof *"has this work reached GitHub?"* was asked **before** the push that puts it there, and its answer rendered after. The retirement mechanism exists precisely so that banner stops the moment work arrives — asking too early defeats it on the one run that fixes the problem, and lands a false loud banner on the morning after a failure, exactly when Saeed most needs it to be true. New section 6b-0 re-proves retirement after sections 6/6b, Morning only. The proof is factored into `Test-WorkOnOrigin` so both call sites use identical logic.
+
+**S3 (medium) — the close-failure banner claimed "nothing saved to GitHub", which is false by 07:00.** Three of its four claims hold in the morning; that one does not, because the morning safety net has already pushed by the time the banner is prepended. Now conditional on mode.
+
+**S4 (medium) — duplicate lines in the morning brief.** With the marker read no longer evening-gated, `$HeldSignals` and `$BehindSignals` fill from **two** sources — yesterday's marker and this morning's own close output — and `session_close.ps1` writes the same signals into the marker. An unfinished `dashboard\` folder produced a byte-identical warning twice in one message. Both lists are de-duplicated before rendering.
+
+**S5, S6** — both concerned only the prune and left with it.
+
+**The dedent was verified clean, not eyeballed:** 216 lines out, 216 in, byte-identical after stripping exactly four leading spaces; no here-strings anywhere in the moved block, so the terminator-column hazard did not arise; no orphan brace. The reviewer also walked every statement in the moved block and confirmed it is genuinely read-only — no file write, no directory creation, no deletion, no side-effecting git call.
+
+**Where my harness was blind, in the reviewer's words and worth recording:** `t_prune.ps1` ran `git fetch origin` immediately before the block, which is *exactly and only* the condition under which S1 cannot occur — the suite was structurally blind to its own worst failure. `t_morning.ps1` tested the marker block in isolation with the dates hardcoded, so it could not see S2, S3 or S4 at all. Every assertion in both was true; the gap was what they declined to ask.
+
+**Files changed:** scripts/daily/combined_brief.ps1, scripts/daily/strategy_daily.ps1 (prune removed), CHANGELOG.md
+**Tests run:** morning alarm 7/7 · **new S2 re-check suite 6/6** (work arrived during the run → retired; did not arrive → kept; only on a backup branch → kept; tag failure never retired; legacy no-sha signal kept; Evening mode untouched) · push/pull 30/30 · retirement 13/13 · staleness 21/21 · health 6/6. All five scripts parse clean.
+**Limitation:** not run on Windows PowerShell 5.1.
+**Open questions the reviewer could not answer from the codebase, and nor can I:** does anything other than Saeed's PC push to `origin/close/*`, and has `main` in this repo ever been force-pushed? Both bear on how likely S1 is in practice, and both matter when the prune returns.
+
+---
+
+## 2026-09-10 — PR #7 Round 3: Two Dedups That Could Not Have Worked, and a Claim I Made That Was False
+**Agent:** Lead Agent (Claude Code session), reviewed by Security Agent (round 11)
+**Approved by:** Bug-fix autonomy — no auth, no patient identity, no compliance logic. **Not merged; waiting on tonight's live verification and Saeed's approval.**
+**Description:** S1, S2 and S3 confirmed properly fixed. **S4 was not fixed at all**, in two independent ways, and one thing I asserted in writing was untrue.
+
+- **T1 — the `$BehindSignals` dedup was dead code.** I placed it next to the held-signal dedup instead of next to *its own* consumer, so it ran **96 lines after** the block that renders it. It never executed. Moved above section 6b-5.
+- **T2 — and even correctly placed, its key could never match.** I grouped on the whole signal, which embeds `close/$Today`. Yesterday's marker entry and this morning's entry therefore differ **by construction, every single day** — grouping yielded 2, not 1. Now keyed on the project field. **Fixing T1 without T2 would have changed nothing**, which is the part worth remembering: two independent faults, either one alone masking the other.
+- **T3 — the `$HeldSignals` dedup only worked when the file count was unchanged.** `Select-Object -Unique` compares the whole line and the count is the last field, so `dashboard|3` from yesterday's marker and `dashboard|5` from this morning both survived — and because the marker is harvested first, **the stale 3-file line rendered above the current 5-file one**. Now keyed on project plus path, keeping the latest.
+- **T4 — I claimed "both call sites cannot drift" and there was only one call site.** The marker loop still carried its own inline copy of the proof; `Test-WorkOnOrigin` was called once, from the new section 6b-0. The fail-safe there could not have been inverted by my refactor because the refactor never reached it. Near-identical duplicates are the worst state for drift — the next editor assumes syncing them is safe. The marker loop now routes through the same function, so the claim is true rather than corrected away. The `last-push-ok` stamp read stays at that call site, because it is presentation for that site only.
+
+**On the reviewer's answer to my second question, which I had half wrong.** I argued `$BehindSignals` needed no retirement re-check because it is "already stating something still true". The loudness half was right; the truth half was not. BEHIND-REMOTE becomes false by exactly the same evidence PUSH-FAILED does — pull and push by hand overnight, and the next morning's brief still says you are behind. It cannot be retired as cheaply because the signal carries **no sha** (field 3 is the backup branch name). T1/T2 stop the brief contradicting itself; a fourth field carrying the sha would make it properly retirable, and that is noted for the follow-up change rather than bolted on now.
+
+**One more harness gap, found by running it.** The retirement suite failed 4/13 after the T4 refactor because it defines its own stubs and never sourced the shared helpers — a test fault, not a code fault. Worth recording that **the failure direction was still safe**: the missing function threw and the catch kept the warning. But a suite that cannot execute the code proves nothing, so it now sources them.
+
+**Files changed:** scripts/daily/combined_brief.ps1, CHANGELOG.md
+**Tests run:** **new dedup suite 9/9** — including the assertion neither suite previously made: each dedup's line number is read from the **live file** and asserted to be above its own consumer, so reordering the script fails the test. Plus: entries that differ by construction group to one and the newest is kept; two distinct projects both survive; the current held count is shown, not the stale one; and same project with a different protected path is not collapsed. All other suites: morning 7/7 · S2 re-check 6/6 · push/pull 30/30 · retirement 13/13 · staleness 21/21 · health 6/6. All five scripts parse clean.
+**Limitation:** not run on Windows PowerShell 5.1 — still nothing in this series has.
+
+---
+
+## 2026-09-10 — PR #7 Round 4: My Own Fix Would Have Sent Saeed Nothing At All
+**Agent:** Lead Agent (Claude Code session), reviewed by Security Agent (round 12)
+**Approved by:** Bug-fix autonomy. **Not merged; waiting on tonight's live verification and Saeed's approval.**
+**Description:** Review verdict was **BLOCK**, on a defect **introduced by the previous commit's fix**. The code it replaced could not throw.
+
+**G1 (critical) — the new `$HeldSignals` dedup key crashed the entire brief on a malformed line.**
+The key was `"$($p[1])|$($p[2])"` after splitting on pipes. The harvest filter is `-like "PUSH-HELD|*"`, which guarantees **one** pipe, not three — so `$p[2]` on a truncated line is out of bounds, and under `Set-StrictMode -Version Latest` that is a **terminating** error. It sits at script top level with no enclosing `try`, so the script dies before section 7 sends anything: **Saeed receives no WhatsApp message at all.**
+
+Not a pwsh-7 artefact — `-Version Latest` resolves to 3.0 on Windows PowerShell 5.1, so it would have happened on the real machine. Trigger: an 18:30 close losing power or disk mid-write leaves `...PUSH-HELD|`; the next 07:00 brief then dies. **Silence on the morning after a crashed close** — the exact 11–19 Aug shape. And one malformed line poisoned the whole array, taking the good signals with it.
+
+Two details worth keeping. The renderer eight lines below **already** guards with `Count -ge 4`, so its author treated a short line as possible; my dedup, running in front of that guard, treated it as impossible. And the sibling `$BehindSignals` key I wrote in the same commit takes `[1]` only and could not throw — the held key was the odd one out, in code I wrote minutes apart.
+
+**This is the B1 class for the second time in one series**, and the standing check recorded on 2026-09-09 — *"when you add a value to one of these signals, grep every reader and read the branch each one feeds"* — would not have caught it. Extending that check: **any new index into a split signal must assume the line is truncated.** The filter proves the prefix, never the field count.
+
+**G2 (low) — a malformed newest entry could evict the good one.** `Select-Object -Last 1` picked the newest unconditionally. A truncated line arriving from this run would win its group, then be discarded by the renderer's guard — leaving a banner header with **nothing underneath** and the real warning gone. Both dedups now prefer the last **well-formed** entry, falling back to the last.
+
+**G3 (low)** — an errored check logged *"is NOT on any origin branch"* when the truth was *"I could not ask"*. Same alarm, wrong place to send whoever debugs it. `Test-WorkOnOrigin` now logs its own catch.
+
+**G4 (low) — the test helper file is a copy, and nothing enforced that it still matched.** Editing `Test-WorkOnOrigin` in the live script would leave the retirement suite passing 13/13 against a stale copy — the same "the test cannot see the code" fault, one level up. `run_tests.ps1` now asserts the helper text is a substring of the live script and fails loudly if not. **Verified discriminating**: appending one comment line to the copy makes the suite report `helpers.ps1 is STALE` and exit.
+
+**Harvest order is now asserted, not assumed.** "Last" is only "newest" because the marker read runs before section 6 — a structural property nothing enforced. A future re-order would silently start preferring the **stale** entry with no test failing. Three line-number assertions now read from the live file: marker harvest < section-6 harvest < dedup.
+
+**`$BehindSignals` retirement — logged as technical debt, not built.** The reviewer confirmed this does not block, and gave the reason to record: the residual gap errs toward saying too much (a stale quiet note costs Saeed a sentence and an unnecessary `git pull`), never toward silence, and every blocking finding in this series has been an alarm going quiet. If it is ever built it must use the **same-question** proof — *is HEAD still behind origin/branch?* — not a stamp. This series has twice been burned by proofs that answered a different question (the timestamp gate; the unscoped `branch -r`).
+
+**Files changed:** scripts/daily/combined_brief.ps1, CHANGELOG.md
+**Tests run:** dedup suite **19/19** (was 9) — now including: a truncated held line does not crash and the good line survives it; a trailing-pipe-only line does not crash; a truncated behind line does not crash; empty arrays do not crash either dedup; a well-formed line survives a truncated sibling; same key with the truncated entry last still keeps the well-formed one; and the three harvest-order line assertions. Plus morning 7/7 · S2 6/6 · push/pull 30/30 · retirement 13/13 · staleness 21/21 · health 6/6. All five scripts parse clean.
+**Harness note:** one G2 assertion of mine failed and was **my test being wrong**, not the code — for held signals the key includes the path, so a truncated line lands in its own group and cannot evict the good one; my assertion checked position, which tested `Group-Object`'s output order rather than the guarantee. Replaced with an assertion on survival, plus a new case constructing the situation where eviction genuinely is possible.
+**Limitation:** not run on Windows PowerShell 5.1.
+
+---
+
+## 2026-09-10 — PR #7 Round 5: Security Agent Sign-Off GRANTED
+**Agent:** Lead Agent (Claude Code session), reviewed by Security Agent (round 13)
+**Approved by:** **Security Agent sign-off: PASS at d31f043.** Bug-fix autonomy applies — touches neither auth, patient identity fields, nor compliance logic. **Still requires Saeed's explicit approval, and is deliberately held until tonight's 18:30 close verifies the auto-backup change (PR #6) on the real machine.**
+**Description:** G1 and G2 confirmed fixed. The reviewer answered my question from **mechanism rather than observation**, which is a stronger guarantee than a passing test:
+
+**Can the filter that now protects against the G1 crash itself throw? No, and for four reasons that all hold structurally.** The type cast binds tighter than the split operator, so it parses as intended — worth checking, because had it parsed the other way the filter would have counted 1 for every input and silently discarded **every well-formed line**. `$_` inside the filter is guaranteed already `System.String`, because the upstream `ForEach-Object { [string]$_ }` runs before `Group-Object` — so the cast is a no-op and cannot fail. There is no index at all, only `@(...).Count`. And `-split` with a fixed valid regex against a string has no failure mode.
+
+**One asymmetry, documented in the code rather than changed.** The **behind** dedup reads `$_.Sig`, and under StrictMode a missing property is terminating. It is unreachable today — all four producers construct `[PSCustomObject]@{ Day=; Sig= }` literally — but it is the one guard in the two dedups that is safe **by convention rather than by structure**. A comment now says so, addressed to whoever adds a fifth producer. The held dedup cannot throw at all.
+
+**The reviewer's sharpening of my own lesson, which is the part worth keeping.** I recorded that writing a safe key and an unsafe key minutes apart was the useful signal. Its refinement: that inconsistency does not depend on a rare disk event, and it means the mental model was *"the filter proves the shape"* — which produced a safe result once **by luck of the field count, not by rule**. The extended standing check (*any new index into a split signal must assume the line is truncated; the `-like` filter proves the prefix, never the field count*) is stronger than the 2026-09-09 grep rule because it is a property of the code being written rather than a search someone must remember to run.
+
+**Also taken this round:** the currency guard now covers **every** extracted copy the retirement suite depends on, not just `helpers.ps1` — `retire_block.ps1` was equally stale-able. Verified discriminating by deliberately drifting it: the suite reports `retire_block.ps1 is STALE` and exits 1.
+
+**Independently re-verified by the reviewer, not taken on my word:** every round-12 crash input plus six new ones run against the live file with no throw; the poisoning case fixed (a malformed line no longer takes good signals with it); five eviction/ordering cases; `@($g)[-1]` proved safe because `Group-Object` never emits an empty group; the G4 guard proved discriminating by drifting the copy itself; and the three harvest-order line numbers confirmed against the live file (796 < 1262 < 1375/1508).
+
+**Can any warning now be silenced that should be shown? No.** The only remaining ways a signal disappears are that it stops being emitted (the documented `$BehindSignals` retirement gap, logged as debt) or that it is malformed and the renderer's pre-existing guard drops it — and the fallback now guarantees a malformed-only group still **reaches** that guard rather than vanishing upstream.
+
+**Files changed:** scripts/daily/combined_brief.ps1, CHANGELOG.md
+**Tests run:** dedup 19/19 · retirement 13/13 · morning 7/7 · S2 6/6 · push/pull 30/30 · staleness 21/21 · health 6/6 — **82 assertions**, all re-run independently by the reviewer. All five scripts parse clean.
+**Limitation:** not run on Windows PowerShell 5.1 — still nothing in this series has, and tonight is the first live test of PR #6 on the real machine.
+**Deferred by agreement:** `$BehindSignals` retirement (technical debt, must use the same-question proof); backup-branch pruning (removed at S1, returns as its own change with the sha-against-sha fix).
+
+---
+
+## 2026-09-11 — Nine Confidence Rules Added to CLAUDE.md
+**Agent:** Lead Agent (Claude Code session)
+**Approved by:** **Saeed, explicitly: "APPROVED"**, 2026-09-11. He raised the problem himself — *"i believe you are guessing alot and assuming things which you are not allowed to"* — and asked for a tighter rule set. He is right, and the audit below is what prompted the rules rather than the other way round.
+
+**What I got wrong, checked rather than recalled:**
+- **I gave Saeed three different test totals in one day — 83, then 92, then 82. The real number is 102.** Re-counted across all seven suites. All three figures were wrong, and at least one was tagged [Certain]. Cause: carrying numbers forward and doing the arithmetic mentally instead of re-running the suites.
+- **"Your PC now has the merged code. [Certain]"** — I cannot see `C:\JeffLocal`. What I had actually checked was GitHub, plus his word "DONE". That is [Likely].
+- **"From tonight, the close saves your work automatically"** and **"that is the last time you should ever need to do that"** — untagged, stated as fact, and both are predictions about code that had never run on his machine.
+
+The pattern: accurate about what I had **run**, loose about what I had **inferred** — his machine, the future, and numbers I had not recounted. CLAUDE.md rules 4 and 5 already covered it; I drifted as the day got long.
+
+**The nine rules** now sit under UNCERTAINTY LABELLING, framed as checkable rather than aspirational — each either passes or fails on a given sentence. R1 one tag per claim including checklists · **R2 [Certain] means a command run THIS SESSION whose output can be quoted** · R3 never [Certain] about Saeed's PC · R4 nothing in the future is [Certain] · R5 recompute every number before repeating it · R6 "tested" never travels alone · R7 an untagged sentence is not sent · R8 uncertainty leads, does not trail · R9 corrections are stated, not quietly fixed.
+
+**R2 is the load-bearing one** and it is marked as such in the file: every wrong claim above came from treating an inference as a verified fact.
+
+**Files changed:** CLAUDE.md, HANDOFF.md, CHANGELOG.md
+**Verification:** all nine rules confirmed present by grep after writing. HANDOFF.md's "next steps" corrected in the same commit — it still said the rules were awaiting approval, which was stale the moment Saeed answered.
+**Also recorded:** Saeed answered "WILL DECIDE LATER" on merging PR #7. It must not be merged without asking him again.
+---
+
+## 2026-09-11 — Five Brief Fixes: Ticks, Contradictions, Double Rewrite, WhatsApp Log, Length
+**Agent:** Lead Agent (Claude Code session)
+**Approved by:** Saeed — explicit written approval in session on 2026-09-11 ("YES" to fixes 1 and 2, "DO IT PROPERLY" to fix 3), plus two further instructions: "CREATE A LOG FOR WHATSAP MESSAGES. KEEP 3 LATEST ONES AND PURGE THE OLDER ONES AUTOMATICALLY" and "IT IS TOO LONG, I NEED A PRECISE BUT SHORTER MESSAGES IN BUSINESS ENGLISH".
+**Prompted by:** Saeed pasted the actual 2026-09-10 19:00 evening brief. Reading the real output found three faults that no test had caught, because every test until now checked the machinery and none read the message.
+
+**Fix 1 — an already-ticked item came back asking for approval.**
+The parser stripped the checkbox with `\[.\]`, which matches "[x]" and "[ ]" identically, and the renderer then added a FRESH EMPTY box to every line. So anything Saeed had signed off returned to his phone every night as outstanding. He confirmed this had been happening "for a long time". New `Test-IsDoneLine` excludes ticked lines from PENDING SAEED and WHAT TO DO NEXT. A "[x]" inside WHAT WE DID is a record of work and is kept.
+
+**Fix 2 — the brief contradicted itself in one breath.**
+WHAT'S STUCK read "Work is progressing without any current issues." and then listed three real blockers. Cause: the source section carried a bare "None" NEXT TO real items, and each line was rewritten separately so nothing compared them. New `Test-IsNoneLine` / `Remove-NoneLines` drop bare none-lines BEFORE the rewrite — afterwards the model has reworded them and "None" is unrecognisable. Deliberately strict: "No GPhC number yet" and "None of the gates are signed" are blockers and are kept. If the filter empties a section, the standard "Nothing stuck right now." placeholder renders, so a contradiction cannot be printed.
+
+**Fix 3 — the day's work section described the code, not the day.**
+Root cause: a DOUBLE REWRITE by the local model. strategy_daily.ps1 runs the day's commit subjects through Get-BusinessRewrite and writes the result into the session log; combined_brief.ps1 then read that section back and ran Get-BusinessRewrite AGAIN. Two passes of a small model drifted off the facts: the commit "stop the close if the incoming file list cannot be parsed" reached Saeed as "If we cannot reliably understand the incoming file list, the process must be stopped" — a design rule presented as a day's achievement. New `Test-IsAutoWrittenLog` detects machine-written session logs by their `# Tool:` header (header-only, like Test-IsPlaceholderLog, so a human log that DISCUSSES the automation is not misread). Their WHAT WE DID lines are appended verbatim and never rewritten again. Autogen placeholder boilerplate, which explains the staleness alarm rather than the day, is replaced with one line: "No work recorded today."
+
+**Fix 4 — no record of what was actually sent.**
+Neither Saeed nor Claude could say how long the ticked-item fault had been running, because nothing was kept after a message left the machine. Every sent message is now archived to `logs\whatsapp-sent\<stamp>-<mode>-whatsapp.txt`, byte for byte including the prepended banners, with the send outcome appended. Written BEFORE the send, so a message that fails to send is still on record. Copies beyond the newest 3 are deleted — Saeed's explicit written permission, CLAUDE.md otherwise forbids deletion. Scope kept as narrow as possible: one named folder, no recursion, files only, pattern `*-whatsapp.txt` which only this script writes, nothing deleted unless MORE than 3 exist, each deletion logged by name and individually wrapped. `logs/` is already gitignored, so archives never reach GitHub.
+
+**Fix 5 — the message was too long.**
+Sections capped at 4 done / 3 next / 3 blockers / 4 approvals (blockers and approvals were previously uncapped, which is why the 2026-09-10 message ran to three WhatsApp messages). The overflow is COUNTED and shown as "(+N more - ask me)", never silently dropped; the full text always remains in docs\reports\. The rewrite prompt in BOTH scripts gained a 16-word hard limit and an instruction to use the past tense and not to turn a description of what happened into a rule about what should happen.
+
+**Files changed:** scripts/daily/combined_brief.ps1, scripts/daily/strategy_daily.ps1 (prompt only), CHANGELOG.md
+
+**Tests run:** 53 assertions, all passing, on PowerShell 7.4.6 / Linux.
+- t_brief_fixes.ps1 (31) — unit tests for the four new functions, including hostile inputs for the none-filter.
+- t_brief_e2e.ps1 (7) — builds a real session-log folder and reads the rendered section.
+- t_whatsapp_log.ps1 (10) — retention and purge, seeded with decoy files, a near-miss filename and a nested subfolder, all of which survive.
+- t_brief_fix3.ps1 (5) — replaces the rewriter with a spy and proves it is never handed an automation-written line.
+Negative controls were run on all four guards; each one goes red when its guard is reverted.
+
+**Faults found during development, recorded because they matter:**
+- The first version of fix 2 used `@(Remove-NoneLines ...)` around the call itself, which collapses the returned array into ONE element — the exact trap a comment in that same file warns about. Caught by the unit test before it shipped, not by review.
+- The first negative control for fix 3 DID NOT FIRE. Ollama is not running in the test container, so the rewritten and un-rewritten paths looked identical and the test proved only that the line survived. It was replaced with the spy test above, which fails correctly when the guard is reverted.
+
+**Reviews:** independent code review of fix 3 and Security Agent review of all five changes, both requested by Saeed on 2026-09-11 and run before merge.
+**Saeed notified:** This session.
+**Still outstanding:** nothing in this series has been deliberately tested on Windows PowerShell 5.1, which is what actually runs on Saeed's machine.
+
+
+---
+
+## 2026-09-11 — Review Round on the Five Brief Fixes: My Stated Root Cause Was Wrong
+
+**Agent:** Lead Agent (Claude Code session)
+**Reviews:** independent code review of fix 3, and Security Agent review of all five changes — both requested by Saeed.
+**Outcome:** Security Agent APPROVED WITH REQUIRED CHANGES. Code review found one critical conceptual defect and one new high-severity silent failure. All findings actioned except S1, which is put to Saeed because it reverses something I told him as fact.
+
+**S1 — CRITICAL, and it corrects me. The distortion happens in pass 1, not pass 2.**
+I told Saeed the SECOND rewrite was what turned commit subjects into policy statements. That is wrong, and the repo's own data disproves it. `docs/sessions/2026-09-10-1800.md` line 9 — the file ON DISK, which is the output of pass 1 before combined_brief.ps1 has touched it — already reads "If we cannot reliably understand the incoming file list, the process must be refused." The commit subject was "fix(close): refuse when the incoming-file list cannot be parsed reliably". Pass 1 alone turned a description into a rule; pass 2 only changed "refused" to "stopped".
+Consequence: fix 3 stops the drift getting worse but does NOT fix the symptom, and by forwarding stored lines verbatim it makes the bad logs already on disk permanently un-correctable downstream. The real fix is in strategy_daily.ps1's pass 1. Put to Saeed with a recommendation rather than actioned unilaterally, because the choice changes what is permanently stored in every session log.
+
+**S2 — HIGH, new silent failure that I introduced. A failed send was recorded as "SENT".**
+`python` is a native command: a non-zero exit does not throw, so the catch never fired and `$LASTEXITCODE` was never read. A crashed sender would have been archived as `# Send outcome: SENT - Traceback (most recent call last)...`. The one artefact built to answer "did it actually arrive?" would have asserted yes on exactly the days it did not — the same shape as the 11–19 Aug 2026 outage. Now checks the exit code.
+
+**H1 — HIGH, and also mine. I capped the alarms while trying to shorten the message.**
+The first version of fix 5 capped BLOCKERS at 3 and PENDING SAEED at 4; both were previously uncapped. Capping selects by log order, not severity, so "unauthenticated intake endpoint" — one of the three security items CLAUDE.md names as a go-live blocker — could fall past position 3 and become the integer in "(+3 more)". A blocker reduced to a number does not shout, and it inverts the burden onto Saeed to ask. Caps on those two sections removed; the numbers left in place are runaway guards (25) against a corrupted log, not editorial limits. Lowering them is Saeed's explicit decision, not one to take inside a change about message length. Caps on WHAT WE DID and WHAT'S NEXT are kept — nothing in those sections is an alarm.
+
+**S3 — MEDIUM. Keyed on a header a human can inherit.** `Test-IsAutoWrittenLog` matched `# Tool: strategy_daily.ps1`. Anyone starting today's log from a copy of yesterday's auto log keeps that line, which would silently switch the rewrite off for their caveman fragments. Now matches a dedicated `# AUTOGEN-REWRITTEN` marker written for this purpose only, the same way `AUTOGEN-PLACEHOLDER` works for the staleness alarm. Logs written before the marker existed do not match, so they are still rewritten — the safe direction, and it keeps the bad logs on disk fixable.
+
+**S4 — MEDIUM. Raw repo paths reached WhatsApp.** The deterministic "Files changed today" line is not produced by the rewrite, so bypassing the second pass forwarded `scripts/daily/combined_brief.ps1` verbatim — against this file's own prompt rule and CLAUDE.md's plain-English requirement. Leaf filenames only now.
+
+**S5 — LOW/MEDIUM. "No work recorded today." printed under "WHAT WE DID YESTERDAY"** in Morning mode. CLAUDE.md's "every alarm names its day" rule exists to stop exactly this. Now names the right day.
+
+**S6 — LOW.** A line present in both a human and an auto log was rendered twice and counted twice in "(+N more)".
+
+**M2 — MEDIUM. Retention keyed on the wrong thing.** The purge sorted by LastWriteTime, but "the 3 latest" is defined by the filename stamp this script writes itself. A restore, a copy between machines, or a touch while being read bumps LastWriteTime and would have pinned a stale copy at the head of the sort, pushing a genuinely recent archive into the delete list — at exactly the moment someone is investigating a bad message. Now sorted by name, LastWriteTime as tie-break only, with a regression test that fakes a timestamp a year into the future.
+
+**M3 — MEDIUM. Same-minute re-runs overwrote the archive.** A hand re-run inside the same clock minute — what someone does when investigating a failed send — overwrote the copy of the failed send it existed to preserve. Stamp now carries seconds, plus a collision suffix.
+
+**L1 — reparse points.** The purge now skips symlinks and junctions matching the pattern.
+**L2 — `* [x]` and `+ [x]` bullets** were not recognised as ticked. Failed safe (a re-ask), now handled.
+**L3 —** if the report file is missing, the archive falls back to the pre-banner text; it now logs that the copy is unbannered rather than implying the banners were never sent.
+**L4 —** "AI rewrite unavailable" was logging on healthy runs once fix 3 routed all lines around the rewriter, eroding a real diagnostic for Ollama being down.
+
+**Cleared by the Security Agent, verified by reading rather than assumption:** no banner can be capped or hidden (all banners are assembled outside `Get-ProjectBrief`, and the close-failure / PUSH-HELD / PUSH-FAILED banners are prepended to the saved report later still); `Test-IsNoneLine` is genuinely strict against hostile inputs; "No work recorded today." cannot print on a day that had work; fix 1 cannot suppress a genuinely outstanding approval; `logs/` is gitignored at line 17 with no negation; the archive carries no patient-identifiable data on any path found, though it should be added to `gdpr_purge.py`'s scope for completeness; and no PowerShell 5.1 throw was found in the new code — the three new array re-wraps in fact fix a pre-existing StrictMode hazard that could have killed the whole brief.
+
+**Files changed:** scripts/daily/combined_brief.ps1, scripts/daily/strategy_daily.ps1, tests/daily/*.ps1, CHANGELOG.md
+**Tests run:** 62 assertions, all passing, pwsh 7.4.6 / Linux. Negative control run on H1: restoring the caps turns the suite red.
+**Still outstanding:** S1 (awaiting Saeed's decision), `gdpr_purge.py` scope, and a deliberate Windows PowerShell 5.1 run.
+
+---
+
+## 2026-09-11 — Option A: One Plain-English Rewrite, and It Happens at Send Time
+
+**Agent:** Lead Agent (Claude Code session)
+**Approved by:** Saeed — "Option A", 2026-09-11, chosen between two written options after the code review established that my stated root cause was wrong.
+
+**The correction.** I told Saeed the SECOND rewrite turned his commit subjects into policy statements. The repo disproved it: `docs/sessions/2026-09-10-1800.md` line 9 — the file on disk, which is pass 1's output — already read "If we cannot reliably understand the incoming file list, the process must be refused." from the commit "fix(close): refuse when the incoming-file list cannot be parsed reliably". Pass 1 did the damage. Pass 2 only changed "refused" to "stopped".
+
+**What Option A changes.** The session log is a RECORD, so it now stores the record.
+- `strategy_daily.ps1` no longer calls `Get-BusinessRewrite` when writing the session log. New `Format-CommitSubject` tidies each commit subject deterministically — strip the conventional-commit prefix, capitalise, terminate — with no model involved, so there is nothing to drift and nothing to fail. This also makes the Ollama-is-down fallback readable, which was the one real cost of Option A.
+- `combined_brief.ps1` now rewrites every WHAT WE DID line once, at send time, human-written or machine-written alike. A bad rewrite now affects one message instead of being written permanently into the archive.
+- The bypass machinery from the earlier fix (`Test-IsAutoWrittenLog`, `$WhatWeDidAuto`, `$AutoAll`, the fold-in block) is REMOVED rather than left dormant. Dead code that never fires is exactly the trap recorded in HANDOFF.md — a dedup in this same file was once both unreachable and unmatchable, each fault hiding the other.
+- Placeholder handling is unchanged and still correct: boilerplate is dropped and replaced with one line naming the right day.
+
+**Net effect on the model:** the pipeline went from two LLM passes over Saeed's daily brief to one. That is the right direction under CLAUDE.md's core safety rule — every extra pass is a place where a fact can drift.
+
+**Known and accepted:** session logs already on disk still hold the old paraphrase. They are a historical record and are not being rewritten; they age out of the brief's 24-hour window on their own.
+
+**Files changed:** scripts/daily/strategy_daily.ps1, scripts/daily/combined_brief.ps1, tests/daily/ (t_brief_fix3.ps1 renamed to t_single_rewrite.ps1), CHANGELOG.md
+**Tests run:** 71 assertions, all passing, pwsh 7.4.6 / Linux.
+- Static guard: the session-log writer does not call the rewriter and does tidy deterministically — asserted on the CODE with comments stripped, so a comment mentioning the rewriter cannot satisfy it.
+- Spy: every line reaching Saeed went through the rewriter exactly ONCE — not twice (the 2026-09-10 fault) and not zero times (raw developer wording).
+- Negative controls fired on both halves: restoring the rewrite in the close turns t_brief_fixes.ps1 red; rewriting twice in the brief turns t_single_rewrite.ps1 red.
+- The currency guard also earned its place: it refused to run against a function that had been removed, rather than silently testing nothing.
+**Still outstanding:** `gdpr_purge.py` scope for the new archive folder, and a deliberate Windows PowerShell 5.1 run.

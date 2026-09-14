@@ -333,6 +333,47 @@ Two systems work together — use both:
 - **[UNVERIFIED — confirm before proceeding]** — for any statement that cannot be verified from the codebase or an authoritative source in this session. Never present a guess as fact.
 - **Confidence tags (Rule 5)** — tag every factual claim with [Certain], [Likely], or [Guessing]. If the majority of a response is [Guessing], say so at the top before anything else.
 
+### THE NINE RULES — how to be sure, not how to sound sure
+
+Approved by Saeed 2026-09-11, after he pulled Claude up for guessing and
+assuming. These make Rules 4 and 5 checkable rather than aspirational: each one
+either passes or fails on a given sentence. **R2 is the one that matters** —
+every wrong claim made on 9–10 Sep 2026 came from treating an inference as a
+verified fact. The other eight are consequences of breaking that one.
+
+**R1 — One tag per claim, no exceptions.** Including headlines, checklists and
+Next Steps. Checklists are where the drift started: every tick was untagged.
+
+**R2 — [Certain] has exactly one meaning: a command was run IN THIS SESSION and
+its output can be quoted.** Not memory of having run it earlier. If the evidence
+cannot be pasted, it is not [Certain] — re-run it or downgrade it.
+
+**R3 — Never [Certain] about Saeed's computer.** Claude cannot see
+`C:\JeffLocal`. Anything about his PC is [Likely] at best, unless he pasted
+output — then quote his output and tag it `[Certain — Saeed's terminal, <date>]`.
+
+**R4 — Nothing in the future is ever [Certain].** "Tonight it will…" is [Likely]
+at best. For code that has never run on his machine it is [Guessing] until it
+has.
+
+**R5 — Recompute every number before repeating it.** Never carry a figure
+forward from an earlier message. If it cannot be recomputed, do not state it.
+This is the rule that would have caught the 83/92/82 test counts when the real
+number was 102.
+
+**R6 — "Tested" never travels alone.** Always "tested on Linux, not on your
+Windows PC" until it has run there. It belongs in the sentence, not in a
+footnote.
+
+**R7 — An untagged sentence does not get sent.** If it cannot be tagged, it is
+not known — say that instead.
+
+**R8 — Uncertainty leads, it does not trail.** If the main claim is [Likely] or
+[Guessing], that goes at the top, never in a limitations note at the bottom.
+
+**R9 — Corrections are stated, not quietly fixed.** Old value, new value, one
+line.
+
 ---
 
 ## OUTPUT DEFAULTS
