@@ -75,9 +75,15 @@ strategy | Docs, reports, governance, marketing
 
 ---
 
-## CURRENT STATUS -- 2026-09-14 (brief rewrite fixes on branch, awaiting merge approval)
+## CURRENT STATUS -- 2026-09-14 (brief fixes MERGED to main, Saeed approved)
 
-### BRIEF FIXES -- 2026-09-14 (Security Agent approved, NOT MERGED)
+### BRIEF FIXES -- 2026-09-14 (Security Agent approved, MERGED 2ea9f74)
+
+MERGED to main as 2ea9f74 (whole branch = PR #7, 16 commits, incl. 11 Sep close-failure alarm
+and nine confidence rules in CLAUDE.md). Restore points: restore/2026-09-14-1650 (pre-merge),
+restore/2026-09-14-merge (post-merge). Test clone archived to
+C:\JeffLocal_archive\JeffLocal-brieftest-2026-09-14. NEXT: read first real briefs after merge.
+Details below kept for reference:
 
 Branch claude/close-session-protocol-check-0s6cvl, head 53487a4 (pushed). Built + tested in
 separate clone C:\JeffLocal-brieftest. Live scripts in C:\JeffLocal unchanged until merged.
@@ -87,7 +93,7 @@ separate clone C:\JeffLocal-brieftest. Live scripts in C:\JeffLocal unchanged un
   Stored files now hold original lines ($NextSectionRecord).
 - Protect-BriefLines masks secrets / NHS-number patterns / file paths (Security condition, met).
 - Tests 93/0 (tests/daily/run_all.ps1). Two pre-existing broken tests repaired.
-- PENDING SAEED: approve merge to main. Then watch first real briefs.
+- Saeed approved merge 2026-09-14 - DONE. Watch first real briefs.
 
 ## PREVIOUS STATUS -- 2026-08-20 (brief pipeline FIXED + proven live; Cowork session close retired)
 
@@ -717,8 +723,8 @@ Branch:  main. C:\JeffLocal (the repo root) IS the production directory — its 
          ALWAYS verify with `git branch --show-current` before assuming this.
 Main:    merged 2026-07-14 (feature/refactor-2-5-6 → main, Saeed approved, commit 79bd895),
          deployed to production 2026-07-15.
-Latest:  memory: session summary 2026-09-14 (on top of f863553). Brief-fix branch
-         claude/close-session-protocol-check-0s6cvl at 53487a4, pushed, NOT merged.
+Latest:  2ea9f74 Merge PR #7 brief fixes (Saeed approved 2026-09-14), on top of
+         955d4be memory: session summary 2026-09-14.
 Before:  0593674 memory: morning brief 2026-09-13 07:00
          session end check found no work done today, state unchanged since 2026-07-28.
          Preceded by d368529 step5 cutover tooling: watchdog repoint (8765 -> tenant1) + apply
