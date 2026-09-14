@@ -176,7 +176,7 @@ function Protect-BriefLines {
     $out = @()
     foreach ($line in @($Lines)) {
         $t = [string]$line
-        $t = $t -replace '(?i)\b(secret|token|password|passwd|api[_ -]?key|key)(\s*[:=]\s*)\S+', '$1$2[hidden]'
+        $t = $t -replace '(?i)\b(secret|token|password|passwd|api[_ -]?key)(\s*[:=]\s*)\S+', '$1$2[hidden]'
         $t = $t -replace '\b[A-Fa-f0-9]{32,}\b', '[hidden]'
         $t = $t -replace '\b\d{3}[ -]?\d{3}[ -]?\d{4}\b', '[number hidden]'
         $t = $t -replace '(?i)\b[A-Z]:\\[^\s,;)]*', '[file path]'

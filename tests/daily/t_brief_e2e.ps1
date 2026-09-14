@@ -145,6 +145,10 @@ Assert-NotMatch ($Masked -join "`n") "secrets\.json"          "file path hidden"
 Assert-Match    ($Masked -join "`n") "Rotate HMAC secret=\[hidden\] before go-live" "alarm line survives, only the value masked"
 Assert-Match    ($Masked -join "`n") "(?m)^Create staff accounts with names, roles and emails\.$" "ordinary line untouched"
 Assert-Match    @($Masked).Count "^5$"                       "no line dropped"
+$K = Protect-BriefLines -Lines @("Key: ICO registration still unconfirmed.")
+Assert-Match    ($K -join "") "^Key: ICO registration still unconfirmed\.$" "ordinary 'Key:' wording is not masked"
+$fnRx = '(?ms)^function\s+Protect-BriefLines\s*\{.*?^\}'
+Assert-Match    ([regex]::Match($Src,$fnRx).Value -eq [regex]::Match($Daily,$fnRx).Value) "^True$" "both scripts carry the identical masking function"
 
 Write-Host "`nSECURITY L5 - the REAL prompt still carries the tense rule (the stub cannot hide a regression)"
 Assert-Match $Src 'Every line is work that has NOT happened yet'  "Planned wording present in live prompt"
