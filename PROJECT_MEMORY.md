@@ -75,7 +75,21 @@ strategy | Docs, reports, governance, marketing
 
 ---
 
-## CURRENT STATUS -- 2026-08-20 (brief pipeline FIXED + proven live; Cowork session close retired)
+## CURRENT STATUS -- 2026-09-14 (brief rewrite fixes on branch, awaiting merge approval)
+
+### BRIEF FIXES -- 2026-09-14 (Security Agent approved, NOT MERGED)
+
+Branch claude/close-session-protocol-check-0s6cvl, head 53487a4 (pushed). Built + tested in
+separate clone C:\JeffLocal-brieftest. Live scripts in C:\JeffLocal unchanged until merged.
+- Dry run showed AI rewrite turning open approvals into "done". Fix: blockers + approvals skip
+  the rewrite, go out verbatim (Saeed's decision). Rewrite takes -Kind Done|Planned.
+- Root cause of garbled HANDOFF.md: close stored AI wording, next day re-read + reworded it.
+  Stored files now hold original lines ($NextSectionRecord).
+- Protect-BriefLines masks secrets / NHS-number patterns / file paths (Security condition, met).
+- Tests 93/0 (tests/daily/run_all.ps1). Two pre-existing broken tests repaired.
+- PENDING SAEED: approve merge to main. Then watch first real briefs.
+
+## PREVIOUS STATUS -- 2026-08-20 (brief pipeline FIXED + proven live; Cowork session close retired)
 
 ### REPORTING / BRIEF PIPELINE -- FIXED 2026-08-20 (approved by Saeed, tested, live)
 
@@ -703,7 +717,9 @@ Branch:  main. C:\JeffLocal (the repo root) IS the production directory — its 
          ALWAYS verify with `git branch --show-current` before assuming this.
 Main:    merged 2026-07-14 (feature/refactor-2-5-6 → main, Saeed approved, commit 79bd895),
          deployed to production 2026-07-15.
-Latest:  0593674 memory: morning brief 2026-09-13 07:00
+Latest:  memory: session summary 2026-09-14 (on top of f863553). Brief-fix branch
+         claude/close-session-protocol-check-0s6cvl at 53487a4, pushed, NOT merged.
+Before:  0593674 memory: morning brief 2026-09-13 07:00
          session end check found no work done today, state unchanged since 2026-07-28.
          Preceded by d368529 step5 cutover tooling: watchdog repoint (8765 -> tenant1) + apply
          script, 82b7ba2 (multi-tenancy step 5: avamed-super-admin role + tenant picker + tenant1

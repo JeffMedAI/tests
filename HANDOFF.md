@@ -1,41 +1,52 @@
-﻿# HANDOFF - Avamed (JeffLocal)
+# HANDOFF - Avamed (JeffLocal)
 
 > Rolling latest-only: overwrite in full at each session close, never append.
 > Read at session start, right after PROJECT_MEMORY.md.
-> Written automatically by strategy_daily.ps1 at 19:00 on 2026-09-11, because no
-> session had rewritten it by hand today. A real session close overwrites this.
 
-Last session date: 2026-09-11 (automated close at 19:00)
-Closed by: strategy_daily.ps1 (automated)
-Last commit: 41df7ad memory: morning brief 2026-09-11 07:00
+Last session date: 2026-09-14 16:50 (hand-written close)
+Closed by: Claude Code (Lead), with Security Agent review
+Last commit: see git log - memory: session summary 2026-09-14 (main). Brief fixes on branch claude/close-session-protocol-check-0s6cvl at 53487a4.
 Branch: main
 
 ## WORK SCOPE
 
-- 41df7ad memory: morning brief 2026-09-11 07:00
-- 55ef289 memory: evening brief 2026-09-10 19:00
+- Tested and fixed the twice-daily WhatsApp brief, on branch claude/close-session-protocol-check-0s6cvl.
+- Work done in a separate clone, C:\JeffLocal-brieftest. Live C:\JeffLocal code NOT changed.
+- 4 commits pushed to the branch. Not merged to main - waiting for Saeed.
 
 ## WHAT WORKED / WHAT DIDN'T
 
-- Automated close - no human notes for today. Judge the work from the commits
-  above and from docs\sessions\2026-09-11-1800.md.
+Worked:
+- Dry runs (-DryRun) are safe: no send, no close, no commit. Only side effect: one line added to the production run log.
+- Blockers + approvals now go out word for word. Tense kept for done vs planned.
+- Stored files (HANDOFF, session logs) now keep original words - stops the daily re-rewording drift.
+- Masking filter for secrets / NHS-number patterns / file paths. Security Agent: condition met.
+- Tests: 93 pass, 0 fail. Proved new checks fail on old code.
+
+Didn't / watch out:
+- The old HANDOFF.md held AI-garbled wording (e.g. "alert system is complete, approved by Saeed"). This hand-written file replaces it. The automatic session log for 2026-09-10 and 2026-09-11 still carries that garbled wording.
+- Piping a brief run into Select-Object -First N cuts it off and shows exit -1. That is not a script failure.
+- Writing script files with a UTF-8 BOM changes how PowerShell 5.1 reads them - avoid. Keep the original encoding.
+- Each brief takes about 2-3 minutes (local AI).
 
 ## HOW THE SESSION CLOSED
 
-- Automated at 19:00: PROJECT_MEMORY.md updated, session log written,
-  changes committed and pushed, restore tag cut.
+- Session log, HANDOFF.md, PROJECT_MEMORY.md written by hand. Committed + pushed to main. Restore tag cut.
 
 ## NEXT + BLOCKERS
 
-- Please review the briefing tomorrow at 7:00 AM and send daily updates if the work is not completed tonight.
-- Start working on the security items immediately because Saeed needs them moved.
+Next:
+- Get Saeed's approval to merge the brief-fix branch into main, then watch the first real briefs.
+- Start on the three security items.
 
-- Work is progressing without any current obstacles.
-- Three mandatory security settings were missed since August 11th.
+Blockers:
+- Three security items still open: unauthenticated intake endpoint, HMAC secret in git history, directory permissions.
+- Staff accounts do not exist. Governance gates 1-7 unsigned.
 
-- [ ] The automated alert system is finished, approved by Saeed, and has passed all required tests.
-- [ ] We need to create staff accounts with names, roles, and email addresses before we can begin the pilot launch.
-- [ ] Formal sign-off for governance stages one through seven must be secured.
-- [ ] The security code for connecting the automated data must be set up before any live information is transmitted.
-- [ ] This refers to the three security requirements that were previously discussed.
-- [ ] Both the NHS SBS and DSPT deadlines were missed, and Saeed requires them to be completed immediately without a new schedule.
+Pending Saeed:
+- [ ] Merge brief-fix branch into main.
+- [ ] Create staff accounts with names, roles and emails.
+- [ ] Sign governance gates 1-7.
+- [ ] Agree the HMAC secret before live data flows.
+- [ ] Close the three security items.
+- [ ] NHS SBS and DSPT both overdue - set a target.
