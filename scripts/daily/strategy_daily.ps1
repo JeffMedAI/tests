@@ -181,7 +181,10 @@ function Get-BusinessRewrite {
         [string[]]$Lines,
         [string]$OllamaUrl = "http://localhost:11434/api/generate",
         [string]$Model = "gemma4:e2b",
-        [int]$TimeoutSec = 90
+        [int]$TimeoutSec = 90,
+        # 'Done' (WHAT WE DID) or 'Planned' (WHAT'S NEXT). A single tense rule
+        # for every section made the model write to-do items as finished work.
+        [ValidateSet('Done', 'Planned')][string]$Kind = 'Done'
     )
 
     if (-not $Lines -or $Lines.Count -eq 0) { return ,$Lines }
@@ -210,8 +213,7 @@ STRICT OUTPUT FORMAT:
 - Each output line must be ONE sentence only, same order as the input.
 - HARD LIMIT: 16 words per line. Shorter is better. Cut every word that is not
   carrying meaning. No preamble like "We must", "This refers to", "Please note".
-- Use the past tense for work already done. Do not turn a description of what
-  happened into a rule about what should happen.
+- KEEP EACH LINE'S ORIGINAL TENSE AND STATUS. $(if ($Kind -eq 'Planned') { 'Every line is work that has NOT happened yet. Write it as planned or to-do ("We will...", "Next: ..."). Never write it as already done.' } else { 'Every line is work already done. Use the past tense. Do not turn it into a rule about what should happen.' })
 - Do not add any fact that is not already in the input line. Do not drop any line.
 - No code, no file paths, no jargon words — explain the idea in everyday words instead.
 
@@ -474,10 +476,12 @@ $NextTasksCapped = @($NextTasksNear | Select-Object -First 5)
 # Try the AI rewrite first (real sentence simplifying); anything it can't
 # handle (Ollama down, timeout, bad output) falls back to the word-glossary
 # version so the brief always sends something readable.
-$WhatWeDidAI = Get-BusinessRewrite -Lines $WhatWeDidCapped
-$BlockersAI  = Get-BusinessRewrite -Lines $BlockersCapped
-$ApprovalsAI = Get-BusinessRewrite -Lines $ApprovalsCapped
-$NextTasksAI = Get-BusinessRewrite -Lines $NextTasksCapped
+# Blockers and approvals skip the rewrite and go out word for word - see the
+# matching note in combined_brief.ps1 (Saeed's decision 2026-09-14).
+$WhatWeDidAI = Get-BusinessRewrite -Lines $WhatWeDidCapped -Kind Done
+$BlockersAI  = @($BlockersCapped)
+$ApprovalsAI = @($ApprovalsCapped)
+$NextTasksAI = Get-BusinessRewrite -Lines $NextTasksCapped -Kind Planned
 
 # Get-BusinessRewrite returns $null (a real null, not an empty array) only when
 # the Ollama call itself failed/timed out — Saeed needs to see that on the
@@ -493,8 +497,8 @@ Write-Log "Ollama AI rewrite fallback used: $OllamaFallbackUsed"
 # .Count check further down throws under strict mode — found while testing
 # the Ollama-down fallback with a 1-line brief section.
 $WhatWeDidFinal = if ($WhatWeDidAI) { ,$WhatWeDidAI } else { Write-Log "AI rewrite unavailable for WHAT WE DID - using word-glossary fallback"; Add-PlainEnglishNotes -Lines $WhatWeDidCapped }
-$BlockersFinal  = if ($BlockersAI)  { ,$BlockersAI }  else { Write-Log "AI rewrite unavailable for WHAT'S STUCK - using word-glossary fallback"; Add-PlainEnglishNotes -Lines $BlockersCapped }
-$ApprovalsFinal = if ($ApprovalsAI) { ,$ApprovalsAI } else { Write-Log "AI rewrite unavailable for THINGS I NEED YOU TO OK - using word-glossary fallback"; Add-PlainEnglishNotes -Lines $ApprovalsCapped }
+$BlockersFinal  = @($BlockersAI)
+$ApprovalsFinal = @($ApprovalsAI)
 $NextTasksFinal = if ($NextTasksAI) { ,$NextTasksAI } else { Write-Log "AI rewrite unavailable for WHAT'S NEXT - using word-glossary fallback"; Add-PlainEnglishNotes -Lines $NextTasksCapped }
 
 $DidSection      = if ($WhatWeDidFinal.Count -gt 0) { ($WhatWeDidFinal | ForEach-Object { "- $_" }) -join "`n" } else { "- Nothing logged in the last day. Ask me and I'll check for you." }
