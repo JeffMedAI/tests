@@ -13,7 +13,10 @@ function Assert-Eq { param($Got,$Want,$Name)
   else { $script:Fail++; Write-Host "  FAIL $Name`n         got : $Got`n         want: $Want" } }
 
 # Pull the purge block out of the LIVE script - never a copy.
-$m = [regex]::Match($Src, '(?ms)^# .. 9\. Purge old WhatsApp copies.*?(?=^Write-Log "combined_brief\.ps1 complete)')
+# \S+ not "..": the header's box-drawing characters are 2 chars when the file is
+# read as UTF-8 but 6 under Windows PowerShell 5.1's ANSI default, so a fixed
+# width never matched on 5.1 and this test never ran.
+$m = [regex]::Match($Src, '(?ms)^#\s+\S+\s+9\. Purge old WhatsApp copies.*?(?=^Write-Log "combined_brief\.ps1 complete)')
 if (-not $m.Success) { throw "GUARD: could not find the purge block in the live script" }
 $PurgeBlock = $m.Value
 function Write-Log { param([string]$Message) }

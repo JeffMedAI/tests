@@ -505,6 +505,13 @@ $DidSection      = if ($WhatWeDidFinal.Count -gt 0) { ($WhatWeDidFinal | ForEach
 $BlockerSection  = if ($BlockersFinal.Count -gt 0)  { ($BlockersFinal  | ForEach-Object { "- $_" }) -join "`n" } else { "- Nothing stuck right now." }
 $ApprovalSection = if ($ApprovalsFinal.Count -gt 0) { ($ApprovalsFinal | ForEach-Object { "- [ ] $_" }) -join "`n" } else { "- Nothing needs your OK right now." }
 $NextSection     = if ($NextTasksFinal.Count -gt 0) { ($NextTasksFinal | ForEach-Object { "- $_" }) -join "`n" } else { "- Nothing lined up yet. Ask me and I'll check for you." }
+# The RECORD copy of WHAT'S NEXT - original words, never the AI rewrite. The
+# session log and HANDOFF.md below are read back in as tomorrow's input, so
+# storing the rewrite fed the model its own output every day and the wording
+# drifted ("needs them moved" -> "needed them relocated", to-dos -> "was
+# obtained"). Stored files hold facts; only the sent message is reworded.
+# Same rule as Format-CommitSubject. Saeed's decision, 2026-09-14.
+$NextSectionRecord = if (@($NextTasksCapped).Count -gt 0) { (@($NextTasksCapped) | ForEach-Object { "- $_" }) -join "`n" } else { "- Nothing lined up yet." }
 
 # The raw git commit list and the internal "memory drift" check are for the
 # engineering side, not for Saeed's daily read — logged for troubleshooting,
@@ -737,7 +744,7 @@ $ApprovalSection
 
 ## WHAT TO DO NEXT SESSION
 
-$NextSection
+$NextSectionRecord
 
 ---
 
@@ -780,7 +787,7 @@ $ApprovalSection
 
 ## WHAT TO DO NEXT SESSION
 
-$NextSection
+$NextSectionRecord
 
 ---
 
@@ -863,7 +870,7 @@ $CommitList
 
 ## NEXT + BLOCKERS
 
-$NextSection
+$NextSectionRecord
 
 $BlockerSection
 

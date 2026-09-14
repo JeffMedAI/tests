@@ -27,6 +27,13 @@ foreach ($fn in $Needed) {
   Invoke-Expression $m.Value
 }
 function Write-Log { param([string]$Message) }   # silence the C:\ log path
+# Replace the model with a deterministic stand-in that visibly marks every line
+# it touches. The test used to assume Ollama was down, so it failed on any
+# machine where Ollama is running (it reworded "incoming-file list"). The
+# marker also proves which sections are rewritten and which go out verbatim.
+function Get-BusinessRewrite { param([string[]]$Lines, [string]$Kind = 'Done')
+  if (-not $Lines -or $Lines.Count -eq 0) { return ,$Lines }
+  return ,@($Lines | ForEach-Object { "REWRITTEN $_" }) }
 Write-Host "Loaded $($Needed.Count) function(s) from the live script.`n"
 
 $Root = Join-Path ([System.IO.Path]::GetTempPath()) ("brieftest-" + [guid]::NewGuid().ToString("N"))
@@ -108,6 +115,21 @@ Assert-Match    $T "three security items"            "approval 4 of 5 present"
 Assert-Match    $T "NHS SBS and DSPT"                "approval 5 of 5 present"
 Assert-NotMatch $T "\(\+\d+ more - ask me\)"        "no overflow marker - nothing was hidden"
 Assert-NotMatch $T "\[ \] \(\+"                     "the overflow marker never gets a checkbox"
+
+Write-Host "`n2026-09-14 - APPROVALS AND BLOCKERS ARE NEVER REWRITTEN"
+# The rewrite turned open to-dos into finished work ("were created",
+# "was obtained"). These two sections must reach Saeed word for word.
+Assert-Match    $T "(?m)^\s*- \[ \] Create staff accounts with names, roles and emails\.\s*$" "approval is verbatim"
+Assert-Match    $T "(?m)^\s*- Three security items outstanding since 11 August\.\s*$"      "blocker is verbatim"
+Assert-NotMatch $T "\[ \] REWRITTEN"                  "no approval went through the rewrite"
+Assert-Match    $T "REWRITTEN Review the 07:00 brief" "WHAT'S NEXT still gets the plain-English rewrite"
+
+Write-Host "`n2026-09-14 - STORED FILES HOLD ORIGINAL WORDS (no rewrite feedback loop)"
+$Daily = Get-Content -Path (Join-Path $RepoRoot "scripts/daily/strategy_daily.ps1") -Raw -Encoding UTF8
+Assert-Match    $Daily '## NEXT \+ BLOCKERS\s+\$NextSectionRecord'           "HANDOFF.md stores the record, not the rewrite"
+Assert-NotMatch $Daily '## WHAT TO DO NEXT SESSION\s+\$NextSection\s'        "session logs store the record, not the rewrite"
+Assert-NotMatch $Daily '\$(Blockers|Approvals)AI\s*=\s*Get-BusinessRewrite' "strategy_daily never rewrites blockers/approvals"
+Assert-NotMatch $Src   '\$(Blockers|Approvals)AI\s*=\s*Get-BusinessRewrite' "combined_brief never rewrites blockers/approvals"
 
 Remove-Item -Recurse -Force $Root
 Write-Host "`n================================"
