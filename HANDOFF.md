@@ -1,69 +1,45 @@
-# HANDOFF - Avamed (JeffLocal)
+﻿# HANDOFF - Avamed (JeffLocal)
 
 > Rolling latest-only: overwrite in full at each session close, never append.
 > Read at session start, right after PROJECT_MEMORY.md.
+> Written automatically by strategy_daily.ps1 at 19:00 on 2026-09-15, because no
+> session had rewritten it by hand today. A real session close overwrites this.
 
-Last session date: 2026-09-14 (hand-written close, then merge)
-Closed by: Claude Code (Lead), with Security Agent review
-Last commit: see git log - Merge PR #7 branch claude/close-session-protocol-check-0s6cvl into main (Saeed approved 2026-09-14)
+Last session date: 2026-09-15 (automated close at 19:00)
+Closed by: strategy_daily.ps1 (automated)
+Last commit: 88dd20c memory: morning brief 2026-09-15 07:00
 Branch: main
 
 ## WORK SCOPE
 
-- Tested and fixed the twice-daily WhatsApp brief on branch claude/close-session-protocol-check-0s6cvl (PR #7).
-- Built in a separate clone (C:\JeffLocal-brieftest, now archived).
-- Saeed approved the merge 2026-09-14. MERGED to main - whole branch (16 commits, incl. the 11 Sep
-  close-failure alarm and the nine confidence rules in CLAUDE.md).
-- The brief scripts in scripts\daily\ now run the merged code from the next scheduled run.
+- 88dd20c memory: morning brief 2026-09-15 07:00
+- f2c963a memory: evening brief 2026-09-14 19:00
 
 ## WHAT WORKED / WHAT DIDN'T
 
-Worked:
-- Dry runs (-DryRun) are safe: no send, no close, no commit. Only side effect: one line appended to the production run log.
-- Blockers + approvals go out word for word. Tense kept for done vs planned.
-- Stored files (HANDOFF, session logs) keep original words - stops the daily re-rewording drift.
-- Masking filter for secrets / NHS-number patterns / file paths. Security Agent: condition met.
-- Tests: 93 pass, 0 fail, on Windows PowerShell 5.1. New checks proven to fail on old code.
-
-Didn't / watch out:
-- The old HANDOFF.md held AI-garbled wording. Session logs for 2026-09-10 and 2026-09-11 still carry it.
-- Piping a brief run into Select-Object -First N cuts it off and shows exit -1. Not a script failure.
-- Writing script files with a UTF-8 BOM changes how PowerShell 5.1 reads them - keep original encoding.
-- Each brief takes about 2-3 minutes (local AI).
+- Automated close - no human notes for today. Judge the work from the commits
+  above and from docs\sessions\2026-09-15-1800.md.
 
 ## HOW THE SESSION CLOSED
 
-- Session log, HANDOFF.md, PROJECT_MEMORY.md written by hand. Restore tag restore/2026-09-14-1650 cut BEFORE the merge.
-- Merge committed + pushed to main after tests re-run in C:\JeffLocal.
+- Automated at 19:00: PROJECT_MEMORY.md updated, session log written,
+  changes committed and pushed, restore tag cut.
 
 ## NEXT + BLOCKERS
 
-Next:
-- Read tonight's evening brief and tomorrow's morning brief on WhatsApp: approvals verbatim, tense right, nothing garbled.
+- Merge brief fixes once Saeed approves - DevOps - high
+- After merge, watch first real morning and evening WhatsApp brief for correct tense and verbatim approvals - Lead - high
+- Optional: glossary notes for verbatim blockers; remove dead fallback terms (Security Low findings) - Backend - low
+- Check tonight's and tomorrow's real WhatsApp briefs read correctly (approvals verbatim, tense right).
 - Start on the three security items.
 
-Blockers:
 - Three security items still open: unauthenticated intake endpoint, HMAC secret in git history, directory permissions.
-- Staff accounts do not exist. Governance gates 1-7 unsigned.
+- Staff accounts for Churchtown do not exist yet.
+- Governance gates 1-7 unsigned.
 
-Pending Saeed:
 - [ ] Create staff accounts with names, roles and emails.
 - [ ] Sign governance gates 1-7.
 - [ ] Agree the HMAC secret before live data flows.
 - [ ] Close the three security items.
 - [ ] NHS SBS and DSPT both overdue - set a target.
-
-## CARRIED FORWARD FROM THE 9-11 SEP SESSION (still true)
-
-- Backup-branch pruning was built then REMOVED (could delete the only remote copy). Rebuild as its own PR:
-  compare sha against sha (ls-remote field 1), not by name.
-- $BehindSignals retirement is logged debt. Must prove "is HEAD still behind origin/branch?", not a timestamp.
-- The close's AUTO-PULL path has never run for real. Only the backup half is proven. Do not claim otherwise.
-- Windows PowerShell 5.1: the daily test suite and both dry runs now pass on 5.1 (2026-09-14). The live
-  close/pull path still has not been deliberately exercised on 5.1.
-- Standing checks for scripts\daily\:
-  - When you add a value to a signal (PUSH-FAILED, TAG-PUSH-FAILED, PUSH-HELD, BEHIND-REMOTE, CLOSED,
-    FAILED), grep EVERY reader and read the branch each one feeds.
-  - Any new index into a split signal must assume the line is TRUNCATED.
-  - Negative controls: revert the guard and watch the test go red. Recount test totals, never carry them.
-- [Certain] in CLAUDE.md means a command was run THIS SESSION and its output can be quoted.
+- [ ] Clear about 22 empty junk files at repo root (move to archive, not delete).
