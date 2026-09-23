@@ -2,23 +2,23 @@
 
 > Rolling latest-only: overwrite in full at each session close, never append.
 > Read at session start, right after PROJECT_MEMORY.md.
-> Written automatically by strategy_daily.ps1 at 19:00 on 2026-09-22, because no
+> Written automatically by strategy_daily.ps1 at 19:00 on 2026-09-23, because no
 > session had rewritten it by hand today. A real session close overwrites this.
 
-Last session date: 2026-09-22 (automated close at 19:00)
+Last session date: 2026-09-23 (automated close at 19:00)
 Closed by: strategy_daily.ps1 (automated)
-Last commit: 10b9e06 memory: morning brief 2026-09-22 07:00
+Last commit: 2c32553 memory: morning brief 2026-09-23 07:00
 Branch: main
 
 ## WORK SCOPE
 
-- 10b9e06 memory: morning brief 2026-09-22 07:00
-- bc437b7 memory: evening brief 2026-09-21 19:00
+- 2c32553 memory: morning brief 2026-09-23 07:00
+- f19fa72 memory: evening brief 2026-09-22 19:00
 
 ## WHAT WORKED / WHAT DIDN'T
 
 - Automated close - no human notes for today. Judge the work from the commits
-  above and from docs\sessions\2026-09-22-1800.md.
+  above and from docs\sessions\2026-09-23-1800.md.
 
 ## HOW THE SESSION CLOSED
 
