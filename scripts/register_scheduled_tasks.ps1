@@ -363,9 +363,9 @@ Write-Host "Registered: JeffLocal - GDPR Weekly Purge (tenant2) (weekly Sunday 0
 # booking has waited over 1 hour. No patient data in the message. Interactive logon
 # (not Highest/SYSTEM) because send_whatsapp.py drives WhatsApp Web in a desktop browser.
 # Needs config\local_secrets.json -> booking_alert_token (same value as the Worker secret
-# BOOKING_ALERT_TOKEN). Script: scripts\dailybooking_alert.ps1
+# BOOKING_ALERT_TOKEN). Script: scripts\daily\booking_alert.ps1
 $action6 = New-ScheduledTaskAction -Execute "powershell.exe" `
-    -Argument '-NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File "C:\JeffLocal\scripts\dailybooking_alert.ps1"'
+    -Argument '-NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File "C:\JeffLocal\scripts\daily\booking_alert.ps1"'
 $trigger6 = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Monday,Tuesday,Wednesday,Thursday,Friday -At 08:30
 $trigger6.Repetition = (New-ScheduledTaskTrigger -Once -At 08:30 -RepetitionInterval (New-TimeSpan -Minutes 15) -RepetitionDuration (New-TimeSpan -Hours 10)).Repetition
 $settings6 = New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Minutes 10) -MultipleInstances IgnoreNew `
