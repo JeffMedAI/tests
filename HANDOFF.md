@@ -2,22 +2,27 @@
 
 > Rolling latest-only: overwrite in full at each session close, never append.
 > Read at session start, right after PROJECT_MEMORY.md.
-> Written automatically by strategy_daily.ps1 at 19:00 on 2026-10-05, because no
+> Written automatically by strategy_daily.ps1 at 19:00 on 2026-10-06, because no
 > session had rewritten it by hand today. A real session close overwrites this.
 
-Last session date: 2026-10-05 (automated close at 19:00)
+Last session date: 2026-10-06 (automated close at 19:00)
 Closed by: strategy_daily.ps1 (automated)
-Last commit: 79386cc memory: morning brief 2026-10-05 07:00
+Last commit: 3643cde docs: restore backslash in Booking Alert path
 Branch: main
 
 ## WORK SCOPE
 
-- 79386cc memory: morning brief 2026-10-05 07:00
+- 3643cde docs: restore backslash in Booking Alert path
+- 23c4739 docs: fix path typo in Booking Alert docs
+- a85a4c6 docs: register + document Booking Alert scheduled task
+- feb3be5 feat: booking_alert.ps1 - WhatsApp reminder when a St Marks booking waits over 1 hour
+- d2ea994 memory: morning brief 2026-10-06 07:00
+- 43d2e6a memory: evening brief 2026-10-05 19:00
 
 ## WHAT WORKED / WHAT DIDN'T
 
 - Automated close - no human notes for today. Judge the work from the commits
-  above and from docs\sessions\2026-10-05-1800.md.
+  above and from docs\sessions\2026-10-06-1800.md.
 
 ## HOW THE SESSION CLOSED
 
