@@ -318,6 +318,7 @@ Scheduled tasks (all under Task Scheduler path `\JeffLocal\`):
 | `JeffLocal - Weekday Health Check 0645` | 06:45, **Mon–Fri** | Flow-level health check feeding the morning brief. Added 2026-09-04. |
 | `JeffLocal - Strategy Agent Daily Report` | 07:00, daily | Morning brief. Still commits and pushes as a git safety net — this is what saves weekend work. |
 | `JeffLocal - Weekday Session Close 1830` | 18:30, **Mon–Fri** | The session close itself, both projects. Added 2026-09-04. |
+| `JeffLocal - Booking Alert` | every 15 min, **Mon–Fri 08:30–18:30** | St Marks: ONE WhatsApp to Saeed when a website booking has waited over 1 hour (no patient data; `scripts\dailyooking_alert.ps1`). Needs the PC on + WhatsApp Web signed in. Added 2026-10-06. |
 | `JeffLocal - Evening Session Close Brief` | 19:00, daily | Evening brief only. Reads the 18:30 marker; shouts if no close ran. |
 
 **READ-ALL-LOGS RULE (mandatory before writing ANY brief — manual or automated review).** Before composing or reviewing a brief, the agent MUST read ALL of: every session log in `docs\sessions\` (not just the latest), `PROJECT_MEMORY.md` current status, and `git log` for the period. Never write a brief from a single log or from memory alone. The brief script enforces a safety net — if no session log exists for the last 24h it falls back to the most recent log so a brief is NEVER empty — but the agent must still read the full set when reviewing or hand-writing one.

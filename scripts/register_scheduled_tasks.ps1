@@ -358,6 +358,24 @@ Register-ScheduledTask `
 
 Write-Host "Registered: JeffLocal - GDPR Weekly Purge (tenant2) (weekly Sunday 03:15)" -ForegroundColor Green
 
+# --- Task 6: St Marks Booking Alert (Mon-Fri 08:30-18:30, every 15 min) ---
+# Added 2026-10-06, Saeed's instruction. ONE WhatsApp to Saeed when a St Marks website
+# booking has waited over 1 hour. No patient data in the message. Interactive logon
+# (not Highest/SYSTEM) because send_whatsapp.py drives WhatsApp Web in a desktop browser.
+# Needs config\local_secrets.json -> booking_alert_token (same value as the Worker secret
+# BOOKING_ALERT_TOKEN). Script: scripts\dailyooking_alert.ps1
+$action6 = New-ScheduledTaskAction -Execute "powershell.exe" `
+    -Argument '-NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File "C:\JeffLocal\scripts\dailyooking_alert.ps1"'
+$trigger6 = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Monday,Tuesday,Wednesday,Thursday,Friday -At 08:30
+$trigger6.Repetition = (New-ScheduledTaskTrigger -Once -At 08:30 -RepetitionInterval (New-TimeSpan -Minutes 15) -RepetitionDuration (New-TimeSpan -Hours 10)).Repetition
+$settings6 = New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Minutes 10) -MultipleInstances IgnoreNew `
+    -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable
+$principal6 = New-ScheduledTaskPrincipal -UserId "$env:USERDOMAIN\$env:USERNAME" -LogonType Interactive -RunLevel Limited
+Register-ScheduledTask -TaskName "JeffLocal - Booking Alert" -TaskPath "\JeffLocal\" -Action $action6 `
+    -Trigger $trigger6 -Settings $settings6 -Principal $principal6 `
+    -Description "St Marks: ONE WhatsApp to Saeed when a website booking waits over 1 hour. Mon-Fri 08:30-18:30. No patient data." -Force
+Write-Host "Registered: JeffLocal - Booking Alert (Mon-Fri 08:30-18:30, every 15 min)" -ForegroundColor Green
+
 Write-Host ""
 Write-Host "All tasks registered. Verify in Task Scheduler under \JeffLocal\" -ForegroundColor Cyan
 Write-Host ""
