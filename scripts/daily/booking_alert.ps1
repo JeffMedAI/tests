@@ -19,7 +19,10 @@
 # BOOKING_ALERT_TOKEN. Never put it in this file or in git.
 #
 # STATE (logs\ is gitignored)
-#   logs\booking-alerts\alerted.json  booking ids already warned about
+#   logs\booking-alerts\alerted.txt   booking ids already warned about, one per line.
+#                                     (Plain text on purpose: a JSON file here was mangled by
+#                                     Windows PowerShell 5.1 on 2026-10-06 and caused a repeat
+#                                     WhatsApp every 15 minutes. Do not go back to JSON.)
 #   logs\booking-alerts\run.log       one line per run
 #
 # TESTING
@@ -37,14 +40,16 @@
 param(
     [switch]$DryRun,
     [datetime]$NowOverride,
-    [string]$TestStampsJson
+    [string]$TestStampsJson,
+    [string]$StateDirOverride,   # tests only: keep test state out of the real state folder
+    [string]$SendScriptOverride  # tests only: a stub instead of WhatsApp
 )
 
 $ErrorActionPreference = 'Stop'
 
 $Root        = 'C:\JeffLocal'
-$StateDir    = Join-Path $Root 'logs\booking-alerts'
-$StateFile   = Join-Path $StateDir 'alerted.json'
+$StateDir    = if ($StateDirOverride) { $StateDirOverride } else { Join-Path $Root 'logs\booking-alerts' }
+$StateFile   = Join-Path $StateDir 'alerted.txt'
 $RunLog      = Join-Path $StateDir 'run.log'
 $SecretsFile = Join-Path $Root 'config\local_secrets.json'
 $SendScript  = Join-Path $Root 'scripts\daily\send_whatsapp.py'
@@ -86,8 +91,10 @@ try {
     if (-not $answer.ok -and -not $TestStampsJson) { throw 'Website did not return ok' }
 
     # --- 3. Which are over an hour old and not yet warned about? -------------
-    $alerted = @()
-    if (Test-Path $StateFile) { $alerted = @(Get-Content $StateFile -Raw | ConvertFrom-Json) }
+    [int[]]$alerted = @()
+    if (Test-Path $StateFile) {
+        $alerted = @(Get-Content $StateFile | Where-Object { $_ -match '^\s*\d+\s*$' } | ForEach-Object { [int]$_.Trim() })
+    }
 
     $nowUtc = (Get-Date).ToUniversalTime()
     if ($PSBoundParameters.ContainsKey('NowOverride')) {
@@ -117,12 +124,12 @@ try {
     # --- 5. Send via the existing briefing sender, record only on success ----
     $tmp = Join-Path $StateDir 'pending_message.txt'
     Set-Content -Path $tmp -Value $message -Encoding UTF8
-    $out = & python $SendScript $tmp 2>&1
+    if ($SendScriptOverride) { $out = & $SendScriptOverride $tmp 2>&1 } else { $out = & python $SendScript $tmp 2>&1 }
     $code = $LASTEXITCODE
     if ($code -ne 0) { throw "send_whatsapp.py exited $code : $($out -join ' ')" }
 
-    $alerted = @($alerted) + $due
-    ConvertTo-Json -InputObject @($alerted) | Set-Content -Path $StateFile -Encoding UTF8
+    # Record FIRST-class evidence of the send: append ids as plain lines.
+    Add-Content -Path $StateFile -Value ($due | ForEach-Object { [string]$_ }) -Encoding ASCII
     Write-Log "Sent reminder for booking id(s) $($due -join ',')."
     exit 0
 }
