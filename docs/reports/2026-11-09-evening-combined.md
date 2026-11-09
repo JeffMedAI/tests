@@ -1,0 +1,81 @@
+﻿EVENING BRIEF (wrapping up today) - 2026-11-09 19:00
+Your two projects: the AI reception helper (Avamed) and the pharmacy website (St Marks)
+================================================================
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!! WARNING - PART OF THIS BRIEF IS OUT OF DATE
+!!   AI reception helper (Avamed) : nothing new logged for 22 working days (32 day(s) ago) - still showing 2026-10-07-1800.md
+!!
+!! No work has been logged for the project(s) above, and they are
+!! not marked as paused.
+!! Either work has genuinely stopped, or it is not being saved.
+!! What you read below for them is OLD news repeated, not today's work.
+!! Do not read it as progress. This needs looking at before you trust it.
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+Note: Pharmacy website (St Marks) is paused on purpose (awaiting pharmacist sign-off) - nothing new logged for 7 day(s).
+      -> Paused for 7 day(s) now. Is this still correct?
+         Tell Claude to un-pause it or change the reason, next time you talk.
+
+=== YOUR AI RECEPTION HELPER (Avamed) ===
+  (STALE - no real session log today. Newest real log: 2026-10-07-1800.md, 791h ago)
+
+  WHAT WE DID TODAY
+  - The booking alert sent WhatsApp updates every fifteen minutes using plain text IDs.
+  - One file was modified today: the booking alert script.
+
+  WHAT IS NEXT (tomorrow)
+  - We will merge the brief fixes once Saeed provides his approval.
+  - We will review morning and evening messages for correct language and verbatim approvals.
+  - We will create glossary notes and remove unnecessary security terms.
+  - (+2 more - ask me)
+
+  WHAT'S STUCK
+  - Three security items still open: unauthenticated intake endpoint, HMAC secret in git history, directory permissions.
+  - Staff accounts for Churchtown do not exist yet.
+  - Governance gates 1-7 unsigned.
+
+  THINGS I NEED YOU TO OK
+  - [ ] Create staff accounts with names, roles and emails.
+  - [ ] Sign governance gates 1-7.
+  - [ ] Agree the HMAC secret before live data flows.
+  - [ ] Close the three security items.
+  - [ ] NHS SBS and DSPT both overdue - set a target.
+  - [ ] Clear about 22 empty junk files at repo root (move to archive, not delete).
+
+Behind the scenes: 1 code change(s) saved today.
+
+----------------------------------------------------------------
+
+=== YOUR PHARMACY WEBSITE (St Marks) ===
+  (STALE - no real session log today. Newest real log: 2026-11-02-1404.md, 172h ago)
+
+  WHAT WE DID TODAY
+  - Saeed reviewed pharmacist feedback, prioritized tasks, and approved the project plan.
+  - The request involved updating patient information, service hours, and removing specific advertising claims.
+  - Legal notices established liability for advertising weight-loss medicine claims by the owner and superintendent.
+  - The site was deployed, verified, and technical settings were configured to ensure system stability.
+  - (+6 more - ask me)
+
+  WHAT IS NEXT (tomorrow)
+  - Send the replies and preview link to the pharmacist via chat.
+  - Decide five prices for flu, earOne, earBoth, weightConsult, and weightFollowUp.
+  - Confirm clinic days, booking methods, service links, and page wording.
+  - (+5 more - ask me)
+
+  WHAT'S STUCK
+  - Prices undecided (TBC-PHARMACIST on 6 pages).
+  - COVID how-to-book unknown (TBC-PHARMACIST).
+  - Pharmacist sign-off (formal) not done. Busy with flu + COVID clinics.
+  - Superintendent GPhC number still [TBC] in footer. ICO number + privacy policy still "draft". WhatsApp number none (buttons removed). Real photos (20 photo-free pages). All Saeed/pharmacist, unchanged.
+  - SEO: long 503 can drop pages from Google. If review drags past ~2 weeks, Saeed decides: keep offline vs keep live minimal.
+
+  THINGS I NEED YOU TO OK
+  - [ ] Send replies + preview link to pharmacist.
+  - [ ] Decide with pharmacist: 5 prices. Pharmacy inbox. Titan Verse.
+  - [ ] Confirm Healthera really is off (assumed). Confirm "independent prescriber" claim stays off (assumed).
+  - [ ] GBP request outcome.
+  - [ ] Approve relaunch when pharmacist signs off (nothing goes public before).
+
+Behind the scenes: 1 code change(s) saved today.
+
+================================================================
+Want more detail on anything above? Just ask me next time we talk.
